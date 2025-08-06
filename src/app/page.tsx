@@ -9,7 +9,10 @@ import { ProductDetailView } from "@/components/product/product-detail-view";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, DollarSign, Package, TrendingUp, ShoppingCart } from "lucide-react";
+import { SummaryCard } from "@/components/dashboard/summary-card";
+import { CategoryChart } from "@/components/dashboard/category-chart";
+import { ProfitChart } from "@/components/dashboard/profit-chart";
 
 // Mock data to simulate fetching from an API
 const allProducts: Product[] = [
@@ -127,6 +130,22 @@ export default function Home() {
     );
   }, [searchTerm]);
 
+  const summaryStats = useMemo(() => {
+    const totalInvested = allProducts.reduce((acc, p) => acc + (p.totalCost * p.quantity), 0);
+    const totalActualProfit = allProducts.reduce((acc, p) => acc + p.actualProfit, 0);
+    const productsInStock = allProducts.reduce((acc, p) => acc + (p.quantity - p.quantitySold), 0);
+    const productsSolds = allProducts.reduce((acc, p) => acc + p.quantitySold, 0);
+    const averageMargin = allProducts.reduce((acc, p) => acc + p.profitMargin, 0) / allProducts.length;
+
+    return {
+        totalInvested,
+        totalActualProfit,
+        productsInStock,
+        productsSolds,
+        averageMargin
+    }
+  }, []);
+
   const handleSearch = (query: string) => {
     setIsLoading(true);
     // Simula um atraso de API
@@ -153,6 +172,40 @@ export default function Home() {
                 <PlusCircle className="mr-2"/>
                 Adicionar Produto
             </Button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <SummaryCard 
+                title="Total Investido"
+                value={summaryStats.totalInvested}
+                icon={DollarSign}
+                isCurrency
+            />
+            <SummaryCard 
+                title="Lucro Realizado"
+                value={summaryStats.totalActualProfit}
+                icon={TrendingUp}
+                isCurrency
+            />
+            <SummaryCard 
+                title="Produtos em Estoque"
+                value={summaryStats.productsInStock}
+                icon={Package}
+            />
+            <SummaryCard 
+                title="Produtos Vendidos"
+                value={summaryStats.productsSolds}
+                icon={ShoppingCart}
+            />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
+            <div className="lg:col-span-3">
+                <ProfitChart data={allProducts}/>
+            </div>
+            <div className="lg:col-span-2">
+                <CategoryChart data={allProducts} />
+            </div>
         </div>
 
 

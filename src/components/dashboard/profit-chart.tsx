@@ -1,6 +1,7 @@
 "use client"
 
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts"
+import * as React from "react";
 
 import {
   Card,
@@ -24,6 +25,15 @@ export function ProfitChart({ data, isLoading }: ProfitChartProps) {
     lucro: product.actualProfit,
     custo: product.totalCost * product.quantity,
   })).sort((a,b) => b.lucro - a.lucro).slice(0, 10); // Pega os 10 mais lucrativos
+  
+  const [skeletonHeights, setSkeletonHeights] = React.useState<number[]>([]);
+
+  React.useEffect(() => {
+    if (isLoading) {
+      const heights = Array.from({ length: 10 }, () => Math.random() * 80 + 10);
+      setSkeletonHeights(heights);
+    }
+  }, [isLoading]);
 
   return (
     <Card className="h-full">
@@ -34,8 +44,8 @@ export function ProfitChart({ data, isLoading }: ProfitChartProps) {
       <CardContent>
         {isLoading ? (
             <div className="w-full h-[300px] flex items-end gap-2 px-4">
-                {Array.from({ length: 10 }).map((_, i) => (
-                    <Skeleton key={i} className="h-full w-full" style={{height: `${Math.random() * 80 + 10}%`}} />
+                {skeletonHeights.map((height, i) => (
+                    <Skeleton key={i} className="h-full w-full" style={{height: `${height}%`}} />
                 ))}
             </div>
         ) : chartData.length > 0 ? (

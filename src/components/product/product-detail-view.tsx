@@ -5,7 +5,6 @@ import Link from "next/link";
 import { ExternalLink, Package, DollarSign, TrendingUp, Info } from "lucide-react";
 
 import type { Product } from "@/types";
-import { useToast } from "@/hooks/use-toast";
 import {
   DialogHeader,
   DialogTitle,
@@ -22,6 +21,7 @@ import {
 
 type ProductDetailViewProps = {
   product: Product;
+  onEdit: () => void;
 };
 
 const statusMap = {
@@ -32,7 +32,7 @@ const statusMap = {
     sold: { label: 'Vendido', color: 'bg-gray-500' },
 }
 
-export function ProductDetailView({ product }: ProductDetailViewProps) {
+export function ProductDetailView({ product, onEdit }: ProductDetailViewProps) {
   const statusInfo = statusMap[product.status];
 
   return (
@@ -128,7 +128,7 @@ export function ProductDetailView({ product }: ProductDetailViewProps) {
                       <ExternalLink className="ml-2 h-5 w-5" />
                   </Link>
               </Button>
-               <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-base py-6">
+               <Button onClick={onEdit} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-base py-6">
                   Editar Produto
               </Button>
           </div>

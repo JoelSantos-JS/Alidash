@@ -6,16 +6,17 @@ import { Header } from "@/components/layout/header";
 import { ProductSearch } from "@/components/product/product-search";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductDetailView } from "@/components/product/product-detail-view";
+import { ProductForm } from "@/components/product/product-form";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, DollarSign, Package, TrendingUp, ShoppingCart } from "lucide-react";
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import { CategoryChart } from "@/components/dashboard/category-chart";
 import { ProfitChart } from "@/components/dashboard/profit-chart";
 
-// Mock data to simulate fetching from an API
-const allProducts: Product[] = [
+const initialProducts: Product[] = [
   {
     id: "1",
     name: "Smartwatch Pro X",
@@ -119,23 +120,27 @@ const allProducts: Product[] = [
 ];
 
 export default function Home() {
+  const [products, setProducts] = useState<Product[]>(initialProducts);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+  const { toast } = useToast();
 
   const filteredProducts = useMemo(() => {
-    if (!searchTerm) return allProducts;
-    return allProducts.filter((product) =>
+    if (!searchTerm) return products;
+    return products.filter((product) =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [searchTerm]);
+  }, [searchTerm, products]);
 
   const summaryStats = useMemo(() => {
-    const totalInvested = allProducts.reduce((acc, p) => acc + (p.totalCost * p.quantity), 0);
-    const totalActualProfit = allProducts.reduce((acc, p) => acc + p.actualProfit, 0);
-    const productsInStock = allProducts.reduce((acc, p) => acc + (p.quantity - p.quantitySold), 0);
-    const productsSolds = allProducts.reduce((acc, p) => acc + p.quantitySold, 0);
-    const averageMargin = allProducts.reduce((acc, p) => acc + p.profitMargin, 0) / allProducts.length;
+    const totalInvested = products.reduce((acc, p) => acc + (p.totalCost * p.quantity), 0);
+    const totalActualProfit = products.reduce((acc, p) => acc + p.actualProfit, 0);
+    const productsInStock = products.reduce((acc, p) => acc + (p.quantity - p.quantitySold), 0);
+    const productsSolds = products.reduce((acc, p) => acc + p.quantitySold, 0);
+    const averageMargin = products.length > 0 ? products.reduce((acc, p) => acc + p.profitMargin, 0) / products.length : 0;
 
     return {
         totalInvested,
@@ -144,16 +149,47 @@ export default function Home() {
         productsSolds,
         averageMargin
     }
-  }, []);
+  }, [products]);
 
   const handleSearch = (query: string) => {
     setIsLoading(true);
-    // Simula um atraso de API
     setTimeout(() => {
       setSearchTerm(query);
       setIsLoading(false);
     }, 500);
   };
+
+  const handleOpenForm = (product: Product | null = null) => {
+    setProductToEdit(product);
+    setIsFormOpen(true);
+  };
+
+  const handleSaveProduct = (productData: Omit<Product, 'id'>) => {
+    if(productToEdit) {
+      // Editar
+      const updatedProducts = products.map(p => p.id === productToEdit.id ? { ...p, ...productData, id: p.id } : p)
+      setProducts(updatedProducts);
+       toast({
+        title: "Produto Atualizado!",
+        description: `O produto "${productData.name}" foi atualizado com sucesso.`,
+      });
+    } else {
+       // Adicionar
+      const newProduct: Product = {
+        ...productData,
+        id: (products.length + 1).toString(),
+      }
+      setProducts(prev => [newProduct, ...prev]);
+       toast({
+        title: "Produto Adicionado!",
+        description: `O produto "${productData.name}" foi adicionado com sucesso.`,
+      });
+    }
+
+    setIsFormOpen(false);
+    setProductToEdit(null);
+  }
+
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -168,7 +204,7 @@ export default function Home() {
                 Gerencie seus produtos, custos e analise sua rentabilidade.
               </p>
             </div>
-            <Button size="lg">
+            <Button size="lg" onClick={() => handleOpenForm()}>
                 <PlusCircle className="mr-2"/>
                 Adicionar Produto
             </Button>
@@ -192,7 +228,7 @@ export default function Home() {
                 value={summaryStats.productsInStock}
                 icon={Package}
             />
-            <SummaryCard 
+             <SummaryCard 
                 title="Produtos Vendidos"
                 value={summaryStats.productsSolds}
                 icon={ShoppingCart}
@@ -201,10 +237,10 @@ export default function Home() {
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
             <div className="lg:col-span-3">
-                <ProfitChart data={allProducts}/>
+                <ProfitChart data={products}/>
             </div>
             <div className="lg:col-span-2">
-                <CategoryChart data={allProducts} />
+                <CategoryChart data={products} />
             </div>
         </div>
 
@@ -242,15 +278,28 @@ export default function Home() {
       </main>
 
       <Dialog
-        open={!!selectedProduct}
+        open={!!selectedProduct || isFormOpen}
         onOpenChange={(isOpen) => {
           if (!isOpen) {
             setSelectedProduct(null);
+            setIsFormOpen(false);
+            setProductToEdit(null);
           }
         }}
       >
         <DialogContent className="max-w-4xl p-0">
-          {selectedProduct && <ProductDetailView product={selectedProduct} />}
+          {isFormOpen ? (
+            <ProductForm 
+                onSave={handleSaveProduct}
+                productToEdit={productToEdit}
+                onCancel={() => setIsFormOpen(false)}
+            />
+          ) : selectedProduct ? (
+            <ProductDetailView product={selectedProduct} onEdit={() => {
+                setSelectedProduct(null);
+                handleOpenForm(selectedProduct);
+            }}/>
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>

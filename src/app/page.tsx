@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { Product } from "@/types";
 import { Header } from "@/components/layout/header";
 import { ProductSearch } from "@/components/product/product-search";
@@ -11,10 +11,20 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, DollarSign, Package, TrendingUp, ShoppingCart } from "lucide-react";
+import { PlusCircle, DollarSign, Package, TrendingUp, ShoppingCart, AlertTriangle } from "lucide-react";
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import { CategoryChart } from "@/components/dashboard/category-chart";
 import { ProfitChart } from "@/components/dashboard/profit-chart";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const initialProducts: Product[] = [
   {
@@ -119,14 +129,54 @@ const initialProducts: Product[] = [
   },
 ];
 
+const LOCAL_STORAGE_KEY = 'product-dash-products';
+
 export default function Home() {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    try {
+      const savedProducts = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (savedProducts) {
+        const parsedProducts = JSON.parse(savedProducts).map((p: any) => ({
+          ...p,
+          purchaseDate: new Date(p.purchaseDate),
+          saleDate: p.saleDate ? new Date(p.saleDate) : undefined,
+        }));
+        setProducts(parsedProducts);
+      } else {
+        setProducts(initialProducts);
+      }
+    } catch (error) {
+      console.error("Failed to load products from localStorage", error);
+      setProducts(initialProducts);
+    } finally {
+        setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if(!isLoading) {
+        try {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(products));
+        } catch (error) {
+            console.error("Failed to save products to localStorage", error);
+            toast({
+                variant: 'destructive',
+                title: "Erro ao Salvar Dados",
+                description: "Não foi possível salvar os produtos no seu navegador. Suas alterações podem ser perdidas.",
+            })
+        }
+    }
+  }, [products, isLoading, toast]);
+
 
   const filteredProducts = useMemo(() => {
     if (!searchTerm) return products;
@@ -152,11 +202,7 @@ export default function Home() {
   }, [products]);
 
   const handleSearch = (query: string) => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setSearchTerm(query);
-      setIsLoading(false);
-    }, 500);
+    setSearchTerm(query);
   };
 
   const handleOpenForm = (product: Product | null = null) => {
@@ -164,7 +210,7 @@ export default function Home() {
     setIsFormOpen(true);
   };
 
-  const handleSaveProduct = (productData: Omit<Product, 'id'>) => {
+  const handleSaveProduct = (productData: Product) => {
     if(productToEdit) {
       // Editar
       const updatedProducts = products.map(p => p.id === productToEdit.id ? { ...p, ...productData, id: p.id } : p)
@@ -177,7 +223,7 @@ export default function Home() {
        // Adicionar
       const newProduct: Product = {
         ...productData,
-        id: (products.length + 1).toString(),
+        id: new Date().getTime().toString(), // better unique id
       }
       setProducts(prev => [newProduct, ...prev]);
        toast({
@@ -190,8 +236,23 @@ export default function Home() {
     setProductToEdit(null);
   }
 
+  const handleDeleteProduct = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+
+    setProducts(products.filter(p => p.id !== productId));
+    setProductToDelete(null);
+    setSelectedProduct(null);
+    toast({
+        variant: 'destructive',
+        title: "Produto Excluído!",
+        description: `O produto "${product.name}" foi excluído com sucesso.`,
+    });
+  }
+
 
   return (
+    <>
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
@@ -210,43 +271,52 @@ export default function Home() {
             </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <SummaryCard 
-                title="Total Investido"
-                value={summaryStats.totalInvested}
-                icon={DollarSign}
-                isCurrency
-            />
-            <SummaryCard 
-                title="Lucro Realizado"
-                value={summaryStats.totalActualProfit}
-                icon={TrendingUp}
-                isCurrency
-            />
-            <SummaryCard 
-                title="Produtos em Estoque"
-                value={summaryStats.productsInStock}
-                icon={Package}
-            />
-             <SummaryCard 
-                title="Produtos Vendidos"
-                value={summaryStats.productsSolds}
-                icon={ShoppingCart}
-            />
-        </div>
+        {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                 {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-[116px] w-full" />
+                ))}
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <SummaryCard 
+                    title="Total Investido"
+                    value={summaryStats.totalInvested}
+                    icon={DollarSign}
+                    isCurrency
+                />
+                <SummaryCard 
+                    title="Lucro Realizado"
+                    value={summaryStats.totalActualProfit}
+                    icon={TrendingUp}
+                    isCurrency
+                />
+                <SummaryCard 
+                    title="Produtos em Estoque"
+                    value={summaryStats.productsInStock}
+                    icon={Package}
+                />
+                 <SummaryCard 
+                    title="Produtos Vendidos"
+                    value={summaryStats.productsSolds}
+                    icon={ShoppingCart}
+                />
+            </div>
+        )}
+
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
             <div className="lg:col-span-3">
-                <ProfitChart data={products}/>
+                <ProfitChart data={products} isLoading={isLoading}/>
             </div>
             <div className="lg:col-span-2">
-                <CategoryChart data={products} />
+                <CategoryChart data={products} isLoading={isLoading}/>
             </div>
         </div>
 
 
         <div className="mb-8">
-            <ProductSearch onSearch={handleSearch} isLoading={isLoading} />
+            <ProductSearch onSearch={handleSearch} />
         </div>
 
         {isLoading ? (
@@ -271,7 +341,7 @@ export default function Home() {
           <div className="text-center py-16">
             <h3 className="text-xl font-medium">Nenhum Produto Encontrado</h3>
             <p className="text-muted-foreground">
-              Tente um termo de busca diferente.
+              Tente um termo de busca diferente ou adicione um novo produto.
             </p>
           </div>
         )}
@@ -292,16 +362,49 @@ export default function Home() {
             <ProductForm 
                 onSave={handleSaveProduct}
                 productToEdit={productToEdit}
-                onCancel={() => setIsFormOpen(false)}
+                onCancel={() => {
+                  setIsFormOpen(false)
+                  setProductToEdit(null)
+                }}
             />
           ) : selectedProduct ? (
-            <ProductDetailView product={selectedProduct} onEdit={() => {
-                setSelectedProduct(null);
-                handleOpenForm(selectedProduct);
-            }}/>
+            <ProductDetailView 
+                product={selectedProduct} 
+                onEdit={() => {
+                    handleOpenForm(selectedProduct);
+                    setSelectedProduct(null);
+                }}
+                onDelete={() => {
+                    setProductToDelete(selectedProduct);
+                }}
+            />
           ) : null}
         </DialogContent>
       </Dialog>
     </div>
+
+    <AlertDialog open={!!productToDelete} onOpenChange={(isOpen) => !isOpen && setProductToDelete(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>
+                <div className="flex items-center gap-2">
+                    <AlertTriangle className="text-destructive"/>
+                    Você tem certeza absoluta?
+                </div>
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+                Essa ação não pode ser desfeita. Isso excluirá permanentemente o produto <strong className="text-foreground">"{productToDelete?.name}"</strong> de seus registros.
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => productToDelete && handleDeleteProduct(productToDelete.id)}>
+                Sim, excluir produto
+            </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+
+    </>
   );
 }

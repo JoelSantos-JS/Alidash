@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -19,10 +18,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
+
 
 const productSchema = z.object({
   name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
-  category: z.string().min(1, { message: "Selecione uma categoria." }),
+  category: z.string().min(1, { message: "A categoria é obrigatória" }),
   supplier: z.string().min(2, { message: "O fornecedor deve ter pelo menos 2 caracteres." }),
   aliexpressLink: z.string().url({ message: "Por favor, insira uma URL válida." }).optional().or(z.literal('')),
   imageUrl: z.string().url({ message: "Por favor, insira uma URL de imagem válida." }),
@@ -38,7 +40,11 @@ const productSchema = z.object({
   quantitySold: z.coerce.number().int().min(0, { message: "A quantidade vendida não pode ser negativa." }),
   status: z.enum(['purchased', 'shipping', 'received', 'selling', 'sold']),
   purchaseDate: z.date({ required_error: "A data de compra é obrigatória." }),
+}).refine(data => data.quantitySold <= data.quantity, {
+    message: "A quantidade vendida não pode ser maior que a comprada.",
+    path: ["quantitySold"],
 });
+
 
 type ProductFormValues = Omit<Product, 'id' | 'totalCost' | 'expectedProfit' | 'profitMargin' | 'roi' | 'actualProfit'> & { purchaseDate: Date };
 
@@ -57,7 +63,7 @@ const statusOptions = {
 }
 
 export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProps) {
-  const form = useForm<ProductFormValues>({
+  const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
     defaultValues: productToEdit ? { ...productToEdit } : {
         name: "",
@@ -84,29 +90,30 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
 
   const watchedValues = watch();
 
-  const calculateFinancials = (data: ProductFormValues) => {
+  const calculateFinancials = (data: Partial<z.infer<typeof productSchema>>) => {
     const totalCost = 
-        data.purchasePrice + 
-        data.shippingCost + 
-        data.importTaxes + 
-        data.packagingCost + 
-        data.marketingCost + 
-        data.otherCosts;
+        (data.purchasePrice ?? 0) + 
+        (data.shippingCost ?? 0) + 
+        (data.importTaxes ?? 0) + 
+        (data.packagingCost ?? 0) + 
+        (data.marketingCost ?? 0) + 
+        (data.otherCosts ?? 0);
 
-    const expectedProfit = data.sellingPrice - totalCost;
-    const profitMargin = totalCost > 0 ? (expectedProfit / data.sellingPrice) * 100 : 0;
+    const expectedProfit = (data.sellingPrice ?? 0) - totalCost;
+    const profitMargin = (data.sellingPrice ?? 0) > 0 ? (expectedProfit / (data.sellingPrice ?? 1)) * 100 : 0;
     const roi = totalCost > 0 ? (expectedProfit / totalCost) * 100 : 0;
-    const actualProfit = expectedProfit * data.quantitySold;
+    const actualProfit = expectedProfit * (data.quantitySold ?? 0);
 
     return { totalCost, expectedProfit, profitMargin, roi, actualProfit };
   }
 
-  const onSubmit = (data: ProductFormValues) => {
+  const onSubmit = (data: z.infer<typeof productSchema>) => {
     const financials = calculateFinancials(data);
     onSave({ ...data, ...financials, id: productToEdit?.id || '' });
   };
   
-  const { totalCost, expectedProfit, profitMargin } = calculateFinancials(watchedValues as ProductFormValues);
+  const { totalCost, expectedProfit, profitMargin } = calculateFinancials(watchedValues);
+  const isLowProfit = profitMargin < 15 && profitMargin !== 0;
 
 
   return (
@@ -121,6 +128,15 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
         <form onSubmit={form.handleSubmit(onSubmit)}>
             <ScrollArea className="h-[70vh] px-6">
                 <div className="space-y-6">
+                    {isLowProfit && (
+                        <Alert variant="destructive">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>Margem de Lucro Baixa</AlertTitle>
+                            <AlertDescription>
+                                A margem de lucro para este produto está abaixo de 15%. Considere revisar seus custos ou preço de venda.
+                            </AlertDescription>
+                        </Alert>
+                    )}
                     <h3 className="text-lg font-medium border-b pb-2">Informações Básicas</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField control={form.control} name="name" render={({ field }) => (
@@ -133,7 +149,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                         <FormField control={form.control} name="category" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Categoria</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
+                                <FormControl><Input {...field} placeholder="Ex: Eletrônicos, Casa e Cozinha..." /></FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
@@ -163,7 +179,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                     </div>
                     <FormField control={form.control} name="aliexpressLink" render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Link do AliExpress</FormLabel>
+                            <FormLabel>Link do AliExpress (Opcional)</FormLabel>
                             <FormControl><Input {...field} /></FormControl>
                             <FormMessage />
                         </FormItem>
@@ -227,14 +243,14 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                          <FormField control={form.control} name="quantity" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Quantidade Comprada</FormLabel>
-                                <FormControl><Input type="number" {...field} /></FormControl>
+                                <FormControl><Input type="number" {...field} min={1} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
                          <FormField control={form.control} name="quantitySold" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Quantidade Vendida</FormLabel>
-                                <FormControl><Input type="number" {...field} /></FormControl>
+                                <FormControl><Input type="number" {...field} min={0} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
@@ -259,7 +275,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                             </FormItem>
                         )} />
                         <FormField control={form.control} name="purchaseDate" render={({ field }) => (
-                            <FormItem className="flex flex-col">
+                            <FormItem className="flex flex-col pt-2">
                                 <FormLabel>Data da Compra</FormLabel>
                                 <Popover>
                                 <PopoverTrigger asChild>
@@ -308,7 +324,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                     </div>
                      <div>
                         <span className="text-sm text-muted-foreground">Margem</span>
-                         <p className={`font-bold text-lg ${profitMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                         <p className={`font-bold text-lg ${expectedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             {profitMargin.toFixed(2)}%
                         </p>
                     </div>

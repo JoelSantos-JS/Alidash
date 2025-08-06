@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ExternalLink, Package, DollarSign, TrendingUp, Info } from "lucide-react";
+import { ExternalLink, Trash2, Pencil, Info, AlertTriangle } from "lucide-react";
 
 import type { Product } from "@/types";
 import {
@@ -22,6 +22,7 @@ import {
 type ProductDetailViewProps = {
   product: Product;
   onEdit: () => void;
+  onDelete: () => void;
 };
 
 const statusMap = {
@@ -32,8 +33,9 @@ const statusMap = {
     sold: { label: 'Vendido', color: 'bg-gray-500' },
 }
 
-export function ProductDetailView({ product, onEdit }: ProductDetailViewProps) {
+export function ProductDetailView({ product, onEdit, onDelete }: ProductDetailViewProps) {
   const statusInfo = statusMap[product.status];
+  const isLowProfit = product.profitMargin < 15;
 
   return (
     <TooltipProvider>
@@ -82,7 +84,7 @@ export function ProductDetailView({ product, onEdit }: ProductDetailViewProps) {
 
              <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md">
                 <span className="text-sm text-muted-foreground">Lucro Esperado</span>
-                <span className="text-xl font-bold text-green-600">
+                <span className={`text-xl font-bold ${product.expectedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {product.expectedProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </span>
             </div>
@@ -100,7 +102,10 @@ export function ProductDetailView({ product, onEdit }: ProductDetailViewProps) {
                     </Tooltip>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-green-600 border-green-600">{product.profitMargin.toFixed(2)}%</Badge>
+                    <Badge variant={isLowProfit ? "destructive" : "outline"} className={!isLowProfit ? "text-green-600 border-green-600" : ""}>
+                        {isLowProfit && <AlertTriangle className="w-3.5 h-3.5 mr-1" />}
+                        {product.profitMargin.toFixed(2)}%
+                    </Badge>
                     <Badge variant="outline" className="text-blue-600 border-blue-600">{product.roi.toFixed(2)}%</Badge>
                 </div>
             </div>
@@ -121,15 +126,20 @@ export function ProductDetailView({ product, onEdit }: ProductDetailViewProps) {
             
           </div>
           
-          <div className="mt-auto pt-6 flex gap-4">
-              <Button asChild variant="outline" className="w-full text-base py-6">
+          <div className="mt-auto pt-6 flex gap-3">
+              <Button asChild variant="outline" className="flex-1 text-base py-6">
                   <Link href={product.aliexpressLink} target="_blank">
                       Ver no AliExpress
                       <ExternalLink className="ml-2 h-5 w-5" />
                   </Link>
               </Button>
-               <Button onClick={onEdit} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-base py-6">
-                  Editar Produto
+               <Button onClick={onEdit} className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground text-base py-6">
+                  <Pencil className="mr-2 h-5 w-5"/>
+                  Editar
+              </Button>
+               <Button onClick={onDelete} variant="destructive" className="flex-1 text-base py-6">
+                  <Trash2 className="mr-2 h-5 w-5"/>
+                  Excluir
               </Button>
           </div>
         </div>

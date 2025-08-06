@@ -3,7 +3,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Search, Loader2 } from "lucide-react";
+import { Search } from "lucide-react";
+import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,16 +22,25 @@ const formSchema = z.object({
 
 type ProductSearchProps = {
   onSearch: (query: string) => void;
-  isLoading: boolean;
 };
 
-export function ProductSearch({ onSearch, isLoading }: ProductSearchProps) {
+export function ProductSearch({ onSearch }: ProductSearchProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       query: "",
     },
   });
+
+  const query = form.watch("query");
+
+  useEffect(() => {
+    const subscription = form.watch((value) => {
+        onSearch(value.query || "");
+    })
+    return () => subscription.unsubscribe();
+  }, [form, onSearch])
+
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     onSearch(values.query);
@@ -58,15 +68,9 @@ export function ProductSearch({ onSearch, isLoading }: ProductSearchProps) {
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={isLoading} size="lg">
-          {isLoading ? (
-            <Loader2 className="animate-spin" />
-          ) : (
-            <>
-              <Search className="mr-2 h-5 w-5" />
-              Buscar
-            </>
-          )}
+        <Button type="submit" size="lg">
+            <Search className="mr-2 h-5 w-5" />
+            Buscar
         </Button>
       </form>
     </Form>

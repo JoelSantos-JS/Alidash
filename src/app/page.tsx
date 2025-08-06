@@ -8,74 +8,110 @@ import { ProductCard } from "@/components/product/product-card";
 import { ProductDetailView } from "@/components/product/product-detail-view";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { PlusCircle } from "lucide-react";
 
 // Mock data to simulate fetching from an API
 const allProducts: Product[] = [
   {
     id: "1",
-    title: "Smartwatch Pro X",
-    description:
-      "A high-end smartwatch with a vibrant AMOLED display, heart rate monitoring, GPS, and a week-long battery life. Perfect for fitness enthusiasts and tech lovers.",
+    name: "Smartwatch Pro X",
+    category: "Eletrônicos",
+    supplier: "Top-rated Tech Store",
+    aliexpressLink: "#",
     imageUrl: "https://placehold.co/600x600.png",
-    productUrl: "#",
-    rating: 4.8,
-    reviews: 1250,
-    price: "79.99",
+    description: "Um smartwatch de última geração com tela AMOLED, monitoramento cardíaco, GPS e bateria de longa duração.",
+    purchasePrice: 79.99,
+    shippingCost: 5.0,
+    importTaxes: 15.0,
+    packagingCost: 1.5,
+    marketingCost: 10.0,
+    otherCosts: 0,
+    totalCost: 111.49,
+    sellingPrice: 149.99,
+    expectedProfit: 38.5,
+    profitMargin: 25.67,
+    quantity: 50,
+    quantitySold: 10,
+    status: 'selling',
+    purchaseDate: new Date("2023-10-01"),
+    roi: 34.53,
+    actualProfit: 385.0,
   },
   {
     id: "2",
-    title: "Wireless Earbuds with Noise Cancellation",
-    description:
-      "Immerse yourself in crystal-clear audio with these ergonomic wireless earbuds. Featuring active noise cancellation and a compact charging case.",
+    name: "Fones de Ouvido Sem Fio",
+    category: "Áudio",
+    supplier: "AudioPhile Inc.",
+    aliexpressLink: "#",
     imageUrl: "https://placehold.co/600x600.png",
-    productUrl: "#",
-    rating: 4.6,
-    reviews: 3400,
-    price: "49.99",
+    description: "Mergulhe em um som cristalino com estes fones de ouvido ergonômicos sem fio.",
+    purchasePrice: 49.99,
+    shippingCost: 3.5,
+    importTaxes: 10.0,
+    packagingCost: 1.0,
+    marketingCost: 8.0,
+    otherCosts: 0,
+    totalCost: 72.49,
+    sellingPrice: 99.99,
+    expectedProfit: 27.5,
+    profitMargin: 27.5,
+    quantity: 100,
+    quantitySold: 35,
+    status: 'selling',
+    purchaseDate: new Date("2023-09-15"),
+    roi: 37.94,
+    actualProfit: 962.5,
   },
-  {
+   {
     id: "3",
-    title: "Portable Blender for Smoothies",
-    description:
-      "Enjoy fresh smoothies on the go with this USB-rechargeable portable blender. Powerful, compact, and easy to clean.",
+    name: "Liquidificador Portátil",
+    category: "Casa e Cozinha",
+    supplier: "Kitchen Gadgets Co.",
+    aliexpressLink: "#",
     imageUrl: "https://placehold.co/600x600.png",
-    productUrl: "#",
-    rating: 4.9,
-    reviews: 2100,
-    price: "25.50",
+    description: "Desfrute de smoothies frescos em qualquer lugar com este liquidificador portátil recarregável por USB.",
+    purchasePrice: 25.50,
+    shippingCost: 2.0,
+    importTaxes: 5.0,
+    packagingCost: 0.75,
+    marketingCost: 5.0,
+    otherCosts: 0,
+    totalCost: 38.25,
+    sellingPrice: 49.99,
+    expectedProfit: 11.74,
+    profitMargin: 23.48,
+    quantity: 200,
+    quantitySold: 150,
+    status: 'selling',
+    purchaseDate: new Date("2023-11-05"),
+    roi: 30.7,
+    actualProfit: 1761,
   },
   {
     id: "4",
-    title: "LED Desk Lamp with Wireless Charger",
-    description:
-      "Modern and minimalist LED desk lamp that features adjustable brightness levels and a built-in wireless charging pad for your phone.",
+    name: "Luminária de Mesa LED com Carregador",
+    category: "Iluminação",
+    supplier: "Modern Lighting",
+    aliexpressLink: "#",
     imageUrl: "https://placehold.co/600x600.png",
-    productUrl: "#",
-    rating: 4.7,
-    reviews: 890,
-    price: "32.00",
-  },
-  {
-    id: "5",
-    title: "Ergonomic Memory Foam Seat Cushion",
-    description:
-      "Improve your posture and comfort with this high-quality memory foam seat cushion. Ideal for office chairs, car seats, and long periods of sitting.",
-    imageUrl: "https://placehold.co/600x600.png",
-    productUrl: "#",
-    rating: 4.8,
-    reviews: 1500,
-    price: "29.99",
-  },
-  {
-    id: "6",
-    title: "4K Drone with HD Camera",
-    description:
-      "Capture stunning aerial footage with this foldable 4K drone. Features include a 3-axis gimbal, intelligent flight modes, and a 30-minute flight time.",
-    imageUrl: "https://placehold.co/600x600.png",
-    productUrl: "#",
-    rating: 4.5,
-    reviews: 750,
-    price: "199.99",
+    description: "Luminária de mesa LED moderna e minimalista com níveis de brilho ajustáveis e carregador sem fio.",
+    purchasePrice: 32.00,
+    shippingCost: 4.0,
+    importTaxes: 8.0,
+    packagingCost: 1.2,
+    marketingCost: 6.0,
+    otherCosts: 0,
+    totalCost: 51.20,
+    sellingPrice: 69.99,
+    expectedProfit: 18.79,
+    profitMargin: 26.85,
+    quantity: 80,
+    quantitySold: 20,
+    status: 'selling',
+    purchaseDate: new Date("2023-10-20"),
+    roi: 36.7,
+    actualProfit: 375.8,
   },
 ];
 
@@ -87,13 +123,13 @@ export default function Home() {
   const filteredProducts = useMemo(() => {
     if (!searchTerm) return allProducts;
     return allProducts.filter((product) =>
-      product.title.toLowerCase().includes(searchTerm.toLowerCase())
+      product.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [searchTerm]);
 
   const handleSearch = (query: string) => {
     setIsLoading(true);
-    // Simulate API delay
+    // Simula um atraso de API
     setTimeout(() => {
       setSearchTerm(query);
       setIsLoading(false);
@@ -104,15 +140,24 @@ export default function Home() {
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto mb-8">
-          <h2 className="text-3xl font-bold text-center mb-2">
-            Unlock Investment Insights
-          </h2>
-          <p className="text-center text-muted-foreground mb-6">
-            Search for AliExpress products by keyword to generate AI-powered
-            analysis and investment ideas.
-          </p>
-          <ProductSearch onSearch={handleSearch} isLoading={isLoading} />
+        <div className="flex justify-between items-center mb-8">
+            <div className="max-w-2xl">
+              <h2 className="text-3xl font-bold mb-1">
+                Dashboard de Produtos
+              </h2>
+              <p className="text-muted-foreground">
+                Gerencie seus produtos, custos e analise sua rentabilidade.
+              </p>
+            </div>
+            <Button size="lg">
+                <PlusCircle className="mr-2"/>
+                Adicionar Produto
+            </Button>
+        </div>
+
+
+        <div className="mb-8">
+            <ProductSearch onSearch={handleSearch} isLoading={isLoading} />
         </div>
 
         {isLoading ? (
@@ -135,9 +180,9 @@ export default function Home() {
 
         {filteredProducts.length === 0 && !isLoading && (
           <div className="text-center py-16">
-            <h3 className="text-xl font-medium">No Products Found</h3>
+            <h3 className="text-xl font-medium">Nenhum Produto Encontrado</h3>
             <p className="text-muted-foreground">
-              Try a different search term.
+              Tente um termo de busca diferente.
             </p>
           </div>
         )}

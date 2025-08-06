@@ -7,7 +7,7 @@ export function Header() {
         <div className="flex h-16 items-center">
           <div className="flex items-center gap-2">
             <Package className="h-7 w-7 text-primary" />
-            <span className="text-xl font-bold">AliInsights</span>
+            <span className="text-xl font-bold">ProductDash</span>
           </div>
         </div>
       </div>

@@ -48,8 +48,8 @@ export function ProductSearch({ onSearch, isLoading }: ProductSearchProps) {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
-                    placeholder="Search by keywords like 'smartwatch' or 'drone'..."
-                    className="pl-10"
+                    placeholder="Busque por nome do produto..."
+                    className="pl-10 h-11"
                     {...field}
                   />
                 </div>
@@ -58,13 +58,13 @@ export function ProductSearch({ onSearch, isLoading }: ProductSearchProps) {
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={isLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground" size="lg">
+        <Button type="submit" disabled={isLoading} size="lg">
           {isLoading ? (
             <Loader2 className="animate-spin" />
           ) : (
             <>
               <Search className="mr-2 h-5 w-5" />
-              Search
+              Buscar
             </>
           )}
         </Button>

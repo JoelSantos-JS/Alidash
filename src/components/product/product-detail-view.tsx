@@ -1,15 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Star, ExternalLink, Lightbulb, FileText, AlertCircle } from "lucide-react";
+import { ExternalLink, Package, DollarSign, TrendingUp, Info } from "lucide-react";
 
 import type { Product } from "@/types";
-import {
-  SummarizeProductDetailsOutput,
-  summarizeProductDetails,
-} from "@/ai/flows/summarize-product-details";
 import { useToast } from "@/hooks/use-toast";
 import {
   DialogHeader,
@@ -19,140 +14,126 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type ProductDetailViewProps = {
   product: Product;
 };
 
+const statusMap = {
+    purchased: { label: 'Comprado', color: 'bg-blue-500' },
+    shipping: { label: 'Em trânsito', color: 'bg-yellow-500' },
+    received: { label: 'Recebido', color: 'bg-indigo-500' },
+    selling: { label: 'À venda', color: 'bg-green-500' },
+    sold: { label: 'Vendido', color: 'bg-gray-500' },
+}
+
 export function ProductDetailView({ product }: ProductDetailViewProps) {
-  const [insights, setInsights] =
-    useState<SummarizeProductDetailsOutput | null>(null);
-  const [isGenerating, setIsGenerating] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    if (!product) return;
-
-    const generateInsights = async () => {
-      setIsGenerating(true);
-      setError(null);
-      setInsights(null);
-      try {
-        const result = await summarizeProductDetails({
-          productTitle: product.title,
-          productDescription: product.description,
-          productImageUrl: product.imageUrl,
-          productUrl: product.productUrl,
-          averageRating: product.rating,
-        });
-        setInsights(result);
-      } catch (e) {
-        console.error("Failed to generate insights:", e);
-        const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
-        setError(errorMessage);
-        toast({
-          variant: "destructive",
-          title: "Error Generating Insights",
-          description: "Could not generate AI insights. Please try again later.",
-        });
-      } finally {
-        setIsGenerating(false);
-      }
-    };
-
-    generateInsights();
-  }, [product, toast]);
+  const statusInfo = statusMap[product.status];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 max-h-[80vh] overflow-y-auto">
-      <div className="relative aspect-square md:aspect-auto">
-        <Image
-          src={product.imageUrl}
-          alt={product.title}
-          fill
-          className="object-cover md:rounded-l-lg"
-          data-ai-hint="product lifestyle"
-        />
-      </div>
-      <div className="p-6 flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">{product.title}</DialogTitle>
-          <DialogDescription className="flex items-center gap-4 pt-2">
-            <div className="flex items-center gap-1">
-              <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-              <span className="font-bold text-lg text-foreground">{product.rating}</span>
-              <span className="text-muted-foreground">({product.reviews.toLocaleString()} reviews)</span>
+    <TooltipProvider>
+      <div className="grid grid-cols-1 md:grid-cols-2 max-h-[90vh] overflow-y-auto">
+        <div className="relative aspect-square md:aspect-auto">
+          <Image
+            src={product.imageUrl}
+            alt={product.name}
+            fill
+            className="object-cover md:rounded-l-lg"
+            data-ai-hint="product lifestyle"
+          />
+        </div>
+        <div className="p-6 flex flex-col">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <Badge className={`border-transparent text-white text-sm ${statusInfo.color}`}>
+                {statusInfo.label}
+              </Badge>
+              <span className="text-sm text-muted-foreground">
+                Comprado em: {new Date(product.purchaseDate).toLocaleDateString('pt-BR')}
+              </span>
             </div>
-            <Badge variant="default" className="text-lg bg-primary">${product.price}</Badge>
-          </DialogDescription>
-        </DialogHeader>
+            <DialogTitle className="text-2xl font-bold pt-2">{product.name}</DialogTitle>
+            <DialogDescription className="text-base text-muted-foreground pt-1">
+              {product.description}
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="mt-4 py-6 border-y">
-            <h3 className="font-semibold text-lg mb-3">AI-Powered Insights</h3>
-            {isGenerating ? (
-                <div className="space-y-4">
-                    <div className="space-y-2">
-                        <Skeleton className="h-8 w-1/3" />
-                        <Skeleton className="h-16 w-full" />
-                    </div>
-                    <div className="space-y-2">
-                        <Skeleton className="h-8 w-1/3" />
-                        <Skeleton className="h-16 w-full" />
-                    </div>
+          <div className="mt-4 py-6 border-y grid grid-cols-2 gap-x-6 gap-y-4">
+            <h3 className="font-semibold text-lg col-span-2">Análise Financeira</h3>
+            
+            <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md">
+                <span className="text-sm text-muted-foreground">Preço de Venda</span>
+                <span className="text-xl font-bold text-primary">
+                    {product.sellingPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+            </div>
+
+             <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md">
+                <span className="text-sm text-muted-foreground">Custo Total</span>
+                <span className="text-xl font-bold text-destructive">
+                    {product.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+            </div>
+
+             <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md">
+                <span className="text-sm text-muted-foreground">Lucro Esperado</span>
+                <span className="text-xl font-bold text-green-600">
+                    {product.expectedProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+            </div>
+
+            <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md">
+                <div className="flex items-center gap-1.5">
+                    <span className="text-sm text-muted-foreground">Margem/ROI</span>
+                     <Tooltip delayDuration={100}>
+                        <TooltipTrigger>
+                            <Info className="w-3.5 h-3.5 text-muted-foreground"/>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Margem de Lucro / Retorno Sobre Investimento</p>
+                        </TooltipContent>
+                    </Tooltip>
                 </div>
-            ) : error ? (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Generation Failed</AlertTitle>
-                <AlertDescription>
-                  We couldn't generate insights for this product.
-                </AlertDescription>
-              </Alert>
-            ) : insights && (
-                <Accordion type="single" collapsible defaultValue="item-1" className="w-full">
-                    <AccordionItem value="item-1">
-                        <AccordionTrigger className="text-base font-medium">
-                            <div className="flex items-center gap-2">
-                                <FileText className="w-5 h-5 text-primary"/>
-                                Product Summary
-                            </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="text-base text-muted-foreground leading-relaxed">
-                            {insights.summary}
-                        </AccordionContent>
-                    </AccordionItem>
-                    <AccordionItem value="item-2">
-                        <AccordionTrigger className="text-base font-medium">
-                           <div className="flex items-center gap-2">
-                                <Lightbulb className="w-5 h-5 text-yellow-500"/>
-                                Investment Idea
-                            </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="text-base text-muted-foreground leading-relaxed">
-                            {insights.investmentIdea}
-                        </AccordionContent>
-                    </AccordionItem>
-                </Accordion>
-            )}
-        </div>
-        
-        <div className="mt-auto pt-6">
-            <Button asChild className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-base py-6">
-                <Link href={product.productUrl} target="_blank">
-                    View on AliExpress
-                    <ExternalLink className="ml-2 h-5 w-5" />
-                </Link>
-            </Button>
+                <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-green-600 border-green-600">{product.profitMargin.toFixed(2)}%</Badge>
+                    <Badge variant="outline" className="text-blue-600 border-blue-600">{product.roi.toFixed(2)}%</Badge>
+                </div>
+            </div>
+
+            <h3 className="font-semibold text-lg col-span-2 mt-4">Estoque</h3>
+             <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md">
+                <span className="text-sm text-muted-foreground">Estoque Atual</span>
+                <span className="text-xl font-bold">
+                    {product.quantity - product.quantitySold} / {product.quantity}
+                </span>
+            </div>
+             <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md">
+                <span className="text-sm text-muted-foreground">Vendidos</span>
+                <span className="text-xl font-bold">
+                    {product.quantitySold}
+                </span>
+            </div>
+            
+          </div>
+          
+          <div className="mt-auto pt-6 flex gap-4">
+              <Button asChild variant="outline" className="w-full text-base py-6">
+                  <Link href={product.aliexpressLink} target="_blank">
+                      Ver no AliExpress
+                      <ExternalLink className="ml-2 h-5 w-5" />
+                  </Link>
+              </Button>
+               <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-base py-6">
+                  Editar Produto
+              </Button>
+          </div>
         </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }

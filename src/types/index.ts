@@ -32,3 +32,30 @@ export interface Product {
   roi: number;
   actualProfit: number;
 }
+
+
+export interface Dream {
+  id: string;
+  name: string;
+  type: 'travel' | 'business' | 'personal';
+  targetAmount: number;
+  currentAmount: number;
+  status: 'planning' | 'in_progress' | 'completed';
+  plan?: DreamPlan;
+}
+
+export interface DreamPlan {
+  description: string;
+  estimatedCost: {
+    item: string;
+    cost: number;
+  }[];
+  totalEstimatedCost: number;
+  actionPlan: {
+    step: number;
+    action: string;
+    details: string;
+  }[];
+  importantNotes: string[];
+  imageUrl: string;
+}

@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
-const CORRECT_PASSWORD = "1234";
+const CORRECT_PASSWORD = "joel8812";
 
 const passwordSchema = z.object({
   password: z.string().min(1, { message: "A senha é obrigatória." }),

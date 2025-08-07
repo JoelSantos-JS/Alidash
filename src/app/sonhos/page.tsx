@@ -1,9 +1,100 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import { Header } from "@/components/layout/header";
-import { KeyRound } from "lucide-react";
+import { KeyRound, PlusCircle, Wand2 } from "lucide-react";
+import { Button } from '@/components/ui/button';
+import { DreamCard } from '@/components/dreams/dream-card';
+import { Dream, DreamPlan } from '@/types';
+import { planDream } from '@/ai/flows/dream-planner';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
+
+const initialDreams: Dream[] = [
+  {
+    id: '1',
+    name: 'Viagem para o Chile',
+    type: 'travel',
+    targetAmount: 20000,
+    currentAmount: 7500,
+    status: 'planning'
+  },
+  {
+    id: '2',
+    name: 'Expandir linha de produtos',
+    type: 'business',
+    targetAmount: 50000,
+    currentAmount: 12000,
+    status: 'in_progress'
+  }
+];
+
+const LOCAL_STORAGE_KEY_DREAMS = 'product-dash-dreams';
+const LOCAL_STORAGE_KEY_PLANS = 'product-dash-dream-plans';
 
 export default function DreamsPage() {
+  const [dreams, setDreams] = useState<Dream[]>([]);
+  const [plans, setPlans] = useState<Record<string, DreamPlan>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPlanning, setIsPlanning] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    try {
+      const savedDreams = localStorage.getItem(LOCAL_STORAGE_KEY_DREAMS);
+      const savedPlans = localStorage.getItem(LOCAL_STORAGE_KEY_PLANS);
+
+      if (savedDreams) {
+        setDreams(JSON.parse(savedDreams));
+      } else {
+        setDreams(initialDreams);
+      }
+
+      if (savedPlans) {
+        setPlans(JSON.parse(savedPlans));
+      }
+    } catch (error) {
+      console.error("Failed to load dreams from localStorage", error);
+      setDreams(initialDreams);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading) {
+      localStorage.setItem(LOCAL_STORAGE_KEY_DREAMS, JSON.stringify(dreams));
+      localStorage.setItem(LOCAL_STORAGE_KEY_PLANS, JSON.stringify(plans));
+    }
+  }, [dreams, plans, isLoading]);
+
+  const handlePlanDream = async (dream: Dream) => {
+    setIsPlanning(dream.id);
+    try {
+      const existingPlan = plans[dream.id];
+      if (existingPlan && !confirm("Você já tem um plano para este sonho. Deseja gerar um novo? Isso substituirá o plano existente.")) {
+        setIsPlanning(null);
+        return;
+      }
+      
+      const result = await planDream({ dreamName: dream.name, dreamType: dream.type });
+      setPlans(prev => ({...prev, [dream.id]: result}));
+      toast({
+        title: "Plano Gerado com Sucesso!",
+        description: `A IA criou um plano para o seu sonho: "${dream.name}".`
+      })
+    } catch (error) {
+        console.error("Error planning dream: ", error);
+        toast({
+            variant: "destructive",
+            title: "Erro ao Planejar Sonho",
+            description: "Não foi possível gerar o plano com a IA. Tente novamente."
+        })
+    } finally {
+        setIsPlanning(null);
+    }
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -18,13 +109,31 @@ export default function DreamsPage() {
               Planeje, acompanhe e conquiste seus maiores objetivos.
             </p>
           </div>
+          <Button size="lg" disabled>
+              <PlusCircle className="mr-2"/>
+              Adicionar Sonho (em breve)
+          </Button>
         </div>
-        <div className="text-center py-16 border-2 border-dashed rounded-lg">
-            <h3 className="text-xl font-medium">Em breve...</h3>
-            <p className="text-muted-foreground">
-              Aqui você poderá adicionar e acompanhar a projeção dos seus sonhos.
-            </p>
-        </div>
+        
+        {isLoading ? (
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <Skeleton className="h-96 w-full" />
+                <Skeleton className="h-96 w-full" />
+             </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {dreams.map(dream => (
+                    <DreamCard 
+                        key={dream.id} 
+                        dream={dream}
+                        plan={plans[dream.id]}
+                        isPlanning={isPlanning === dream.id}
+                        onPlan={() => handlePlanDream(dream)}
+                    />
+                ))}
+            </div>
+        )}
+
       </main>
     </div>
   );

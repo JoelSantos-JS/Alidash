@@ -122,8 +122,8 @@ export function DreamCard({ dream, plan, isPlanning = false, onPlan, onRefine, o
                 <><Wand2 className="mr-2"/> {plan ? 'Novo Plano' : 'Planejar com IA'}</>
             )}
         </Button>
-        <div className="flex w-full sm:w-auto gap-2">
-            <Button variant="outline" onClick={onRefine} disabled={!plan || isPlanning}>
+        <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
+            <Button variant="outline" onClick={onRefine} disabled={!plan || isPlanning} className="flex-1">
                 <Sparkles className="mr-2"/> Aprimorar
             </Button>
             <Button variant="outline" onClick={onEdit} className="flex-1">

@@ -272,7 +272,7 @@ export default function Home() {
     <div className="flex flex-col min-h-screen">
       <Header onSecretClick={() => setIsPasswordDialogOpen(true)} />
       <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div className="max-w-2xl">
               <h2 className="text-3xl font-bold mb-1">
                 Dashboard de Produtos
@@ -281,7 +281,7 @@ export default function Home() {
                 Gerencie seus produtos, custos e analise sua rentabilidade.
               </p>
             </div>
-            <Button size="lg" onClick={() => handleOpenForm()}>
+            <Button size="lg" onClick={() => handleOpenForm()} className="w-full md:w-auto">
                 <PlusCircle className="mr-2"/>
                 Adicionar Produto
             </Button>

@@ -329,14 +329,14 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                                     <FormControl>
                                         <Button
                                             variant={"outline"}
-                                            className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                                            className={cn("w-full justify-start pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
                                         >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
                                             {field.value ? (
                                                 format(field.value, "PPP", { locale: ptBR })
                                             ) : (
                                                 <span>Escolha uma data</span>
                                             )}
-                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                         </Button>
                                     </FormControl>
                                 </PopoverTrigger>
@@ -365,7 +365,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                 </div>
             </ScrollArea>
              <div className="p-6 pt-2 flex flex-col md:flex-row justify-between items-center gap-4 bg-background border-t">
-                <div className="flex gap-4 items-center">
+                <div className="flex flex-wrap gap-4 items-center">
                     <div>
                         <span className="text-sm text-muted-foreground">Custo Total/un</span>
                         <p className="font-bold text-lg text-destructive">{totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
@@ -383,9 +383,9 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                         </p>
                     </div>
                 </div>
-                <div className="flex gap-2">
-                    <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>Cancelar</Button>
-                    <Button type="submit" disabled={isSubmitting}>
+                <div className="flex gap-2 w-full md:w-auto">
+                    <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting} className="flex-1">Cancelar</Button>
+                    <Button type="submit" disabled={isSubmitting} className="flex-1">
                         {isSubmitting ? <Loader2 className="animate-spin" /> : (productToEdit ? "Salvar Alterações" : "Adicionar Produto")}
                     </Button>
                 </div>

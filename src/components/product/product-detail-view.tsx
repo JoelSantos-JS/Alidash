@@ -39,8 +39,8 @@ export function ProductDetailView({ product, onEdit, onDelete }: ProductDetailVi
 
   return (
     <TooltipProvider>
-      <div className="grid grid-cols-1 md:grid-cols-2 max-h-[90vh] overflow-y-auto">
-        <div className="relative aspect-square md:aspect-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 max-h-[90vh]">
+        <div className="relative aspect-square md:aspect-auto hidden md:block">
           <Image
             src={product.imageUrl}
             alt={product.name}
@@ -49,7 +49,16 @@ export function ProductDetailView({ product, onEdit, onDelete }: ProductDetailVi
             data-ai-hint="product lifestyle"
           />
         </div>
-        <div className="p-6 flex flex-col">
+        <div className="p-6 flex flex-col overflow-y-auto">
+          <div className="relative aspect-square md:hidden -mx-6 -mt-6 mb-6">
+             <Image
+                src={product.imageUrl}
+                alt={product.name}
+                fill
+                className="object-cover"
+                data-ai-hint="product lifestyle"
+              />
+          </div>
           <DialogHeader>
             <div className="flex items-center justify-between">
               <Badge className={`border-transparent text-white text-sm ${statusInfo.color}`}>
@@ -133,7 +142,7 @@ export function ProductDetailView({ product, onEdit, onDelete }: ProductDetailVi
              </div>
            )}
 
-          <div className="mt-auto pt-6 flex gap-3">
+          <div className="mt-auto pt-6 flex flex-col sm:flex-row gap-3">
               <Button asChild variant="outline" className="flex-1 text-base py-6">
                   <Link href={product.aliexpressLink} target="_blank">
                       Ver no AliExpress

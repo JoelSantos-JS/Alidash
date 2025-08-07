@@ -11,7 +11,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, DollarSign, Package, TrendingUp, ShoppingCart, AlertTriangle } from "lucide-react";
+import { PlusCircle, DollarSign, Package, TrendingUp, ShoppingCart, AlertTriangle, Target } from "lucide-react";
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import { CategoryChart } from "@/components/dashboard/category-chart";
 import { ProfitChart } from "@/components/dashboard/profit-chart";
@@ -188,6 +188,7 @@ export default function Home() {
   const summaryStats = useMemo(() => {
     const totalInvested = products.reduce((acc, p) => acc + (p.totalCost * p.quantity), 0);
     const totalActualProfit = products.reduce((acc, p) => acc + p.actualProfit, 0);
+    const projectedProfit = products.reduce((acc, p) => acc + (p.expectedProfit * p.quantity), 0);
     const productsInStock = products.reduce((acc, p) => acc + (p.quantity - p.quantitySold), 0);
     const productsSolds = products.reduce((acc, p) => acc + p.quantitySold, 0);
     const averageMargin = products.length > 0 ? products.reduce((acc, p) => acc + p.profitMargin, 0) / products.length : 0;
@@ -195,6 +196,7 @@ export default function Home() {
     return {
         totalInvested,
         totalActualProfit,
+        projectedProfit,
         productsInStock,
         productsSolds,
         averageMargin
@@ -272,13 +274,13 @@ export default function Home() {
         </div>
 
         {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                 {Array.from({ length: 4 }).map((_, i) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+                 {Array.from({ length: 5 }).map((_, i) => (
                     <Skeleton key={i} className="h-[116px] w-full" />
                 ))}
             </div>
         ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
                 <SummaryCard 
                     title="Total Investido"
                     value={summaryStats.totalInvested}
@@ -289,6 +291,12 @@ export default function Home() {
                     title="Lucro Realizado"
                     value={summaryStats.totalActualProfit}
                     icon={TrendingUp}
+                    isCurrency
+                />
+                <SummaryCard 
+                    title="Lucro Potencial"
+                    value={summaryStats.projectedProfit}
+                    icon={Target}
                     isCurrency
                 />
                 <SummaryCard 

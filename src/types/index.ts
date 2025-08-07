@@ -41,6 +41,7 @@ export interface Dream {
   targetAmount: number;
   currentAmount: number;
   status: 'planning' | 'in_progress' | 'completed';
+  notes?: string;
   plan?: DreamPlan;
 }
 

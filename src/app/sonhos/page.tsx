@@ -2,13 +2,27 @@
 
 import { useState, useEffect } from 'react';
 import { Header } from "@/components/layout/header";
-import { KeyRound, PlusCircle, Wand2 } from "lucide-react";
+import { KeyRound, PlusCircle } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { DreamCard } from '@/components/dreams/dream-card';
-import { Dream, DreamPlan } from '@/types';
+import { DreamForm } from '@/components/dreams/dream-form';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import type { Dream, DreamPlan } from '@/types';
 import { planDream } from '@/ai/flows/dream-planner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { AlertTriangle } from 'lucide-react';
+
 
 const initialDreams: Dream[] = [
   {
@@ -17,7 +31,8 @@ const initialDreams: Dream[] = [
     type: 'travel',
     targetAmount: 20000,
     currentAmount: 7500,
-    status: 'planning'
+    status: 'planning',
+    notes: 'Verificar a melhor época para ver a neve e pesquisar vinícolas.',
   },
   {
     id: '2',
@@ -25,7 +40,8 @@ const initialDreams: Dream[] = [
     type: 'business',
     targetAmount: 50000,
     currentAmount: 12000,
-    status: 'in_progress'
+    status: 'in_progress',
+    notes: 'Focar em produtos de casa inteligente e gadgets de produtividade.',
   }
 ];
 
@@ -37,6 +53,9 @@ export default function DreamsPage() {
   const [plans, setPlans] = useState<Record<string, DreamPlan>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isPlanning, setIsPlanning] = useState<string | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [dreamToEdit, setDreamToEdit] = useState<Dream | null>(null);
+  const [dreamToDelete, setDreamToDelete] = useState<Dream | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -68,13 +87,60 @@ export default function DreamsPage() {
     }
   }, [dreams, plans, isLoading]);
 
+  const handleOpenForm = (dream: Dream | null = null) => {
+    setDreamToEdit(dream);
+    setIsFormOpen(true);
+  }
+
+  const handleSaveDream = (dreamData: Omit<Dream, 'id'>) => {
+    if(dreamToEdit) {
+      setDreams(dreams.map(d => d.id === dreamToEdit.id ? { ...dreamToEdit, ...dreamData } : d));
+       toast({ title: "Sonho Atualizado!", description: `Seu sonho "${dreamData.name}" foi atualizado.` });
+    } else {
+      const newDream: Dream = { ...dreamData, id: new Date().getTime().toString() };
+      setDreams([newDream, ...dreams]);
+       toast({ title: "Sonho Adicionado!", description: `Seu sonho "${dreamData.name}" foi adicionado. Boa sorte!` });
+    }
+    setIsFormOpen(false);
+    setDreamToEdit(null);
+  }
+
+  const handleDeleteDream = (dreamId: string) => {
+     const dream = dreams.find(p => p.id === dreamId);
+     if (!dream) return;
+    setDreams(dreams.filter(d => d.id !== dreamId));
+    setPlans(prev => {
+        const newPlans = {...prev};
+        delete newPlans[dreamId];
+        return newPlans;
+    });
+    setDreamToDelete(null);
+     toast({ variant: 'destructive', title: "Sonho Excluído!", description: `O sonho "${dream.name}" foi removido.` });
+  }
+
   const handlePlanDream = async (dream: Dream) => {
     setIsPlanning(dream.id);
     try {
       const existingPlan = plans[dream.id];
-      if (existingPlan && !confirm("Você já tem um plano para este sonho. Deseja gerar um novo? Isso substituirá o plano existente.")) {
-        setIsPlanning(null);
-        return;
+      if (existingPlan) {
+        const userConfirmed = await new Promise((resolve) => {
+            const onConfirm = () => resolve(true);
+            const onCancel = () => resolve(false);
+            toast({
+                title: 'Gerar novo plano?',
+                description: 'Isso substituirá o plano existente. Deseja continuar?',
+                action: (
+                    <>
+                        <Button onClick={onConfirm}>Sim</Button>
+                        <Button variant="ghost" onClick={onCancel}>Não</Button>
+                    </>
+                ),
+            });
+        });
+        if (!userConfirmed) {
+            setIsPlanning(null);
+            return;
+        }
       }
       
       const result = await planDream({ dreamName: dream.name, dreamType: dream.type });
@@ -96,6 +162,7 @@ export default function DreamsPage() {
   }
 
   return (
+    <>
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
@@ -109,18 +176,18 @@ export default function DreamsPage() {
               Planeje, acompanhe e conquiste seus maiores objetivos.
             </p>
           </div>
-          <Button size="lg" disabled>
+          <Button size="lg" onClick={() => handleOpenForm()}>
               <PlusCircle className="mr-2"/>
-              Adicionar Sonho (em breve)
+              Adicionar Sonho
           </Button>
         </div>
         
         {isLoading ? (
              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <Skeleton className="h-96 w-full" />
-                <Skeleton className="h-96 w-full" />
+                <Skeleton className="h-[500px] w-full" />
+                <Skeleton className="h-[500px] w-full" />
              </div>
-        ) : (
+        ) : dreams.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {dreams.map(dream => (
                     <DreamCard 
@@ -129,12 +196,64 @@ export default function DreamsPage() {
                         plan={plans[dream.id]}
                         isPlanning={isPlanning === dream.id}
                         onPlan={() => handlePlanDream(dream)}
+                        onEdit={() => handleOpenForm(dream)}
+                        onDelete={() => setDreamToDelete(dream)}
                     />
                 ))}
+            </div>
+        ) : (
+            <div className="text-center py-20 bg-muted rounded-lg">
+                <h3 className="text-2xl font-bold">Comece a Sonhar!</h3>
+                <p className="text-muted-foreground mt-2 mb-6">Você ainda não tem nenhum sonho cadastrado. Que tal adicionar o primeiro?</p>
+                <Button size="lg" onClick={() => handleOpenForm()}>
+                    <PlusCircle className="mr-2"/>
+                    Adicionar Meu Primeiro Sonho
+                </Button>
             </div>
         )}
 
       </main>
     </div>
+
+    <Dialog open={isFormOpen} onOpenChange={isOpen => {
+        if(!isOpen) {
+            setIsFormOpen(false);
+            setDreamToEdit(null);
+        }
+    }}>
+        <DialogContent>
+            <DreamForm
+                onSave={handleSaveDream}
+                dreamToEdit={dreamToEdit}
+                onCancel={() => {
+                    setIsFormOpen(false);
+                    setDreamToEdit(null);
+                }}
+            />
+        </DialogContent>
+    </Dialog>
+
+     <AlertDialog open={!!dreamToDelete} onOpenChange={(isOpen) => !isOpen && setDreamToDelete(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>
+                <div className="flex items-center gap-2">
+                    <AlertTriangle className="text-destructive"/>
+                    Você tem certeza?
+                </div>
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+                Essa ação não pode ser desfeita. Isso excluirá permanentemente o sonho <strong className="text-foreground">"{dreamToDelete?.name}"</strong> e todo o seu plano.
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => dreamToDelete && handleDeleteDream(dreamToDelete.id)}>
+                Sim, excluir sonho
+            </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

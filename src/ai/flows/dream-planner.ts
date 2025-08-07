@@ -82,8 +82,8 @@ const planDreamFlow = ai.defineFlow(
         },
       })
     ]);
-
-    const plan = await planResponse.output();
+    
+    const plan = planResponse.output;
     if (!plan) {
         throw new Error("A IA não conseguiu gerar um plano de texto.");
     }

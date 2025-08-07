@@ -106,11 +106,13 @@ export function DreamCard({ dream, plan, isPlanning = false, onPlan, onRefine, o
 
       </CardContent>
        {dream.notes && (
-            <div className="px-6 pb-6">
-                <Separator className="mb-4" />
+            <>
+            <Separator />
+            <div className="px-6 py-4">
                 <h4 className='font-semibold flex items-center gap-2 mb-2'><NotebookText className="w-5 h-5 text-primary"/> Minhas Anotações</h4>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap p-4 bg-muted/50 rounded-lg">{dream.notes}</p>
             </div>
+            </>
         )}
       <CardFooter className="p-4 bg-secondary/30 flex gap-2">
          <Button className="flex-1" onClick={onPlan} disabled={isPlanning}>
@@ -144,5 +146,3 @@ export function DreamCard({ dream, plan, isPlanning = false, onPlan, onRefine, o
     </Card>
   );
 }
-
-    

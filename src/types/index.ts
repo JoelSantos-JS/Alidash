@@ -21,17 +21,24 @@ export interface Product {
   sellingPrice: number;
   expectedProfit: number;
   profitMargin: number;
+  sales: Sale[];
   
   // Controle
   quantity: number;
   quantitySold: number;
   status: 'purchased' | 'shipping' | 'received' | 'selling' | 'sold';
   purchaseDate: Date;
-  saleDate?: Date;
   
   // Métricas
   roi: number;
   actualProfit: number;
+}
+
+export interface Sale {
+    id: string;
+    date: Date;
+    quantity: number;
+    buyerName?: string;
 }
 
 

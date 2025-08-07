@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from 'next/navigation';
-import type { Product } from "@/types";
+import type { Product, Sale } from "@/types";
 import { Header } from "@/components/layout/header";
 import { ProductSearch } from "@/components/product/product-search";
 import { ProductCard } from "@/components/product/product-card";
@@ -27,6 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { SaleForm } from "@/components/product/sale-form";
 
 const initialProducts: Product[] = [
   {
@@ -53,6 +54,7 @@ const initialProducts: Product[] = [
     purchaseDate: new Date("2023-10-01"),
     roi: 34.53,
     actualProfit: 385.0,
+    sales: [{ id: '1', date: new Date("2023-11-15"), quantity: 10, buyerName: "Cliente Anônimo" }],
   },
   {
     id: "2",
@@ -78,6 +80,7 @@ const initialProducts: Product[] = [
     purchaseDate: new Date("2023-09-15"),
     roi: 37.94,
     actualProfit: 962.5,
+    sales: [{ id: '1', date: new Date("2023-10-20"), quantity: 35, buyerName: "Cliente Anônimo" }],
   },
    {
     id: "3",
@@ -103,6 +106,7 @@ const initialProducts: Product[] = [
     purchaseDate: new Date("2023-11-05"),
     roi: 30.7,
     actualProfit: 1761,
+    sales: [{ id: '1', date: new Date("2023-12-01"), quantity: 150, buyerName: "Cliente Anônimo" }],
   },
   {
     id: "4",
@@ -128,6 +132,7 @@ const initialProducts: Product[] = [
     purchaseDate: new Date("2023-10-20"),
     roi: 36.7,
     actualProfit: 375.8,
+    sales: [{ id: '1', date: new Date("2023-11-25"), quantity: 20, buyerName: "Cliente Anônimo" }],
   },
 ];
 
@@ -139,6 +144,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isSaleFormOpen, setIsSaleFormOpen] = useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -157,7 +163,7 @@ export default function Home() {
         const parsedProducts = JSON.parse(savedProducts).map((p: any) => ({
           ...p,
           purchaseDate: new Date(p.purchaseDate),
-          saleDate: p.saleDate ? new Date(p.saleDate) : undefined,
+          sales: p.sales ? p.sales.map((s: any) => ({...s, date: new Date(s.date)})) : [],
         }));
         setProducts(parsedProducts);
       } else {
@@ -219,6 +225,7 @@ export default function Home() {
   const handleOpenForm = (product: Product | null = null) => {
     setProductToEdit(product);
     setIsFormOpen(true);
+    setSelectedProduct(null);
   };
 
   const handleSaveProduct = (productData: Product) => {
@@ -234,7 +241,8 @@ export default function Home() {
        // Adicionar
       const newProduct: Product = {
         ...productData,
-        id: new Date().getTime().toString(), // better unique id
+        id: new Date().getTime().toString(),
+        sales: [],
       }
       setProducts(prev => [newProduct, ...prev]);
        toast({
@@ -258,6 +266,39 @@ export default function Home() {
         variant: 'destructive',
         title: "Produto Excluído!",
         description: `O produto "${product.name}" foi excluído com sucesso.`,
+    });
+  }
+  
+  const handleRegisterSale = (product: Product, saleData: Omit<Sale, 'id' | 'date'>) => {
+    const newSale: Sale = {
+        ...saleData,
+        id: new Date().getTime().toString(),
+        date: new Date(),
+    }
+
+    const updatedProducts = products.map(p => {
+        if (p.id === product.id) {
+            const newQuantitySold = p.quantitySold + saleData.quantity;
+            const newActualProfit = p.expectedProfit * newQuantitySold;
+            const newStatus = newQuantitySold >= p.quantity ? 'sold' : p.status;
+            
+            return {
+                ...p,
+                quantitySold: newQuantitySold,
+                actualProfit: newActualProfit,
+                status: newStatus,
+                sales: [...p.sales, newSale]
+            }
+        }
+        return p;
+    });
+
+    setProducts(updatedProducts);
+    setIsSaleFormOpen(false);
+    setSelectedProduct(null);
+     toast({
+        title: "Venda Registrada!",
+        description: `${saleData.quantity} unidade(s) de "${product.name}" vendida(s).`,
     });
   }
 
@@ -370,12 +411,13 @@ export default function Home() {
       </main>
 
       <Dialog
-        open={!!selectedProduct || isFormOpen}
+        open={!!selectedProduct || isFormOpen || isSaleFormOpen}
         onOpenChange={(isOpen) => {
           if (!isOpen) {
             setSelectedProduct(null);
             setIsFormOpen(false);
             setProductToEdit(null);
+            setIsSaleFormOpen(false);
           }
         }}
       >
@@ -389,16 +431,21 @@ export default function Home() {
                   setProductToEdit(null)
                 }}
             />
+          ) : isSaleFormOpen && selectedProduct ? (
+             <SaleForm
+                product={selectedProduct}
+                onSave={(saleData) => handleRegisterSale(selectedProduct, saleData)}
+                onCancel={() => {
+                    setIsSaleFormOpen(false)
+                    setSelectedProduct(null)
+                }}
+             />
           ) : selectedProduct ? (
             <ProductDetailView 
                 product={selectedProduct} 
-                onEdit={() => {
-                    handleOpenForm(selectedProduct);
-                    setSelectedProduct(null);
-                }}
-                onDelete={() => {
-                    setProductToDelete(selectedProduct);
-                }}
+                onEdit={() => handleOpenForm(selectedProduct)}
+                onDelete={() => setProductToDelete(selectedProduct)}
+                onRegisterSale={() => setIsSaleFormOpen(true)}
             />
           ) : null}
         </DialogContent>

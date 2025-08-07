@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ExternalLink, Trash2, Pencil, Info, AlertTriangle, NotebookText } from "lucide-react";
+import { ExternalLink, Trash2, Pencil, Info, AlertTriangle, NotebookText, ShoppingCart } from "lucide-react";
 
 import type { Product } from "@/types";
 import {
@@ -23,6 +23,7 @@ type ProductDetailViewProps = {
   product: Product;
   onEdit: () => void;
   onDelete: () => void;
+  onRegisterSale: () => void;
 };
 
 const statusMap = {
@@ -30,12 +31,13 @@ const statusMap = {
     shipping: { label: 'Em trânsito', color: 'bg-yellow-500' },
     received: { label: 'Recebido', color: 'bg-indigo-500' },
     selling: { label: 'À venda', color: 'bg-green-500' },
-    sold: { label: 'Vendido', color: 'bg-gray-500' },
+    sold: { label: 'Esgotado', color: 'bg-gray-500' },
 }
 
-export function ProductDetailView({ product, onEdit, onDelete }: ProductDetailViewProps) {
+export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }: ProductDetailViewProps) {
   const statusInfo = statusMap[product.status];
   const isLowProfit = product.profitMargin < 15;
+  const isSoldOut = product.status === 'sold';
 
   return (
     <TooltipProvider>
@@ -143,11 +145,9 @@ export function ProductDetailView({ product, onEdit, onDelete }: ProductDetailVi
            )}
 
           <div className="mt-auto pt-6 flex flex-col sm:flex-row gap-3">
-              <Button asChild variant="outline" className="flex-1 text-base py-6">
-                  <Link href={product.aliexpressLink} target="_blank">
-                      Ver no AliExpress
-                      <ExternalLink className="ml-2 h-5 w-5" />
-                  </Link>
+              <Button onClick={onRegisterSale} className="flex-1 bg-green-600 hover:bg-green-700 text-white text-base py-6" disabled={isSoldOut}>
+                  <ShoppingCart className="mr-2 h-5 w-5"/>
+                  {isSoldOut ? 'Esgotado' : 'Registrar Venda'}
               </Button>
                <Button onClick={onEdit} className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground text-base py-6">
                   <Pencil className="mr-2 h-5 w-5"/>
@@ -158,6 +158,12 @@ export function ProductDetailView({ product, onEdit, onDelete }: ProductDetailVi
                   Excluir
               </Button>
           </div>
+           <Button asChild variant="link" className="mt-2 text-base">
+                  <Link href={product.aliexpressLink} target="_blank">
+                      Ver no AliExpress
+                      <ExternalLink className="ml-2 h-5 w-5" />
+                  </Link>
+              </Button>
         </div>
       </div>
     </TooltipProvider>

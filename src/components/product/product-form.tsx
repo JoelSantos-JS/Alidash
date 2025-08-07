@@ -63,7 +63,7 @@ const statusOptions = {
     shipping: 'Em trânsito',
     received: 'Recebido',
     selling: 'À venda',
-    sold: 'Vendido',
+    sold: 'Esgotado',
 }
 
 const categoryOptions = [
@@ -127,26 +127,33 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
   }, [watchedCategory, setValue]);
 
 
-  const calculateFinancials = (data: Partial<z.infer<typeof productSchema>>) => {
-    const totalCost = 
-        (parseFloat(String(data.purchasePrice ?? 0)) || 0) + 
-        (parseFloat(String(data.shippingCost ?? 0)) || 0) + 
-        (parseFloat(String(data.importTaxes ?? 0)) || 0) + 
-        (parseFloat(String(data.packagingCost ?? 0)) || 0) + 
-        (parseFloat(String(data.marketingCost ?? 0)) || 0) + 
-        (parseFloat(String(data.otherCosts ?? 0)) || 0);
+  const calculateFinancials = React.useCallback((data: Partial<z.infer<typeof productSchema>>) => {
+    const purchasePrice = parseFloat(String(data.purchasePrice || 0));
+    const shippingCost = parseFloat(String(data.shippingCost || 0));
+    const importTaxes = parseFloat(String(data.importTaxes || 0));
+    const packagingCost = parseFloat(String(data.packagingCost || 0));
+    const marketingCost = parseFloat(String(data.marketingCost || 0));
+    const otherCosts = parseFloat(String(data.otherCosts || 0));
+    const sellingPrice = parseFloat(String(data.sellingPrice || 0));
+    const quantitySold = parseInt(String(data.quantitySold || 0), 10);
 
-    const expectedProfit = (parseFloat(String(data.sellingPrice ?? 0)) || 0) - totalCost;
-    const profitMargin = (data.sellingPrice ?? 0) > 0 ? (expectedProfit / (parseFloat(String(data.sellingPrice ?? 1)) || 1)) * 100 : 0;
+    const totalCost = purchasePrice + shippingCost + importTaxes + packagingCost + marketingCost + otherCosts;
+    const expectedProfit = sellingPrice - totalCost;
+    const profitMargin = sellingPrice > 0 ? (expectedProfit / sellingPrice) * 100 : 0;
     const roi = totalCost > 0 ? (expectedProfit / totalCost) * 100 : 0;
-    const actualProfit = expectedProfit * (data.quantitySold ?? 0);
+    const actualProfit = expectedProfit * quantitySold;
 
     return { totalCost, expectedProfit, profitMargin, roi, actualProfit };
-  }
+  }, []);
 
   const onSubmit = (data: z.infer<typeof productSchema>) => {
     const financials = calculateFinancials(data);
-    onSave({ ...data, ...financials, id: productToEdit?.id || '' });
+    onSave({ 
+        ...data, 
+        ...financials, 
+        id: productToEdit?.id || '',
+        sales: productToEdit?.sales || [],
+     });
   };
 
   const handleSuggestPrice = async () => {
@@ -445,5 +452,3 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
     </>
   );
 }
-
-    

@@ -21,7 +21,7 @@ const statusMap = {
     shipping: { label: 'Em trânsito', color: 'bg-yellow-500' },
     received: { label: 'Recebido', color: 'bg-indigo-500' },
     selling: { label: 'À venda', color: 'bg-green-500' },
-    sold: { label: 'Vendido', color: 'bg-gray-500' },
+    sold: { label: 'Esgotado', color: 'bg-gray-500' },
 }
 
 export function ProductCard({ product, onSelect }: ProductCardProps) {

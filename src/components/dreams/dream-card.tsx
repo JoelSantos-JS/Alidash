@@ -47,74 +47,76 @@ export function DreamCard({ dream, plan, isPlanning = false, onPlan, onRefine, o
             </Badge>
          </div>
       </CardHeader>
-      <CardContent className="p-6 flex-1">
-        <CardTitle className="text-xl font-bold">{dream.name}</CardTitle>
-        {plan?.description && (
-             <CardDescription className="mt-2 text-base">{plan.description}</CardDescription>
-        )}
-       
-
-        <div className='mt-6'>
-            <div className="flex justify-between items-end mb-1">
-                <span className="text-sm font-medium text-muted-foreground">Progresso</span>
-                <span className="text-sm font-bold text-primary">{progress.toFixed(0)}%</span>
-            </div>
-            <Progress value={progress} />
-            <div className="flex justify-between items-end mt-1 text-xs text-muted-foreground">
-                <span>{dream.currentAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                <span>{dream.targetAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-            </div>
-        </div>
+      <div className='flex flex-col flex-1'>
+        <CardContent className="p-6 flex-1">
+          <CardTitle className="text-xl font-bold">{dream.name}</CardTitle>
+          {plan?.description && (
+              <CardDescription className="mt-2 text-base">{plan.description}</CardDescription>
+          )}
         
-        {plan && (
-             <div className='mt-6 space-y-4'>
-                <div>
-                    <h4 className='font-semibold flex items-center gap-2 mb-2'><PiggyBank className="w-5 h-5 text-primary"/> Custos Estimados (IA)</h4>
-                    <ul className="space-y-1 text-sm text-muted-foreground">
-                        {plan.estimatedCost.map(item => (
-                            <li key={item.item} className='flex justify-between'>
-                                <span>{item.item}</span>
-                                <span className='font-medium'>{item.cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                            </li>
-                        ))}
-                        <li className='flex justify-between border-t pt-1 font-bold text-foreground'>
-                            <span>Total</span>
-                            <span>{plan.totalEstimatedCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                        </li>
-                    </ul>
-                </div>
-                <div>
-                    <h4 className='font-semibold flex items-center gap-2 mb-2'><ListChecks className="w-5 h-5 text-primary"/> Plano de Ação (IA)</h4>
-                    <ul className="space-y-2 text-sm text-muted-foreground">
-                        {plan.actionPlan.map(step => (
-                            <li key={step.step}>
-                                <strong className='text-foreground'>{step.step}. {step.action}:</strong> {step.details}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-                <div>
-                    <h4 className='font-semibold flex items-center gap-2 mb-2'><Info className="w-5 h-5 text-primary"/> Dicas Importantes (IA)</h4>
-                    <ul className="space-y-1 text-sm list-disc list-inside text-muted-foreground">
-                        {plan.importantNotes.map((note, i) => (
-                            <li key={i}>{note}</li>
-                        ))}
-                    </ul>
-                </div>
-            </div>
-        )}
 
-      </CardContent>
-       {dream.notes && (
-            <>
-            <Separator />
-            <div className="px-6 py-4">
-                <h4 className='font-semibold flex items-center gap-2 mb-2'><NotebookText className="w-5 h-5 text-primary"/> Minhas Anotações</h4>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap p-4 bg-muted/50 rounded-lg">{dream.notes}</p>
-            </div>
-            </>
-        )}
-      <CardFooter className="p-4 bg-secondary/30 flex gap-2">
+          <div className='mt-6'>
+              <div className="flex justify-between items-end mb-1">
+                  <span className="text-sm font-medium text-muted-foreground">Progresso</span>
+                  <span className="text-sm font-bold text-primary">{progress.toFixed(0)}%</span>
+              </div>
+              <Progress value={progress} />
+              <div className="flex justify-between items-end mt-1 text-xs text-muted-foreground">
+                  <span>{dream.currentAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                  <span>{dream.targetAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+              </div>
+          </div>
+          
+          {plan && (
+              <div className='mt-6 space-y-4'>
+                  <div>
+                      <h4 className='font-semibold flex items-center gap-2 mb-2'><PiggyBank className="w-5 h-5 text-primary"/> Custos Estimados (IA)</h4>
+                      <ul className="space-y-1 text-sm text-muted-foreground">
+                          {plan.estimatedCost.map(item => (
+                              <li key={item.item} className='flex justify-between'>
+                                  <span>{item.item}</span>
+                                  <span className='font-medium'>{item.cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                              </li>
+                          ))}
+                          <li className='flex justify-between border-t pt-1 font-bold text-foreground'>
+                              <span>Total</span>
+                              <span>{plan.totalEstimatedCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                          </li>
+                      </ul>
+                  </div>
+                  <div>
+                      <h4 className='font-semibold flex items-center gap-2 mb-2'><ListChecks className="w-5 h-5 text-primary"/> Plano de Ação (IA)</h4>
+                      <ul className="space-y-2 text-sm text-muted-foreground">
+                          {plan.actionPlan.map(step => (
+                              <li key={step.step}>
+                                  <strong className='text-foreground'>{step.step}. {step.action}:</strong> {step.details}
+                              </li>
+                          ))}
+                      </ul>
+                  </div>
+                  <div>
+                      <h4 className='font-semibold flex items-center gap-2 mb-2'><Info className="w-5 h-5 text-primary"/> Dicas Importantes (IA)</h4>
+                      <ul className="space-y-1 text-sm list-disc list-inside text-muted-foreground">
+                          {plan.importantNotes.map((note, i) => (
+                              <li key={i}>{note}</li>
+                          ))}
+                      </ul>
+                  </div>
+              </div>
+          )}
+
+        </CardContent>
+        {dream.notes && (
+              <>
+              <Separator />
+              <div className="px-6 py-4 bg-muted/20">
+                  <h4 className='font-semibold flex items-center gap-2 mb-2'><NotebookText className="w-5 h-5 text-primary"/> Minhas Anotações</h4>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap p-4 bg-background rounded-lg">{dream.notes}</p>
+              </div>
+              </>
+          )}
+        </div>
+      <CardFooter className="p-4 bg-secondary/30 flex gap-2 mt-auto">
          <Button className="flex-1" onClick={onPlan} disabled={isPlanning}>
             {isPlanning ? (
                 <><Loader2 className="mr-2 animate-spin"/> Gerando...</>
@@ -137,7 +139,7 @@ export function DreamCard({ dream, plan, isPlanning = false, onPlan, onRefine, o
                 <DropdownMenuItem onClick={onEdit}>
                     <Edit className="mr-2" /> Editar
                 </DropdownMenuItem>
-                 <DropdownMenuItem onClick={onDelete} className="text-destructive">
+                 <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                     <Trash2 className="mr-2" /> Excluir
                 </DropdownMenuItem>
             </DropdownMenuContent>

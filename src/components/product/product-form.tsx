@@ -99,15 +99,15 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
 
   const calculateFinancials = (data: Partial<z.infer<typeof productSchema>>) => {
     const totalCost = 
-        (data.purchasePrice ?? 0) + 
-        (data.shippingCost ?? 0) + 
-        (data.importTaxes ?? 0) + 
-        (data.packagingCost ?? 0) + 
-        (data.marketingCost ?? 0) + 
-        (data.otherCosts ?? 0);
+        (parseFloat(String(data.purchasePrice ?? 0)) || 0) + 
+        (parseFloat(String(data.shippingCost ?? 0)) || 0) + 
+        (parseFloat(String(data.importTaxes ?? 0)) || 0) + 
+        (parseFloat(String(data.packagingCost ?? 0)) || 0) + 
+        (parseFloat(String(data.marketingCost ?? 0)) || 0) + 
+        (parseFloat(String(data.otherCosts ?? 0)) || 0);
 
-    const expectedProfit = (data.sellingPrice ?? 0) - totalCost;
-    const profitMargin = (data.sellingPrice ?? 0) > 0 ? (expectedProfit / (data.sellingPrice ?? 1)) * 100 : 0;
+    const expectedProfit = (parseFloat(String(data.sellingPrice ?? 0)) || 0) - totalCost;
+    const profitMargin = (data.sellingPrice ?? 0) > 0 ? (expectedProfit / (parseFloat(String(data.sellingPrice ?? 1)) || 1)) * 100 : 0;
     const roi = totalCost > 0 ? (expectedProfit / totalCost) * 100 : 0;
     const actualProfit = expectedProfit * (data.quantitySold ?? 0);
 

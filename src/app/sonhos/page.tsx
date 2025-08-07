@@ -161,10 +161,13 @@ export default function DreamsPage() {
             return;
         }
 
+        // Remove imageUrl to avoid token limit issues
+        const { imageUrl, ...planToRefine } = existingPlan;
+
         const result = await planDream({
             dreamName: dreamToRefine.name,
             dreamType: dreamToRefine.type,
-            existingPlan: JSON.stringify(existingPlan),
+            existingPlan: JSON.stringify(planToRefine),
             refinementInstruction: instruction,
         });
         

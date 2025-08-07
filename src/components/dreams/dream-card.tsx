@@ -5,7 +5,7 @@ import type { Dream, DreamPlan } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Wand2, PiggyBank, ListChecks, Info, Loader2, Edit, Trash2, NotebookText } from 'lucide-react';
+import { Wand2, PiggyBank, ListChecks, Info, Loader2, Edit, Trash2, NotebookText, Sparkles } from 'lucide-react';
 import { Badge } from '../ui/badge';
 
 interface DreamCardProps {
@@ -13,6 +13,7 @@ interface DreamCardProps {
   plan?: DreamPlan | null;
   isPlanning?: boolean;
   onPlan: () => void;
+  onRefine: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
@@ -24,7 +25,7 @@ const statusMap = {
 };
 
 
-export function DreamCard({ dream, plan, isPlanning = false, onPlan, onEdit, onDelete }: DreamCardProps) {
+export function DreamCard({ dream, plan, isPlanning = false, onPlan, onRefine, onEdit, onDelete }: DreamCardProps) {
   const progress = dream.targetAmount > 0 ? (dream.currentAmount / dream.targetAmount) * 100 : 0;
   const statusInfo = statusMap[dream.status];
 
@@ -113,7 +114,7 @@ export function DreamCard({ dream, plan, isPlanning = false, onPlan, onEdit, onD
         )}
 
       </CardContent>
-      <CardFooter className="p-4 bg-secondary/30 flex-col sm:flex-row gap-2">
+      <CardFooter className="p-4 bg-secondary/30 flex flex-col sm:flex-row gap-2">
          <Button className="w-full sm:w-auto sm:flex-1" onClick={onPlan} disabled={isPlanning}>
             {isPlanning ? (
                 <><Loader2 className="mr-2 animate-spin"/> Gerando...</>
@@ -122,6 +123,9 @@ export function DreamCard({ dream, plan, isPlanning = false, onPlan, onEdit, onD
             )}
         </Button>
         <div className="flex w-full sm:w-auto gap-2">
+            <Button variant="outline" onClick={onRefine} disabled={!plan || isPlanning}>
+                <Sparkles className="mr-2"/> Aprimorar
+            </Button>
             <Button variant="outline" onClick={onEdit} className="flex-1">
                 <Edit className="mr-2"/>Editar
             </Button>

@@ -3,9 +3,10 @@
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Loader2, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import React from "react";
 
 import type { Product } from "@/types";
 import { cn } from "@/lib/utils";
@@ -16,10 +17,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
+import { suggestPrice } from "@/ai/flows/dream-planner";
+import { useToast } from "@/hooks/use-toast";
 
 
 const productSchema = z.object({
@@ -29,6 +32,7 @@ const productSchema = z.object({
   aliexpressLink: z.string().url({ message: "Por favor, insira uma URL válida." }).optional().or(z.literal('')),
   imageUrl: z.string().url({ message: "Por favor, insira uma URL de imagem válida." }),
   description: z.string().optional(),
+  notes: z.string().optional(),
   purchasePrice: z.coerce.number().min(0, { message: "O preço de compra não pode ser negativo." }),
   shippingCost: z.coerce.number().min(0, { message: "O custo de frete não pode ser negativo." }),
   importTaxes: z.coerce.number().min(0, { message: "As taxas de importação não podem ser negativas." }),
@@ -72,6 +76,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
         aliexpressLink: "",
         imageUrl: "",
         description: "",
+        notes: "",
         purchasePrice: 0,
         shippingCost: 0,
         importTaxes: 0,
@@ -86,7 +91,9 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
     },
   });
 
-  const { formState: { isSubmitting }, watch } = form;
+  const { formState: { isSubmitting }, watch, setValue } = form;
+  const { toast } = useToast();
+  const [isSuggestingPrice, setIsSuggestingPrice] = React.useState(false);
 
   const watchedValues = watch();
 
@@ -111,6 +118,39 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
     const financials = calculateFinancials(data);
     onSave({ ...data, ...financials, id: productToEdit?.id || '' });
   };
+
+  const handleSuggestPrice = async () => {
+    const { name, category } = watchedValues;
+    const { totalCost } = calculateFinancials(watchedValues);
+    
+    if (!name || totalCost <= 0) {
+        toast({
+            variant: "destructive",
+            title: "Dados Insuficientes",
+            description: "Preencha o nome e os custos do produto para obter uma sugestão."
+        })
+        return;
+    }
+    
+    setIsSuggestingPrice(true);
+    try {
+        const result = await suggestPrice({ productName: name, category, totalCost });
+        setValue("sellingPrice", result.suggestedPrice, { shouldValidate: true });
+        toast({
+            title: "Preço Sugerido!",
+            description: result.justification
+        })
+    } catch(error) {
+        console.error("Error suggesting price:", error);
+        toast({
+            variant: "destructive",
+            title: "Erro na Sugestão",
+            description: "Não foi possível obter a sugestão da IA. Tente novamente."
+        })
+    } finally {
+        setIsSuggestingPrice(false);
+    }
+  }
   
   const { totalCost, expectedProfit, profitMargin } = calculateFinancials(watchedValues);
   const isLowProfit = profitMargin < 15 && profitMargin !== 0;
@@ -236,7 +276,14 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                         <FormField control={form.control} name="sellingPrice" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Preço de Venda (R$)</FormLabel>
-                                <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                                <div className="relative">
+                                    <FormControl>
+                                        <Input type="number" step="0.01" {...field} className="pr-10"/>
+                                    </FormControl>
+                                    <Button type="button" size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" onClick={handleSuggestPrice} disabled={isSuggestingPrice}>
+                                        {isSuggestingPrice ? <Loader2 className="animate-spin" /> : <Sparkles className="text-primary" />}
+                                    </Button>
+                                </div>
                                 <FormMessage />
                             </FormItem>
                         )} />
@@ -308,6 +355,13 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                             </FormItem>
                         )} />
                     </div>
+                     <FormField control={form.control} name="notes" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Anotações Pessoais</FormLabel>
+                            <FormControl><Textarea {...field} placeholder="Detalhes de envio, observações do fornecedor, ideias de marketing..." /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
                 </div>
             </ScrollArea>
              <div className="p-6 pt-2 flex flex-col md:flex-row justify-between items-center gap-4 bg-background border-t">

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ExternalLink, Trash2, Pencil, Info, AlertTriangle } from "lucide-react";
+import { ExternalLink, Trash2, Pencil, Info, AlertTriangle, NotebookText } from "lucide-react";
 
 import type { Product } from "@/types";
 import {
@@ -126,6 +126,13 @@ export function ProductDetailView({ product, onEdit, onDelete }: ProductDetailVi
             
           </div>
           
+           {product.notes && (
+             <div className='mt-4'>
+                <h4 className='font-semibold flex items-center gap-2 mb-2'><NotebookText className="w-5 h-5 text-primary"/> Anotações Pessoais</h4>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-secondary/50 p-3 rounded-md">{product.notes}</p>
+             </div>
+           )}
+
           <div className="mt-auto pt-6 flex gap-3">
               <Button asChild variant="outline" className="flex-1 text-base py-6">
                   <Link href={product.aliexpressLink} target="_blank">

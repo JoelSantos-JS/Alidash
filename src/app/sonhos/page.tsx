@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { AlertTriangle } from 'lucide-react';
+import { DreamRefineDialog } from '@/components/dreams/dream-refine-dialog';
 
 
 const initialDreams: Dream[] = [
@@ -56,6 +57,7 @@ export default function DreamsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [dreamToEdit, setDreamToEdit] = useState<Dream | null>(null);
   const [dreamToDelete, setDreamToDelete] = useState<Dream | null>(null);
+  const [dreamToRefine, setDreamToRefine] = useState<Dream | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -123,24 +125,10 @@ export default function DreamsPage() {
     try {
       const existingPlan = plans[dream.id];
       if (existingPlan) {
-        const userConfirmed = await new Promise((resolve) => {
-            const onConfirm = () => resolve(true);
-            const onCancel = () => resolve(false);
-            toast({
-                title: 'Gerar novo plano?',
-                description: 'Isso substituirá o plano existente. Deseja continuar?',
-                action: (
-                    <>
-                        <Button onClick={onConfirm}>Sim</Button>
-                        <Button variant="ghost" onClick={onCancel}>Não</Button>
-                    </>
-                ),
-            });
+        toast({
+            title: 'Gerando novo plano...',
+            description: 'Isso substituirá o plano existente.',
         });
-        if (!userConfirmed) {
-            setIsPlanning(null);
-            return;
-        }
       }
       
       const result = await planDream({ dreamName: dream.name, dreamType: dream.type });
@@ -160,6 +148,45 @@ export default function DreamsPage() {
         setIsPlanning(null);
     }
   }
+
+  const handleRefinePlan = async (instruction: string) => {
+    if (!dreamToRefine) return;
+    const dreamId = dreamToRefine.id;
+    setIsPlanning(dreamId);
+    setDreamToRefine(null);
+    try {
+        const existingPlan = plans[dreamId];
+        if (!existingPlan) {
+            toast({ variant: "destructive", title: "Nenhum plano para refinar!", description: "Gere um plano inicial antes de aprimorá-lo."})
+            return;
+        }
+
+        const result = await planDream({
+            dreamName: dreamToRefine.name,
+            dreamType: dreamToRefine.type,
+            existingPlan: JSON.stringify(existingPlan),
+            refinementInstruction: instruction,
+        });
+        
+        // Mantém a imagem original, pois a IA não gera uma nova ao refinar
+        setPlans(prev => ({...prev, [dreamId]: { ...result, imageUrl: prev[dreamId]?.imageUrl || result.imageUrl }}));
+        toast({
+            title: "Plano Aprimorado!",
+            description: "A IA atualizou o plano com base na sua instrução."
+        });
+
+    } catch (error) {
+        console.error("Error refining plan:", error);
+        toast({
+            variant: "destructive",
+            title: "Erro ao Aprimorar",
+            description: "Não foi possível aprimorar o plano. Tente novamente."
+        });
+    } finally {
+        setIsPlanning(null);
+    }
+  }
+
 
   return (
     <>
@@ -196,6 +223,7 @@ export default function DreamsPage() {
                         plan={plans[dream.id]}
                         isPlanning={isPlanning === dream.id}
                         onPlan={() => handlePlanDream(dream)}
+                        onRefine={() => setDreamToRefine(dream)}
                         onEdit={() => handleOpenForm(dream)}
                         onDelete={() => setDreamToDelete(dream)}
                     />
@@ -254,6 +282,13 @@ export default function DreamsPage() {
             </AlertDialogFooter>
         </AlertDialogContent>
     </AlertDialog>
+
+    <DreamRefineDialog 
+        isOpen={!!dreamToRefine}
+        onOpenChange={(isOpen) => !isOpen && setDreamToRefine(null)}
+        onRefine={handleRefinePlan}
+        dreamName={dreamToRefine?.name}
+    />
     </>
   );
 }

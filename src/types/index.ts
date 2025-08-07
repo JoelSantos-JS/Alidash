@@ -6,6 +6,7 @@ export interface Product {
   aliexpressLink: string;
   imageUrl: string;
   description: string;
+  notes?: string;
   
   // Custos
   purchasePrice: number;

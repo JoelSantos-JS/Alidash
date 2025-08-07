@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from 'next/navigation';
 import type { Product } from "@/types";
 import { Header } from "@/components/layout/header";
 import { ProductSearch } from "@/components/product/product-search";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductDetailView } from "@/components/product/product-detail-view";
 import { ProductForm } from "@/components/product/product-form";
+import { PasswordDialog } from "@/components/layout/password-dialog";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -137,11 +139,18 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const { toast } = useToast();
+  const router = useRouter();
+
 
   useEffect(() => {
+    // This effect should only run on the client side
+    if (typeof window === 'undefined') {
+      return;
+    }
     try {
       const savedProducts = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (savedProducts) {
@@ -188,7 +197,7 @@ export default function Home() {
   const summaryStats = useMemo(() => {
     const totalInvested = products.reduce((acc, p) => acc + (p.totalCost * p.quantity), 0);
     const totalActualProfit = products.reduce((acc, p) => acc + p.actualProfit, 0);
-    const projectedProfit = products.reduce((acc, p) => acc + (p.expectedProfit * p.quantity), 0);
+    const projectedProfit = products.reduce((acc, p) => acc + (p.expectedProfit * (p.quantity - p.quantitySold)), 0);
     const productsInStock = products.reduce((acc, p) => acc + (p.quantity - p.quantitySold), 0);
     const productsSolds = products.reduce((acc, p) => acc + p.quantitySold, 0);
     const averageMargin = products.length > 0 ? products.reduce((acc, p) => acc + p.profitMargin, 0) / products.length : 0;
@@ -252,11 +261,16 @@ export default function Home() {
     });
   }
 
+  const handlePasswordSuccess = () => {
+    setIsPasswordDialogOpen(false);
+    router.push('/sonhos');
+  };
+
 
   return (
     <>
     <div className="flex flex-col min-h-screen">
-      <Header />
+      <Header onSecretClick={() => setIsPasswordDialogOpen(true)} />
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
             <div className="max-w-2xl">
@@ -412,7 +426,12 @@ export default function Home() {
             </AlertDialogFooter>
         </AlertDialogContent>
     </AlertDialog>
-
+    
+    <PasswordDialog 
+        isOpen={isPasswordDialogOpen}
+        onOpenChange={setIsPasswordDialogOpen}
+        onSuccess={handlePasswordSuccess}
+    />
     </>
   );
 }

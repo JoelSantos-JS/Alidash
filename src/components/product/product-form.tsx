@@ -66,6 +66,18 @@ const statusOptions = {
     sold: 'Vendido',
 }
 
+const categoryOptions = [
+    "Eletrônicos",
+    "Casa e Cozinha",
+    "Roupas e Acessórios",
+    "Saúde e Beleza",
+    "Brinquedos e Jogos",
+    "Esportes e Lazer",
+    "Automotivo",
+    "Iluminação",
+    "Áudio",
+]
+
 export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProps) {
   const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
@@ -91,11 +103,29 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
     },
   });
 
-  const { formState: { isSubmitting }, watch, setValue } = form;
+  const { formState: { isSubmitting }, watch, setValue, control } = form;
   const { toast } = useToast();
   const [isSuggestingPrice, setIsSuggestingPrice] = React.useState(false);
+  const [isCustomCategory, setIsCustomCategory] = React.useState(false);
 
   const watchedValues = watch();
+  const watchedCategory = watch("category");
+
+  React.useEffect(() => {
+    if (productToEdit && !categoryOptions.includes(productToEdit.category)) {
+        setIsCustomCategory(true);
+    }
+  }, [productToEdit]);
+  
+  React.useEffect(() => {
+    if(watchedCategory === 'custom') {
+        setIsCustomCategory(true);
+        setValue('category', '');
+    } else if (watchedCategory !== '' && watchedCategory !== 'custom') {
+        setIsCustomCategory(false);
+    }
+  }, [watchedCategory, setValue]);
+
 
   const calculateFinancials = (data: Partial<z.infer<typeof productSchema>>) => {
     const totalCost = 
@@ -186,10 +216,30 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                                 <FormMessage />
                             </FormItem>
                         )} />
-                        <FormField control={form.control} name="category" render={({ field }) => (
+                        <FormField control={control} name="category" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Categoria</FormLabel>
-                                <FormControl><Input {...field} placeholder="Ex: Eletrônicos, Casa e Cozinha..." /></FormControl>
+                                {isCustomCategory ? (
+                                    <div className="flex items-center gap-2">
+                                        <Input {...field} placeholder="Digite a nova categoria" />
+                                        <Button variant="ghost" onClick={() => {
+                                            setIsCustomCategory(false)
+                                            setValue('category', '')
+                                        }}>Cancelar</Button>
+                                    </div>
+                                ) : (
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Selecione uma categoria" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {categoryOptions.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                                            <SelectItem value="custom">Outra (especificar)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                )}
                                 <FormMessage />
                             </FormItem>
                         )} />
@@ -395,3 +445,5 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
     </>
   );
 }
+
+    

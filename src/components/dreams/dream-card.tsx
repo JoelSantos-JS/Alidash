@@ -5,8 +5,10 @@ import type { Dream, DreamPlan } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Wand2, PiggyBank, ListChecks, Info, Loader2, Edit, Trash2, NotebookText, Sparkles } from 'lucide-react';
+import { Wand2, PiggyBank, ListChecks, Info, Loader2, Edit, Trash2, NotebookText, Sparkles, MoreVertical } from 'lucide-react';
 import { Badge } from '../ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Separator } from '../ui/separator';
 
 interface DreamCardProps {
   dream: Dream;
@@ -64,76 +66,83 @@ export function DreamCard({ dream, plan, isPlanning = false, onPlan, onRefine, o
             </div>
         </div>
         
-        {(plan || dream.notes) && (
+        {plan && (
              <div className='mt-6 space-y-4'>
-                 {dream.notes && (
-                    <div>
-                        <h4 className='font-semibold flex items-center gap-2 mb-2'><NotebookText className="w-5 h-5 text-primary"/> Minhas Anotações</h4>
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{dream.notes}</p>
-                    </div>
-                 )}
-
-                {plan && (
-                    <>
-                        <div>
-                            <h4 className='font-semibold flex items-center gap-2 mb-2'><PiggyBank className="w-5 h-5 text-primary"/> Custos Estimados (IA)</h4>
-                            <ul className="space-y-1 text-sm text-muted-foreground">
-                                {plan.estimatedCost.map(item => (
-                                    <li key={item.item} className='flex justify-between'>
-                                        <span>{item.item}</span>
-                                        <span className='font-medium'>{item.cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                                    </li>
-                                ))}
-                                <li className='flex justify-between border-t pt-1 font-bold text-foreground'>
-                                    <span>Total</span>
-                                    <span>{plan.totalEstimatedCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                                </li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className='font-semibold flex items-center gap-2 mb-2'><ListChecks className="w-5 h-5 text-primary"/> Plano de Ação (IA)</h4>
-                            <ul className="space-y-2 text-sm text-muted-foreground">
-                                {plan.actionPlan.map(step => (
-                                    <li key={step.step}>
-                                        <strong className='text-foreground'>{step.step}. {step.action}:</strong> {step.details}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className='font-semibold flex items-center gap-2 mb-2'><Info className="w-5 h-5 text-primary"/> Dicas Importantes (IA)</h4>
-                            <ul className="space-y-1 text-sm list-disc list-inside text-muted-foreground">
-                                {plan.importantNotes.map((note, i) => (
-                                    <li key={i}>{note}</li>
-                                ))}
-                            </ul>
-                        </div>
-                    </>
-                )}
+                <div>
+                    <h4 className='font-semibold flex items-center gap-2 mb-2'><PiggyBank className="w-5 h-5 text-primary"/> Custos Estimados (IA)</h4>
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                        {plan.estimatedCost.map(item => (
+                            <li key={item.item} className='flex justify-between'>
+                                <span>{item.item}</span>
+                                <span className='font-medium'>{item.cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                            </li>
+                        ))}
+                        <li className='flex justify-between border-t pt-1 font-bold text-foreground'>
+                            <span>Total</span>
+                            <span>{plan.totalEstimatedCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 className='font-semibold flex items-center gap-2 mb-2'><ListChecks className="w-5 h-5 text-primary"/> Plano de Ação (IA)</h4>
+                    <ul className="space-y-2 text-sm text-muted-foreground">
+                        {plan.actionPlan.map(step => (
+                            <li key={step.step}>
+                                <strong className='text-foreground'>{step.step}. {step.action}:</strong> {step.details}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                <div>
+                    <h4 className='font-semibold flex items-center gap-2 mb-2'><Info className="w-5 h-5 text-primary"/> Dicas Importantes (IA)</h4>
+                    <ul className="space-y-1 text-sm list-disc list-inside text-muted-foreground">
+                        {plan.importantNotes.map((note, i) => (
+                            <li key={i}>{note}</li>
+                        ))}
+                    </ul>
+                </div>
             </div>
         )}
 
       </CardContent>
-      <CardFooter className="p-4 bg-secondary/30 flex flex-col sm:flex-row gap-2">
-         <Button className="w-full sm:w-auto sm:flex-1" onClick={onPlan} disabled={isPlanning}>
+       {dream.notes && (
+            <div className="px-6 pb-6">
+                <Separator className="mb-4" />
+                <h4 className='font-semibold flex items-center gap-2 mb-2'><NotebookText className="w-5 h-5 text-primary"/> Minhas Anotações</h4>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap p-4 bg-muted/50 rounded-lg">{dream.notes}</p>
+            </div>
+        )}
+      <CardFooter className="p-4 bg-secondary/30 flex gap-2">
+         <Button className="flex-1" onClick={onPlan} disabled={isPlanning}>
             {isPlanning ? (
                 <><Loader2 className="mr-2 animate-spin"/> Gerando...</>
             ) : (
                 <><Wand2 className="mr-2"/> {plan ? 'Novo Plano' : 'Planejar com IA'}</>
             )}
         </Button>
-        <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
-            <Button variant="outline" onClick={onRefine} disabled={!plan || isPlanning} className="flex-1">
-                <Sparkles className="mr-2"/> Aprimorar
-            </Button>
-            <Button variant="outline" onClick={onEdit} className="flex-1">
-                <Edit className="mr-2"/>Editar
-            </Button>
-            <Button variant="destructive" onClick={onDelete} className="flex-1">
-                <Trash2 className="mr-2"/>Excluir
-            </Button>
-        </div>
+        <Button variant="outline" onClick={onRefine} disabled={!plan || isPlanning}>
+            <Sparkles className="mr-2"/> Aprimorar
+        </Button>
+        
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                    <MoreVertical />
+                    <span className="sr-only">Mais opções</span>
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onEdit}>
+                    <Edit className="mr-2" /> Editar
+                </DropdownMenuItem>
+                 <DropdownMenuItem onClick={onDelete} className="text-destructive">
+                    <Trash2 className="mr-2" /> Excluir
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
       </CardFooter>
     </Card>
   );
 }
+
+    

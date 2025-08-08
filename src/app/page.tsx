@@ -302,9 +302,9 @@ export default function Home() {
     });
   }
 
-  const handlePasswordSuccess = () => {
+  const handlePasswordSuccess = (path: 'sonhos' | 'apostas') => {
     setIsPasswordDialogOpen(false);
-    router.push('/sonhos');
+    router.push(`/${path}`);
   };
 
 

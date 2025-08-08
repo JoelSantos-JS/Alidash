@@ -68,3 +68,23 @@ export interface DreamPlan {
   importantNotes: string[];
   imageUrl: string;
 }
+
+export interface Bet {
+  id: string;
+  sport: string;
+  event: string; // Ex: "Time A vs Time B"
+  betType: string; // Ex: "Vitória Time A", "Mais de 2.5 Gols"
+  stake: number; // Valor apostado
+  odds: number;
+  potentialWinnings: number;
+  status: 'pending' | 'won' | 'lost' | 'cashed_out';
+  date: Date;
+  notes?: string;
+  analysis?: BetAnalysis;
+}
+
+export interface BetAnalysis {
+    recommendation: 'good' | 'average' | 'bad' | 'neutral';
+    justification: string;
+    suggestedActions: string[];
+}

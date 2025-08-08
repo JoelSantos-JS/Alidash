@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
-const CORRECT_PASSWORD = "joel8812";
+const DREAMS_PASSWORD = "joel8812";
+const BETS_PASSWORD = "aposta123";
 
 const passwordSchema = z.object({
   password: z.string().min(1, { message: "A senha é obrigatória." }),
@@ -20,7 +21,7 @@ const passwordSchema = z.object({
 type PasswordDialogProps = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: (path: 'sonhos' | 'apostas') => void;
 };
 
 export function PasswordDialog({ isOpen, onOpenChange, onSuccess }: PasswordDialogProps) {
@@ -36,12 +37,18 @@ export function PasswordDialog({ isOpen, onOpenChange, onSuccess }: PasswordDial
     setIsSubmitting(true);
     // Simulate API call
     setTimeout(() => {
-        if (values.password === CORRECT_PASSWORD) {
+        if (values.password === DREAMS_PASSWORD) {
           toast({
             title: "Acesso Concedido!",
             description: "Bem-vindo ao seu cofre de sonhos.",
           });
-          onSuccess();
+          onSuccess('sonhos');
+        } else if (values.password === BETS_PASSWORD) {
+           toast({
+            title: "Acesso Concedido!",
+            description: "Bem-vindo ao seu dashboard de apostas.",
+          });
+          onSuccess('apostas');
         } else {
           toast({
             variant: "destructive",

@@ -4,11 +4,12 @@
 import type { Bet } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, MoreVertical, Calendar, TrendingUp, TrendingDown, Hourglass, DollarSign, ShieldCheck, List, GitCommitHorizontal, Star } from 'lucide-react';
+import { Edit, Trash2, MoreVertical, Calendar, TrendingUp, TrendingDown, Hourglass, DollarSign, ShieldCheck, List, GitCommitHorizontal, Star, Gift } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface BetCardProps {
   bet: Bet;
@@ -62,6 +63,21 @@ export function BetCard({ bet, onEdit, onDelete }: BetCardProps) {
                         </Badge>
                     )}
                     <Badge variant="secondary">{bet.sport}</Badge>
+                    {bet.earnedFreebetValue && bet.earnedFreebetValue > 0 && (
+                         <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger>
+                                     <Badge className="bg-orange-500 hover:bg-orange-600 text-white gap-1.5 border-transparent">
+                                        <Gift className='w-4 h-4'/>
+                                        {bet.earnedFreebetValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Ganhou uma Freebet de {bet.earnedFreebetValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                         </TooltipProvider>
+                    )}
                  </div>
                  <CardTitle className="text-lg font-bold mt-2">{bet.event}</CardTitle>
             </div>

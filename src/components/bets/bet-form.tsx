@@ -39,6 +39,7 @@ const baseBetSchema = z.object({
   date: z.date({ required_error: "A data da aposta é obrigatória." }),
   status: z.enum(['pending', 'won', 'lost', 'cashed_out', 'void']),
   notes: z.string().optional(),
+  earnedFreebetValue: z.coerce.number().min(0, "O valor não pode ser negativo").optional(),
 });
 
 const singleBetSchema = baseBetSchema.extend({
@@ -76,6 +77,7 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
     resolver: zodResolver(betSchema),
     defaultValues: betToEdit ? { 
         ...betToEdit,
+        earnedFreebetValue: betToEdit.earnedFreebetValue || 0,
         // @ts-ignore
         date: new Date(betToEdit.date),
     } : {
@@ -88,6 +90,7 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
         status: 'pending',
         date: new Date(),
         notes: "",
+        earnedFreebetValue: 0,
         // @ts-ignore
         subBets: [{ id: '1', bookmaker: '', betType: '', odds: 1.5, stake: 10, isFreebet: false }, { id: '2', bookmaker: '', betType: '', odds: 1.5, stake: 10, isFreebet: false }],
     },
@@ -149,6 +152,10 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
     if (data.type === 'surebet') {
         const { totalStake, guaranteedProfit, profitPercentage } = surebetCalculations;
         finalData = { ...data, totalStake, guaranteedProfit, profitPercentage };
+    }
+    // Set earnedFreebetValue to undefined if it's 0 to avoid saving it in DB
+    if(finalData.earnedFreebetValue === 0) {
+        delete finalData.earnedFreebetValue;
     }
     onSave(finalData);
   };
@@ -335,6 +342,13 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
                         <FormItem>
                             <FormLabel>Análise / Notas (Opcional)</FormLabel>
                             <FormControl><Textarea {...field} placeholder="Ex: Jogador chave lesionado, time vem de 5 vitórias..." /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                    <FormField control={control} name="earnedFreebetValue" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Ganha Freebet de (R$)? (Opcional)</FormLabel>
+                            <FormControl><Input type="number" step="0.01" {...field} placeholder="Valor da freebet que esta aposta qualifica" /></FormControl>
                             <FormMessage />
                         </FormItem>
                     )} />

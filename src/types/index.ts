@@ -86,6 +86,7 @@ export interface Bet {
   date: Date;
   status: 'pending' | 'won' | 'lost' | 'cashed_out' | 'void';
   notes?: string;
+  earnedFreebetValue?: number; // Valor da freebet ganha com esta aposta
 
   // For 'single' bets
   betType?: string;

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
@@ -121,13 +122,13 @@ export default function BetsPage() {
 
     const handleSaveBet = (betData: Omit<Bet, 'id'>) => {
         if(betToEdit) {
-            setBets(bets.map(b => b.id === betToEdit.id ? { ...betToEdit, ...betData } : b));
+            setBets(bets.map(b => b.id === betToEdit.id ? { ...b, ...betData } : b));
             toast({ title: "Aposta Atualizada!", description: `A aposta no evento "${betData.event}" foi atualizada.` });
         } else {
             const newBet: Bet = { 
                 ...betData, 
                 id: new Date().getTime().toString(),
-                // Initialize unused fields to null to avoid Firestore 'undefined' error
+                // Explicitly set unused optional fields to null to avoid Firestore 'undefined' error
                 betType: betData.betType ?? null,
                 stake: betData.stake ?? null,
                 odds: betData.odds ?? null,
@@ -135,6 +136,8 @@ export default function BetsPage() {
                 totalStake: betData.totalStake ?? null,
                 guaranteedProfit: betData.guaranteedProfit ?? null,
                 profitPercentage: betData.profitPercentage ?? null,
+                earnedFreebetValue: betData.earnedFreebetValue ?? null,
+                notes: betData.notes ?? '',
              };
             setBets([newBet, ...bets]);
             toast({ title: "Aposta Adicionada!", description: `Sua aposta em "${betData.event}" foi registrada.` });
@@ -283,3 +286,5 @@ export default function BetsPage() {
         </>
     )
 }
+
+    

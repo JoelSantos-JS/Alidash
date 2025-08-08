@@ -7,13 +7,12 @@ import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  "projectId": "aliinsights",
-  "appId": "1:48131222137:web:7fc2ec9861093a7e20c2a8",
-  "storageBucket": "aliinsights.firebasestorage.app",
-  "apiKey": "AIzaSyArzg3zwPRGPAzqatLrX_UHUzhdLeRrp0E",
-  "authDomain": "aliinsights.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "48131222137"
+  apiKey: "AIzaSyArzg3zwPRGPAzqatLrX_UHUzhdLeRrp0E",
+  authDomain: "aliinsights.firebaseapp.com",
+  projectId: "aliinsights",
+  storageBucket: "aliinsights.firebasestorage.app",
+  messagingSenderId: "48131222137",
+  appId: "1:48131222137:web:7fc2ec9861093a7e20c2a8"
 };
 
 

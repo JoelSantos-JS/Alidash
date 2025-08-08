@@ -29,6 +29,7 @@ import { BetStatusChart } from '@/components/bets/bet-status-chart';
 const initialBets: Bet[] = [
   {
     id: '1',
+    type: 'single',
     sport: 'Futebol',
     event: 'Flamengo vs Palmeiras',
     betType: 'Vitória do Flamengo',
@@ -40,6 +41,7 @@ const initialBets: Bet[] = [
   },
     {
     id: '2',
+    type: 'single',
     sport: 'Basquete',
     event: 'Lakers vs Celtics',
     betType: 'Mais de 220.5 Pontos',
@@ -51,6 +53,7 @@ const initialBets: Bet[] = [
   },
    {
     id: '3',
+    type: 'single',
     sport: 'Futebol',
     event: 'Corinthians vs São Paulo',
     betType: 'Empate',
@@ -58,6 +61,21 @@ const initialBets: Bet[] = [
     odds: 3.4,
     status: 'lost',
     date: new Date('2024-07-21'),
+  },
+  {
+    id: '4',
+    type: 'surebet',
+    sport: 'Tênis',
+    event: 'Player A vs Player B',
+    date: new Date('2024-07-25'),
+    status: 'pending',
+    totalStake: 1000,
+    guaranteedProfit: 25.8,
+    profitPercentage: 2.58,
+    subBets: [
+        { id: 'sb1', bookmaker: 'Casa A', betType: 'Vitória Player A', odds: 1.8, stake: 569.89 },
+        { id: 'sb2', bookmaker: 'Casa B', betType: 'Vitória Player B', odds: 2.3, stake: 430.11 },
+    ]
   }
 ];
 
@@ -103,9 +121,30 @@ export default function BetsPage() {
     }, [bets, isLoading]);
 
     const summaryStats = useMemo(() => {
-        const totalStaked = bets.reduce((acc, bet) => acc + bet.stake, 0);
-        const totalWon = bets.filter(b => b.status === 'won').reduce((acc, bet) => acc + (bet.stake * bet.odds - bet.stake), 0);
-        const totalLost = bets.filter(b => b.status === 'lost').reduce((acc, bet) => acc + bet.stake, 0);
+        const totalStaked = bets.reduce((acc, bet) => {
+             if (bet.type === 'single' && bet.stake) return acc + bet.stake;
+             if (bet.type === 'surebet' && bet.totalStake) return acc + bet.totalStake;
+             return acc;
+        }, 0);
+
+        const totalWon = bets.reduce((acc, bet) => {
+            if (bet.status !== 'won') return acc;
+            if (bet.type === 'single' && bet.stake && bet.odds) {
+                return acc + (bet.stake * bet.odds - bet.stake);
+            }
+            if (bet.type === 'surebet' && bet.guaranteedProfit) {
+                return acc + bet.guaranteedProfit;
+            }
+            return acc;
+        }, 0);
+
+        const totalLost = bets.reduce((acc, bet) => {
+             if (bet.status === 'lost' && bet.type === 'single' && bet.stake) {
+                return acc + bet.stake;
+            }
+            return acc;
+        }, 0);
+        
         const netProfit = totalWon - totalLost;
         
         const finishedBetsCount = bets.filter(b => b.status === 'won' || b.status === 'lost').length;
@@ -237,7 +276,7 @@ export default function BetsPage() {
                 setBetToEdit(null);
             }
         }}>
-            <DialogContent>
+            <DialogContent className="max-w-2xl">
                 <BetForm 
                     onSave={handleSaveBet}
                     betToEdit={betToEdit}

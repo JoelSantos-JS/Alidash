@@ -69,16 +69,34 @@ export interface DreamPlan {
   imageUrl: string;
 }
 
+export interface SubBet {
+    id: string;
+    bookmaker: string; // Casa de apostas
+    betType: string;
+    odds: number;
+    stake: number;
+}
+
 export interface Bet {
   id: string;
+  type: 'single' | 'surebet';
   sport: string;
-  event: string; // Ex: "Time A vs Time B"
-  betType: string; // Ex: "Vitória Time A", "Mais de 2.5 Gols"
-  stake: number; // Valor apostado
-  odds: number;
-  status: 'pending' | 'won' | 'lost' | 'cashed_out';
+  event: string;
   date: Date;
+  status: 'pending' | 'won' | 'lost' | 'cashed_out' | 'void';
   notes?: string;
+
+  // For 'single' bets
+  betType?: string;
+  stake?: number;
+  odds?: number;
+  
+  // For 'surebet'
+  subBets?: SubBet[];
+  totalStake?: number;
+  guaranteedProfit?: number;
+  profitPercentage?: number;
+
   analysis?: BetAnalysis;
 }
 

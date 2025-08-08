@@ -28,6 +28,7 @@ const statusConfigMap = {
   won: { label: 'Ganhas', color: "hsl(var(--chart-2))" },
   lost: { label: 'Perdidas', color: "hsl(var(--chart-1))" },
   cashed_out: { label: 'Cash Out', color: "hsl(var(--chart-4))" },
+  void: { label: 'Anuladas', color: "hsl(var(--chart-5))" },
 }
 
 

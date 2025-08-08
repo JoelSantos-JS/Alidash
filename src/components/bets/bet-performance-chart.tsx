@@ -25,13 +25,24 @@ export function BetPerformanceChart({ data, isLoading }: BetPerformanceChartProp
         if (!acc[bet.sport]) {
             acc[bet.sport] = { sport: bet.sport, profit: 0, totalStaked: 0 };
         }
+        
+        if (bet.status !== 'won' && bet.status !== 'lost') return acc;
 
-        if (bet.status === 'won') {
-            acc[bet.sport].profit += bet.stake * bet.odds - bet.stake;
-        } else if (bet.status === 'lost') {
-            acc[bet.sport].profit -= bet.stake;
+        if (bet.type === 'single') {
+            if (bet.status === 'won' && bet.stake && bet.odds) {
+                acc[bet.sport].profit += bet.stake * bet.odds - bet.stake;
+            } else if (bet.status === 'lost' && bet.stake) {
+                acc[bet.sport].profit -= bet.stake;
+            }
+            if(bet.stake) acc[bet.sport].totalStaked += bet.stake;
+        } else if (bet.type === 'surebet') {
+             if (bet.status === 'won' && bet.guaranteedProfit) {
+                acc[bet.sport].profit += bet.guaranteedProfit;
+            }
+            // Surebets don't have losses in this model
+            if(bet.totalStake) acc[bet.sport].totalStaked += bet.totalStake;
         }
-        acc[bet.sport].totalStaked += bet.stake;
+
 
         return acc;
     }, {} as Record<string, { sport: string; profit: number, totalStaked: number }>);

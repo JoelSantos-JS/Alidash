@@ -236,7 +236,7 @@ export default function BetsPage() {
                 setBetToEdit(null);
             }
         }}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl p-0">
                 <BetForm 
                     onSave={handleSaveBet}
                     betToEdit={betToEdit}

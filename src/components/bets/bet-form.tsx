@@ -59,7 +59,7 @@ const betSchema = z.discriminatedUnion("type", [
     surebetSchema
 ]);
 
-const sportOptions = ["Futebol", "Basquete", "Tênis", "Vôlei", "Futebol Americano", "MMA", "E-Sports"];
+const sportOptions = ["Futebol", "Basquete", "Tênis", "Vôlei", "Futebol Americano", "MMA", "E-Sports", "Outro"];
 const statusOptions: Record<Bet['status'], string> = { pending: 'Pendente', won: 'Ganha', lost: 'Perdida', cashed_out: 'Cash Out', void: 'Anulada' };
 
 interface BetFormProps {
@@ -126,17 +126,17 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
   };
 
   return (
-    <>
-      <DialogHeader>
+    <div className="flex flex-col h-full max-h-[90vh]">
+      <DialogHeader className="p-6 pb-4">
         <DialogTitle>{betToEdit ? "Editar Aposta" : "Adicionar Nova Aposta"}</DialogTitle>
         <DialogDescription>
             {betToEdit ? "Ajuste os detalhes da sua aposta." : "Registre uma aposta simples ou uma surebet para acompanhar."}
         </DialogDescription>
       </DialogHeader>
       <Form {...form}>
-        <form onSubmit={handleSubmit(onSubmit)}>
-            <ScrollArea className="max-h-[70vh] p-1 pr-6">
-                <div className="space-y-4 p-2">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
+            <ScrollArea className="flex-1 min-h-0">
+                <div className="space-y-4 px-6 py-2">
                     <FormField control={control} name="type" render={({ field }) => (
                         <FormItem className="space-y-3">
                             <FormLabel>Tipo de Aposta</FormLabel>
@@ -298,9 +298,9 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
                     )} />
                 </div>
             </ScrollArea>
-             <DialogFooter className="pt-6 p-4 flex-col md:flex-row md:justify-between border-t gap-4">
+             <DialogFooter className="p-6 pt-4 flex-col md:flex-row md:justify-between items-start md:items-center border-t gap-4">
                  {watchedType === 'surebet' && (
-                    <div className="flex flex-wrap gap-4 items-center text-sm">
+                    <div className="flex flex-wrap gap-x-4 gap-y-2 items-center text-sm">
                         <div>
                             <span className="text-muted-foreground">Total Apostado:</span>
                             <p className="font-bold">{surebetCalculations.totalStake.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
@@ -324,6 +324,6 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
             </DialogFooter>
         </form>
       </Form>
-    </>
+    </div>
   );
 }

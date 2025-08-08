@@ -97,7 +97,7 @@ export function BetCard({ bet, onEdit, onDelete }: BetCardProps) {
                         <p className="text-xs text-muted-foreground">Retorno (%)</p>
                     </div>
                 </div>
-                {bet.subBets && (
+                {bet.subBets && bet.subBets.length > 0 && (
                     <Accordion type="single" collapsible className="w-full">
                         <AccordionItem value="sub-bets">
                             <AccordionTrigger>

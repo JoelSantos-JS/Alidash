@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm, useFieldArray } from "react-hook-form";
@@ -221,15 +222,15 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
                                     <div key={item.id} className="p-4 bg-muted/50 rounded-lg space-y-3 relative">
                                         <FormField control={control} name={`subBets.${index}.bookmaker` as never} render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Casa de Apostas</FormLabel>
-                                                <FormControl><Input placeholder="Ex: Bet365" {...field} /></FormControl>
+                                                <FormLabel>Casa de Apostas / Exchange</FormLabel>
+                                                <FormControl><Input placeholder="Ex: Bet365 ou Betfair" {...field} /></FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )} />
                                         <FormField control={control} name={`subBets.${index}.betType` as never} render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Tipo de Aposta</FormLabel>
-                                                <FormControl><Input placeholder="Ex: Vitória Time A" {...field} /></FormControl>
+                                                <FormControl><Input placeholder="Ex: 'Vitória Time A' ou 'Lay Empate (contra)'" {...field} /></FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )} />
@@ -336,3 +337,5 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
     </div>
   );
 }
+
+    

@@ -8,7 +8,7 @@ import { DreamCard } from '@/components/dreams/dream-card';
 import { DreamForm } from '@/components/dreams/dream-form';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { Dream, DreamPlan } from '@/types';
-import { planDream } from '@/ai/flows/dream-planner';
+import { planDream, getToughLoveReminder } from '@/ai/flows/dream-planner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -88,6 +88,33 @@ export default function DreamsPage() {
       localStorage.setItem(LOCAL_STORAGE_KEY_PLANS, JSON.stringify(plans));
     }
   }, [dreams, plans, isLoading]);
+  
+  useEffect(() => {
+    if (isLoading || dreams.length === 0) return;
+
+    // Find the dream with the lowest progress percentage
+    const dreamWithLowestProgress = dreams
+      .filter(d => d.status !== 'completed')
+      .sort((a, b) => (a.currentAmount / a.targetAmount) - (b.currentAmount / b.targetAmount))[0];
+
+    if (dreamWithLowestProgress) {
+      const progress = (dreamWithLowestProgress.currentAmount / dreamWithLowestProgress.targetAmount) * 100;
+      if (progress < 50) { // Only remind if progress is less than 50%
+        setTimeout(() => {
+          getToughLoveReminder({ dreamName: dreamWithLowestProgress.name, progress })
+            .then(result => {
+              toast({
+                variant: "default",
+                title: `Lembrete para: ${dreamWithLowestProgress.name}`,
+                description: result.reminder,
+                duration: 8000,
+              });
+            })
+            .catch(err => console.error("Could not get reminder", err));
+        }, 2000); // Delay to allow the user to settle
+      }
+    }
+  }, [isLoading, dreams, toast]);
 
   const handleOpenForm = (dream: Dream | null = null) => {
     setDreamToEdit(dream);
@@ -196,7 +223,7 @@ export default function DreamsPage() {
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div className="max-w-2xl">
             <h2 className="text-3xl font-bold mb-1 flex items-center gap-2">
               <KeyRound className="w-8 h-8 text-primary" />
@@ -206,7 +233,7 @@ export default function DreamsPage() {
               Planeje, acompanhe e conquiste seus maiores objetivos.
             </p>
           </div>
-          <Button size="lg" onClick={() => handleOpenForm()}>
+          <Button size="lg" onClick={() => handleOpenForm()} className="w-full md:w-auto">
               <PlusCircle className="mr-2"/>
               Adicionar Sonho
           </Button>

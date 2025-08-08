@@ -104,10 +104,10 @@ const planDreamFlow = ai.defineFlow(
     
     // If we are refining, we don't generate a new image, so we return an empty imageUrl.
     // The client should keep the old one.
-    if (input.existingPlan) {
+     if (input.existingPlan) {
         return {
             ...plan,
-            imageUrl: '',
+            imageUrl: '', // Keep existing image on the client
         }
     }
     
@@ -176,4 +176,54 @@ const suggestPriceFlow = ai.defineFlow(
 
 export async function suggestPrice(input: SuggestPriceInput): Promise<SuggestPriceOutput> {
     return suggestPriceFlow(input);
+}
+
+
+// Flow for a "tough love" reminder
+const ToughLoveInputSchema = z.object({
+    dreamName: z.string().describe("O nome do sonho."),
+    progress: z.number().describe("O progresso atual do sonho em porcentagem (0 a 100).")
+});
+export type ToughLoveInput = z.infer<typeof ToughLoveInputSchema>;
+
+const ToughLoveOutputSchema = z.object({
+    reminder: z.string().describe("A mensagem de lembrete, curta, direta e motivacional."),
+});
+export type ToughLoveOutput = z.infer<typeof ToughLoveOutputSchema>;
+
+
+const getToughLoveReminderFlow = ai.defineFlow(
+    {
+        name: 'getToughLoveReminderFlow',
+        inputSchema: ToughLoveInputSchema,
+        outputSchema: ToughLoveOutputSchema,
+    },
+    async (input) => {
+        const { output } = await ai.generate({
+             prompt: `Você é um coach de vida que usa "tough love" (amor bruto). Sua tarefa é dar um lembrete curto, direto e um pouco provocador para motivar o usuário. NADA de insultos, seja apenas brutalmente honesto e direto para motivar.
+                Sonho: "${input.dreamName}"
+                Progresso: ${input.progress.toFixed(0)}%
+
+                Baseado no baixo progresso, gere uma mensagem curta (1-2 frases) para chacoalhar o usuário e lembrá-lo de seu objetivo.
+                Seja criativo e direto. Ex: "Sério, só ${input.progress.toFixed(0)}%? Esse sonho vai se realizar sozinho? Mexa-se." ou "Lembre-se do porquê começou. '${input.dreamName}' não é só um desejo, é um plano. Execute."
+                `,
+            output: {
+                schema: ToughLoveOutputSchema
+            },
+            config: {
+                safetySettings: [
+                    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' }
+                ]
+            }
+        });
+        if (!output) {
+            throw new Error("A IA não conseguiu gerar um lembrete.");
+        }
+        return output;
+    }
+);
+
+
+export async function getToughLoveReminder(input: ToughLoveInput): Promise<ToughLoveOutput> {
+    return getToughLoveReminderFlow(input);
 }

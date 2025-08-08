@@ -227,3 +227,60 @@ const getToughLoveReminderFlow = ai.defineFlow(
 export async function getToughLoveReminder(input: ToughLoveInput): Promise<ToughLoveOutput> {
     return getToughLoveReminderFlow(input);
 }
+
+
+// Flow for suggesting a product description
+const SuggestDescriptionInputSchema = z.object({
+  productName: z.string().describe("O nome do produto."),
+  currentDescription: z.string().optional().describe("A descrição atual do produto, possivelmente copiada de outro site."),
+});
+export type SuggestDescriptionInput = z.infer<typeof SuggestDescriptionInputSchema>;
+
+const SuggestDescriptionOutputSchema = z.object({
+  suggestedDescription: z.string().describe("A nova descrição sugerida, otimizada para vendas."),
+});
+export type SuggestDescriptionOutput = z.infer<typeof SuggestDescriptionOutputSchema>;
+
+const suggestDescriptionFlow = ai.defineFlow(
+  {
+    name: 'suggestDescriptionFlow',
+    inputSchema: SuggestDescriptionInputSchema,
+    outputSchema: SuggestDescriptionOutputSchema,
+  },
+  async (input) => {
+    const { output } = await ai.generate({
+      prompt: `Você é um copywriter especialista em criar descrições de produtos que vendem.
+      O usuário forneceu uma descrição básica para o produto. Sua tarefa é reescrevê-la para ser mais atraente, persuasiva e profissional.
+
+      Nome do Produto: "${input.productName}"
+      Descrição Atual: "${input.currentDescription || 'Nenhuma descrição fornecida.'}"
+
+      Instruções:
+      1.  Comece com uma frase de impacto que chame a atenção.
+      2.  Destaque os 2-3 principais benefícios do produto, explicando como ele resolve um problema ou melhora a vida do cliente.
+      3.  Use uma linguagem clara, direta e fácil de entender.
+      4.  Estruture o texto em parágrafos curtos ou bullet points para facilitar a leitura.
+      5.  Termine com uma chamada para ação (Call to Action) suave, incentivando a compra.
+      6.  Seja criativo e evite jargões técnicos excessivos.
+
+      Gere apenas o texto da nova descrição.
+      `,
+      output: {
+        schema: SuggestDescriptionOutputSchema,
+      },
+       config: {
+        safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' }
+        ]
+      }
+    });
+     if (!output) {
+        throw new Error("A IA não conseguiu gerar uma descrição.");
+    }
+    return output;
+  }
+);
+
+export async function suggestDescription(input: SuggestDescriptionInput): Promise<SuggestDescriptionOutput> {
+    return suggestDescriptionFlow(input);
+}

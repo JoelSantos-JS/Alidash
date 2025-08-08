@@ -21,7 +21,7 @@ import { DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/co
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
-import { suggestPrice } from "@/ai/flows/dream-planner";
+import { suggestPrice, suggestDescription } from "@/ai/flows/dream-planner";
 import { useToast } from "@/hooks/use-toast";
 
 
@@ -105,7 +105,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
 
   const { formState: { isSubmitting }, watch, setValue, control } = form;
   const { toast } = useToast();
-  const [isSuggestingPrice, setIsSuggestingPrice] = React.useState(false);
+  const [isSuggesting, setIsSuggesting] = React.useState({ price: false, description: false});
   const [isCustomCategory, setIsCustomCategory] = React.useState(false);
 
   const watchedValues = watch();
@@ -169,7 +169,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
         return;
     }
     
-    setIsSuggestingPrice(true);
+    setIsSuggesting(s => ({...s, price: true}));
     try {
         const result = await suggestPrice({ productName: name, category, totalCost });
         setValue("sellingPrice", result.suggestedPrice, { shouldValidate: true });
@@ -185,9 +185,28 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
             description: "Não foi possível obter a sugestão da IA. Tente novamente."
         })
     } finally {
-        setIsSuggestingPrice(false);
+        setIsSuggesting(s => ({...s, price: false}));
     }
   }
+
+  const handleSuggestDescription = async () => {
+    const { name, description } = watchedValues;
+    if (!name) {
+        toast({ variant: "destructive", title: "Nome do Produto Necessário", description: "Por favor, preencha o nome do produto primeiro." });
+        return;
+    }
+    setIsSuggesting(s => ({...s, description: true}));
+    try {
+        const result = await suggestDescription({ productName: name, currentDescription: description });
+        setValue("description", result.suggestedDescription, { shouldValidate: true });
+        toast({ title: "Descrição Sugerida!", description: "A IA criou uma nova descrição para o seu produto." });
+    } catch (error) {
+         console.error("Error suggesting description:", error);
+        toast({ variant: "destructive", title: "Erro na Sugestão", description: "Não foi possível obter a sugestão da IA. Tente novamente." });
+    } finally {
+        setIsSuggesting(s => ({...s, description: false}));
+    }
+  };
   
   const { totalCost, expectedProfit, profitMargin } = calculateFinancials(watchedValues);
   const isLowProfit = profitMargin < 15 && profitMargin !== 0;
@@ -251,10 +270,18 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                             </FormItem>
                         )} />
                     </div>
-                    <FormField control={form.control} name="description" render={({ field }) => (
+                     <FormField control={form.control} name="description" render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Descrição</FormLabel>
-                            <FormControl><Textarea {...field} /></FormControl>
+                            <FormLabel>
+                                <div className="flex items-center justify-between">
+                                    <span>Descrição</span>
+                                     <Button type="button" variant="link" size="sm" onClick={handleSuggestDescription} disabled={isSuggesting.description} className="p-0 h-auto">
+                                        {isSuggesting.description ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2 text-primary" />}
+                                        Sugerir com IA
+                                    </Button>
+                                </div>
+                            </FormLabel>
+                            <FormControl><Textarea {...field} rows={5} /></FormControl>
                             <FormMessage />
                         </FormItem>
                     )} />
@@ -337,8 +364,8 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                                     <FormControl>
                                         <Input type="number" step="0.01" {...field} className="pr-10"/>
                                     </FormControl>
-                                    <Button type="button" size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" onClick={handleSuggestPrice} disabled={isSuggestingPrice}>
-                                        {isSuggestingPrice ? <Loader2 className="animate-spin" /> : <Sparkles className="text-primary" />}
+                                    <Button type="button" size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" onClick={handleSuggestPrice} disabled={isSuggesting.price}>
+                                        {isSuggesting.price ? <Loader2 className="animate-spin" /> : <Sparkles className="text-primary" />}
                                     </Button>
                                 </div>
                                 <FormMessage />

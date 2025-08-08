@@ -89,15 +89,15 @@ export interface Bet {
   earnedFreebetValue?: number | null; // Valor da freebet ganha com esta aposta
 
   // For 'single' bets
-  betType?: string;
-  stake?: number;
-  odds?: number;
+  betType?: string | null;
+  stake?: number | null;
+  odds?: number | null;
   
   // For 'surebet'
-  subBets?: SubBet[];
-  totalStake?: number;
-  guaranteedProfit?: number;
-  profitPercentage?: number;
+  subBets?: SubBet[] | null;
+  totalStake?: number | null;
+  guaranteedProfit?: number | null;
+  profitPercentage?: number | null;
 
   analysis?: BetAnalysis;
 }
@@ -107,5 +107,3 @@ export interface BetAnalysis {
     justification: string;
     suggestedActions: string[];
 }
-
-    

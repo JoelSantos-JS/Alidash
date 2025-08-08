@@ -121,10 +121,21 @@ export default function BetsPage() {
 
     const handleSaveBet = (betData: Omit<Bet, 'id'>) => {
         if(betToEdit) {
-            setBets(bets.map(b => b.id === betToEdit.id ? { ...betData, id: betToEdit.id } : b));
+            setBets(bets.map(b => b.id === betToEdit.id ? { ...betToEdit, ...betData } : b));
             toast({ title: "Aposta Atualizada!", description: `A aposta no evento "${betData.event}" foi atualizada.` });
         } else {
-            const newBet: Bet = { ...betData, id: new Date().getTime().toString() };
+            const newBet: Bet = { 
+                ...betData, 
+                id: new Date().getTime().toString(),
+                // Initialize unused fields to null to avoid Firestore 'undefined' error
+                betType: betData.betType ?? null,
+                stake: betData.stake ?? null,
+                odds: betData.odds ?? null,
+                subBets: betData.subBets ?? null,
+                totalStake: betData.totalStake ?? null,
+                guaranteedProfit: betData.guaranteedProfit ?? null,
+                profitPercentage: betData.profitPercentage ?? null,
+             };
             setBets([newBet, ...bets]);
             toast({ title: "Aposta Adicionada!", description: `Sua aposta em "${betData.event}" foi registrada.` });
         }

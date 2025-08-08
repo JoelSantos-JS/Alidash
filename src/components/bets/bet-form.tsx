@@ -45,6 +45,12 @@ const betSchema = z.object({
 
   // Surebet fields
   subBets: z.array(subBetSchema).optional(),
+
+  // Calculated fields - not part of the form but for the final object
+  totalStake: z.number().optional(),
+  guaranteedProfit: z.number().optional(),
+  profitPercentage: z.number().optional(),
+
 }).superRefine((data, ctx) => {
     if (data.type === 'single') {
         if (!data.betType || data.betType.length < 3) {
@@ -107,21 +113,23 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
     const totalStake = watchedSubBets.reduce((acc, bet) => acc + (bet.stake || 0), 0);
     if(totalStake <= 0) return { totalStake, guaranteedProfit: 0, profitPercentage: 0 };
 
+    // Para uma surebet real, o retorno de cada resultado deve ser o mais próximo possível.
+    // Usamos a média dos retornos potenciais para calcular o lucro garantido aproximado.
     const potentialReturns = watchedSubBets.map(bet => (bet.stake || 0) * (bet.odds || 0));
     const averageReturn = potentialReturns.reduce((acc, ret) => acc + ret, 0) / potentialReturns.length;
     const guaranteedProfit = averageReturn - totalStake;
-    const profitPercentage = (guaranteedProfit / totalStake) * 100;
+    const profitPercentage = totalStake > 0 ? (guaranteedProfit / totalStake) * 100 : 0;
 
     return { totalStake, guaranteedProfit, profitPercentage };
   }, [watchedType, watchedSubBets]);
 
   const onSubmit = (data: z.infer<typeof betSchema>) => {
+    let finalData: Omit<Bet, 'id'> = data;
     if (data.type === 'surebet') {
         const { totalStake, guaranteedProfit, profitPercentage } = surebetCalculations;
-        onSave({ ...data, totalStake, guaranteedProfit, profitPercentage });
-    } else {
-        onSave(data);
+        finalData = { ...data, totalStake, guaranteedProfit, profitPercentage };
     }
+    onSave(finalData);
   };
 
   return (

@@ -101,6 +101,7 @@ export default function BetsPage() {
              if (bet.status === 'lost' && bet.type === 'single' && bet.stake) {
                 return acc + bet.stake;
             }
+            // Surebets should not have a loss if executed correctly
             return acc;
         }, 0);
         
@@ -120,7 +121,7 @@ export default function BetsPage() {
 
     const handleSaveBet = (betData: Omit<Bet, 'id'>) => {
         if(betToEdit) {
-            setBets(bets.map(b => b.id === betToEdit.id ? { ...betToEdit, ...betData } : b));
+            setBets(bets.map(b => b.id === betToEdit.id ? { ...betData, id: betToEdit.id } : b));
             toast({ title: "Aposta Atualizada!", description: `A aposta no evento "${betData.event}" foi atualizada.` });
         } else {
             const newBet: Bet = { ...betData, id: new Date().getTime().toString() };
@@ -271,5 +272,3 @@ export default function BetsPage() {
         </>
     )
 }
-
-    

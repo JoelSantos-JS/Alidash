@@ -80,10 +80,7 @@ export default function Home() {
     const saveData = async () => {
         try {
             const docRef = doc(db, "user-data", user.uid);
-            // We need to fetch existing data to not overwrite other fields
-            const docSnap = await getDoc(docRef);
-            const existingData = docSnap.exists() ? docSnap.data() : {};
-            await setDoc(docRef, { ...existingData, products });
+            await setDoc(docRef, { products }, { merge: true });
         } catch (error) {
             console.error("Failed to save products to Firestore", error);
             toast({

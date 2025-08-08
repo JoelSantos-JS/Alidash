@@ -67,9 +67,7 @@ export default function DreamsPage() {
      const saveData = async () => {
         try {
             const docRef = doc(db, "user-data", user.uid);
-            const docSnap = await getDoc(docRef);
-            const existingData = docSnap.exists() ? docSnap.data() : {};
-            await setDoc(docRef, { ...existingData, dreams, dreamPlans: plans });
+            await setDoc(docRef, { dreams, dreamPlans: plans }, { merge: true });
         } catch (error) {
             console.error("Failed to save dreams to Firestore", error);
             toast({

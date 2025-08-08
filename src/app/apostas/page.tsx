@@ -65,9 +65,7 @@ export default function BetsPage() {
         const saveData = async () => {
             try {
                 const docRef = doc(db, "user-data", user.uid);
-                const docSnap = await getDoc(docRef);
-                const existingData = docSnap.exists() ? docSnap.data() : {};
-                await setDoc(docRef, { ...existingData, bets });
+                await setDoc(docRef, { bets }, { merge: true });
             } catch (error) {
                 console.error("Failed to save bets to Firestore", error);
                 toast({

@@ -121,30 +121,18 @@ export default function BetsPage() {
     }
 
     const handleSaveBet = (betData: Omit<Bet, 'id'>) => {
-        // Sanitize betData to replace undefined with null before saving.
-        const sanitizedBetData = { ...betData };
-        Object.keys(sanitizedBetData).forEach(key => {
-            if (sanitizedBetData[key as keyof typeof sanitizedBetData] === undefined) {
-                sanitizedBetData[key as keyof typeof sanitizedBetData] = null as any;
-            }
-        });
+        const sanitizedBetData = JSON.parse(JSON.stringify(betData, (key, value) => {
+             return value === undefined ? null : value;
+        }));
+
 
         if(betToEdit) {
-            setBets(bets.map(b => b.id === betToEdit.id ? { ...b, ...sanitizedBetData } : b));
+            setBets(bets.map(b => b.id === betToEdit.id ? { ...b, ...sanitizedBetData, id: b.id } : b));
             toast({ title: "Aposta Atualizada!", description: `A aposta no evento "${betData.event}" foi atualizada.` });
         } else {
-            const newBet: Bet = { 
-                ...sanitizedBetData,
+             const newBet: Bet = {
                 id: new Date().getTime().toString(),
-                betType: sanitizedBetData.betType ?? null,
-                stake: sanitizedBetData.stake ?? null,
-                odds: sanitizedBetData.odds ?? null,
-                subBets: sanitizedBetData.subBets ?? null,
-                totalStake: sanitizedBetData.totalStake ?? null,
-                guaranteedProfit: sanitizedBetData.guaranteedProfit ?? null,
-                profitPercentage: sanitizedBetData.profitPercentage ?? null,
-                earnedFreebetValue: sanitizedBetData.earnedFreebetValue ?? null,
-                notes: sanitizedBetData.notes ?? '',
+                ...sanitizedBetData,
              };
             setBets([newBet, ...bets]);
             toast({ title: "Aposta Adicionada!", description: `Sua aposta em "${betData.event}" foi registrada.` });
@@ -297,3 +285,4 @@ export default function BetsPage() {
     
 
     
+

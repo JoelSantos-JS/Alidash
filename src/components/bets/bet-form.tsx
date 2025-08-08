@@ -317,11 +317,15 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
                         </div>
                          <div>
                             <span className="text-muted-foreground">Lucro Garantido:</span>
-                            <p className="font-bold text-green-500">{surebetCalculations.guaranteedProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                            <p className={cn("font-bold", surebetCalculations.guaranteedProfit >= 0 ? "text-green-500" : "text-destructive")}>
+                                {surebetCalculations.guaranteedProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </p>
                         </div>
                          <div>
                             <span className="text-muted-foreground">Retorno:</span>
-                            <p className="font-bold text-green-500">{surebetCalculations.profitPercentage.toFixed(2)}%</p>
+                            <p className={cn("font-bold", surebetCalculations.profitPercentage >= 0 ? "text-green-500" : "text-destructive")}>
+                                {surebetCalculations.profitPercentage.toFixed(2)}%
+                            </p>
                         </div>
                     </div>
                  )}
@@ -337,5 +341,7 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
     </div>
   );
 }
+
+    
 
     

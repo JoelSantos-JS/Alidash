@@ -36,15 +36,18 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
 
+      const isSuperAdmin = user.email === 'joeltere9@gmail.com';
+
       // Create a document for the user in Firestore
       await setDoc(doc(db, "users", user.uid), {
         email: user.email,
         createdAt: new Date(),
-        isPro: false, // Default value
+        isPro: isSuperAdmin, // isPro is true only for the super admin
+        isSuperAdmin: isSuperAdmin,
       });
       
       // If it's the supreme user, migrate data from local storage.
-      if(user.email === 'joeltere9@gmail.com') {
+      if(isSuperAdmin) {
          const products = localStorage.getItem('product-dash-products');
          const dreams = localStorage.getItem('product-dash-dreams');
          const dreamPlans = localStorage.getItem('product-dash-dream-plans');
@@ -57,11 +60,11 @@ export default function SignupPage() {
             bets: bets ? JSON.parse(bets) : [],
          };
          
-         await setDoc(doc(db, "user-data", user.uid), userData);
+         await setDoc(doc(db, "user-data", user.uid), userData, { merge: true });
 
          toast({
-            title: "Conta criada e dados migrados!",
-            description: "Seus dados locais foram salvos na sua conta.",
+            title: "Conta de Super Usuário Criada!",
+            description: "Seus dados locais foram migrados para sua conta.",
         });
       } else {
         toast({

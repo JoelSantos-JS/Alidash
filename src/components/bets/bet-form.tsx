@@ -99,20 +99,29 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
   const surebetCalculations = React.useMemo(() => {
     // @ts-ignore
     if (watchedType !== 'surebet' || !watchedSubBets || watchedSubBets.length < 2) {
-        return { totalStake: 0, guaranteedProfit: 0, profitPercentage: 0 };
+      return { totalStake: 0, guaranteedProfit: 0, profitPercentage: 0 };
     }
+  
     // @ts-ignore
     const totalStake = watchedSubBets.reduce((acc, bet) => acc + (bet.stake || 0), 0);
-    if(totalStake <= 0) return { totalStake, guaranteedProfit: 0, profitPercentage: 0 };
-
-    // Para uma surebet real, o retorno de cada resultado deve ser o mais próximo possível.
-    // Usamos a média dos retornos potenciais para calcular o lucro garantido aproximado.
-     // @ts-ignore
+  
+    if (totalStake <= 0) {
+      return { totalStake, guaranteedProfit: 0, profitPercentage: 0 };
+    }
+  
+    // Calculate the potential return for each individual bet
+    // @ts-ignore
     const potentialReturns = watchedSubBets.map(bet => (bet.stake || 0) * (bet.odds || 0));
-    const averageReturn = potentialReturns.reduce((acc, ret) => acc + ret, 0) / potentialReturns.length;
-    const guaranteedProfit = averageReturn - totalStake;
+    
+    // The guaranteed return is the minimum potential return across all outcomes.
+    // If it's a true surebet, all returns should be very close.
+    const guaranteedReturn = Math.min(...potentialReturns);
+    
+    // The guaranteed profit is this return minus the total amount staked.
+    const guaranteedProfit = guaranteedReturn - totalStake;
+  
     const profitPercentage = totalStake > 0 ? (guaranteedProfit / totalStake) * 100 : 0;
-
+  
     return { totalStake, guaranteedProfit, profitPercentage };
   }, [watchedType, watchedSubBets]);
 

@@ -75,6 +75,7 @@ export interface SubBet {
     betType: string;
     odds: number;
     stake: number;
+    isFreebet?: boolean;
 }
 
 export interface Bet {

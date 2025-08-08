@@ -4,12 +4,12 @@
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, ShieldCheck, Trash2, PlusCircle } from "lucide-react";
+import { Loader2, ShieldCheck, Trash2, PlusCircle, Star } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import React from 'react';
 
-import type { Bet, SubBet } from "@/types";
+import type { Bet } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +22,7 @@ import { Calendar } from "../ui/calendar";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "../ui/checkbox";
 
 const subBetSchema = z.object({
   id: z.string().optional(),
@@ -29,6 +30,7 @@ const subBetSchema = z.object({
   betType: z.string().min(1, "Obrigatório"),
   odds: z.coerce.number().min(1.01, "Deve ser > 1.00"),
   stake: z.coerce.number().min(0.01, "Deve ser > 0"),
+  isFreebet: z.boolean().optional(),
 });
 
 const baseBetSchema = z.object({
@@ -87,7 +89,7 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
         date: new Date(),
         notes: "",
         // @ts-ignore
-        subBets: [{ id: '1', bookmaker: '', betType: '', odds: 1.5, stake: 10 }, { id: '2', bookmaker: '', betType: '', odds: 1.5, stake: 10 }],
+        subBets: [{ id: '1', bookmaker: '', betType: '', odds: 1.5, stake: 10, isFreebet: false }, { id: '2', bookmaker: '', betType: '', odds: 1.5, stake: 10, isFreebet: false }],
     },
   });
 
@@ -102,25 +104,41 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
     if (watchedType !== 'surebet' || !watchedSubBets || watchedSubBets.length < 2) {
       return { totalStake: 0, guaranteedProfit: 0, profitPercentage: 0 };
     }
-  
+
     // @ts-ignore
-    const totalStake = watchedSubBets.reduce((acc, bet) => acc + (bet.stake || 0), 0);
-  
-    if (totalStake <= 0) {
+    const realMoneyStakes = watchedSubBets.filter(b => !b.isFreebet);
+    // @ts-ignore
+    const totalStake = realMoneyStakes.reduce((acc, bet) => acc + (bet.stake || 0), 0);
+
+    if (totalStake <= 0 && realMoneyStakes.length === watchedSubBets.length) {
       return { totalStake, guaranteedProfit: 0, profitPercentage: 0 };
     }
-  
-    // Calculate the potential return for each individual bet
-    // @ts-ignore
-    const potentialReturns = watchedSubBets.map(bet => (bet.stake || 0) * (bet.odds || 0));
-    
-    // The guaranteed return is the minimum potential return across all outcomes.
-    // If it's a true surebet, all returns should be very close.
-    const guaranteedReturn = Math.min(...potentialReturns);
-    
-    // The guaranteed profit is this return minus the total amount staked.
-    const guaranteedProfit = guaranteedReturn - totalStake;
-  
+
+    // Calculate the potential return for each individual bet outcome
+    const potentialReturns = watchedSubBets.map(bet => {
+        const stake = bet.stake || 0;
+        const odds = bet.odds || 0;
+        // The return from a freebet is just the winnings (stake * (odds - 1))
+        const freebetReturn = stake * (odds - 1);
+        // The return from a real money bet is the full return (stake * odds)
+        const realMoneyReturn = stake * odds;
+
+        // We calculate the net position for each outcome.
+        // For the outcome where bet X wins, the profit is its return minus the sum of all other *real money* stakes.
+        const otherRealMoneyStakes = watchedSubBets
+            // @ts-ignore
+            .filter(other => !other.isFreebet && other.id !== bet.id)
+            // @ts-ignore
+            .reduce((acc, s) => acc + (s.stake || 0), 0);
+        
+        if (bet.isFreebet) {
+            return freebetReturn - otherRealMoneyStakes;
+        }
+        
+        return realMoneyReturn - totalStake;
+    });
+
+    const guaranteedProfit = Math.min(...potentialReturns);
     const profitPercentage = totalStake > 0 ? (guaranteedProfit / totalStake) * 100 : 0;
   
     return { totalStake, guaranteedProfit, profitPercentage };
@@ -250,6 +268,20 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
                                                 </FormItem>
                                             )} />
                                         </div>
+                                         <FormField
+                                            control={control}
+                                            name={`subBets.${index}.isFreebet` as never}
+                                            render={({ field }) => (
+                                                <FormItem className="flex flex-row items-center space-x-2 space-y-0 mt-4">
+                                                    <FormControl>
+                                                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                                    </FormControl>
+                                                    <FormLabel className="text-sm font-normal flex items-center gap-1">
+                                                        <Star className="w-4 h-4 text-yellow-500" /> É uma Aposta Grátis (Freebet)?
+                                                    </FormLabel>
+                                                </FormItem>
+                                            )}
+                                        />
                                          {fields.length > 2 && (
                                             <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2" onClick={() => remove(index)}>
                                                 <Trash2 className="w-4 h-4"/>
@@ -258,7 +290,7 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
                                     </div>
                                 ))}
                             </div>
-                            <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => append({ id: new Date().toISOString() , bookmaker: '', betType: '', odds: 1.5, stake: 0 })}>
+                            <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => append({ id: new Date().toISOString() , bookmaker: '', betType: '', odds: 1.5, stake: 0, isFreebet: false })}>
                                 <PlusCircle className="mr-2"/> Adicionar Aposta
                             </Button>
                         </div>
@@ -341,7 +373,3 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
     </div>
   );
 }
-
-    
-
-    

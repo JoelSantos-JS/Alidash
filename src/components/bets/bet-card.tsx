@@ -1,9 +1,10 @@
+
 "use client";
 
 import type { Bet } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, MoreVertical, Calendar, TrendingUp, TrendingDown, Hourglass, DollarSign, ShieldCheck, List, GitCommitHorizontal } from 'lucide-react';
+import { Edit, Trash2, MoreVertical, Calendar, TrendingUp, TrendingDown, Hourglass, DollarSign, ShieldCheck, List, GitCommitHorizontal, Star } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -26,9 +27,28 @@ const statusMap = {
 export function BetCard({ bet, onEdit, onDelete }: BetCardProps) {
   const statusInfo = statusMap[bet.status];
   
-  const profit = bet.type === 'single'
-    ? (bet.status === 'won' && bet.stake && bet.odds ? bet.stake * bet.odds - bet.stake : (bet.status === 'lost' && bet.stake ? -bet.stake : 0))
-    : (bet.status === 'won' ? bet.guaranteedProfit || 0 : 0);
+  const profit = (() => {
+    if (bet.status !== 'won' && bet.status !== 'lost') return 0;
+
+    if (bet.type === 'single') {
+      const stake = bet.stake ?? 0;
+      const odds = bet.odds ?? 0;
+      if (bet.status === 'won') return (stake * odds) - stake;
+      if (bet.status === 'lost') return -stake;
+      return 0;
+    }
+
+    if (bet.type === 'surebet') {
+      if (bet.status === 'won') return bet.guaranteedProfit ?? 0;
+      // A "loss" in a surebet context is complex. 
+      // If one leg loses, the other should win, resulting in guaranteedProfit.
+      // A true loss would mean a miscalculation or event cancellation. We'll show 0 for now.
+      if (bet.status === 'lost') return bet.guaranteedProfit ?? 0; // Or a more specific calculation if needed
+      return 0;
+    }
+    
+    return 0;
+  })();
 
   return (
     <Card className="flex flex-col h-full overflow-hidden">
@@ -113,12 +133,16 @@ export function BetCard({ bet, onEdit, onDelete }: BetCardProps) {
                                     {bet.subBets.map(sub => (
                                         <li key={sub.id} className="p-2 bg-secondary/50 rounded-md">
                                             <div className='flex justify-between items-center font-semibold'>
-                                                <span>{sub.bookmaker}</span>
+                                                <span className="flex items-center gap-1.5">
+                                                    {sub.isFreebet && <Star className="w-4 h-4 text-yellow-500" />}
+                                                    {sub.bookmaker}
+                                                </span>
                                                 <Badge variant="outline">@{sub.odds.toFixed(2)}</Badge>
                                             </div>
                                             <div className='text-xs text-muted-foreground'>{sub.betType}</div>
                                             <div className='text-right font-bold text-primary mt-1'>
                                                 {sub.stake.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                {sub.isFreebet && <span className='text-xs font-normal text-muted-foreground'> (Freebet)</span>}
                                             </div>
                                         </li>
                                     ))}

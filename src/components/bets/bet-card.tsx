@@ -7,6 +7,7 @@ import { Edit, Trash2, MoreVertical, Calendar, TrendingUp, TrendingDown, Hourgla
 import { Badge } from '../ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { cn } from '@/lib/utils';
 
 interface BetCardProps {
   bet: Bet;
@@ -140,7 +141,7 @@ export function BetCard({ bet, onEdit, onDelete }: BetCardProps) {
                 <statusInfo.icon className="w-4 h-4" />
                 <span>{statusInfo.label}</span>
                 {bet.status !== 'pending' && bet.status !== 'cashed_out' && bet.status !== 'void' && (
-                     <span className="font-bold">({profit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})</span>
+                     <span className={cn("font-bold", profit < 0 && 'text-red-300')}>({profit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})</span>
                 )}
         </Badge>
       </CardFooter>

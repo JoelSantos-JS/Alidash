@@ -132,9 +132,13 @@ export default function Home() {
   };
 
   const handleSaveProduct = (productData: Product) => {
+     const sanitizedProductData = JSON.parse(JSON.stringify(productData, (key, value) => {
+        return value === undefined ? null : value;
+     }));
+
     if(productToEdit) {
       // Editar
-      const updatedProducts = products.map(p => p.id === productToEdit.id ? { ...p, ...productData, id: p.id } : p)
+      const updatedProducts = products.map(p => p.id === productToEdit.id ? { ...p, ...sanitizedProductData, id: p.id } : p)
       setProducts(updatedProducts);
        toast({
         title: "Produto Atualizado!",
@@ -143,7 +147,7 @@ export default function Home() {
     } else {
        // Adicionar
       const newProduct: Product = {
-        ...productData,
+        ...sanitizedProductData,
         id: new Date().getTime().toString(),
         sales: [],
       }

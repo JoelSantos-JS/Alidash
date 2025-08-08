@@ -76,7 +76,6 @@ export interface Bet {
   betType: string; // Ex: "Vitória Time A", "Mais de 2.5 Gols"
   stake: number; // Valor apostado
   odds: number;
-  potentialWinnings: number;
   status: 'pending' | 'won' | 'lost' | 'cashed_out';
   date: Date;
   notes?: string;

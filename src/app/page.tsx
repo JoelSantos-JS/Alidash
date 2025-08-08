@@ -28,117 +28,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { SaleForm } from "@/components/product/sale-form";
+import { useAuth } from "@/hooks/use-auth";
+import { db } from "@/lib/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
-const initialProducts: Product[] = [
-  {
-    id: "1",
-    name: "Smartwatch Pro X",
-    category: "Eletrônicos",
-    supplier: "Top-rated Tech Store",
-    aliexpressLink: "#",
-    imageUrl: "https://placehold.co/600x600.png",
-    description: "Um smartwatch de última geração com tela AMOLED, monitoramento cardíaco, GPS e bateria de longa duração.",
-    purchasePrice: 79.99,
-    shippingCost: 5.0,
-    importTaxes: 15.0,
-    packagingCost: 1.5,
-    marketingCost: 10.0,
-    otherCosts: 0,
-    totalCost: 111.49,
-    sellingPrice: 149.99,
-    expectedProfit: 38.5,
-    profitMargin: 25.67,
-    quantity: 50,
-    quantitySold: 10,
-    status: 'selling',
-    purchaseDate: new Date("2023-10-01"),
-    roi: 34.53,
-    actualProfit: 385.0,
-    sales: [{ id: '1', date: new Date("2023-11-15"), quantity: 10, buyerName: "Cliente Anônimo" }],
-  },
-  {
-    id: "2",
-    name: "Fones de Ouvido Sem Fio",
-    category: "Áudio",
-    supplier: "AudioPhile Inc.",
-    aliexpressLink: "#",
-    imageUrl: "https://placehold.co/600x600.png",
-    description: "Mergulhe em um som cristalino com estes fones de ouvido ergonômicos sem fio.",
-    purchasePrice: 49.99,
-    shippingCost: 3.5,
-    importTaxes: 10.0,
-    packagingCost: 1.0,
-    marketingCost: 8.0,
-    otherCosts: 0,
-    totalCost: 72.49,
-    sellingPrice: 99.99,
-    expectedProfit: 27.5,
-    profitMargin: 27.5,
-    quantity: 100,
-    quantitySold: 35,
-    status: 'selling',
-    purchaseDate: new Date("2023-09-15"),
-    roi: 37.94,
-    actualProfit: 962.5,
-    sales: [{ id: '1', date: new Date("2023-10-20"), quantity: 35, buyerName: "Cliente Anônimo" }],
-  },
-   {
-    id: "3",
-    name: "Liquidificador Portátil",
-    category: "Casa e Cozinha",
-    supplier: "Kitchen Gadgets Co.",
-    aliexpressLink: "#",
-    imageUrl: "https://placehold.co/600x600.png",
-    description: "Desfrute de smoothies frescos em qualquer lugar com este liquidificador portátil recarregável por USB.",
-    purchasePrice: 25.50,
-    shippingCost: 2.0,
-    importTaxes: 5.0,
-    packagingCost: 0.75,
-    marketingCost: 5.0,
-    otherCosts: 0,
-    totalCost: 38.25,
-    sellingPrice: 49.99,
-    expectedProfit: 11.74,
-    profitMargin: 23.48,
-    quantity: 200,
-    quantitySold: 150,
-    status: 'selling',
-    purchaseDate: new Date("2023-11-05"),
-    roi: 30.7,
-    actualProfit: 1761,
-    sales: [{ id: '1', date: new Date("2023-12-01"), quantity: 150, buyerName: "Cliente Anônimo" }],
-  },
-  {
-    id: "4",
-    name: "Luminária de Mesa LED com Carregador",
-    category: "Iluminação",
-    supplier: "Modern Lighting",
-    aliexpressLink: "#",
-    imageUrl: "https://placehold.co/600x600.png",
-    description: "Luminária de mesa LED moderna e minimalista com níveis de brilho ajustáveis e carregador sem fio.",
-    purchasePrice: 32.00,
-    shippingCost: 4.0,
-    importTaxes: 8.0,
-    packagingCost: 1.2,
-    marketingCost: 6.0,
-    otherCosts: 0,
-    totalCost: 51.20,
-    sellingPrice: 69.99,
-    expectedProfit: 18.79,
-    profitMargin: 26.85,
-    quantity: 80,
-    quantitySold: 20,
-    status: 'selling',
-    purchaseDate: new Date("2023-10-20"),
-    roi: 36.7,
-    actualProfit: 375.8,
-    sales: [{ id: '1', date: new Date("2023-11-25"), quantity: 20, buyerName: "Cliente Anônimo" }],
-  },
-];
+const initialProducts: Product[] = [];
 
-const LOCAL_STORAGE_KEY = 'product-dash-products';
 
 export default function Home() {
+  const { user, loading: authLoading } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -153,44 +51,52 @@ export default function Home() {
 
 
   useEffect(() => {
-    // This effect should only run on the client side
-    if (typeof window === 'undefined') {
-      return;
-    }
-    try {
-      const savedProducts = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (savedProducts) {
-        const parsedProducts = JSON.parse(savedProducts).map((p: any) => ({
-          ...p,
-          purchaseDate: new Date(p.purchaseDate),
-          sales: p.sales ? p.sales.map((s: any) => ({...s, date: new Date(s.date)})) : [],
-        }));
-        setProducts(parsedProducts);
-      } else {
-        setProducts(initialProducts);
-      }
-    } catch (error) {
-      console.error("Failed to load products from localStorage", error);
-      setProducts(initialProducts);
-    } finally {
+    if (authLoading || !user) return;
+
+    const fetchData = async () => {
+        const docRef = doc(db, "user-data", user.uid);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists() && docSnap.data().products) {
+            const data = docSnap.data().products;
+             const parsedProducts = data.map((p: any) => ({
+                ...p,
+                purchaseDate: p.purchaseDate?.toDate ? p.purchaseDate.toDate() : new Date(p.purchaseDate),
+                sales: p.sales ? p.sales.map((s: any) => ({...s, date: s.date?.toDate ? s.date.toDate() : new Date(s.date)})) : [],
+            }));
+            setProducts(parsedProducts);
+        } else {
+            setProducts(initialProducts);
+        }
         setIsLoading(false);
     }
-  }, []);
+    fetchData();
+
+  }, [user, authLoading]);
 
   useEffect(() => {
-    if(!isLoading) {
+    if(isLoading || authLoading || !user) return;
+    
+    const saveData = async () => {
         try {
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(products));
+            const docRef = doc(db, "user-data", user.uid);
+            // We need to fetch existing data to not overwrite other fields
+            const docSnap = await getDoc(docRef);
+            const existingData = docSnap.exists() ? docSnap.data() : {};
+            await setDoc(docRef, { ...existingData, products });
         } catch (error) {
-            console.error("Failed to save products to localStorage", error);
+            console.error("Failed to save products to Firestore", error);
             toast({
                 variant: 'destructive',
                 title: "Erro ao Salvar Dados",
-                description: "Não foi possível salvar os produtos no seu navegador. Suas alterações podem ser perdidas.",
+                description: "Não foi possível salvar os produtos na nuvem. Suas alterações podem ser perdidas.",
             })
         }
     }
-  }, [products, isLoading, toast]);
+    
+    saveData();
+    
+  }, [products, isLoading, user, authLoading, toast]);
 
 
   const filteredProducts = useMemo(() => {
@@ -287,7 +193,7 @@ export default function Home() {
                 quantitySold: newQuantitySold,
                 actualProfit: newActualProfit,
                 status: newStatus,
-                sales: [...p.sales, newSale]
+                sales: [...(p.sales || []), newSale]
             }
         }
         return p;

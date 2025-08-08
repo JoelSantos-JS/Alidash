@@ -24,64 +24,15 @@ import { SummaryCard } from '@/components/dashboard/summary-card';
 import { DollarSign, Percent, TrendingUp, TrendingDown } from 'lucide-react';
 import { BetPerformanceChart } from '@/components/bets/bet-performance-chart';
 import { BetStatusChart } from '@/components/bets/bet-status-chart';
+import { useAuth } from '@/hooks/use-auth';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 
-const initialBets: Bet[] = [
-  {
-    id: '1',
-    type: 'single',
-    sport: 'Futebol',
-    event: 'Flamengo vs Palmeiras',
-    betType: 'Vitória do Flamengo',
-    stake: 50,
-    odds: 2.1,
-    status: 'pending',
-    date: new Date(),
-    notes: 'Palmeiras com desfalques importantes no meio campo.'
-  },
-    {
-    id: '2',
-    type: 'single',
-    sport: 'Basquete',
-    event: 'Lakers vs Celtics',
-    betType: 'Mais de 220.5 Pontos',
-    stake: 100,
-    odds: 1.9,
-    status: 'won',
-    date: new Date('2024-07-20'),
-    notes: 'Ambos os times com média de pontuação alta nos últimos 5 jogos.'
-  },
-   {
-    id: '3',
-    type: 'single',
-    sport: 'Futebol',
-    event: 'Corinthians vs São Paulo',
-    betType: 'Empate',
-    stake: 20,
-    odds: 3.4,
-    status: 'lost',
-    date: new Date('2024-07-21'),
-  },
-  {
-    id: '4',
-    type: 'surebet',
-    sport: 'Tênis',
-    event: 'Player A vs Player B',
-    date: new Date('2024-07-25'),
-    status: 'pending',
-    totalStake: 1000,
-    guaranteedProfit: 25.8,
-    profitPercentage: 2.58,
-    subBets: [
-        { id: 'sb1', bookmaker: 'Casa A', betType: 'Vitória Player A', odds: 1.8, stake: 569.89 },
-        { id: 'sb2', bookmaker: 'Casa B', betType: 'Vitória Player B', odds: 2.3, stake: 430.11 },
-    ]
-  }
-];
-
-const LOCAL_STORAGE_KEY_BETS = 'product-dash-bets';
+const initialBets: Bet[] = [];
 
 export default function BetsPage() {
+    const { user, loading: authLoading } = useAuth();
     const [bets, setBets] = useState<Bet[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -89,36 +40,46 @@ export default function BetsPage() {
     const [betToDelete, setBetToDelete] = useState<Bet | null>(null);
     const { toast } = useToast();
 
-    useEffect(() => {
-        try {
-            const savedBets = localStorage.getItem(LOCAL_STORAGE_KEY_BETS);
-            if (savedBets) {
-                setBets(JSON.parse(savedBets).map((b: any) => ({...b, date: new Date(b.date)})));
+     useEffect(() => {
+        if (authLoading || !user) return;
+
+        const fetchData = async () => {
+            const docRef = doc(db, "user-data", user.uid);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists() && docSnap.data().bets) {
+                const data = docSnap.data().bets;
+                 const parsedBets = data.map((b: any) => ({...b, date: b.date?.toDate ? b.date.toDate() : new Date(b.date)}));
+                setBets(parsedBets);
             } else {
                 setBets(initialBets);
             }
-        } catch (error) {
-            console.error("Failed to load bets from localStorage", error);
-            setBets(initialBets);
-            toast({
-                variant: "destructive",
-                title: "Erro ao Carregar Apostas",
-                description: "Não foi possível carregar os dados. Usando dados iniciais.",
-            });
-        } finally {
             setIsLoading(false);
         }
-    }, [toast]);
+        fetchData();
+    }, [user, authLoading]);
 
     useEffect(() => {
-        if (!isLoading) {
+        if (isLoading || authLoading || !user) return;
+
+        const saveData = async () => {
             try {
-                localStorage.setItem(LOCAL_STORAGE_KEY_BETS, JSON.stringify(bets));
-            } catch(error) {
-                 console.error("Failed to save bets to localStorage", error);
+                const docRef = doc(db, "user-data", user.uid);
+                const docSnap = await getDoc(docRef);
+                const existingData = docSnap.exists() ? docSnap.data() : {};
+                await setDoc(docRef, { ...existingData, bets });
+            } catch (error) {
+                console.error("Failed to save bets to Firestore", error);
+                toast({
+                    variant: 'destructive',
+                    title: "Erro ao Salvar Dados",
+                    description: "Não foi possível salvar as apostas na nuvem.",
+                })
             }
         }
-    }, [bets, isLoading]);
+        saveData();
+    }, [bets, isLoading, user, authLoading, toast]);
+
 
     const summaryStats = useMemo(() => {
         const totalStaked = bets.reduce((acc, bet) => {

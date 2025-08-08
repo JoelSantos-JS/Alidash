@@ -23,33 +23,14 @@ import {
 } from "@/components/ui/alert-dialog"
 import { AlertTriangle } from 'lucide-react';
 import { DreamRefineDialog } from '@/components/dreams/dream-refine-dialog';
+import { useAuth } from '@/hooks/use-auth';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
-
-const initialDreams: Dream[] = [
-  {
-    id: '1',
-    name: 'Viagem para o Chile',
-    type: 'travel',
-    targetAmount: 20000,
-    currentAmount: 7500,
-    status: 'planning',
-    notes: 'Verificar a melhor época para ver a neve e pesquisar vinícolas.',
-  },
-  {
-    id: '2',
-    name: 'Expandir linha de produtos',
-    type: 'business',
-    targetAmount: 50000,
-    currentAmount: 12000,
-    status: 'in_progress',
-    notes: 'Focar em produtos de casa inteligente e gadgets de produtividade.',
-  }
-];
-
-const LOCAL_STORAGE_KEY_DREAMS = 'product-dash-dreams';
-const LOCAL_STORAGE_KEY_PLANS = 'product-dash-dream-plans';
+const initialDreams: Dream[] = [];
 
 export default function DreamsPage() {
+  const { user, loading: authLoading } = useAuth();
   const [dreams, setDreams] = useState<Dream[]>([]);
   const [plans, setPlans] = useState<Record<string, DreamPlan>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -61,33 +42,45 @@ export default function DreamsPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    try {
-      const savedDreams = localStorage.getItem(LOCAL_STORAGE_KEY_DREAMS);
-      const savedPlans = localStorage.getItem(LOCAL_STORAGE_KEY_PLANS);
+    if (authLoading || !user) return;
 
-      if (savedDreams) {
-        setDreams(JSON.parse(savedDreams));
-      } else {
-        setDreams(initialDreams);
-      }
+    const fetchData = async () => {
+        const docRef = doc(db, "user-data", user.uid);
+        const docSnap = await getDoc(docRef);
 
-      if (savedPlans) {
-        setPlans(JSON.parse(savedPlans));
-      }
-    } catch (error) {
-      console.error("Failed to load dreams from localStorage", error);
-      setDreams(initialDreams);
-    } finally {
-      setIsLoading(false);
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            setDreams(data.dreams || initialDreams);
+            setPlans(data.dreamPlans || {});
+        } else {
+            setDreams(initialDreams);
+            setPlans({});
+        }
+        setIsLoading(false);
     }
-  }, []);
+    fetchData();
+  }, [user, authLoading]);
 
   useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem(LOCAL_STORAGE_KEY_DREAMS, JSON.stringify(dreams));
-      localStorage.setItem(LOCAL_STORAGE_KEY_PLANS, JSON.stringify(plans));
+    if (isLoading || authLoading || !user) return;
+
+     const saveData = async () => {
+        try {
+            const docRef = doc(db, "user-data", user.uid);
+            const docSnap = await getDoc(docRef);
+            const existingData = docSnap.exists() ? docSnap.data() : {};
+            await setDoc(docRef, { ...existingData, dreams, dreamPlans: plans });
+        } catch (error) {
+            console.error("Failed to save dreams to Firestore", error);
+            toast({
+                variant: 'destructive',
+                title: "Erro ao Salvar Dados",
+                description: "Não foi possível salvar os sonhos na nuvem.",
+            })
+        }
     }
-  }, [dreams, plans, isLoading]);
+    saveData();
+  }, [dreams, plans, isLoading, user, authLoading, toast]);
   
   useEffect(() => {
     if (isLoading || dreams.length === 0) return;

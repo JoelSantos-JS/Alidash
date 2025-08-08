@@ -154,7 +154,7 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
         finalData = { ...data, totalStake, guaranteedProfit, profitPercentage };
     }
     // Set earnedFreebetValue to undefined if it's 0 or null to avoid saving it in DB
-    if(finalData.earnedFreebetValue === 0 || finalData.earnedFreebetValue === null) {
+    if(!finalData.earnedFreebetValue) {
         delete finalData.earnedFreebetValue;
     }
     onSave(finalData);
@@ -394,7 +394,3 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
     </div>
   );
 }
-
-    
-
-    

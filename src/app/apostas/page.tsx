@@ -121,23 +121,30 @@ export default function BetsPage() {
     }
 
     const handleSaveBet = (betData: Omit<Bet, 'id'>) => {
+        // Sanitize betData to replace undefined with null before saving.
+        const sanitizedBetData = { ...betData };
+        Object.keys(sanitizedBetData).forEach(key => {
+            if (sanitizedBetData[key as keyof typeof sanitizedBetData] === undefined) {
+                sanitizedBetData[key as keyof typeof sanitizedBetData] = null as any;
+            }
+        });
+
         if(betToEdit) {
-            setBets(bets.map(b => b.id === betToEdit.id ? { ...b, ...betData } : b));
+            setBets(bets.map(b => b.id === betToEdit.id ? { ...b, ...sanitizedBetData } : b));
             toast({ title: "Aposta Atualizada!", description: `A aposta no evento "${betData.event}" foi atualizada.` });
         } else {
             const newBet: Bet = { 
-                ...betData, 
+                ...sanitizedBetData,
                 id: new Date().getTime().toString(),
-                // Explicitly set unused optional fields to null to avoid Firestore 'undefined' error
-                betType: betData.betType ?? null,
-                stake: betData.stake ?? null,
-                odds: betData.odds ?? null,
-                subBets: betData.subBets ?? null,
-                totalStake: betData.totalStake ?? null,
-                guaranteedProfit: betData.guaranteedProfit ?? null,
-                profitPercentage: betData.profitPercentage ?? null,
-                earnedFreebetValue: betData.earnedFreebetValue ?? null,
-                notes: betData.notes ?? '',
+                betType: sanitizedBetData.betType ?? null,
+                stake: sanitizedBetData.stake ?? null,
+                odds: sanitizedBetData.odds ?? null,
+                subBets: sanitizedBetData.subBets ?? null,
+                totalStake: sanitizedBetData.totalStake ?? null,
+                guaranteedProfit: sanitizedBetData.guaranteedProfit ?? null,
+                profitPercentage: sanitizedBetData.profitPercentage ?? null,
+                earnedFreebetValue: sanitizedBetData.earnedFreebetValue ?? null,
+                notes: sanitizedBetData.notes ?? '',
              };
             setBets([newBet, ...bets]);
             toast({ title: "Aposta Adicionada!", description: `Sua aposta em "${betData.event}" foi registrada.` });
@@ -286,5 +293,7 @@ export default function BetsPage() {
         </>
     )
 }
+
+    
 
     

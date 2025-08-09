@@ -47,9 +47,8 @@ export default function DreamsPage() {
         const docRef = doc(db, "user-data", user.uid);
         const docSnap = await getDoc(docRef);
 
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            setDreams(data.dreams || initialDreams);
+        if (docSnap.exists() && docSnap.data().dreams) {
+            setDreams(docSnap.data().dreams || initialDreams);
         } else {
             setDreams(initialDreams);
         }
@@ -63,14 +62,15 @@ export default function DreamsPage() {
 
      const saveData = async () => {
         try {
-            // Remove 'plan' property if it's null or undefined before saving
             const dreamsToSave = dreams.map(d => {
                 const { plan, ...dreamWithoutPlan } = d;
-                if (plan) { // Only include plan if it's not null/undefined
+                // Only include plan if it's not null/undefined
+                if (plan && Object.keys(plan).length > 0) { 
                     return { ...dreamWithoutPlan, plan };
                 }
-                return dreamWithoutPlan; // Return the dream object without the plan property
+                return dreamWithoutPlan;
             });
+
             const docRef = doc(db, "user-data", user.uid);
             await setDoc(docRef, { dreams: dreamsToSave }, { merge: true });
         } catch (error) {
@@ -180,7 +180,7 @@ export default function DreamsPage() {
             return;
         }
 
-        // Remove imageUrl to avoid token limit issues
+        // Remove imageUrl to avoid token limit issues and serialization problems
         const { imageUrl, ...planToRefine } = existingPlan;
 
         const result = await planDream({
@@ -190,7 +190,8 @@ export default function DreamsPage() {
             refinementInstruction: instruction,
         });
         
-        setDreams(dreams.map(d => d.id === dreamId ? { ...d, plan: { ...result, imageUrl: d.plan?.imageUrl || result.imageUrl } } : d));
+        // Add the old imageUrl back to the new plan
+        setDreams(dreams.map(d => d.id === dreamId ? { ...d, plan: { ...result, imageUrl: imageUrl || result.imageUrl } } : d));
 
         toast({
             title: "Plano Aprimorado!",

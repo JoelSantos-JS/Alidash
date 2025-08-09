@@ -50,13 +50,11 @@ export default function SignupPage() {
       if(isSuperAdmin) {
          const products = localStorage.getItem('product-dash-products');
          const dreams = localStorage.getItem('product-dash-dreams');
-         const dreamPlans = localStorage.getItem('product-dash-dream-plans');
          const bets = localStorage.getItem('product-dash-bets');
 
          const userData = {
             products: products ? JSON.parse(products) : [],
             dreams: dreams ? JSON.parse(dreams) : [],
-            dreamPlans: dreamPlans ? JSON.parse(dreamPlans) : {},
             bets: bets ? JSON.parse(bets) : [],
          };
          

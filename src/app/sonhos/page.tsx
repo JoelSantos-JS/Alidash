@@ -63,13 +63,13 @@ export default function DreamsPage() {
 
      const saveData = async () => {
         try {
-            // Remove 'plan' property if it's null before saving
+            // Remove 'plan' property if it's null or undefined before saving
             const dreamsToSave = dreams.map(d => {
                 const { plan, ...dreamWithoutPlan } = d;
-                if (plan) {
+                if (plan) { // Only include plan if it's not null/undefined
                     return { ...dreamWithoutPlan, plan };
                 }
-                return dreamWithoutPlan;
+                return dreamWithoutPlan; // Return the dream object without the plan property
             });
             const docRef = doc(db, "user-data", user.uid);
             await setDoc(docRef, { dreams: dreamsToSave }, { merge: true });

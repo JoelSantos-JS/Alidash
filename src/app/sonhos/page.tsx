@@ -32,7 +32,6 @@ const initialDreams: Dream[] = [];
 export default function DreamsPage() {
   const { user, loading: authLoading } = useAuth();
   const [dreams, setDreams] = useState<Dream[]>([]);
-  const [plans, setPlans] = useState<Record<string, DreamPlan>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isPlanning, setIsPlanning] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -51,10 +50,8 @@ export default function DreamsPage() {
         if (docSnap.exists()) {
             const data = docSnap.data();
             setDreams(data.dreams || initialDreams);
-            setPlans(data.dreamPlans || {});
         } else {
             setDreams(initialDreams);
-            setPlans({});
         }
         setIsLoading(false);
     }
@@ -66,8 +63,16 @@ export default function DreamsPage() {
 
      const saveData = async () => {
         try {
+            // Remove 'plan' property if it's null before saving
+            const dreamsToSave = dreams.map(d => {
+                const { plan, ...dreamWithoutPlan } = d;
+                if (plan) {
+                    return { ...dreamWithoutPlan, plan };
+                }
+                return dreamWithoutPlan;
+            });
             const docRef = doc(db, "user-data", user.uid);
-            await setDoc(docRef, { dreams, dreamPlans: plans }, { merge: true });
+            await setDoc(docRef, { dreams: dreamsToSave }, { merge: true });
         } catch (error) {
             console.error("Failed to save dreams to Firestore", error);
             toast({
@@ -78,7 +83,7 @@ export default function DreamsPage() {
         }
     }
     saveData();
-  }, [dreams, plans, isLoading, user, authLoading, toast]);
+  }, [dreams, isLoading, user, authLoading, toast]);
   
   useEffect(() => {
     if (isLoading || dreams.length === 0) return;
@@ -129,11 +134,6 @@ export default function DreamsPage() {
      const dream = dreams.find(p => p.id === dreamId);
      if (!dream) return;
     setDreams(dreams.filter(d => d.id !== dreamId));
-    setPlans(prev => {
-        const newPlans = {...prev};
-        delete newPlans[dreamId];
-        return newPlans;
-    });
     setDreamToDelete(null);
      toast({ variant: 'destructive', title: "Sonho Excluído!", description: `O sonho "${dream.name}" foi removido.` });
   }
@@ -141,7 +141,7 @@ export default function DreamsPage() {
   const handlePlanDream = async (dream: Dream) => {
     setIsPlanning(dream.id);
     try {
-      const existingPlan = plans[dream.id];
+      const existingPlan = dream.plan;
       if (existingPlan) {
         toast({
             title: 'Gerando novo plano...',
@@ -150,7 +150,8 @@ export default function DreamsPage() {
       }
       
       const result = await planDream({ dreamName: dream.name, dreamType: dream.type });
-      setPlans(prev => ({...prev, [dream.id]: result}));
+      setDreams(dreams.map(d => d.id === dream.id ? { ...d, plan: result } : d));
+
       toast({
         title: "Plano Gerado com Sucesso!",
         description: `A IA criou um plano para o seu sonho: "${dream.name}".`
@@ -173,7 +174,7 @@ export default function DreamsPage() {
     setIsPlanning(dreamId);
     setDreamToRefine(null);
     try {
-        const existingPlan = plans[dreamId];
+        const existingPlan = dreamToRefine.plan;
         if (!existingPlan) {
             toast({ variant: "destructive", title: "Nenhum plano para refinar!", description: "Gere um plano inicial antes de aprimorá-lo."})
             return;
@@ -189,8 +190,8 @@ export default function DreamsPage() {
             refinementInstruction: instruction,
         });
         
-        // Mantém a imagem original, pois a IA não gera uma nova ao refinar
-        setPlans(prev => ({...prev, [dreamId]: { ...result, imageUrl: prev[dreamId]?.imageUrl || result.imageUrl }}));
+        setDreams(dreams.map(d => d.id === dreamId ? { ...d, plan: { ...result, imageUrl: d.plan?.imageUrl || result.imageUrl } } : d));
+
         toast({
             title: "Plano Aprimorado!",
             description: "A IA atualizou o plano com base na sua instrução."
@@ -241,7 +242,7 @@ export default function DreamsPage() {
                     <DreamCard 
                         key={dream.id} 
                         dream={dream}
-                        plan={plans[dream.id]}
+                        plan={dream.plan}
                         isPlanning={isPlanning === dream.id}
                         onPlan={() => handlePlanDream(dream)}
                         onRefine={() => setDreamToRefine(dream)}

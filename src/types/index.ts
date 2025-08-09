@@ -50,7 +50,7 @@ export interface Dream {
   currentAmount: number;
   status: 'planning' | 'in_progress' | 'completed';
   notes?: string;
-  plan?: DreamPlan;
+  plan?: DreamPlan | null;
 }
 
 export interface DreamPlan {

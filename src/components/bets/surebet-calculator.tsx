@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Trash2, TrendingUp, DollarSign, Percent, AlertCircle } from 'lucide-react';
+import { PlusCircle, Trash2, TrendingUp, DollarSign, Percent, AlertCircle, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '../ui/label';
 
@@ -16,42 +16,51 @@ type OddInput = {
   betType: string;
 };
 
+// Resultado para um único card de aposta (cálculo isolado)
 type IndividualResult = {
   lucro: number;
   roi: number;
-  retorno: number;
 };
 
+// Resultado da operação de surebet combinada
 type SurebetResult = {
-    isSurebet: boolean;
-    lucroMinimo: number;
-    roiMinimo: number;
+  isSurebet: boolean;
+  lucroMinimo: number;
+  roiMinimo: number;
+  stakeTotal: number;
 };
 
+// Função de cálculo principal
+function calculateResults(inputs: OddInput[]): { individualResults: IndividualResult[], surebetResult: SurebetResult | null } {
+  const individualResults: IndividualResult[] = inputs.map(input => {
+    const odd = parseFloat(input.oddValue);
+    const stake = parseFloat(input.stakeValue);
 
-// Lógica para quando o usuário digita as stakes manualmente
-function calculateManualResults(odds: number[], stakes: number[]): { individualResults: IndividualResult[], surebetResult: SurebetResult, stakeTotal: number } | null {
-  if (odds.length !== stakes.length || odds.some(isNaN) || stakes.some(isNaN) || odds.length === 0) {
-    return null;
+    if (isNaN(odd) || isNaN(stake) || stake <= 0) {
+      return { lucro: 0, roi: 0 };
+    }
+
+    const lucro = (odd * stake) - stake;
+    const roi = (lucro / stake) * 100;
+    return { lucro, roi };
+  });
+  
+  const validInputs = inputs.filter(i => !isNaN(parseFloat(i.oddValue)) && !isNaN(parseFloat(i.stakeValue)));
+
+  if(validInputs.length < 2) {
+    return { individualResults, surebetResult: null };
   }
+
+  const stakes = validInputs.map(i => parseFloat(i.stakeValue));
+  const odds = validInputs.map(i => parseFloat(i.oddValue));
   
   const stakeTotal = stakes.reduce((acc, s) => acc + s, 0);
-  if (stakeTotal <= 0) return null;
+  if(stakeTotal <= 0) {
+     return { individualResults, surebetResult: null };
+  }
 
-  // 1. Calculate individual profit for each bet card (isolated calculation)
-  const individualResults = stakes.map((stake, i) => {
-    if(isNaN(stake) || stake <= 0 || isNaN(odds[i]) || odds[i] <= 1) {
-        return { lucro: 0, roi: 0, retorno: 0 };
-    }
-    const retorno = odds[i] * stake;
-    const lucro = retorno - stake;
-    const roi = (lucro / stake) * 100;
-    return { lucro, roi, retorno };
-  });
-
-  // 2. Calculate the surebet profit for the entire operation
-  const returnsIfWin = odds.map((o, i) => o * stakes[i]);
-  const profitsIfWin = returnsIfWin.map(retorno => retorno - stakeTotal);
+  // Simula o lucro para cada cenário possível (se a casa X ganhar)
+  const profitsIfWin = odds.map((odd, i) => (odd * stakes[i]) - stakeTotal);
   
   const lucroMinimo = Math.min(...profitsIfWin);
   
@@ -59,15 +68,11 @@ function calculateManualResults(odds: number[], stakes: number[]): { individualR
     isSurebet: lucroMinimo > 0,
     lucroMinimo,
     roiMinimo: (lucroMinimo / stakeTotal) * 100,
-  };
-  
-  return {
-    individualResults,
-    surebetResult,
     stakeTotal,
   };
-}
 
+  return { individualResults, surebetResult };
+}
 
 export function SurebetCalculator() {
   const [betInputs, setBetInputs] = useState<OddInput[]>([
@@ -88,16 +93,8 @@ export function SurebetCalculator() {
     setBetInputs(betInputs.map(bet => (bet.id === id ? { ...bet, [field]: value } : bet)));
   };
 
-
   const calculation = useMemo(() => {
-    const parsedOdds = betInputs.map(b => parseFloat(b.oddValue));
-    const parsedStakes = betInputs.map(b => parseFloat(b.stakeValue));
-    
-    if (parsedOdds.length < 2 || parsedOdds.some(v => isNaN(v)) || parsedStakes.some(v => isNaN(v)) ) {
-      return null;
-    }
-    
-    return calculateManualResults(parsedOdds, parsedStakes);
+    return calculateResults(betInputs);
   }, [betInputs]);
 
   return (
@@ -110,20 +107,18 @@ export function SurebetCalculator() {
                     return (
                         <Card key={betInput.id} className="bg-background flex flex-col">
                             <CardHeader className="p-4 pb-2 flex-row justify-between items-center">
-                                <CardTitle className="text-base truncate">
-                                    <Input 
-                                        value={betInput.betType} 
-                                        onChange={(e) => handleBetInputChange(betInput.id, 'betType', e.target.value)} 
-                                        className="border-0 bg-transparent p-0 text-base font-semibold focus-visible:ring-0"
-                                        placeholder={`Casa ${index + 1}`}
-                                    />
-                                </CardTitle>
+                                 <Input 
+                                    value={betInput.betType} 
+                                    onChange={(e) => handleBetInputChange(betInput.id, 'betType', e.target.value)} 
+                                    className="border-0 bg-transparent p-0 text-base font-semibold focus-visible:ring-0"
+                                    placeholder={`Casa ${index + 1}`}
+                                />
                                  <Button
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => handleRemoveBetInput(betInput.id)}
                                     disabled={betInputs.length <= 2}
-                                    className="text-muted-foreground hover:text-destructive w-6 h-6"
+                                    className="text-muted-foreground hover:text-destructive w-6 h-6 flex-shrink-0"
                                 >
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -190,34 +185,34 @@ export function SurebetCalculator() {
                     <div className='p-4 bg-muted rounded-lg flex-1'>
                         <p className="text-sm text-muted-foreground flex items-center gap-2 mb-1"><DollarSign/> Stake Total</p>
                         <p className="text-2xl font-bold p-0 h-auto bg-transparent border-0 focus-visible:ring-0">
-                        {calculation?.stakeTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'R$ 0,00'}
+                        {calculation?.surebetResult?.stakeTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'R$ 0,00'}
                         </p>
                         <p className="text-xs text-muted-foreground">Soma de todas as stakes inseridas</p>
                     </div>
-                    {calculation ? (
+                    {calculation.surebetResult ? (
                         calculation.surebetResult.isSurebet ? (
                         <>
-                            <div className='p-4 bg-muted rounded-lg flex-1'>
-                                <p className="text-sm text-muted-foreground flex items-center gap-2 mb-1"><TrendingUp/> Lucro Mínimo Garantido</p>
-                                <p className={cn("text-2xl font-bold", "text-green-500")}>
+                            <div className='p-4 bg-green-500/10 text-green-500 rounded-lg flex-1'>
+                                <p className="text-sm text-green-400 flex items-center gap-2 mb-1"><ShieldCheck/> Lucro Mínimo Garantido</p>
+                                <p className="text-2xl font-bold">
                                     {calculation.surebetResult.lucroMinimo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                 </p>
-                                <p className="text-xs text-muted-foreground">Menor lucro possível na operação</p>
+                                <p className="text-xs text-green-400/80">Menor lucro possível na operação</p>
                             </div>
-                            <div className='p-4 bg-muted rounded-lg flex-1'>
-                                <p className="text-sm text-muted-foreground flex items-center gap-2 mb-1"><Percent/> ROI Mínimo</p>
-                                <p className={cn("text-2xl font-bold", "text-green-500")}>
+                            <div className='p-4 bg-green-500/10 text-green-500 rounded-lg flex-1'>
+                                <p className="text-sm text-green-400 flex items-center gap-2 mb-1"><Percent/> ROI Mínimo</p>
+                                <p className="text-2xl font-bold">
                                     {`${calculation.surebetResult.roiMinimo.toFixed(2)}%`}
                                 </p>
-                                <p className="text-xs text-muted-foreground">Menor retorno sobre investimento</p>
+                                <p className="text-xs text-green-400/80">Menor retorno sobre investimento</p>
                             </div>
                         </>
                         ) : (
                         <div className="md:col-span-2 flex items-center gap-4 text-destructive p-4 bg-destructive/10 rounded-lg">
                             <AlertCircle className="w-8 h-8"/>
                             <div>
-                            <p className="font-bold">Não é uma Surebet Lucrativa</p>
-                            <p>O lucro mínimo da operação combinada é negativo, indicando prejuízo em pelo menos um cenário.</p>
+                                <p className="font-bold">Não é uma Surebet Lucrativa</p>
+                                <p>Com os valores atuais, o lucro mínimo é de <span className="font-mono">{calculation.surebetResult.lucroMinimo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>. Ajuste os valores para garantir lucro.</p>
                             </div>
                         </div>
                         )

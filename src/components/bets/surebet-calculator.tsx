@@ -39,13 +39,13 @@ function calculateResults(inputs: OddInput[]): { individualResults: IndividualRe
     if (isNaN(odd) || isNaN(stake) || stake <= 0) {
       return { lucro: 0, roi: 0 };
     }
-
+    // Lucro e ROI se a aposta for tratada isoladamente
     const lucro = (odd * stake) - stake;
     const roi = (lucro / stake) * 100;
     return { lucro, roi };
   });
   
-  const validInputs = inputs.filter(i => !isNaN(parseFloat(i.oddValue)) && !isNaN(parseFloat(i.stakeValue)));
+  const validInputs = inputs.filter(i => !isNaN(parseFloat(i.oddValue)) && !isNaN(parseFloat(i.stakeValue)) && parseFloat(i.stakeValue) > 0);
 
   if(validInputs.length < 2) {
     return { individualResults, surebetResult: null };
@@ -59,7 +59,7 @@ function calculateResults(inputs: OddInput[]): { individualResults: IndividualRe
      return { individualResults, surebetResult: null };
   }
 
-  // Simula o lucro para cada cenário possível (se a casa X ganhar)
+  // Simula o lucro para cada cenário possível (se a casa X ganhar, o que acontece com a operação toda?)
   const profitsIfWin = odds.map((odd, i) => (odd * stakes[i]) - stakeTotal);
   
   const lucroMinimo = Math.min(...profitsIfWin);
@@ -76,8 +76,8 @@ function calculateResults(inputs: OddInput[]): { individualResults: IndividualRe
 
 export function SurebetCalculator() {
   const [betInputs, setBetInputs] = useState<OddInput[]>([
-    { id: 1, oddValue: '', stakeValue: '', betType: 'Casa 1' },
-    { id: 2, oddValue: '', stakeValue: '', betType: 'Casa 2' },
+    { id: 1, oddValue: '3.0', stakeValue: '70', betType: 'Casa 1' },
+    { id: 2, oddValue: '3.5', stakeValue: '60', betType: 'Casa 2' },
   ]);
 
   const handleAddBetInput = () => {
@@ -212,7 +212,7 @@ export function SurebetCalculator() {
                             <AlertCircle className="w-8 h-8"/>
                             <div>
                                 <p className="font-bold">Não é uma Surebet Lucrativa</p>
-                                <p>Com os valores atuais, o lucro mínimo é de <span className="font-mono">{calculation.surebetResult.lucroMinimo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>. Ajuste os valores para garantir lucro.</p>
+                                <p>Com os valores atuais, o prejuízo máximo é de <span className="font-mono">{calculation.surebetResult.lucroMinimo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>. Ajuste os valores para garantir lucro.</p>
                             </div>
                         </div>
                         )

@@ -18,7 +18,6 @@ type OddInput = {
 type CalculationResult = {
   isSurebet: boolean;
   message?: string;
-  individualReturns: number[];
   profits: number[];
   rois: number[];
   totalStake: number;
@@ -27,22 +26,19 @@ type CalculationResult = {
 };
 
 
-function calculateSurebet(bets: { odd: number; stake: number }[]): CalculationResult {
+function calculateSurebet(bets: { odd: number; stake: number }[]): CalculationResult | null {
     if (bets.some(b => isNaN(b.odd) || b.odd <= 1 || isNaN(b.stake) || b.stake < 0)) {
-        return { isSurebet: false, message: "Valores inválidos. Odds devem ser > 1.", individualReturns: [], profits: [], rois: [], totalStake: 0, minProfit: 0, minRoi: 0 };
+        return null;
     }
     
     const totalStake = bets.reduce((acc, bet) => acc + bet.stake, 0);
 
     if (totalStake <= 0) {
-       return { isSurebet: false, message: "Stake total deve ser maior que 0.", individualReturns: [], profits: [], rois: [], totalStake: 0, minProfit: 0, minRoi: 0 };
+       return null;
     }
 
-    const individualReturns = bets.map(bet => bet.odd * bet.stake);
-
     // Corrected profit calculation: profit is the return of one leg minus the *total* stake
-    const profits = individualReturns.map(ret => ret - totalStake);
-
+    const profits = bets.map(bet => (bet.odd * bet.stake) - totalStake);
     const rois = profits.map(profit => (profit / totalStake) * 100);
 
     const minProfit = Math.min(...profits);
@@ -53,7 +49,6 @@ function calculateSurebet(bets: { odd: number; stake: number }[]): CalculationRe
     return {
         isSurebet,
         message: isSurebet ? "Surebet detectada!" : "Não é uma surebet lucrativa.",
-        individualReturns,
         profits,
         rois,
         totalStake,
@@ -86,13 +81,20 @@ export function SurebetCalculator() {
     const parsedBets = betInputs.map(b => ({
       odd: parseFloat(b.oddValue),
       stake: parseFloat(b.stakeValue)
-    })).filter(b => !isNaN(b.odd) && !isNaN(b.stake));
+    })).filter(b => !isNaN(b.odd) && b.stake > 0);
     
-    if (parsedBets.length < 2 || parsedBets.length !== betInputs.filter(b => b.oddValue && b.stakeValue).length) {
+    if (parsedBets.length < 2) {
       return null;
     }
+    
+    // Pass all bets to the calculation function, including those with valid odds but zero stake for context
+    const allParsedBetsForCalc = betInputs.map(b => ({
+      odd: parseFloat(b.oddValue) || 0,
+      stake: parseFloat(b.stakeValue) || 0,
+    })).filter(b => b.odd > 1);
 
-    return calculateSurebet(parsedBets);
+
+    return calculateSurebet(allParsedBetsForCalc);
   }, [betInputs]);
 
   return (
@@ -182,45 +184,55 @@ export function SurebetCalculator() {
                     <CardTitle className="text-lg">Resumo Geral</CardTitle>
                     <CardDescription>Análise completa da operação com base nos valores inseridos</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className='p-4 bg-muted rounded-lg flex-1'>
-                            <p className="text-sm text-muted-foreground flex items-center gap-2 mb-1"><DollarSign/> Stake Total</p>
-                             <p className="text-2xl font-bold p-0 h-auto bg-transparent border-0 focus-visible:ring-0">
-                               {calculation?.totalStake.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'R$ 0,00'}
-                             </p>
-                            <p className="text-xs text-muted-foreground">Soma de todas as stakes</p>
-                        </div>
-                        {calculation?.isSurebet ? (
-                            <>
-                                 <div className='p-4 bg-muted rounded-lg flex-1'>
-                                    <p className="text-sm text-muted-foreground flex items-center gap-2 mb-1"><TrendingUp/> Lucro Mínimo</p>
-                                    <p className={cn("text-2xl font-bold", calculation?.isSurebet ? "text-green-500" : "text-destructive")}>
-                                         {calculation?.minProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'R$ 0,00'}
-                                    </p>
-                                     <p className="text-xs text-muted-foreground">Menor lucro possível entre os resultados</p>
-                                </div>
-                                 <div className='p-4 bg-muted rounded-lg flex-1'>
-                                    <p className="text-sm text-muted-foreground flex items-center gap-2 mb-1"><Percent/> ROI Mínimo</p>
-                                    <p className={cn("text-2xl font-bold", calculation?.isSurebet ? "text-green-500" : "text-destructive")}>
-                                         {calculation ? `${calculation.minRoi.toFixed(2)}%` : '0.00%'}
-                                    </p>
-                                     <p className="text-xs text-muted-foreground">Menor retorno possível</p>
-                                </div>
-                            </>
-                         ) : calculation ? (
-                             <div className="md:col-span-2 flex items-center gap-4 text-destructive p-4 bg-destructive/10 rounded-lg">
-                               <AlertCircle className="w-8 h-8"/>
-                               <div>
-                                <p className="font-bold">Não é uma Surebet</p>
-                                <p>{calculation.message}</p>
-                               </div>
-                            </div>
-                         ) : null}
+                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className='p-4 bg-muted rounded-lg flex-1'>
+                        <p className="text-sm text-muted-foreground flex items-center gap-2 mb-1"><DollarSign/> Stake Total</p>
+                        <p className="text-2xl font-bold p-0 h-auto bg-transparent border-0 focus-visible:ring-0">
+                        {calculation?.totalStake.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'R$ 0,00'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Soma de todas as stakes</p>
                     </div>
+                    {calculation ? (
+                        calculation.isSurebet ? (
+                        <>
+                            <div className='p-4 bg-muted rounded-lg flex-1'>
+                                <p className="text-sm text-muted-foreground flex items-center gap-2 mb-1"><TrendingUp/> Lucro Mínimo</p>
+                                <p className={cn("text-2xl font-bold", "text-green-500")}>
+                                    {calculation.minProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </p>
+                                <p className="text-xs text-muted-foreground">Menor lucro possível entre os resultados</p>
+                            </div>
+                            <div className='p-4 bg-muted rounded-lg flex-1'>
+                                <p className="text-sm text-muted-foreground flex items-center gap-2 mb-1"><Percent/> ROI Mínimo</p>
+                                <p className={cn("text-2xl font-bold", "text-green-500")}>
+                                    {`${calculation.minRoi.toFixed(2)}%`}
+                                </p>
+                                <p className="text-xs text-muted-foreground">Menor retorno possível</p>
+                            </div>
+                        </>
+                        ) : (
+                        <div className="md:col-span-2 flex items-center gap-4 text-destructive p-4 bg-destructive/10 rounded-lg">
+                            <AlertCircle className="w-8 h-8"/>
+                            <div>
+                            <p className="font-bold">Não é uma Surebet</p>
+                            <p>{calculation.message}</p>
+                            </div>
+                        </div>
+                        )
+                    ) : (
+                         <div className="md:col-span-2 flex items-center gap-4 text-muted-foreground p-4 bg-muted/50 rounded-lg">
+                           <AlertCircle className="w-8 h-8"/>
+                           <div>
+                            <p className="font-bold">Aguardando dados</p>
+                            <p>Insira pelo menos duas apostas com odds e stakes para calcular.</p>
+                           </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </CardContent>
     </Card>
   );
 }
+
+    

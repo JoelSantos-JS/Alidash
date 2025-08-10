@@ -88,14 +88,17 @@ export function SurebetCalculator() {
   };
 
   const calculation = useMemo(() => {
-    const parsedOdds = odds.map(o => parseFloat(o.value)).filter(o => !isNaN(o) && o > 0);
+    const parsedOdds = odds.map(o => parseFloat(o.value));
     const parsedStakeTotal = parseFloat(stakeTotal);
     
-    if (parsedOdds.length < 2 || isNaN(parsedStakeTotal)) {
+    if (parsedOdds.some(o => isNaN(o)) || isNaN(parsedStakeTotal)) {
       return null;
     }
+    
+    const validOdds = parsedOdds.filter(o => o > 0);
+    if(validOdds.length < 2) return null;
 
-    return calcularSurebet(parsedOdds, parsedStakeTotal);
+    return calcularSurebet(validOdds, parsedStakeTotal);
   }, [odds, stakeTotal]);
 
   return (
@@ -151,22 +154,34 @@ export function SurebetCalculator() {
 
         <div className="mt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {calculation?.isSurebet && odds.map((odd, index) => {
-                    const parsedOdd = parseFloat(odd.value);
-                    if(isNaN(parsedOdd)) return null;
+                {calculation?.isSurebet && calculation.stakes.map((stake, index) => {
+                    const oddInput = odds.find(o => parseFloat(o.value) === calculation.retornos[index]/stake);
+                     // Find the corresponding oddInput based on the calculation order
+                    const validOdds = odds.map(o => parseFloat(o.value));
+                    let currentOddIndex = -1;
+                    const originalIndex = validOdds.findIndex((v, i) => {
+                         if (!isNaN(v) && v > 0) {
+                            currentOddIndex++;
+                         }
+                         return currentOddIndex === index;
+                    });
+                    
+                    const originalOdd = odds[originalIndex];
+
+                    if(!originalOdd || isNaN(parseFloat(originalOdd.value))) return null;
 
                     return (
-                        <Card key={odd.id} className="bg-background">
+                        <Card key={originalOdd.id} className="bg-background">
                             <CardHeader className="p-4 pb-2">
-                                <CardTitle className="text-base truncate" title={odd.betType || `Mercado ${index + 1}`}>
-                                    {odd.betType || `Mercado ${index + 1}`}
+                                <CardTitle className="text-base truncate" title={originalOdd.betType || `Mercado ${index + 1}`}>
+                                    {originalOdd.betType || `Mercado ${index + 1}`}
                                 </CardTitle>
-                                <div className="text-sm text-muted-foreground">Odd: {parsedOdd}</div>
+                                <div className="text-sm text-muted-foreground">Odd: {parseFloat(originalOdd.value)}</div>
                             </CardHeader>
                             <CardContent className="p-4 pt-0 space-y-2">
                                  <div>
                                     <p className="text-xs text-muted-foreground">Stake Ideal</p>
-                                    <p className="font-bold text-lg text-primary">{calculation.stakes[index].toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                    <p className="font-bold text-lg text-primary">{stake.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                                 </div>
                                  <Accordion type="single" collapsible className="w-full">
                                     <AccordionItem value="item-1" className="border-b-0">
@@ -238,5 +253,3 @@ export function SurebetCalculator() {
     </Card>
   );
 }
-
-    

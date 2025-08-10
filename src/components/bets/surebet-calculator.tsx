@@ -39,26 +39,19 @@ function calcularSurebet(odds: number[], stakeTotal: number): CalculationResult 
         };
     }
     
-    // 1. Soma das inversas das odds
     const somaInversa = odds.reduce((acc, odd) => acc + (1 / odd), 0);
 
-    // Verifica se é realmente uma surebet
     if (somaInversa >= 1) {
         return { 
             isSurebet: false,
-            message: "Não há oportunidade de lucro (soma > 100%)",
+            message: `Não há oportunidade de lucro (soma > 100%)`,
             somaInversa: somaInversa
         };
     }
 
-    // 2. Calcular stakes para cada odd
     const stakes = odds.map(odd => (stakeTotal / odd) / somaInversa);
-
-    // 3. Calcular retorno e lucro por resultado
     const retornos = odds.map((odd, i) => stakes[i] * odd);
     const lucroGarantido = retornos[0] - stakeTotal;
-
-    // 4. Calcular ROI individual e ROI geral
     const rois = retornos.map(ret => ((ret - stakeTotal) / stakeTotal) * 100);
     const roiGeral = (lucroGarantido / stakeTotal) * 100;
 
@@ -165,20 +158,20 @@ export function SurebetCalculator() {
                     return (
                         <Card key={odd.id} className="bg-background">
                             <CardHeader className="p-4 pb-2">
-                                <CardTitle className="text-base truncate" title={odd.betType || `Casa ${index + 1}`}>
-                                    {odd.betType || `Casa ${index + 1}`}
+                                <CardTitle className="text-base truncate" title={odd.betType || `Mercado ${index + 1}`}>
+                                    {odd.betType || `Mercado ${index + 1}`}
                                 </CardTitle>
                                 <div className="text-sm text-muted-foreground">Odd: {parsedOdd}</div>
                             </CardHeader>
                             <CardContent className="p-4 pt-0 space-y-2">
                                  <div>
-                                    <p className="text-xs text-muted-foreground">Stake</p>
-                                    <p className="font-bold text-primary">{calculation.stakes[index].toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                    <p className="text-xs text-muted-foreground">Stake Ideal</p>
+                                    <p className="font-bold text-lg text-primary">{calculation.stakes[index].toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                                 </div>
                                  <Accordion type="single" collapsible className="w-full">
                                     <AccordionItem value="item-1" className="border-b-0">
                                         <AccordionTrigger className="p-0 hover:no-underline text-xs">
-                                        Resultado
+                                        Detalhes do Resultado
                                         </AccordionTrigger>
                                         <AccordionContent className="pt-2 space-y-2">
                                             <div className="flex justify-between items-center text-xs">
@@ -201,31 +194,31 @@ export function SurebetCalculator() {
         
         <Card className="mt-6 bg-background">
             <CardHeader>
-                <CardTitle className="text-lg">Resumo Geral</CardTitle>
-                <CardDescription>Análise completa da arbitragem</CardDescription>
+                <CardTitle className="text-lg">Resumo Geral da Operação</CardTitle>
             </CardHeader>
             <CardContent>
                  {calculation ? (
                     calculation.isSurebet ? (
-                        <div className="flex gap-8">
-                            <div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className='p-4 bg-muted rounded-lg'>
                                 <p className="text-sm text-muted-foreground flex items-center gap-2"><DollarSign/> Stake Total</p>
                                 <p className="text-2xl font-bold">{calculation.stakeTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-                                <p className="text-xs text-muted-foreground">Risco total da operação</p>
                             </div>
-                            <div>
+                            <div className='p-4 bg-muted rounded-lg'>
                                 <p className="text-sm text-muted-foreground flex items-center gap-2"><Percent/> ROI Geral</p>
                                 <p className="text-2xl font-bold text-green-500">{calculation.roiGeral.toFixed(3)}%</p>
-                                <p className="text-xs text-muted-foreground">Retorno positivo</p>
                             </div>
-                             <div>
+                             <div className='p-4 bg-muted rounded-lg'>
                                 <p className="text-sm text-muted-foreground flex items-center gap-2"><TrendingUp/> Lucro Garantido</p>
                                 <p className="text-2xl font-bold text-green-500">{calculation.lucroGarantido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-                                <p className="text-xs text-muted-foreground">Em todos os resultados</p>
+                            </div>
+                            <div className='p-4 bg-muted rounded-lg'>
+                                <p className="text-sm text-muted-foreground">Soma Inversa</p>
+                                <p className="text-2xl font-bold">{(parseFloat(calculation.somaInversa) * 100).toFixed(2)}%</p>
                             </div>
                         </div>
                     ) : (
-                         <div className="flex items-center gap-4 text-destructive">
+                         <div className="flex items-center gap-4 text-destructive p-4 bg-destructive/10 rounded-lg">
                            <AlertCircle className="w-8 h-8"/>
                            <div>
                             <p className="font-bold">Não é uma Surebet</p>

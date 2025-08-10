@@ -121,10 +121,8 @@ export default function BetsPage() {
     }
 
     const handleSaveBet = (betData: Omit<Bet, 'id'>) => {
-        const sanitizedBetData = JSON.parse(JSON.stringify(betData, (key, value) => {
-             return value === undefined ? null : value;
-        }));
-
+        // The most reliable way to remove undefined values is to stringify and parse.
+        const sanitizedBetData = JSON.parse(JSON.stringify(betData));
 
         if(betToEdit) {
             setBets(bets.map(b => b.id === betToEdit.id ? { ...b, ...sanitizedBetData, id: b.id } : b));
@@ -286,3 +284,6 @@ export default function BetsPage() {
 
     
 
+
+
+    

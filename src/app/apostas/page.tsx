@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
@@ -22,18 +21,17 @@ import {
 } from "@/components/ui/alert-dialog"
 import { BetForm } from '@/components/bets/bet-form';
 import { SummaryCard } from '@/components/dashboard/summary-card';
-import { DollarSign, Percent, TrendingUp, TrendingDown } from 'lucide-react';
+import { DollarSign, Percent, TrendingUp, TrendingDown, Calculator } from 'lucide-react';
 import { BetPerformanceChart } from '@/components/bets/bet-performance-chart';
 import { BetStatusChart } from '@/components/bets/bet-status-chart';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { SurebetCalculator } from '@/components/bets/surebet-calculator';
 
 
 const initialBets: Bet[] = [];
-
-type FilterStatus = 'pending' | 'won' | 'lost' | 'other';
 
 export default function BetsPage() {
     const { user, loading: authLoading } = useAuth();
@@ -127,6 +125,7 @@ export default function BetsPage() {
 
      const filteredBets = useMemo(() => {
         const otherStatuses: Bet['status'][] = ['cashed_out', 'void'];
+        if (filterStatus === 'all') return bets;
         if (filterStatus === 'other') {
             return bets.filter(bet => otherStatuses.includes(bet.status));
         }
@@ -140,23 +139,22 @@ export default function BetsPage() {
     }
 
     const handleSaveBet = (betData: Omit<Bet, 'id'>) => {
-        // Most robust way to remove undefined values
         const sanitizedBetData = JSON.parse(JSON.stringify(betData));
-
-        if(betToEdit) {
-            setBets(bets.map(b => b.id === betToEdit.id ? { ...b, ...sanitizedBetData, id: b.id } : b));
+    
+        if (betToEdit) {
+            setBets(bets.map(b => (b.id === betToEdit.id ? { ...b, ...sanitizedBetData, id: b.id } : b)));
             toast({ title: "Aposta Atualizada!", description: `A aposta no evento "${betData.event}" foi atualizada.` });
         } else {
-             const newBet: Bet = {
+            const newBet: Bet = {
                 id: new Date().getTime().toString(),
                 ...sanitizedBetData,
-             };
+            };
             setBets([newBet, ...bets]);
             toast({ title: "Aposta Adicionada!", description: `Sua aposta em "${betData.event}" foi registrada.` });
         }
         setIsFormOpen(false);
         setBetToEdit(null);
-    }
+    };
 
     const handleDeleteBet = (betId: string) => {
         const bet = bets.find(b => b.id === betId);
@@ -224,6 +222,14 @@ export default function BetsPage() {
                         Adicionar Aposta
                     </Button>
                 </div>
+
+                <div className="mb-8">
+                     <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                        <Calculator className="w-7 h-7 text-primary" />
+                        Calculadora de Surebet
+                     </h3>
+                    <SurebetCalculator />
+                </div>
                  {isLoading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                         {Array.from({ length: 3 }).map((_, i) => (
@@ -262,15 +268,18 @@ export default function BetsPage() {
                         <BetStatusChart data={bets} isLoading={isLoading}/>
                     </div>
                  </div>
-
+                 
+                 <h3 className="text-2xl font-bold mb-4">Minhas Apostas</h3>
                 <Tabs defaultValue="pending" onValueChange={setFilterStatus} className="w-full">
-                    <TabsList className="grid w-full grid-cols-4 mb-6">
+                    <TabsList className="grid w-full grid-cols-5 mb-6">
+                        <TabsTrigger value="all">Todas</TabsTrigger>
                         <TabsTrigger value="pending">Em Andamento</TabsTrigger>
                         <TabsTrigger value="won">Ganhos</TabsTrigger>
                         <TabsTrigger value="lost">Perdidas</TabsTrigger>
                         <TabsTrigger value="other">Outras</TabsTrigger>
                     </TabsList>
                     
+                    <TabsContent value="all">{renderBetList()}</TabsContent>
                     <TabsContent value="pending">{renderBetList()}</TabsContent>
                     <TabsContent value="won">{renderBetList()}</TabsContent>
                     <TabsContent value="lost">{renderBetList()}</TabsContent>

@@ -28,9 +28,12 @@ import { BetStatusChart } from '@/components/bets/bet-status-chart';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 
 const initialBets: Bet[] = [];
+
+type FilterStatus = 'pending' | 'won' | 'lost' | 'other';
 
 export default function BetsPage() {
     const { user, loading: authLoading } = useAuth();
@@ -39,6 +42,7 @@ export default function BetsPage() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [betToEdit, setBetToEdit] = useState<Bet | null>(null);
     const [betToDelete, setBetToDelete] = useState<Bet | null>(null);
+    const [filterStatus, setFilterStatus] = useState<string>("pending");
     const { toast } = useToast();
 
      useEffect(() => {
@@ -105,7 +109,10 @@ export default function BetsPage() {
              if (bet.status === 'lost' && bet.type === 'single' && bet.stake) {
                 return acc + bet.stake;
             }
-            // Surebets should not have a loss if executed correctly
+            if (bet.status === 'lost' && bet.type === 'surebet') {
+                 // A loss in a surebet is the total amount staked if one leg fails unexpectedly
+                return acc + (bet.totalStake ?? 0);
+            }
             return acc;
         }, 0);
         
@@ -118,12 +125,22 @@ export default function BetsPage() {
         return { totalStaked, netProfit, winRate };
     }, [bets]);
 
+     const filteredBets = useMemo(() => {
+        const otherStatuses: Bet['status'][] = ['cashed_out', 'void'];
+        if (filterStatus === 'other') {
+            return bets.filter(bet => otherStatuses.includes(bet.status));
+        }
+        return bets.filter(bet => bet.status === filterStatus);
+    }, [bets, filterStatus]);
+
+
     const handleOpenForm = (bet: Bet | null = null) => {
         setBetToEdit(bet);
         setIsFormOpen(true);
     }
 
     const handleSaveBet = (betData: Omit<Bet, 'id'>) => {
+        // Most robust way to remove undefined values
         const sanitizedBetData = JSON.parse(JSON.stringify(betData));
 
         if(betToEdit) {
@@ -147,6 +164,44 @@ export default function BetsPage() {
         setBets(bets.filter(b => b.id !== betId));
         setBetToDelete(null);
         toast({ variant: 'destructive', title: "Aposta Excluída!", description: `A aposta em "${bet.event}" foi removida.` });
+    }
+
+    const renderBetList = () => {
+        if (isLoading) {
+             return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                    <Skeleton key={i} className="h-[250px] w-full" />
+                    ))}
+                </div>
+            )
+        }
+        
+        if (filteredBets.length > 0) {
+            return (
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredBets.map(bet => (
+                        <BetCard 
+                            key={bet.id} 
+                            bet={bet} 
+                            onEdit={() => handleOpenForm(bet)}
+                            onDelete={() => setBetToDelete(bet)}
+                        />
+                    ))}
+                 </div>
+            )
+        }
+        
+        return (
+            <div className="text-center py-20 bg-muted rounded-lg">
+                <h3 className="text-2xl font-bold">Nenhuma Aposta Encontrada</h3>
+                <p className="text-muted-foreground mt-2 mb-6">Não há apostas com este status. Adicione uma nova aposta ou mude o filtro.</p>
+                <Button size="lg" onClick={() => handleOpenForm()}>
+                    <PlusCircle className="mr-2"/>
+                    Adicionar Aposta
+                </Button>
+            </div>
+        )
     }
 
     return (
@@ -208,34 +263,19 @@ export default function BetsPage() {
                     </div>
                  </div>
 
-
-                {isLoading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {Array.from({ length: 6 }).map((_, i) => (
-                        <Skeleton key={i} className="h-[250px] w-full" />
-                        ))}
-                    </div>
-                ) : bets.length > 0 ? (
-                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {bets.map(bet => (
-                            <BetCard 
-                                key={bet.id} 
-                                bet={bet} 
-                                onEdit={() => handleOpenForm(bet)}
-                                onDelete={() => setBetToDelete(bet)}
-                            />
-                        ))}
-                     </div>
-                ) : (
-                     <div className="text-center py-20 bg-muted rounded-lg">
-                        <h3 className="text-2xl font-bold">Nenhuma Aposta Encontrada</h3>
-                        <p className="text-muted-foreground mt-2 mb-6">Clique no botão abaixo para adicionar sua primeira aposta.</p>
-                        <Button size="lg" onClick={() => handleOpenForm()}>
-                            <PlusCircle className="mr-2"/>
-                            Adicionar Primeira Aposta
-                        </Button>
-                    </div>
-                )}
+                <Tabs defaultValue="pending" onValueChange={setFilterStatus} className="w-full">
+                    <TabsList className="grid w-full grid-cols-4 mb-6">
+                        <TabsTrigger value="pending">Em Andamento</TabsTrigger>
+                        <TabsTrigger value="won">Ganhos</TabsTrigger>
+                        <TabsTrigger value="lost">Perdidas</TabsTrigger>
+                        <TabsTrigger value="other">Outras</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="pending">{renderBetList()}</TabsContent>
+                    <TabsContent value="won">{renderBetList()}</TabsContent>
+                    <TabsContent value="lost">{renderBetList()}</TabsContent>
+                    <TabsContent value="other">{renderBetList()}</TabsContent>
+                </Tabs>
             </main>
         </div>
 
@@ -281,11 +321,3 @@ export default function BetsPage() {
         </>
     )
 }
-
-    
-
-    
-
-
-
-    

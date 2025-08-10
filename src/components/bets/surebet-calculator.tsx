@@ -40,6 +40,7 @@ function calculateSurebet(bets: { odd: number; stake: number }[]): CalculationRe
 
     const individualReturns = bets.map(bet => bet.odd * bet.stake);
 
+    // Corrected profit calculation: profit is the return of one leg minus the *total* stake
     const profits = individualReturns.map(ret => ret - totalStake);
 
     const rois = profits.map(profit => (profit / totalStake) * 100);
@@ -87,7 +88,7 @@ export function SurebetCalculator() {
       stake: parseFloat(b.stakeValue)
     })).filter(b => !isNaN(b.odd) && !isNaN(b.stake));
     
-    if (parsedBets.length < 2 || parsedBets.some(b => isNaN(b.odd) || isNaN(b.stake))) {
+    if (parsedBets.length < 2 || parsedBets.length !== betInputs.filter(b => b.oddValue && b.stakeValue).length) {
       return null;
     }
 

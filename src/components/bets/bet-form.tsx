@@ -65,12 +65,6 @@ const betSchema = z.discriminatedUnion("type", [
 const sportOptions = ["Futebol", "Basquete", "Tênis", "Vôlei", "Futebol Americano", "MMA", "E-Sports", "Outro"];
 const statusOptions: Record<Bet['status'], string> = { pending: 'Pendente', won: 'Ganha', lost: 'Perdida', cashed_out: 'Cash Out', void: 'Anulada' };
 
-interface BetFormProps {
-  onSave: (data: Omit<Bet, 'id'>) => void;
-  betToEdit: Bet | null;
-  onCancel: () => void;
-}
-
 const calculateSurebet = (subBets: z.infer<typeof subBetSchema>[] | undefined) => {
     if (!subBets || subBets.length < 2) {
       return { totalStake: 0, guaranteedProfit: 0, profitPercentage: 0 };
@@ -90,7 +84,7 @@ const calculateSurebet = (subBets: z.infer<typeof subBetSchema>[] | undefined) =
         const realMoneyReturn = stake * odds;
 
         const otherRealMoneyStakes = subBets
-            .filter(other => !other.isFreebet && other.id !== bet.id)
+            .filter(other => !other.isFreebet && other.bookmaker !== bet.bookmaker)
             .reduce((acc, s) => acc + (s.stake || 0), 0);
         
         if (bet.isFreebet) {
@@ -141,17 +135,20 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
   }, [watchedType, watchedSubBets]);
 
   const onSubmit = (data: z.infer<typeof betSchema>) => {
-    let finalData: Omit<Bet, 'id'> = data;
+    let finalData: Omit<Bet, 'id'> = JSON.parse(JSON.stringify(data));
 
-    if (data.type === 'surebet') {
-        const { totalStake, guaranteedProfit, profitPercentage } = calculateSurebet(data.subBets);
-        finalData = { ...data, totalStake, guaranteedProfit, profitPercentage };
+    if (finalData.type === 'surebet') {
+        const { totalStake, guaranteedProfit, profitPercentage } = calculateSurebet(finalData.subBets);
+        finalData.totalStake = totalStake;
+        finalData.guaranteedProfit = guaranteedProfit;
+        finalData.profitPercentage = profitPercentage;
     }
     
     // Set earnedFreebetValue to undefined if it's 0 or null to avoid saving it in DB
     if(!finalData.earnedFreebetValue) {
         delete finalData.earnedFreebetValue;
     }
+
     onSave(finalData);
   };
 

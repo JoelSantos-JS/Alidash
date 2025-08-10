@@ -29,7 +29,7 @@ export function BetCard({ bet, onEdit, onDelete }: BetCardProps) {
   const statusInfo = statusMap[bet.status];
   
   const profit = (() => {
-    if (bet.status !== 'won' && bet.status !== 'lost') return 0;
+    if (bet.status !== 'won' && bet.status !== 'lost') return null;
 
     if (bet.type === 'single') {
       const stake = bet.stake ?? 0;
@@ -40,15 +40,13 @@ export function BetCard({ bet, onEdit, onDelete }: BetCardProps) {
     }
 
     if (bet.type === 'surebet') {
-      if (bet.status === 'won') return bet.guaranteedProfit ?? 0;
-      // A "loss" in a surebet context is complex. 
-      // If one leg loses, the other should win, resulting in guaranteedProfit.
-      // A true loss would mean a miscalculation or event cancellation. We'll show 0 for now.
-      if (bet.status === 'lost') return bet.guaranteedProfit ?? 0; // Or a more specific calculation if needed
-      return 0;
+      // In a surebet, the profit is guaranteed if one leg wins, regardless of which one.
+      // A "loss" status would imply an edge case like all legs being void or a miscalculation.
+      // We still show the guaranteed profit, as that's the intended outcome.
+      return bet.guaranteedProfit ?? 0;
     }
     
-    return 0;
+    return null;
   })();
 
   return (
@@ -184,8 +182,10 @@ export function BetCard({ bet, onEdit, onDelete }: BetCardProps) {
          <Badge className={`border-transparent text-white gap-1.5 ${statusInfo.color}`}>
                 <statusInfo.icon className="w-4 h-4" />
                 <span>{statusInfo.label}</span>
-                {bet.status !== 'pending' && bet.status !== 'cashed_out' && bet.status !== 'void' && (
-                     <span className={cn("font-bold", profit < 0 && 'text-red-300')}>({profit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})</span>
+                {profit !== null && (
+                     <span className={cn("font-bold", profit < 0 && 'text-red-300', profit > 0 && bet.type === 'surebet' && 'text-green-300')}>
+                        ({profit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
+                    </span>
                 )}
         </Badge>
       </CardFooter>

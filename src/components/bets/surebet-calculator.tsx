@@ -16,53 +16,64 @@ type OddInput = {
 };
 
 type CalculationResult = {
-  isSurebet: boolean;
-  message?: string;
-  somaInversa: number;
+  isSurebet: true;
+  somaInversa: string;
   stakes: number[];
   retornos: number[];
   lucroGarantido: number;
   roiIndividual: number[];
   stakeTotal: number;
   roiGeral: number;
+} | {
+    isSurebet: false;
+    message: string;
+    somaInversa: number;
 };
 
-function calcularSurebet(odds: number[], stakeTotal: number): CalculationResult | { isSurebet: false; message: string; somaInversa: number } {
-  if (odds.some(o => isNaN(o) || o <= 1) || isNaN(stakeTotal) || stakeTotal <= 0) {
-    return { 
-        isSurebet: false, 
-        message: "Valores inválidos. Odds devem ser > 1 e Stake Total > 0.",
-        somaInversa: 0
-    };
-  }
-  
-  const somaInversa = odds.reduce((acc, odd) => acc + (1 / odd), 0);
+function calcularSurebet(odds: number[], stakeTotal: number): CalculationResult {
+    if (odds.some(o => isNaN(o) || o <= 1) || isNaN(stakeTotal) || stakeTotal <= 0) {
+        return { 
+            isSurebet: false, 
+            message: "Valores inválidos. Odds devem ser > 1 e Stake Total > 0.",
+            somaInversa: 0
+        };
+    }
+    
+    // 1. Soma das inversas das odds
+    const somaInversa = odds.reduce((acc, odd) => acc + (1 / odd), 0);
 
-  if (somaInversa >= 1) {
+    // Verifica se é realmente uma surebet
+    if (somaInversa >= 1) {
+        return { 
+            isSurebet: false,
+            message: "Não há oportunidade de lucro (soma > 100%)",
+            somaInversa: somaInversa
+        };
+    }
+
+    // 2. Calcular stakes para cada odd
+    const stakes = odds.map(odd => (stakeTotal / odd) / somaInversa);
+
+    // 3. Calcular retorno e lucro por resultado
+    const retornos = odds.map((odd, i) => stakes[i] * odd);
+    const lucroGarantido = retornos[0] - stakeTotal;
+
+    // 4. Calcular ROI individual e ROI geral
+    const rois = retornos.map(ret => ((ret - stakeTotal) / stakeTotal) * 100);
+    const roiGeral = (lucroGarantido / stakeTotal) * 100;
+
     return {
-      isSurebet: false,
-      message: "Não há oportunidade de lucro (soma > 100%)",
-      somaInversa: somaInversa,
+        isSurebet: true,
+        somaInversa: somaInversa.toFixed(4),
+        stakes: stakes.map(s => Number(s.toFixed(2))),
+        retornos: retornos.map(r => Number(r.toFixed(2))),
+        lucroGarantido: Number(lucroGarantido.toFixed(2)),
+        roiIndividual: rois.map(r => Number(r.toFixed(3))),
+        stakeTotal: Number(stakeTotal.toFixed(2)),
+        roiGeral: Number(roiGeral.toFixed(3))
     };
-  }
-
-  const stakes = odds.map(odd => (stakeTotal / odd) / somaInversa);
-  const retornos = odds.map((odd, i) => stakes[i] * odd);
-  const lucroGarantido = retornos[0] - stakeTotal;
-  const rois = retornos.map(ret => ((ret - stakeTotal) / stakeTotal) * 100);
-  const roiGeral = (lucroGarantido / stakeTotal) * 100;
-
-  return {
-    isSurebet: true,
-    somaInversa: parseFloat(somaInversa.toFixed(4)),
-    stakes: stakes.map(s => parseFloat(s.toFixed(2))),
-    retornos: retornos.map(r => parseFloat(r.toFixed(2))),
-    lucroGarantido: parseFloat(lucroGarantido.toFixed(2)),
-    roiIndividual: rois.map(r => parseFloat(r.toFixed(3))),
-    stakeTotal: parseFloat(stakeTotal.toFixed(2)),
-    roiGeral: parseFloat(roiGeral.toFixed(3)),
-  };
 }
+
 
 export function SurebetCalculator() {
   const [stakeTotal, setStakeTotal] = useState('100');
@@ -234,3 +245,5 @@ export function SurebetCalculator() {
     </Card>
   );
 }
+
+    

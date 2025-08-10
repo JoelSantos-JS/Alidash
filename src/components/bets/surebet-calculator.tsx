@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Trash2, TrendingUp, DollarSign, Percent, AlertCircle } from 'lucide-react';
@@ -86,7 +87,7 @@ export function SurebetCalculator() {
       stake: parseFloat(b.stakeValue)
     })).filter(b => !isNaN(b.odd) && !isNaN(b.stake));
     
-    if (parsedBets.length < 2 || parsedBets.length !== betInputs.length) {
+    if (parsedBets.length < 2 || parsedBets.some(b => isNaN(b.odd) || isNaN(b.stake))) {
       return null;
     }
 
@@ -217,5 +218,3 @@ export function SurebetCalculator() {
     </Card>
   );
 }
-
-    

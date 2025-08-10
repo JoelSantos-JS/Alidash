@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -11,6 +12,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '..
 type OddInput = {
   id: number;
   value: string;
+  betType: string;
 };
 
 type CalculationResult = {
@@ -65,20 +67,20 @@ function calcularSurebet(odds: number[], stakeTotal: number): CalculationResult 
 export function SurebetCalculator() {
   const [stakeTotal, setStakeTotal] = useState('100');
   const [odds, setOdds] = useState<OddInput[]>([
-    { id: 1, value: '' },
-    { id: 2, value: '' },
+    { id: 1, value: '', betType: '' },
+    { id: 2, value: '', betType: '' },
   ]);
 
   const handleAddOdd = () => {
-    setOdds([...odds, { id: Date.now(), value: '' }]);
+    setOdds([...odds, { id: Date.now(), value: '', betType: '' }]);
   };
 
   const handleRemoveOdd = (id: number) => {
     setOdds(odds.filter(odd => odd.id !== id));
   };
 
-  const handleOddChange = (id: number, value: string) => {
-    setOdds(odds.map(odd => (odd.id === id ? { ...odd, value } : odd)));
+  const handleOddChange = (id: number, field: 'value' | 'betType', fieldValue: string) => {
+    setOdds(odds.map(odd => (odd.id === id ? { ...odd, [field]: fieldValue } : odd)));
   };
 
   const calculation = useMemo(() => {
@@ -108,15 +110,22 @@ export function SurebetCalculator() {
                  />
             </div>
             <div className="flex-1 w-full">
-                 <p className='text-sm font-medium mb-1'>Odds</p>
+                 <p className='text-sm font-medium mb-1'>Mercados e Odds</p>
                  <div className="flex flex-col gap-2">
                     {odds.map((odd, index) => (
                     <div key={odd.id} className="flex items-center gap-2">
                         <Input
-                        type="number"
-                        placeholder={`Odd ${index + 1}`}
-                        value={odd.value}
-                        onChange={(e) => handleOddChange(odd.id, e.target.value)}
+                            type="text"
+                            placeholder={`Tipo da Aposta ${index + 1}`}
+                            value={odd.betType}
+                            onChange={(e) => handleOddChange(odd.id, 'betType', e.target.value)}
+                        />
+                        <Input
+                            type="number"
+                            placeholder={`Odd ${index + 1}`}
+                            value={odd.value}
+                            onChange={(e) => handleOddChange(odd.id, 'value', e.target.value)}
+                            className="w-32"
                         />
                         <Button
                         variant="ghost"
@@ -145,7 +154,9 @@ export function SurebetCalculator() {
                     return (
                         <Card key={odd.id} className="bg-background">
                             <CardHeader className="p-4 pb-2">
-                                <CardTitle className="text-base">Casa {index + 1}</CardTitle>
+                                <CardTitle className="text-base truncate" title={odd.betType || `Casa ${index + 1}`}>
+                                    {odd.betType || `Casa ${index + 1}`}
+                                </CardTitle>
                                 <div className="text-sm text-muted-foreground">Odd: {parsedOdd}</div>
                             </CardHeader>
                             <CardContent className="p-4 pt-0 space-y-2">

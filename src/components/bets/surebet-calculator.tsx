@@ -88,18 +88,18 @@ export function SurebetCalculator() {
   };
 
   const calculation = useMemo(() => {
-    const parsedOdds = odds.map(o => parseFloat(o.value));
+    const parsedOdds = odds.map(o => parseFloat(o.value)).filter(o => !isNaN(o) && o > 0);
     const parsedStakeTotal = parseFloat(stakeTotal);
     
-    if (parsedOdds.some(o => isNaN(o)) || isNaN(parsedStakeTotal)) {
+    if (parsedOdds.length < 2 || isNaN(parsedStakeTotal)) {
       return null;
     }
-    
-    const validOdds = parsedOdds.filter(o => o > 0);
-    if(validOdds.length < 2) return null;
 
-    return calcularSurebet(validOdds, parsedStakeTotal);
+    return calcularSurebet(parsedOdds, parsedStakeTotal);
   }, [odds, stakeTotal]);
+
+  const validOddInputs = useMemo(() => odds.filter(o => !isNaN(parseFloat(o.value)) && parseFloat(o.value) > 0), [odds]);
+
 
   return (
     <Card className="bg-card/50 border-dashed">
@@ -154,29 +154,19 @@ export function SurebetCalculator() {
 
         <div className="mt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {calculation?.isSurebet && calculation.stakes.map((stake, index) => {
-                    const oddInput = odds.find(o => parseFloat(o.value) === calculation.retornos[index]/stake);
-                     // Find the corresponding oddInput based on the calculation order
-                    const validOdds = odds.map(o => parseFloat(o.value));
-                    let currentOddIndex = -1;
-                    const originalIndex = validOdds.findIndex((v, i) => {
-                         if (!isNaN(v) && v > 0) {
-                            currentOddIndex++;
-                         }
-                         return currentOddIndex === index;
-                    });
-                    
-                    const originalOdd = odds[originalIndex];
+                {calculation?.isSurebet && validOddInputs.map((oddInput, index) => {
+                    const stake = calculation.stakes[index];
+                    const roi = calculation.roiIndividual[index];
 
-                    if(!originalOdd || isNaN(parseFloat(originalOdd.value))) return null;
+                    if (stake === undefined) return null;
 
                     return (
-                        <Card key={originalOdd.id} className="bg-background">
+                        <Card key={oddInput.id} className="bg-background">
                             <CardHeader className="p-4 pb-2">
-                                <CardTitle className="text-base truncate" title={originalOdd.betType || `Mercado ${index + 1}`}>
-                                    {originalOdd.betType || `Mercado ${index + 1}`}
+                                <CardTitle className="text-base truncate" title={oddInput.betType || `Mercado ${index + 1}`}>
+                                    {oddInput.betType || `Mercado ${index + 1}`}
                                 </CardTitle>
-                                <div className="text-sm text-muted-foreground">Odd: {parseFloat(originalOdd.value)}</div>
+                                <div className="text-sm text-muted-foreground">Odd: {parseFloat(oddInput.value)}</div>
                             </CardHeader>
                             <CardContent className="p-4 pt-0 space-y-2">
                                  <div>
@@ -195,7 +185,7 @@ export function SurebetCalculator() {
                                             </div>
                                              <div className="flex justify-between items-center text-xs">
                                                 <p className="flex items-center gap-1.5 text-green-400"><Percent className="w-4 h-4"/> ROI</p>
-                                                <p className="font-semibold">{calculation.roiIndividual[index].toFixed(3)}%</p>
+                                                <p className="font-semibold">{roi.toFixed(3)}%</p>
                                             </div>
                                         </AccordionContent>
                                     </AccordionItem>

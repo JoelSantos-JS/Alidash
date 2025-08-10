@@ -45,6 +45,7 @@ export default function BetsPage() {
         if (authLoading || !user) return;
 
         const fetchData = async () => {
+            setIsLoading(true);
             const docRef = doc(db, "user-data", user.uid);
             const docSnap = await getDoc(docRef);
 
@@ -61,12 +62,14 @@ export default function BetsPage() {
     }, [user, authLoading]);
 
     useEffect(() => {
-        if (isLoading || authLoading || !user) return;
+        if (authLoading || isLoading || !user) return;
 
         const saveData = async () => {
             try {
                 const docRef = doc(db, "user-data", user.uid);
-                await setDoc(docRef, { bets }, { merge: true });
+                // Sanitize data before saving to remove any undefined fields
+                 const sanitizedBets = JSON.parse(JSON.stringify(bets));
+                await setDoc(docRef, { bets: sanitizedBets }, { merge: true });
             } catch (error) {
                 console.error("Failed to save bets to Firestore", error);
                 toast({
@@ -77,7 +80,7 @@ export default function BetsPage() {
             }
         }
         saveData();
-    }, [bets, isLoading, user, authLoading, toast]);
+    }, [bets, user, authLoading, isLoading, toast]);
 
 
     const summaryStats = useMemo(() => {
@@ -121,7 +124,6 @@ export default function BetsPage() {
     }
 
     const handleSaveBet = (betData: Omit<Bet, 'id'>) => {
-        // The most reliable way to remove undefined values is to stringify and parse.
         const sanitizedBetData = JSON.parse(JSON.stringify(betData));
 
         if(betToEdit) {
@@ -198,10 +200,10 @@ export default function BetsPage() {
                  )}
 
                  <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
-                    <div className="lg:col-span-3">
+                    <div className="lg:col-span-3 h-[360px]">
                         <BetPerformanceChart data={bets} isLoading={isLoading}/>
                     </div>
-                    <div className="lg:col-span-2">
+                    <div className="lg:col-span-2 h-[360px]">
                         <BetStatusChart data={bets} isLoading={isLoading}/>
                     </div>
                  </div>

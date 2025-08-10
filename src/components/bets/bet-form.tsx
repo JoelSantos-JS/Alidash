@@ -52,7 +52,6 @@ const singleBetSchema = baseBetSchema.extend({
 const surebetSchema = baseBetSchema.extend({
   type: z.literal('surebet'),
   subBets: z.array(subBetSchema).min(2, "Uma surebet deve ter pelo menos 2 apostas."),
-   // Calculated fields - not part of the form but for the final object
   totalStake: z.number().optional(),
   guaranteedProfit: z.number().optional(),
   profitPercentage: z.number().optional(),
@@ -72,66 +71,26 @@ interface BetFormProps {
   onCancel: () => void;
 }
 
-export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
-  const form = useForm<z.infer<typeof betSchema>>({
-    resolver: zodResolver(betSchema),
-    defaultValues: betToEdit ? { 
-        ...betToEdit,
-        earnedFreebetValue: betToEdit.earnedFreebetValue || 0,
-        // @ts-ignore
-        date: new Date(betToEdit.date),
-    } : {
-        type: 'single',
-        sport: "Futebol",
-        event: "",
-        betType: "",
-        stake: 10,
-        odds: 1.5,
-        status: 'pending',
-        date: new Date(),
-        notes: "",
-        earnedFreebetValue: 0,
-        // @ts-ignore
-        subBets: [{ id: '1', bookmaker: '', betType: '', odds: 1.5, stake: 10, isFreebet: false }, { id: '2', bookmaker: '', betType: '', odds: 1.5, stake: 10, isFreebet: false }],
-    },
-  });
-
-  const { control, handleSubmit, watch, formState: { isSubmitting } } = form;
-  const { fields, append, remove } = useFieldArray({ control, name: "subBets" as never});
-
-  const watchedType = watch("type");
-  const watchedSubBets = watch("subBets" as never);
-
-  const surebetCalculations = React.useMemo(() => {
-    // @ts-ignore
-    if (watchedType !== 'surebet' || !watchedSubBets || watchedSubBets.length < 2) {
+const calculateSurebet = (subBets: z.infer<typeof subBetSchema>[] | undefined) => {
+    if (!subBets || subBets.length < 2) {
       return { totalStake: 0, guaranteedProfit: 0, profitPercentage: 0 };
     }
 
-    // @ts-ignore
-    const realMoneyStakes = watchedSubBets.filter(b => !b.isFreebet);
-    // @ts-ignore
+    const realMoneyStakes = subBets.filter(b => !b.isFreebet);
     const totalStake = realMoneyStakes.reduce((acc, bet) => acc + (bet.stake || 0), 0);
 
-    if (totalStake <= 0 && realMoneyStakes.length === watchedSubBets.length) {
+    if (totalStake <= 0 && realMoneyStakes.length === subBets.length) {
       return { totalStake, guaranteedProfit: 0, profitPercentage: 0 };
     }
 
-    // Calculate the potential return for each individual bet outcome
-    const potentialReturns = watchedSubBets.map(bet => {
+    const potentialReturns = subBets.map(bet => {
         const stake = bet.stake || 0;
         const odds = bet.odds || 0;
-        // The return from a freebet is just the winnings (stake * (odds - 1))
         const freebetReturn = stake * (odds - 1);
-        // The return from a real money bet is the full return (stake * odds)
         const realMoneyReturn = stake * odds;
 
-        // We calculate the net position for each outcome.
-        // For the outcome where bet X wins, the profit is its return minus the sum of all other *real money* stakes.
-        const otherRealMoneyStakes = watchedSubBets
-            // @ts-ignore
+        const otherRealMoneyStakes = subBets
             .filter(other => !other.isFreebet && other.id !== bet.id)
-            // @ts-ignore
             .reduce((acc, s) => acc + (s.stake || 0), 0);
         
         if (bet.isFreebet) {
@@ -145,14 +104,50 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
     const profitPercentage = totalStake > 0 ? (guaranteedProfit / totalStake) * 100 : 0;
   
     return { totalStake, guaranteedProfit, profitPercentage };
+};
+
+export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
+  const form = useForm<z.infer<typeof betSchema>>({
+    resolver: zodResolver(betSchema),
+    defaultValues: betToEdit ? { 
+        ...betToEdit,
+        earnedFreebetValue: betToEdit.earnedFreebetValue || 0,
+        date: new Date(betToEdit.date),
+    } : {
+        type: 'single',
+        sport: "Futebol",
+        event: "",
+        betType: "",
+        stake: 10,
+        odds: 1.5,
+        status: 'pending',
+        date: new Date(),
+        notes: "",
+        earnedFreebetValue: 0,
+        subBets: [{ id: '1', bookmaker: '', betType: '', odds: 1.5, stake: 10, isFreebet: false }, { id: '2', bookmaker: '', betType: '', odds: 1.5, stake: 10, isFreebet: false }],
+    },
+  });
+
+  const { control, handleSubmit, watch, formState: { isSubmitting } } = form;
+  const { fields, append, remove } = useFieldArray({ control, name: "subBets" as never});
+
+  const watchedType = watch("type");
+  const watchedSubBets = watch("subBets");
+
+  const surebetCalculations = React.useMemo(() => {
+    if (watchedType !== 'surebet') return { totalStake: 0, guaranteedProfit: 0, profitPercentage: 0 };
+    // @ts-ignore
+    return calculateSurebet(watchedSubBets);
   }, [watchedType, watchedSubBets]);
 
   const onSubmit = (data: z.infer<typeof betSchema>) => {
     let finalData: Omit<Bet, 'id'> = data;
+
     if (data.type === 'surebet') {
-        const { totalStake, guaranteedProfit, profitPercentage } = surebetCalculations;
+        const { totalStake, guaranteedProfit, profitPercentage } = calculateSurebet(data.subBets);
         finalData = { ...data, totalStake, guaranteedProfit, profitPercentage };
     }
+    
     // Set earnedFreebetValue to undefined if it's 0 or null to avoid saving it in DB
     if(!finalData.earnedFreebetValue) {
         delete finalData.earnedFreebetValue;
@@ -252,14 +247,14 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
                             <div className="space-y-4">
                                 {fields.map((item, index) => (
                                     <div key={item.id} className="p-4 bg-muted/50 rounded-lg space-y-3 relative">
-                                        <FormField control={control} name={`subBets.${index}.bookmaker` as never} render={({ field }) => (
+                                        <FormField control={control} name={`subBets.${index}.bookmaker`} render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Casa de Apostas / Exchange</FormLabel>
                                                 <FormControl><Input placeholder="Ex: Bet365 ou Betfair" {...field} /></FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )} />
-                                        <FormField control={control} name={`subBets.${index}.betType` as never} render={({ field }) => (
+                                        <FormField control={control} name={`subBets.${index}.betType`} render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Tipo de Aposta</FormLabel>
                                                 <FormControl><Input placeholder="Ex: 'Vitória Time A' ou 'Lay Empate (contra)'" {...field} /></FormControl>
@@ -267,14 +262,14 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
                                             </FormItem>
                                         )} />
                                         <div className="grid grid-cols-2 gap-4">
-                                            <FormField control={control} name={`subBets.${index}.odds` as never} render={({ field }) => (
+                                            <FormField control={control} name={`subBets.${index}.odds`} render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Odds</FormLabel>
                                                     <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )} />
-                                            <FormField control={control} name={`subBets.${index}.stake` as never} render={({ field }) => (
+                                            <FormField control={control} name={`subBets.${index}.stake`} render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Aposta (R$)</FormLabel>
                                                     <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
@@ -284,7 +279,7 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
                                         </div>
                                          <FormField
                                             control={control}
-                                            name={`subBets.${index}.isFreebet` as never}
+                                            name={`subBets.${index}.isFreebet`}
                                             render={({ field }) => (
                                                 <FormItem className="flex flex-row items-center space-x-2 space-y-0 mt-4">
                                                     <FormControl>

@@ -181,37 +181,42 @@ export function SurebetCalculator() {
                     <CardTitle className="text-lg">Resumo Geral</CardTitle>
                     <CardDescription>Análise completa da operação com base nos valores inseridos</CardDescription>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className='p-4 bg-muted rounded-lg flex-1'>
-                        <p className="text-sm text-muted-foreground flex items-center gap-2 mb-1"><DollarSign/> Stake Total</p>
-                         <p className="text-2xl font-bold p-0 h-auto bg-transparent border-0 focus-visible:ring-0">
-                           {calculation?.totalStake.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'R$ 0,00'}
-                         </p>
-                        <p className="text-xs text-muted-foreground">Soma de todas as stakes</p>
-                    </div>
-                     <div className='p-4 bg-muted rounded-lg flex-1'>
-                        <p className="text-sm text-muted-foreground flex items-center gap-2 mb-1"><TrendingUp/> Lucro Mínimo</p>
-                        <p className={cn("text-2xl font-bold", calculation?.isSurebet ? "text-green-500" : "text-destructive")}>
-                             {calculation?.minProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'R$ 0,00'}
-                        </p>
-                         <p className="text-xs text-muted-foreground">Menor lucro possível entre os resultados</p>
-                    </div>
-                     <div className='p-4 bg-muted rounded-lg flex-1'>
-                        <p className="text-sm text-muted-foreground flex items-center gap-2 mb-1"><Percent/> ROI Mínimo</p>
-                        <p className={cn("text-2xl font-bold", calculation?.isSurebet ? "text-green-500" : "text-destructive")}>
-                             {calculation ? `${calculation.minRoi.toFixed(2)}%` : '0.00%'}
-                        </p>
-                         <p className="text-xs text-muted-foreground">Menor retorno possível</p>
-                    </div>
-                     {calculation && !calculation.isSurebet && (
-                         <div className="md:col-span-3 flex items-center gap-4 text-destructive p-4 bg-destructive/10 rounded-lg">
-                           <AlertCircle className="w-8 h-8"/>
-                           <div>
-                            <p className="font-bold">Não é uma Surebet</p>
-                            <p>{calculation.message}</p>
-                           </div>
+                <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className='p-4 bg-muted rounded-lg flex-1'>
+                            <p className="text-sm text-muted-foreground flex items-center gap-2 mb-1"><DollarSign/> Stake Total</p>
+                             <p className="text-2xl font-bold p-0 h-auto bg-transparent border-0 focus-visible:ring-0">
+                               {calculation?.totalStake.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'R$ 0,00'}
+                             </p>
+                            <p className="text-xs text-muted-foreground">Soma de todas as stakes</p>
                         </div>
-                    )}
+                        {calculation?.isSurebet ? (
+                            <>
+                                 <div className='p-4 bg-muted rounded-lg flex-1'>
+                                    <p className="text-sm text-muted-foreground flex items-center gap-2 mb-1"><TrendingUp/> Lucro Mínimo</p>
+                                    <p className={cn("text-2xl font-bold", calculation?.isSurebet ? "text-green-500" : "text-destructive")}>
+                                         {calculation?.minProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'R$ 0,00'}
+                                    </p>
+                                     <p className="text-xs text-muted-foreground">Menor lucro possível entre os resultados</p>
+                                </div>
+                                 <div className='p-4 bg-muted rounded-lg flex-1'>
+                                    <p className="text-sm text-muted-foreground flex items-center gap-2 mb-1"><Percent/> ROI Mínimo</p>
+                                    <p className={cn("text-2xl font-bold", calculation?.isSurebet ? "text-green-500" : "text-destructive")}>
+                                         {calculation ? `${calculation.minRoi.toFixed(2)}%` : '0.00%'}
+                                    </p>
+                                     <p className="text-xs text-muted-foreground">Menor retorno possível</p>
+                                </div>
+                            </>
+                         ) : calculation ? (
+                             <div className="md:col-span-2 flex items-center gap-4 text-destructive p-4 bg-destructive/10 rounded-lg">
+                               <AlertCircle className="w-8 h-8"/>
+                               <div>
+                                <p className="font-bold">Não é uma Surebet</p>
+                                <p>{calculation.message}</p>
+                               </div>
+                            </div>
+                         ) : null}
+                    </div>
                 </CardContent>
             </Card>
         </CardContent>

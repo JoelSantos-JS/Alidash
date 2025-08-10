@@ -50,7 +50,7 @@ export function BetStatusChart({ data, isLoading }: BetStatusChartProps) {
   }, [data]);
 
   const chartConfig = Object.fromEntries(
-    Object.entries(statusConfigMap).map(([key, value]) => [value.label, value])
+    chartData.map(item => [item.name, {label: item.name, color: item.fill}])
   ) as ChartConfig;
 
 
@@ -70,8 +70,8 @@ export function BetStatusChart({ data, isLoading }: BetStatusChartProps) {
             >
             <PieChart>
                 <Tooltip
-                cursor={false}
-                content={<ChartTooltipContent hideLabel />}
+                    cursor={false}
+                    content={<ChartTooltipContent nameKey="name" />}
                 />
                 <Pie
                 data={chartData}

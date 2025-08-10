@@ -56,13 +56,13 @@ export function CategoryChart({ data, isLoading }: CategoryChartProps) {
         <CardTitle>Produtos por Categoria</CardTitle>
         <CardDescription>Distribuição dos produtos cadastrados</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 pb-0 flex items-center justify-center">
+      <CardContent className="flex-1 pb-0 flex items-center justify-center h-[300px]">
         {isLoading ? (
-            <Skeleton className="w-[300px] h-[300px] rounded-full" />
+            <Skeleton className="w-[250px] h-[250px] rounded-full" />
         ) : chartData.length > 0 ? (
             <ChartContainer
             config={chartConfig}
-            className="mx-auto aspect-square max-h-[300px]"
+            className="mx-auto aspect-square max-h-[250px]"
             >
             <PieChart>
                 <Tooltip

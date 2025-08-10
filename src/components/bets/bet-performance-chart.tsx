@@ -65,15 +65,15 @@ export function BetPerformanceChart({ data, isLoading }: BetPerformanceChartProp
         <CardTitle>Desempenho por Esporte</CardTitle>
         <CardDescription>Lucro líquido por modalidade esportiva</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="h-[300px]">
         {isLoading ? (
-            <div className="w-full h-[300px] flex items-end gap-2 px-4">
+            <div className="w-full h-full flex items-end gap-2 px-4">
                 {skeletonHeights.map((height, i) => (
                     <Skeleton key={i} className="h-full w-full" style={{height: `${height}%`}} />
                 ))}
             </div>
         ) : chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="sport" fontSize={12} tickLine={false} axisLine={false} />
@@ -92,7 +92,7 @@ export function BetPerformanceChart({ data, isLoading }: BetPerformanceChartProp
             </BarChart>
             </ResponsiveContainer>
         ) : (
-             <div className="h-[300px] flex items-center justify-center text-center text-muted-foreground">
+             <div className="h-full flex items-center justify-center text-center text-muted-foreground">
                 <div>
                     <p>Nenhum dado para exibir.</p>
                     <p className="text-sm">Adicione apostas para ver o gráfico.</p>

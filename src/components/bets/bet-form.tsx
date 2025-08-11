@@ -65,6 +65,12 @@ const betSchema = z.discriminatedUnion("type", [
 const sportOptions = ["Futebol", "Basquete", "Tênis", "Vôlei", "Futebol Americano", "MMA", "E-Sports", "Outro"];
 const statusOptions: Record<Bet['status'], string> = { pending: 'Pendente', won: 'Ganha', lost: 'Perdida', cashed_out: 'Cash Out', void: 'Anulada' };
 
+interface BetFormProps {
+  onSave: (bet: Omit<Bet, 'id'>) => void;
+  betToEdit?: Bet | null;
+  onCancel: () => void;
+}
+
 const calculateSurebet = (subBets: z.infer<typeof subBetSchema>[] | undefined) => {
     if (!subBets || subBets.length < 2) {
       return { totalStake: 0, guaranteedProfit: 0, profitPercentage: 0 };
@@ -103,11 +109,30 @@ const calculateSurebet = (subBets: z.infer<typeof subBetSchema>[] | undefined) =
 export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
   const form = useForm<z.infer<typeof betSchema>>({
     resolver: zodResolver(betSchema),
-    defaultValues: betToEdit ? { 
-        ...betToEdit,
-        earnedFreebetValue: betToEdit.earnedFreebetValue || 0,
+    defaultValues: betToEdit ? (betToEdit.type === 'single' ? {
+        type: 'single' as const,
+        sport: betToEdit.sport,
+        event: betToEdit.event,
         date: new Date(betToEdit.date),
+        status: betToEdit.status,
+        notes: betToEdit.notes,
+        earnedFreebetValue: betToEdit.earnedFreebetValue || 0,
+        betType: betToEdit.betType || '',
+        stake: betToEdit.stake || 0,
+        odds: betToEdit.odds || 1.01,
     } : {
+        type: 'surebet' as const,
+        sport: betToEdit.sport,
+        event: betToEdit.event,
+        date: new Date(betToEdit.date),
+        status: betToEdit.status,
+        notes: betToEdit.notes,
+        earnedFreebetValue: betToEdit.earnedFreebetValue || 0,
+        subBets: betToEdit.subBets || [],
+         totalStake: betToEdit.totalStake || undefined,
+         guaranteedProfit: betToEdit.guaranteedProfit || undefined,
+         profitPercentage: betToEdit.profitPercentage || undefined,
+    }) : {
         type: 'single',
         sport: "Futebol",
         event: "",
@@ -118,7 +143,6 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
         date: new Date(),
         notes: "",
         earnedFreebetValue: 0,
-        subBets: [{ id: '1', bookmaker: '', betType: '', odds: 1.5, stake: 10, isFreebet: false }, { id: '2', bookmaker: '', betType: '', odds: 1.5, stake: 10, isFreebet: false }],
     },
   });
 
@@ -137,7 +161,7 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
   const onSubmit = (data: z.infer<typeof betSchema>) => {
     let finalData: Omit<Bet, 'id'> = JSON.parse(JSON.stringify(data));
 
-    if (finalData.type === 'surebet') {
+    if (finalData.type === 'surebet' && finalData.subBets) {
         const { totalStake, guaranteedProfit, profitPercentage } = calculateSurebet(finalData.subBets);
         finalData.totalStake = totalStake;
         finalData.guaranteedProfit = guaranteedProfit;
@@ -233,7 +257,7 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
                             <FormField control={control} name="earnedFreebetValue" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Ganha Freebet de (R$)? (Opcional)</FormLabel>
-                                    <FormControl><Input type="number" step="0.01" {...field} placeholder="Valor da freebet que esta aposta qualifica" /></FormControl>
+                                    <FormControl><Input type="number" step="0.01" value={field.value || ''} onChange={(e) => field.onChange(e.target.value === '' ? null : Number(e.target.value))} placeholder="Valor da freebet que esta aposta qualifica" /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )} />
@@ -302,7 +326,7 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
                              <FormField control={control} name="earnedFreebetValue" render={({ field }) => (
                                 <FormItem className="pt-4">
                                     <FormLabel>Ganha Freebet de (R$)? (Opcional)</FormLabel>
-                                    <FormControl><Input type="number" step="0.01" {...field} placeholder="Valor da freebet que esta aposta qualifica" /></FormControl>
+                                    <FormControl><Input type="number" step="0.01" value={field.value || ''} onChange={(e) => field.onChange(e.target.value === '' ? null : Number(e.target.value))} placeholder="Valor da freebet que esta aposta qualifica" /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )} />

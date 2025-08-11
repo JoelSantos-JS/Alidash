@@ -111,7 +111,7 @@ export function DreamCard({ dream, plan, isPlanning = false, onPlan, onRefine, o
               <Separator />
               <div className="px-6 py-4 bg-muted/20">
                   <h4 className='font-semibold flex items-center gap-2 mb-2'><NotebookText className="w-5 h-5 text-primary"/> Minhas Anotações</h4>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap p-4 bg-background rounded-lg">{dream.notes}</p>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap p-4 bg-secondary/50 rounded-lg">{dream.notes}</p>
               </div>
               </>
           )}

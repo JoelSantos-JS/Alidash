@@ -153,6 +153,8 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
         ...financials, 
         id: productToEdit?.id || '',
         sales: productToEdit?.sales || [],
+        aliexpressLink: data.aliexpressLink || '',
+        description: data.description || '',
      });
   };
 
@@ -448,7 +450,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                     )} />
                 </div>
             </ScrollArea>
-             <div className="p-6 pt-2 flex flex-col md:flex-row justify-between items-center gap-4 bg-background border-t">
+             <div className="p-6 pt-2 flex flex-col md:flex-row justify-between items-center gap-4 bg-gradient-to-r from-slate-100/50 to-gray-200/50 dark:from-slate-800/30 dark:to-gray-800/30 border-t">
                 <div className="flex flex-wrap gap-4 items-center">
                     <div>
                         <span className="text-sm text-muted-foreground">Custo Total/un</span>

@@ -29,6 +29,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SurebetCalculator } from '@/components/bets/surebet-calculator';
+import { AdvancedSurebetCalculator } from '@/components/bets/advanced-surebet-calculator';
 
 
 const initialBets: Bet[] = [];
@@ -226,9 +227,22 @@ export default function BetsPage() {
                 <div className="mb-8">
                      <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
                         <Calculator className="w-7 h-7 text-primary" />
-                        Calculadora de Surebet
+                        Calculadoras de Surebet
                      </h3>
-                    <SurebetCalculator />
+                    <Tabs defaultValue="simple" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2 mb-6">
+                            <TabsTrigger value="simple">Calculadora Simples</TabsTrigger>
+                            <TabsTrigger value="advanced">Calculadora Avançada</TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="simple">
+                            <SurebetCalculator />
+                        </TabsContent>
+                        
+                        <TabsContent value="advanced">
+                            <AdvancedSurebetCalculator />
+                        </TabsContent>
+                    </Tabs>
                 </div>
                  {isLoading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">

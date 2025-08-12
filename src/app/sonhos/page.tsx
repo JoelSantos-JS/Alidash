@@ -65,8 +65,23 @@ export default function DreamsPage() {
             const dreamsToSave = dreams.map(d => {
                 const { plan, ...dreamWithoutPlan } = d;
                 // Only include plan if it's not null/undefined
-                if (plan && Object.keys(plan).length > 0) { 
-                    return { ...dreamWithoutPlan, plan };
+                if (plan && Object.keys(plan).length > 0) {
+                    // Create a serializable version of the plan
+                    const serializablePlan = {
+                        description: plan.description,
+                        estimatedCost: plan.estimatedCost || [],
+                        totalEstimatedCost: plan.totalEstimatedCost || 0,
+                        actionPlan: plan.actionPlan || [],
+                        importantNotes: plan.importantNotes || [],
+                        // Only include imageUrl if it's a simple string and not too large
+                        ...(plan.imageUrl && 
+                            typeof plan.imageUrl === 'string' && 
+                            plan.imageUrl.length < 1000000 && // Limit to 1MB
+                            !plan.imageUrl.startsWith('data:') // Exclude base64 data URIs
+                            ? { imageUrl: plan.imageUrl } 
+                            : {})
+                    };
+                    return { ...dreamWithoutPlan, plan: serializablePlan };
                 }
                 return dreamWithoutPlan;
             });

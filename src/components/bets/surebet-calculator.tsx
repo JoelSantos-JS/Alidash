@@ -1,11 +1,10 @@
-
 "use client";
 
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Trash2, TrendingUp, DollarSign, Percent, AlertCircle, ShieldCheck } from 'lucide-react';
+import { PlusCircle, Trash2, TrendingUp, DollarSign, Percent, AlertCircle, ShieldCheck, FileKey } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '../ui/label';
 
@@ -20,6 +19,7 @@ type OddInput = {
 type IndividualResult = {
   lucro: number;
   roi: number;
+  responsabilidade: number;
 };
 
 // Resultado da operação de surebet combinada
@@ -37,12 +37,13 @@ function calculateResults(inputs: OddInput[]): { individualResults: IndividualRe
     const stake = parseFloat(input.stakeValue);
 
     if (isNaN(odd) || isNaN(stake) || stake <= 0) {
-      return { lucro: 0, roi: 0 };
+      return { lucro: 0, roi: 0, responsabilidade: 0 };
     }
     // Lucro e ROI se a aposta for tratada isoladamente
-    const lucro = (odd * stake) - stake;
+    const lucro = stake; // Em aposta contra, o lucro é a stake do oponente.
     const roi = (lucro / stake) * 100;
-    return { lucro, roi };
+    const responsabilidade = stake * (odd - 1);
+    return { lucro, roi, responsabilidade };
   });
 
   const validInputs = inputs.filter(i => !isNaN(parseFloat(i.oddValue)) && !isNaN(parseFloat(i.stakeValue)) && parseFloat(i.stakeValue) > 0);
@@ -67,7 +68,7 @@ function calculateResults(inputs: OddInput[]): { individualResults: IndividualRe
   const surebetResult = {
     isSurebet: lucroMinimo > 0,
     lucroMinimo,
-    roiMinimo: (lucroMinimo / stakeTotal) * 100,
+    roiMinimo: stakeTotal > 0 ? (lucroMinimo / stakeTotal) * 100 : 0,
     stakeTotal,
   };
 
@@ -146,6 +147,12 @@ export function SurebetCalculator() {
                       />
                     </div>
                   </div>
+                   <div className="space-y-1">
+                      <Label>Responsabilidade</Label>
+                       <div className="p-2 h-10 flex items-center bg-muted rounded-md text-base font-semibold">
+                         {result ? result.responsabilidade.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : "R$ 0,00"}
+                       </div>
+                    </div>
                   <div className="mt-auto pt-2">
                     <h4 className="text-sm font-semibold mb-2">Resultado Individual</h4>
                     <div className="p-3 bg-muted/50 rounded-md space-y-2">
@@ -153,14 +160,14 @@ export function SurebetCalculator() {
                         <p className="flex items-center gap-1.5 text-muted-foreground">
                           <TrendingUp className="w-4 h-4" /> Lucro
                         </p>
-                        <p className={cn("font-semibold", result && result.lucro > 0 ? "text-green-500" : "text-destructive")}>
-                          {result ? result.lucro.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : "R$ 0,00"}
+                        <p className={cn("font-semibold", "text-green-500")}>
+                           {result ? result.lucro.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : "R$ 0,00"}
                         </p>
                       </div>
                       <div className="flex justify-between items-center text-sm">
                         <p className="flex items-center gap-1.5 text-muted-foreground"><Percent className="w-4 h-4" /> ROI</p>
-                        <p className={cn("font-semibold", result && result.roi > 0 ? "text-green-500" : "text-destructive")}>
-                          {result ? `${result.roi.toFixed(2)}%` : "0,00%"}
+                        <p className={cn("font-semibold", "text-green-500")}>
+                          100.00%
                         </p>
                       </div>
                     </div>

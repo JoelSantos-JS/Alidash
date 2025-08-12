@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Trash2, TrendingUp, DollarSign, Percent, AlertCircle, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '../ui/label';
-import { Switch } from "@/components/ui/switch"
+import { Switch } from "@/components/ui/switch";
+import { CardDescription } from '../ui/card';
 
 type OddInput = {
   id: number;
@@ -17,7 +18,6 @@ type OddInput = {
   isLayBet: boolean;
 };
 
-// Resultado para um único card de aposta (cálculo isolado)
 type IndividualResult = {
   lucro: number;
   roi: number;
@@ -43,15 +43,15 @@ function calculateResults(inputs: OddInput[]): { individualResults: IndividualRe
     }
 
     if (input.isLayBet) {
+      const lucro = stake; // Em lay, o lucro é a stake (ganho alvo).
       const responsabilidade = stake * (odd - 1);
-      const lucro = stake; // Em lay, o lucro é a stake.
       const roi = responsabilidade > 0 ? (lucro / responsabilidade) * 100 : 0;
       return { lucro, roi, responsabilidade };
     } else {
       // Cálculo para aposta a favor (Back)
       const lucro = stake * (odd - 1);
       const responsabilidade = stake; // Em back, a responsabilidade é a própria stake
-      const roi = stake > 0 ? (lucro / stake) * 100 : 0;
+      const roi = stake > 0 ? (lucro / responsabilidade) * 100 : 0;
       return { lucro, roi, responsabilidade };
     }
   });
@@ -62,40 +62,51 @@ function calculateResults(inputs: OddInput[]): { individualResults: IndividualRe
     return { individualResults, surebetResult: null };
   }
   
-  const backBets = validInputs.filter(i => !i.isLayBet);
-  const layBets = validInputs.filter(i => i.isLayBet);
+  const stakeTotal = validInputs.reduce((acc, input) => {
+    const stake = parseFloat(input.stakeValue);
+    return acc + (input.isLayBet ? 0 : stake); // Só soma stake de apostas a favor
+  }, 0);
 
-  // A lógica de surebet combinada aqui precisaria de um modelo mais complexo,
-  // por exemplo, apostar a favor de um resultado e contra o mesmo resultado em uma exchange.
-  // Por enquanto, vamos focar nos cálculos individuais corretos e no stake total.
-  
-  const stakeTotal = backBets.reduce((acc, s) => acc + parseFloat(s.stakeValue), 0);
-  const responsabilidadeTotalLay = layBets.reduce((acc, s) => acc + (parseFloat(s.stakeValue) * (parseFloat(s.oddValue) - 1)), 0);
-  
-  // Simplificação: o custo total da operação é a soma das stakes a favor mais a maior responsabilidade contra.
-  const custoTotalOperacao = stakeTotal + responsabilidadeTotalLay;
-
-
-  // Simulação de lucro para cada cenário.
   const profitsIfWin = validInputs.map((input, index) => {
-      const odd = parseFloat(input.oddValue);
-      const stake = parseFloat(input.stakeValue);
-      
-      if (input.isLayBet) {
-          // Se o lay ganhar (resultado não acontece), ganhamos a stake dos outros e perdemos a nossa.
-           const totalPerdidoNasOutras = validInputs.filter((_, i) => i !== index && !i.isLayBet).reduce((acc, inp) => acc + parseFloat(inp.stakeValue), 0)
-          return stake - totalPerdidoNasOutras;
-      } else {
-          // Se o back ganhar, ganhamos o prêmio e perdemos as outras stakes e responsabilidades
-          const retorno = odd * stake;
-          const outrasStakes = validInputs.filter((_, i) => i !== index && !i.isLayBet).reduce((acc, inp) => acc + parseFloat(inp.stakeValue), 0);
-          const outrasLiabilities = validInputs.filter((_, i) => i !== index && i.isLayBet).reduce((acc, inp) => acc + (parseFloat(inp.stakeValue) * (parseFloat(inp.oddValue) -1)), 0);
-          return retorno - (stake + outrasStakes + outrasLiabilities)
-      }
+    const odd = parseFloat(input.oddValue);
+    const stake = parseFloat(input.stakeValue);
+    
+    // Calcula o custo total da operação para este cenário
+    const custoTotal = validInputs.reduce((acc, otherInput, otherIndex) => {
+        if(index === otherIndex) return acc; // Não conta a aposta vencedora no custo
+        const otherStake = parseFloat(otherInput.stakeValue);
+        return acc + (otherInput.isLayBet ? 0 : otherStake);
+    }, 0);
+
+
+    if (input.isLayBet) {
+      // Se a aposta CONTRA for vencedora (ex: empate ou derrota do time A)
+      // O lucro é a stake, e perdemos todas as outras apostas a favor
+      const stakesPerdidas = validInputs.filter(i => i.id !== input.id && !i.isLayBet).reduce((sum, i) => sum + parseFloat(i.stakeValue), 0);
+      return stake - stakesPerdidas;
+    } else {
+      // Se a aposta A FAVOR for vencedora
+      // O lucro é o retorno menos a stake, e perdemos as outras
+      const retorno = stake * odd;
+      const outrasStakes = validInputs.filter(i => i.id !== input.id && !i.isLayBet).reduce((sum, i) => sum + parseFloat(i.stakeValue), 0);
+      const outrasLiabilities = validInputs.filter(i => i.id !== input.id && i.isLayBet).reduce((sum, i) => sum + (parseFloat(i.stakeValue) * (parseFloat(i.oddValue) - 1)), 0);
+
+      return retorno - stake - outrasStakes - outrasLiabilities;
+    }
   });
+
+  const investimentoTotal = validInputs.reduce((acc, input) => {
+    if (input.isLayBet) {
+        // A responsabilidade só é "paga" se a aposta lay for perdida.
+        // O custo real é a maior responsabilidade entre as apostas lay + stakes a favor.
+        return acc; // Lógica mais complexa necessária aqui.
+    }
+    return acc + parseFloat(input.stakeValue);
+  }, 0);
   
-  // Esta lógica de lucro combinado é complexa e depende da estrutura do mercado (ex: vitória/empate/derrota).
-  // A implementação atual será uma aproximação.
+  const maiorResponsabilidade = Math.max(0, ...validInputs.filter(i => i.isLayBet).map(i => parseFloat(i.stakeValue) * (parseFloat(i.oddValue) -1)));
+  const custoTotalOperacao = investimentoTotal + maiorResponsabilidade;
+
   const lucroMinimo = Math.min(...profitsIfWin);
   const roiMinimo = custoTotalOperacao > 0 ? (lucroMinimo / custoTotalOperacao) * 100 : 0;
 
@@ -104,7 +115,7 @@ function calculateResults(inputs: OddInput[]): { individualResults: IndividualRe
     isSurebet: lucroMinimo > 0,
     lucroMinimo,
     roiMinimo,
-    stakeTotal: custoTotalOperacao, // Renomeando para Custo Total
+    stakeTotal: custoTotalOperacao, // Representa o custo total da operação
   };
 
   return { individualResults, surebetResult };
@@ -112,8 +123,8 @@ function calculateResults(inputs: OddInput[]): { individualResults: IndividualRe
 
 export function SurebetCalculator() {
   const [betInputs, setBetInputs] = useState<OddInput[]>([
-    { id: 1, oddValue: '3.0', stakeValue: '70', betType: 'Casa 1 (A Favor)', isLayBet: false },
-    { id: 2, oddValue: '3.5', stakeValue: '60', betType: 'Casa 2 (Contra)', isLayBet: true },
+    { id: 1, oddValue: '3.0', stakeValue: '100', betType: 'Casa 1 (A Favor)', isLayBet: false },
+    { id: 2, oddValue: '1.5', stakeValue: '200', betType: 'Casa 2 (Contra)', isLayBet: true },
   ]);
 
   const handleAddBetInput = () => {
@@ -132,13 +143,15 @@ export function SurebetCalculator() {
   const calculation = useMemo(() => {
     return calculateResults(betInputs);
   }, [betInputs]);
+  
+  const { individualResults, surebetResult } = calculation;
 
   return (
     <Card className="bg-card/50 border-dashed">
       <CardContent className="p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {betInputs.map((betInput, index) => {
-            const result = calculation?.individualResults[index];
+            const result = individualResults[index];
 
             return (
               <Card key={betInput.id} className="bg-background flex flex-col">
@@ -227,58 +240,59 @@ export function SurebetCalculator() {
             <PlusCircle className="mr-2" /> Adicionar Casa
           </Button>
         </div>
-
+        
         <Card className="bg-background">
-          <CardHeader>
-            <CardTitle className="text-lg">Resumo Geral da Operação</CardTitle>
-            <CardDescription>Análise da surebet considerando todas as apostas combinadas</CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className='p-4 bg-muted rounded-lg flex-1'>
-              <p className="text-sm text-muted-foreground flex items-center gap-2 mb-1"><DollarSign /> Custo Total da Operação</p>
-              <p className="text-2xl font-bold p-0 h-auto bg-transparent border-0 focus-visible:ring-0">
-                {calculation?.surebetResult?.stakeTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'R$ 0,00'}
-              </p>
-              <p className="text-xs text-muted-foreground">Soma das stakes (A Favor) + Responsabilidades (Contra)</p>
-            </div>
-            {calculation.surebetResult ? (
-              calculation.surebetResult.isSurebet ? (
-                <>
-                  <div className='p-4 bg-green-500/10 text-green-500 rounded-lg flex-1'>
-                    <p className="text-sm text-green-400 flex items-center gap-2 mb-1"><ShieldCheck /> Lucro Mínimo Garantido</p>
-                    <p className="text-2xl font-bold">
-                      {calculation.surebetResult.lucroMinimo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </p>
-                    <p className="text-xs text-green-400/80">Menor lucro possível na operação</p>
-                  </div>
-                  <div className='p-4 bg-green-500/10 text-green-500 rounded-lg flex-1'>
-                    <p className="text-sm text-green-400 flex items-center gap-2 mb-1"><Percent /> ROI Mínimo</p>
-                    <p className="text-2xl font-bold">
-                      {`${calculation.surebetResult.roiMinimo.toFixed(2)}%`}
-                    </p>
-                    <p className="text-xs text-green-400/80">Menor retorno sobre investimento</p>
-                  </div>
-                </>
-              ) : (
-                <div className="md:col-span-2 flex items-center gap-4 text-destructive p-4 bg-destructive/10 rounded-lg">
-                  <AlertCircle className="w-8 h-8" />
-                  <div>
-                    <p className="font-bold">Não é uma Surebet Lucrativa</p>
-                    <p>Com os valores atuais, o prejuízo máximo é de <span className="font-mono">{calculation.surebetResult.lucroMinimo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>. Ajuste os valores para garantir lucro.</p>
-                  </div>
-                </div>
-              )
-            ) : (
-              <div className="md:col-span-2 flex items-center gap-4 text-muted-foreground p-4 bg-muted/50 rounded-lg">
-                <AlertCircle className="w-8 h-8" />
-                <div>
-                  <p className="font-bold">Aguardando dados</p>
-                  <p>Insira as odds e stakes de pelo menos duas casas para calcular.</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                <CardHeader>
+                    <CardTitle className="text-lg">Resumo Geral da Operação</CardTitle>
+                    <CardDescription>Análise da surebet considerando todas as apostas combinadas</CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className='p-4 bg-muted rounded-lg flex-1'>
+                        <p className="text-sm text-muted-foreground flex items-center gap-2 mb-1"><DollarSign /> Custo Total (Risco)</p>
+                        <p className="text-2xl font-bold p-0 h-auto bg-transparent border-0 focus-visible:ring-0">
+                            {surebetResult?.stakeTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'R$ 0,00'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Soma das stakes (A Favor) + Maior Responsabilidade (Contra)</p>
+                    </div>
+                    {surebetResult ? (
+                        surebetResult.isSurebet ? (
+                            <>
+                                <div className='p-4 bg-green-500/10 text-green-500 rounded-lg flex-1'>
+                                    <p className="text-sm text-green-400 flex items-center gap-2 mb-1"><ShieldCheck /> Lucro Mínimo Garantido</p>
+                                    <p className="text-2xl font-bold">
+                                        {surebetResult.lucroMinimo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    </p>
+                                    <p className="text-xs text-green-400/80">Menor lucro possível na operação</p>
+                                </div>
+                                <div className='p-4 bg-green-500/10 text-green-500 rounded-lg flex-1'>
+                                    <p className="text-sm text-green-400 flex items-center gap-2 mb-1"><Percent /> ROI Mínimo</p>
+                                    <p className="text-2xl font-bold">
+                                        {`${surebetResult.roiMinimo.toFixed(2)}%`}
+                                    </p>
+                                    <p className="text-xs text-green-400/80">Menor retorno sobre investimento</p>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="md:col-span-2 flex items-center gap-4 text-destructive p-4 bg-destructive/10 rounded-lg">
+                                <AlertCircle className="w-8 h-8" />
+                                <div>
+                                    <p className="font-bold">Não é uma Surebet Lucrativa</p>
+                                    <p>Com os valores atuais, o prejuízo máximo é de <span className="font-mono">{surebetResult.lucroMinimo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>. Ajuste os valores.</p>
+                                </div>
+                            </div>
+                        )
+                    ) : (
+                        <div className="md:col-span-2 flex items-center gap-4 text-muted-foreground p-4 bg-muted/50 rounded-lg">
+                            <AlertCircle className="w-8 h-8" />
+                            <div>
+                                <p className="font-bold">Aguardando dados</p>
+                                <p>Insira as odds e stakes de pelo menos duas casas para calcular.</p>
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
       </CardContent>
     </Card>
   );

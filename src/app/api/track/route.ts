@@ -1,6 +1,19 @@
 
 import { NextResponse } from 'next/server';
 
+interface TrackEvent {
+  codigo: string;
+  tipo: string;
+  dtHrCriado: {
+    date: string;
+    timezone_type: number;
+    timezone: string;
+  };
+  descricao: string;
+  unidade: any;
+  unidadeDestino?: any;
+}
+
 export async function POST(request: Request) {
   try {
     const { code } = await request.json();
@@ -35,13 +48,24 @@ export async function POST(request: Request) {
       }
     }
     
-    // The response is a JSON object where the actual tracking data is a string inside the 'json' key.
     const outerJson = await response.json();
     
     if (outerJson && typeof outerJson.json === 'string') {
         const innerJson = JSON.parse(outerJson.json);
-        // The actual tracking data is now in innerJson
-        return NextResponse.json(innerJson);
+
+        // Transform the events to have a simpler date format.
+        const transformedEvents = innerJson.events.map((event: TrackEvent) => {
+            const [datePart, timePart] = event.dtHrCriado.date.split(' ');
+            return {
+                description: event.descricao,
+                location: `${event.unidade.endereco?.cidade || 'Origem'} - ${event.unidade.endereco?.uf || event.unidade.nome}`,
+                date: datePart,
+                time: timePart.substring(0, 5), // Get only HH:mm
+            };
+        });
+        
+        // Return a new object with the simplified events list.
+        return NextResponse.json({ code: innerJson.codObjeto, events: transformedEvents });
     } else {
          // This case handles if the response format is different or empty
         return NextResponse.json({ events: [] });

@@ -84,7 +84,13 @@ const categoryOptions = [
 export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProps) {
   const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
-    defaultValues: productToEdit ? { ...productToEdit } : {
+    defaultValues: productToEdit ? { 
+        ...productToEdit,
+        notes: productToEdit.notes || '',
+        trackingCode: productToEdit.trackingCode || '',
+        description: productToEdit.description || '',
+        aliexpressLink: productToEdit.aliexpressLink || '',
+     } : {
         name: "",
         category: "",
         supplier: "",
@@ -159,6 +165,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
         sales: productToEdit?.sales || [],
         aliexpressLink: data.aliexpressLink || '',
         description: data.description || '',
+        notes: data.notes || '',
         trackingCode: data.trackingCode || '',
      });
   };
@@ -295,7 +302,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                                             </Button>
                                         </div>
                                     </FormLabel>
-                                    <FormControl><Textarea {...field} rows={5} /></FormControl>
+                                    <FormControl><Textarea {...field} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )} />

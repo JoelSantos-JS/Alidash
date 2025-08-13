@@ -8,6 +8,7 @@ export interface Product {
   description: string;
   notes?: string;
   trackingCode?: string; // Código de rastreio
+  purchaseEmail?: string; // Email usado na compra
   
   // Custos
   purchasePrice: number;

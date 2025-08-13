@@ -16,16 +16,17 @@ interface TrackEvent {
 
 export async function POST(request: Request) {
   try {
-    const { code } = await request.json();
+    const { code, apiKey: clientApiKey } = await request.json();
 
     if (!code) {
       return NextResponse.json({ message: 'Código de rastreio é obrigatório.' }, { status: 400 });
     }
 
-    const apiKey = process.env.WONCA_API_KEY;
+    // Use client-provided API key or fallback to environment variable
+    const apiKey = clientApiKey || process.env.WONCA_API_KEY;
     if (!apiKey) {
-      console.error("WONCA_API_KEY not found in .env file");
-      return NextResponse.json({ message: 'A chave da API de rastreio não está configurada no servidor.' }, { status: 500 });
+      console.error("No API key provided and WONCA_API_KEY not found in .env file");
+      return NextResponse.json({ message: 'Chave da API de rastreio não configurada. Configure nas Configurações.' }, { status: 500 });
     }
 
     const response = await fetch('https://api-labs.wonca.com.br/wonca.labs.v1.LabsService/Track', {
@@ -42,33 +43,48 @@ export async function POST(request: Request) {
       console.error("Tracking API error:", response.status, errorText);
        try {
         const errorJson = JSON.parse(errorText);
+        
+        // Handle specific Wonca Labs errors
+        if (errorJson.code === 'unauthenticated' && errorJson.message === 'no rows in result set') {
+          return NextResponse.json({ 
+            message: 'Código de rastreio não encontrado. Verifique se o código está correto ou se o objeto ainda não foi postado.' 
+          }, { status: 404 });
+        }
+        
         return NextResponse.json({ message: errorJson.message || 'Falha ao buscar informações de rastreio.' }, { status: response.status });
       } catch (e) {
         return NextResponse.json({ message: 'Falha ao buscar informações de rastreio.' }, { status: response.status });
       }
     }
     
-    const outerJson = await response.json();
-    
-    if (outerJson && typeof outerJson.json === 'string') {
-        const innerJson = JSON.parse(outerJson.json);
+    const responseData = await response.json();
 
+    // Parse the nested JSON string
+    let trackingData;
+    if (responseData && responseData.json) {
+        trackingData = JSON.parse(responseData.json);
+    } else {
+        trackingData = responseData;
+    }
+
+    // Check if events exist and is an array
+    if (trackingData && trackingData.eventos && Array.isArray(trackingData.eventos)) {
         // Transform the events to have a simpler date format.
-        const transformedEvents = innerJson.events.map((event: TrackEvent) => {
+        const transformedEvents = trackingData.eventos.map((event: TrackEvent) => {
             const [datePart, timePart] = event.dtHrCriado.date.split(' ');
             return {
                 description: event.descricao,
-                location: `${event.unidade.endereco?.cidade || 'Origem'} - ${event.unidade.endereco?.uf || event.unidade.nome}`,
+                location: `${event.unidade.endereco?.cidade || event.unidade.nome || 'Origem'} - ${event.unidade.endereco?.uf || ''}`.trim().replace(/ - $/, ''),
                 date: datePart,
                 time: timePart.substring(0, 5), // Get only HH:mm
             };
         });
         
         // Return a new object with the simplified events list.
-        return NextResponse.json({ code: innerJson.codObjeto, events: transformedEvents });
+        return NextResponse.json({ code: trackingData.codObjeto, events: transformedEvents });
     } else {
-         // This case handles if the response format is different or empty
-        return NextResponse.json({ events: [] });
+        // No events found or invalid structure
+        return NextResponse.json({ code: trackingData?.codObjeto || code, events: [] });
     }
 
   } catch (error) {

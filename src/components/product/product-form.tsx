@@ -25,6 +25,7 @@ import { suggestPrice, suggestDescription } from "@/ai/flows/dream-planner";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrackingView } from "./tracking-view";
+import { useAuth } from "@/hooks/use-auth";
 
 
 const productSchema = z.object({
@@ -36,6 +37,7 @@ const productSchema = z.object({
   description: z.string().optional(),
   notes: z.string().optional(),
   trackingCode: z.string().optional(),
+  purchaseEmail: z.string().email({ message: "Por favor, insira um email válido." }).optional().or(z.literal('')),
   purchasePrice: z.coerce.number().min(0, { message: "O preço de compra não pode ser negativo." }),
   shippingCost: z.coerce.number().min(0, { message: "O custo de frete não pode ser negativo." }),
   importTaxes: z.coerce.number().min(0, { message: "As taxas de importação não podem ser negativas." }),
@@ -115,8 +117,12 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
 
   const { formState: { isSubmitting }, watch, setValue, control } = form;
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isSuggesting, setIsSuggesting] = React.useState({ price: false, description: false});
   const [isCustomCategory, setIsCustomCategory] = React.useState(false);
+  
+  // Check if user is supreme admin
+  const isSupremeUser = user?.email === 'joeltere9@gmail.com';
 
   const watchedValues = watch();
   const watchedCategory = watch("category");
@@ -237,9 +243,12 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
             <Tabs defaultValue="details">
-                 <TabsList className="mx-6 grid w-[calc(100%-48px)] grid-cols-2">
+                 <TabsList className={`mx-6 grid w-[calc(100%-48px)] ${isSupremeUser ? 'grid-cols-3' : 'grid-cols-2'}`}>
                     <TabsTrigger value="details"><Package className="mr-2 h-4 w-4"/> Detalhes do Produto</TabsTrigger>
                     <TabsTrigger value="tracking"><ClipboardList className="mr-2 h-4 w-4"/> Rastreio</TabsTrigger>
+                    {isSupremeUser && (
+                        <TabsTrigger value="settings"><Sparkles className="mr-2 h-4 w-4"/> Configurações</TabsTrigger>
+                    )}
                 </TabsList>
                 
                 <TabsContent value="details">
@@ -322,6 +331,14 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                                     </FormItem>
                                 )} />
                             </div>
+                            <FormField control={form.control} name="purchaseEmail" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Email da Compra</FormLabel>
+                                    <FormControl><Input {...field} type="email" placeholder="email@exemplo.com (opcional)" /></FormControl>
+                                    <FormDescription>Email usado para fazer a compra (para controle e suporte).</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
                             <FormField control={form.control} name="aliexpressLink" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Link do AliExpress (Opcional)</FormLabel>
@@ -467,6 +484,55 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                                     <FormMessage />
                                 </FormItem>
                             )} />
+                            
+                            <FormField control={form.control} name="trackingCode" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Código de Rastreio</FormLabel>
+                                    <div className="flex gap-2">
+                                        <FormControl>
+                                            <Input {...field} placeholder="Código fornecido pelo vendedor (opcional)" className="flex-1" />
+                                        </FormControl>
+                                        {field.value && (
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                size="sm"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(field.value);
+                                                    toast({
+                                                        title: "Código copiado!",
+                                                        description: "O código de rastreio foi copiado para a área de transferência.",
+                                                    });
+                                                }}
+                                            >
+                                                Copiar
+                                            </Button>
+                                        )}
+                                    </div>
+                                    {field.value && (
+                                        <div className="mt-2">
+                                            <Button 
+                                                type="button" 
+                                                variant="secondary" 
+                                                size="sm"
+                                                onClick={() => {
+                                                    // Switch to tracking tab
+                                                    const trackingTab = document.querySelector('[data-value="tracking"]') as HTMLElement;
+                                                    if (trackingTab) {
+                                                        trackingTab.click();
+                                                    }
+                                                }}
+                                                className="w-full"
+                                            >
+                                                <Package className="mr-2 h-4 w-4" />
+                                                Ver Rastreio Completo
+                                            </Button>
+                                        </div>
+                                    )}
+                                    <FormDescription>Código para rastrear a encomenda. Será salvo junto com o produto.</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
                         </div>
                     </ScrollArea>
                 </TabsContent>
@@ -476,16 +542,166 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                             <FormField control={form.control} name="trackingCode" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Código de Rastreio</FormLabel>
-                                    <FormControl><Input {...field} placeholder="Insira o código fornecido pelo vendedor" /></FormControl>
+                                    <div className="flex gap-2">
+                                        <FormControl>
+                                            <Input {...field} placeholder="Insira o código fornecido pelo vendedor" className="flex-1" />
+                                        </FormControl>
+                                        {field.value && (
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                size="sm"
+                                                onClick={() => {
+                                                     // Copy tracking code to clipboard for easy access
+                                                     navigator.clipboard.writeText(field.value);
+                                                     toast({
+                                                         title: "Código copiado!",
+                                                         description: "O código de rastreio foi copiado para a área de transferência.",
+                                                     });
+                                                 }}
+                                            >
+                                                Copiar
+                                            </Button>
+                                        )}
+                                    </div>
                                     <FormDescription>Este código será usado para buscar o status da encomenda.</FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )} />
 
-                            <TrackingView trackingCode={watchedValues.trackingCode} />
+                            {watchedValues.trackingCode && (
+                                <div className="mb-4">
+                                    <Button 
+                                        type="button" 
+                                        variant="secondary" 
+                                        size="sm"
+                                        onClick={() => {
+                                            // Switch to tracking tab and focus on tracking
+                                            const trackingTab = document.querySelector('[data-value="tracking"]') as HTMLElement;
+                                            if (trackingTab) {
+                                                trackingTab.click();
+                                                // Scroll to tracking view
+                                                setTimeout(() => {
+                                                    const trackingView = document.querySelector('.tracking-view');
+                                                    if (trackingView) {
+                                                        trackingView.scrollIntoView({ behavior: 'smooth' });
+                                                    }
+                                                }, 100);
+                                            }
+                                        }}
+                                        className="w-full"
+                                    >
+                                        <Package className="mr-2 h-4 w-4" />
+                                        Visualizar Rastreio Completo
+                                    </Button>
+                                </div>
+                            )}
+
+                            <div className="tracking-view">
+                                <TrackingView trackingCode={watchedValues.trackingCode} />
+                            </div>
                         </div>
                     </ScrollArea>
                 </TabsContent>
+                {isSupremeUser && (
+                <TabsContent value="settings">
+                    <ScrollArea className="h-[65vh]">
+                        <div className="space-y-6 px-6 pt-4 pb-6">
+                            <div className="space-y-4">
+                                <div>
+                                    <h3 className="text-lg font-medium">Configurações da API de Rastreio</h3>
+                                    <p className="text-sm text-muted-foreground">Gerencie a chave da API da Wonca Labs para rastreamento de encomendas.</p>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Chave da API Wonca Labs</label>
+                                        <div className="flex gap-2">
+                                            <Input 
+                                                type="password"
+                                                placeholder="Insira sua chave da API"
+                                                className="flex-1"
+                                                id="wonca-api-key"
+                                            />
+                                            <Button 
+                                                type="button" 
+                                                variant="outline"
+                                                onClick={() => {
+                                                    const input = document.getElementById('wonca-api-key') as HTMLInputElement;
+                                                    const apiKey = input.value.trim();
+                                                    if (apiKey) {
+                                                        // Save to localStorage for now (in production, use secure storage)
+                                                        localStorage.setItem('wonca_api_key', apiKey);
+                                                        toast({
+                                                            title: "API Key salva!",
+                                                            description: "A chave da API foi salva com sucesso.",
+                                                        });
+                                                        input.value = '';
+                                                    } else {
+                                                        toast({
+                                                            variant: "destructive",
+                                                            title: "Erro",
+                                                            description: "Por favor, insira uma chave válida.",
+                                                        });
+                                                    }
+                                                }}
+                                            >
+                                                Salvar
+                                            </Button>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Esta chave será usada para fazer requisições à API de rastreio da Wonca Labs.
+                                        </p>
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                        <Button 
+                                            type="button" 
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => {
+                                                const currentKey = localStorage.getItem('wonca_api_key');
+                                                if (currentKey) {
+                                                    const input = document.getElementById('wonca-api-key') as HTMLInputElement;
+                                                    input.type = input.type === 'password' ? 'text' : 'password';
+                                                    input.value = currentKey;
+                                                    setTimeout(() => {
+                                                        input.type = 'password';
+                                                        input.value = '';
+                                                    }, 3000);
+                                                } else {
+                                                    toast({
+                                                        variant: "destructive",
+                                                        title: "Nenhuma chave encontrada",
+                                                        description: "Não há chave da API salva.",
+                                                    });
+                                                }
+                                            }}
+                                        >
+                                            Visualizar Chave Atual
+                                        </Button>
+                                        
+                                        <Button 
+                                            type="button" 
+                                            variant="destructive"
+                                            size="sm"
+                                            onClick={() => {
+                                                localStorage.removeItem('wonca_api_key');
+                                                toast({
+                                                    title: "Chave removida",
+                                                    description: "A chave da API foi removida.",
+                                                });
+                                            }}
+                                        >
+                                            Remover Chave
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </ScrollArea>
+                </TabsContent>
+                )}
             </Tabs>
 
              <div className="p-6 pt-2 flex flex-col md:flex-row justify-between items-center gap-4 bg-gradient-to-r from-slate-100/50 to-gray-200/50 dark:from-slate-800/30 dark:to-gray-800/30 border-t">

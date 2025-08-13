@@ -45,10 +45,16 @@ export function TrackingView({ trackingCode }: TrackingViewProps) {
     setTrackingData(null);
 
     try {
+      // Get API key from localStorage if available
+      const storedApiKey = localStorage.getItem('wonca_api_key');
+      
       const response = await fetch('/api/track', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: trackingCode }),
+        body: JSON.stringify({ 
+          code: trackingCode,
+          ...(storedApiKey && { apiKey: storedApiKey })
+        }),
       });
 
       const result = await response.json();
@@ -57,8 +63,12 @@ export function TrackingView({ trackingCode }: TrackingViewProps) {
         throw new Error(result.message || 'Falha ao buscar dados de rastreio.');
       }
       
-      if (result.events && result.events.length > 0) {
+      if (result.events !== undefined) {
         setTrackingData(result);
+        if (result.events.length === 0) {
+          // Only show info message, don't set error when we have valid tracking data
+          console.log('Código válido mas sem eventos ainda');
+        }
       } else {
         setError('Nenhum evento de rastreio encontrado para este código.');
       }
@@ -105,21 +115,28 @@ export function TrackingView({ trackingCode }: TrackingViewProps) {
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="relative pl-6">
-                 {trackingData.events.map((event, index) => (
-                    <div key={index} className="relative pb-8">
-                         {index !== trackingData.events.length - 1 && (
-                            <div className="absolute left-[5px] top-[10px] h-full w-0.5 bg-border" />
-                        )}
-                        <div className="absolute left-0 top-1.5 h-3 w-3 rounded-full bg-primary" />
-                        <div className="ml-6">
-                            <p className="font-bold text-sm">{event.description}</p>
-                            <p className="text-xs text-muted-foreground">{event.location}</p>
-                            <p className="text-xs text-muted-foreground">{event.date} às {event.time}</p>
+                {trackingData.events.length > 0 ? (
+                    <div className="relative pl-6">
+                     {trackingData.events.map((event, index) => (
+                        <div key={index} className="relative pb-8">
+                             {index !== trackingData.events.length - 1 && (
+                                <div className="absolute left-[5px] top-[10px] h-full w-0.5 bg-border" />
+                            )}
+                            <div className="absolute left-0 top-1.5 h-3 w-3 rounded-full bg-primary" />
+                            <div className="ml-6">
+                                <p className="font-bold text-sm">{event.description}</p>
+                                <p className="text-xs text-muted-foreground">{event.location}</p>
+                                <p className="text-xs text-muted-foreground">{event.date} às {event.time}</p>
+                            </div>
                         </div>
+                    ))}
                     </div>
-                ))}
-                </div>
+                ) : (
+                    <div className="text-center py-8">
+                        <p className="text-muted-foreground">Este código de rastreio é válido, mas ainda não possui eventos de movimentação.</p>
+                        <p className="text-sm text-muted-foreground mt-2">Verifique novamente mais tarde.</p>
+                    </div>
+                )}
             </CardContent>
         </Card>
       )}

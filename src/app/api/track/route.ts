@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
@@ -8,7 +9,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Código de rastreio é obrigatório.' }, { status: 400 });
     }
 
-    // A chave da API agora é lida de forma segura a partir das variáveis de ambiente
     const apiKey = process.env.WONCA_API_KEY;
     if (!apiKey) {
       console.error("WONCA_API_KEY not found in .env file");
@@ -24,26 +24,26 @@ export async function POST(request: Request) {
       body: JSON.stringify({ code })
     });
 
-    const responseText = await response.text();
-
     if (!response.ok) {
-      console.error("Tracking API error:", response.status, responseText);
-      // Tenta extrair uma mensagem de erro do corpo da resposta, se possível
-      try {
-        const errorJson = JSON.parse(responseText);
+      const errorText = await response.text();
+      console.error("Tracking API error:", response.status, errorText);
+       try {
+        const errorJson = JSON.parse(errorText);
         return NextResponse.json({ message: errorJson.message || 'Falha ao buscar informações de rastreio.' }, { status: response.status });
       } catch (e) {
         return NextResponse.json({ message: 'Falha ao buscar informações de rastreio.' }, { status: response.status });
       }
     }
     
-    // Tenta fazer o parse da resposta como JSON, pois a resposta pode vir vazia
-    try {
-        const data = JSON.parse(responseText);
-        return NextResponse.json(data);
-    } catch(e) {
-        // Se a resposta for vazia ou não for um JSON válido, mas a requisição foi bem-sucedida (2xx),
-        // retorna um objeto vazio ou uma mensagem apropriada.
+    // The response is a JSON object where the actual tracking data is a string inside the 'json' key.
+    const outerJson = await response.json();
+    
+    if (outerJson && typeof outerJson.json === 'string') {
+        const innerJson = JSON.parse(outerJson.json);
+        // The actual tracking data is now in innerJson
+        return NextResponse.json(innerJson);
+    } else {
+         // This case handles if the response format is different or empty
         return NextResponse.json({ events: [] });
     }
 

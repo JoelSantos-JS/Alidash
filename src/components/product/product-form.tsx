@@ -3,7 +3,7 @@
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CalendarIcon, Loader2, Sparkles } from "lucide-react";
+import { CalendarIcon, Loader2, Sparkles, Package, ClipboardList } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import React from "react";
@@ -23,6 +23,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import { suggestPrice, suggestDescription } from "@/ai/flows/dream-planner";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TrackingView } from "./tracking-view";
 
 
 const productSchema = z.object({
@@ -33,6 +35,7 @@ const productSchema = z.object({
   imageUrl: z.string().url({ message: "Por favor, insira uma URL de imagem válida." }),
   description: z.string().optional(),
   notes: z.string().optional(),
+  trackingCode: z.string().optional(),
   purchasePrice: z.coerce.number().min(0, { message: "O preço de compra não pode ser negativo." }),
   shippingCost: z.coerce.number().min(0, { message: "O custo de frete não pode ser negativo." }),
   importTaxes: z.coerce.number().min(0, { message: "As taxas de importação não podem ser negativas." }),
@@ -89,6 +92,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
         imageUrl: "",
         description: "",
         notes: "",
+        trackingCode: "",
         purchasePrice: 0,
         shippingCost: 0,
         importTaxes: 0,
@@ -155,6 +159,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
         sales: productToEdit?.sales || [],
         aliexpressLink: data.aliexpressLink || '',
         description: data.description || '',
+        trackingCode: data.trackingCode || '',
      });
   };
 
@@ -224,232 +229,258 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
       </DialogHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
-            <ScrollArea className="h-[70vh] px-6">
-                <div className="space-y-6">
-                    {isLowProfit && (
-                        <Alert variant="destructive">
-                            <AlertTriangle className="h-4 w-4" />
-                            <AlertTitle>Margem de Lucro Baixa</AlertTitle>
-                            <AlertDescription>
-                                A margem de lucro para este produto está abaixo de 15%. Considere revisar seus custos ou preço de venda.
-                            </AlertDescription>
-                        </Alert>
-                    )}
-                    <h3 className="text-lg font-medium border-b pb-2">Informações Básicas</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField control={form.control} name="name" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Nome do Produto</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                        <FormField control={control} name="category" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Categoria</FormLabel>
-                                {isCustomCategory ? (
-                                    <div className="flex items-center gap-2">
-                                        <Input {...field} placeholder="Digite a nova categoria" />
-                                        <Button variant="ghost" onClick={() => {
-                                            setIsCustomCategory(false)
-                                            setValue('category', '')
-                                        }}>Cancelar</Button>
-                                    </div>
-                                ) : (
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Selecione uma categoria" />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            {categoryOptions.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                                            <SelectItem value="custom">Outra (especificar)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                )}
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                    </div>
-                     <FormField control={form.control} name="description" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>
-                                <div className="flex items-center justify-between">
-                                    <span>Descrição</span>
-                                     <Button type="button" variant="link" size="sm" onClick={handleSuggestDescription} disabled={isSuggesting.description} className="p-0 h-auto">
-                                        {isSuggesting.description ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2 text-primary" />}
-                                        Sugerir com IA
-                                    </Button>
-                                </div>
-                            </FormLabel>
-                            <FormControl><Textarea {...field} rows={5} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField control={form.control} name="supplier" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Fornecedor / Loja</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                         <FormField control={form.control} name="imageUrl" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>URL da Imagem</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                    </div>
-                    <FormField control={form.control} name="aliexpressLink" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Link do AliExpress (Opcional)</FormLabel>
-                            <FormControl><Input {...field} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
+            <Tabs defaultValue="details">
+                 <TabsList className="mx-6 grid w-[calc(100%-48px)] grid-cols-2">
+                    <TabsTrigger value="details"><Package className="mr-2 h-4 w-4"/> Detalhes do Produto</TabsTrigger>
+                    <TabsTrigger value="tracking"><ClipboardList className="mr-2 h-4 w-4"/> Rastreio</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="details">
+                     <ScrollArea className="h-[65vh]">
+                        <div className="space-y-6 px-6 pt-4 pb-6">
+                            {isLowProfit && (
+                                <Alert variant="destructive">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    <AlertTitle>Margem de Lucro Baixa</AlertTitle>
+                                    <AlertDescription>
+                                        A margem de lucro para este produto está abaixo de 15%. Considere revisar seus custos ou preço de venda.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+                            <h3 className="text-lg font-medium border-b pb-2">Informações Básicas</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField control={form.control} name="name" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Nome do Produto</FormLabel>
+                                        <FormControl><Input {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={control} name="category" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Categoria</FormLabel>
+                                        {isCustomCategory ? (
+                                            <div className="flex items-center gap-2">
+                                                <Input {...field} placeholder="Digite a nova categoria" />
+                                                <Button variant="ghost" onClick={() => {
+                                                    setIsCustomCategory(false)
+                                                    setValue('category', '')
+                                                }}>Cancelar</Button>
+                                            </div>
+                                        ) : (
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Selecione uma categoria" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {categoryOptions.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                                                    <SelectItem value="custom">Outra (especificar)</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+                             <FormField control={form.control} name="description" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>
+                                        <div className="flex items-center justify-between">
+                                            <span>Descrição</span>
+                                             <Button type="button" variant="link" size="sm" onClick={handleSuggestDescription} disabled={isSuggesting.description} className="p-0 h-auto">
+                                                {isSuggesting.description ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2 text-primary" />}
+                                                Sugerir com IA
+                                            </Button>
+                                        </div>
+                                    </FormLabel>
+                                    <FormControl><Textarea {...field} rows={5} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField control={form.control} name="supplier" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Fornecedor / Loja</FormLabel>
+                                        <FormControl><Input {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                 <FormField control={form.control} name="imageUrl" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>URL da Imagem</FormLabel>
+                                        <FormControl><Input {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+                            <FormField control={form.control} name="aliexpressLink" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Link do AliExpress (Opcional)</FormLabel>
+                                    <FormControl><Input {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
 
-                    <h3 className="text-lg font-medium border-b pb-2 pt-4">Custos do Produto</h3>
-                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <FormField control={form.control} name="purchasePrice" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Preço de Compra (R$)</FormLabel>
-                                <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                        <FormField control={form.control} name="shippingCost" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Frete (R$)</FormLabel>
-                                <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                        <FormField control={form.control} name="importTaxes" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Impostos (R$)</FormLabel>
-                                <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                        <FormField control={form.control} name="packagingCost" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Embalagem (R$)</FormLabel>
-                                <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                         <FormField control={form.control} name="marketingCost" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Marketing (R$)</FormLabel>
-                                <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                         <FormField control={form.control} name="otherCosts" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Outros Custos (R$)</FormLabel>
-                                <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                    </div>
+                            <h3 className="text-lg font-medium border-b pb-2 pt-4">Custos do Produto</h3>
+                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <FormField control={form.control} name="purchasePrice" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Preço de Compra (R$)</FormLabel>
+                                        <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="shippingCost" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Frete (R$)</FormLabel>
+                                        <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="importTaxes" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Impostos (R$)</FormLabel>
+                                        <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="packagingCost" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Embalagem (R$)</FormLabel>
+                                        <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                 <FormField control={form.control} name="marketingCost" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Marketing (R$)</FormLabel>
+                                        <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                 <FormField control={form.control} name="otherCosts" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Outros Custos (R$)</FormLabel>
+                                        <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
 
-                    <h3 className="text-lg font-medium border-b pb-2 pt-4">Venda e Estoque</h3>
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <FormField control={form.control} name="sellingPrice" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Preço de Venda (R$)</FormLabel>
-                                <div className="relative">
-                                    <FormControl>
-                                        <Input type="number" step="0.01" {...field} className="pr-10"/>
-                                    </FormControl>
-                                    <Button type="button" size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" onClick={handleSuggestPrice} disabled={isSuggesting.price}>
-                                        {isSuggesting.price ? <Loader2 className="animate-spin" /> : <Sparkles className="text-primary" />}
-                                    </Button>
-                                </div>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                         <FormField control={form.control} name="quantity" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Quantidade Comprada</FormLabel>
-                                <FormControl><Input type="number" {...field} min={1} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                         <FormField control={form.control} name="quantitySold" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Quantidade Vendida</FormLabel>
-                                <FormControl><Input type="number" {...field} min={0} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                    </div>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                       <FormField control={form.control} name="status" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Status</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Selecione o status" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        {Object.entries(statusOptions).map(([key, value]) => (
-                                            <SelectItem key={key} value={key}>{value}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                        <FormField control={form.control} name="purchaseDate" render={({ field }) => (
-                            <FormItem className="flex flex-col pt-2">
-                                <FormLabel>Data da Compra</FormLabel>
-                                <Popover>
-                                <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button
-                                            variant={"outline"}
-                                            className={cn("w-full justify-start pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
-                                        >
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {field.value ? (
-                                                format(field.value, "PPP", { locale: ptBR })
-                                            ) : (
-                                                <span>Escolha uma data</span>
-                                            )}
-                                        </Button>
-                                    </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                        mode="single"
-                                        selected={field.value}
-                                        onSelect={field.onChange}
-                                        disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                                        initialFocus
-                                        locale={ptBR}
-                                    />
-                                </PopoverContent>
-                                </Popover>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                    </div>
-                     <FormField control={form.control} name="notes" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Anotações Pessoais</FormLabel>
-                            <FormControl><Textarea {...field} placeholder="Detalhes de envio, observações do fornecedor, ideias de marketing..." /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                </div>
-            </ScrollArea>
+                            <h3 className="text-lg font-medium border-b pb-2 pt-4">Venda e Estoque</h3>
+                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <FormField control={form.control} name="sellingPrice" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Preço de Venda (R$)</FormLabel>
+                                        <div className="relative">
+                                            <FormControl>
+                                                <Input type="number" step="0.01" {...field} className="pr-10"/>
+                                            </FormControl>
+                                            <Button type="button" size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" onClick={handleSuggestPrice} disabled={isSuggesting.price}>
+                                                {isSuggesting.price ? <Loader2 className="animate-spin" /> : <Sparkles className="text-primary" />}
+                                            </Button>
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                 <FormField control={form.control} name="quantity" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Quantidade Comprada</FormLabel>
+                                        <FormControl><Input type="number" {...field} min={1} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                 <FormField control={form.control} name="quantitySold" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Quantidade Vendida</FormLabel>
+                                        <FormControl><Input type="number" {...field} min={0} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                               <FormField control={form.control} name="status" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Status</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Selecione o status" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {Object.entries(statusOptions).map(([key, value]) => (
+                                                    <SelectItem key={key} value={key}>{value}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="purchaseDate" render={({ field }) => (
+                                    <FormItem className="flex flex-col pt-2">
+                                        <FormLabel>Data da Compra</FormLabel>
+                                        <Popover>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <Button
+                                                    variant={"outline"}
+                                                    className={cn("w-full justify-start pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                                                >
+                                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                                    {field.value ? (
+                                                        format(field.value, "PPP", { locale: ptBR })
+                                                    ) : (
+                                                        <span>Escolha uma data</span>
+                                                    )}
+                                                </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                                mode="single"
+                                                selected={field.value}
+                                                onSelect={field.onChange}
+                                                disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                                                initialFocus
+                                                locale={ptBR}
+                                            />
+                                        </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+                             <FormField control={form.control} name="notes" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Anotações Pessoais</FormLabel>
+                                    <FormControl><Textarea {...field} placeholder="Detalhes de envio, observações do fornecedor, ideias de marketing..." /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                        </div>
+                    </ScrollArea>
+                </TabsContent>
+                <TabsContent value="tracking">
+                    <ScrollArea className="h-[65vh]">
+                        <div className="space-y-6 px-6 pt-4 pb-6">
+                            <FormField control={form.control} name="trackingCode" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Código de Rastreio</FormLabel>
+                                    <FormControl><Input {...field} placeholder="Insira o código fornecido pelo vendedor" /></FormControl>
+                                    <FormDescription>Este código será usado para buscar o status da encomenda.</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+
+                            <TrackingView trackingCode={watchedValues.trackingCode} />
+                        </div>
+                    </ScrollArea>
+                </TabsContent>
+            </Tabs>
+
              <div className="p-6 pt-2 flex flex-col md:flex-row justify-between items-center gap-4 bg-gradient-to-r from-slate-100/50 to-gray-200/50 dark:from-slate-800/30 dark:to-gray-800/30 border-t">
                 <div className="flex flex-wrap gap-4 items-center">
                     <div>

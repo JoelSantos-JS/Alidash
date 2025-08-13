@@ -7,6 +7,7 @@ export interface Product {
   imageUrl: string;
   description: string;
   notes?: string;
+  trackingCode?: string; // Código de rastreio
   
   // Custos
   purchasePrice: number;

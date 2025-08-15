@@ -704,8 +704,8 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                 )}
             </Tabs>
 
-             <div className="p-6 pt-2 flex flex-col md:flex-row justify-between items-center gap-4 bg-gradient-to-r from-slate-100/50 to-gray-200/50 dark:from-slate-800/30 dark:to-gray-800/30 border-t">
-                <div className="flex flex-wrap gap-4 items-center">
+             <div className="p-6 pt-2 flex flex-col sm:flex-row justify-between items-center gap-4 bg-gradient-to-r from-slate-100/50 to-gray-200/50 dark:from-slate-800/30 dark:to-gray-800/30 border-t">
+                <div className="flex-1 flex flex-wrap gap-x-4 gap-y-1 items-center">
                     <div>
                         <span className="text-sm text-muted-foreground">Custo Total/un</span>
                         <p className="font-bold text-lg text-destructive">{totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
@@ -723,9 +723,9 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                         </p>
                     </div>
                 </div>
-                <div className="flex gap-2 w-full md:w-auto mt-4 md:mt-0 ml-auto">
-                    <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting} className="flex-1">Cancelar</Button>
-                    <Button type="submit" disabled={isSubmitting} className="flex-1">
+                <div className="flex gap-2 w-full sm:w-auto">
+                    <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting} className="flex-1 sm:flex-none">Cancelar</Button>
+                    <Button type="submit" disabled={isSubmitting} className="flex-1 sm:flex-none">
                         {isSubmitting ? <Loader2 className="animate-spin" /> : (productToEdit ? "Salvar Alterações" : "Adicionar Produto")}
                     </Button>
                 </div>

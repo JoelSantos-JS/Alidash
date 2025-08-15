@@ -723,7 +723,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                         </p>
                     </div>
                 </div>
-                <div className="flex gap-2 w-full md:w-auto">
+                <div className="flex gap-2 w-full md:w-auto mt-4 md:mt-0 ml-auto">
                     <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting} className="flex-1">Cancelar</Button>
                     <Button type="submit" disabled={isSubmitting} className="flex-1">
                         {isSubmitting ? <Loader2 className="animate-spin" /> : (productToEdit ? "Salvar Alterações" : "Adicionar Produto")}

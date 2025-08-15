@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import type { Bet } from '@/types';
 import { Header } from "@/components/layout/header";
 import { Button } from '@/components/ui/button';
-import { PlusCircle, BarChart, AlertTriangle } from 'lucide-react';
+import { PlusCircle, BarChart, AlertTriangle, Calendar, TrendingUp, TrendingDown, Calculator, Scale, Target } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BetCard } from '@/components/bets/bet-card';
@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { BetForm } from '@/components/bets/bet-form';
 import { SummaryCard } from '@/components/dashboard/summary-card';
-import { DollarSign, Percent, TrendingUp, TrendingDown, Calculator } from 'lucide-react';
 import { BetPerformanceChart } from '@/components/bets/bet-performance-chart';
 import { BetStatusChart } from '@/components/bets/bet-status-chart';
 import { useAuth } from '@/hooks/use-auth';
@@ -30,9 +29,13 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SurebetCalculator } from '@/components/bets/surebet-calculator';
 import { AdvancedSurebetCalculator } from '@/components/bets/advanced-surebet-calculator';
+import { isToday, isThisWeek, isThisMonth } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 
 const initialBets: Bet[] = [];
+
+type Period = 'day' | 'week' | 'month';
 
 export default function BetsPage() {
     const { user, loading: authLoading } = useAuth();
@@ -42,6 +45,7 @@ export default function BetsPage() {
     const [betToEdit, setBetToEdit] = useState<Bet | null>(null);
     const [betToDelete, setBetToDelete] = useState<Bet | null>(null);
     const [filterStatus, setFilterStatus] = useState<string>("pending");
+    const [summaryPeriod, setSummaryPeriod] = useState<Period>('day');
     const { toast } = useToast();
 
      useEffect(() => {
@@ -87,41 +91,51 @@ export default function BetsPage() {
 
 
     const summaryStats = useMemo(() => {
-        const totalStaked = bets.reduce((acc, bet) => {
-             if (bet.type === 'single' && bet.stake) return acc + bet.stake;
-             if (bet.type === 'surebet' && bet.totalStake) return acc + bet.totalStake;
-             return acc;
-        }, 0);
+        const calculateStatsForPeriod = (period: Period) => {
+            let periodBets: Bet[] = [];
+            const now = new Date();
+            if (period === 'day') {
+                periodBets = bets.filter(b => isToday(new Date(b.date)));
+            } else if (period === 'week') {
+                periodBets = bets.filter(b => isThisWeek(new Date(b.date), { weekStartsOn: 1 }));
+            } else if (period === 'month') {
+                 periodBets = bets.filter(b => isThisMonth(new Date(b.date)));
+            }
 
-        const totalWon = bets.reduce((acc, bet) => {
-            if (bet.status !== 'won') return acc;
-            if (bet.type === 'single' && bet.stake && bet.odds) {
-                return acc + (bet.stake * bet.odds - bet.stake);
-            }
-            if (bet.type === 'surebet' && bet.guaranteedProfit) {
-                return acc + bet.guaranteedProfit;
-            }
-            return acc;
-        }, 0);
+            const totalStaked = periodBets.reduce((acc, bet) => {
+                if (bet.type === 'single' && bet.stake) return acc + bet.stake;
+                if (bet.type === 'surebet' && bet.totalStake) return acc + bet.totalStake;
+                return acc;
+            }, 0);
 
-        const totalLost = bets.reduce((acc, bet) => {
-             if (bet.status === 'lost' && bet.type === 'single' && bet.stake) {
-                return acc + bet.stake;
-            }
-            if (bet.status === 'lost' && bet.type === 'surebet') {
-                 // A loss in a surebet is the total amount staked if one leg fails unexpectedly
-                return acc + (bet.totalStake ?? 0);
-            }
-            return acc;
-        }, 0);
-        
-        const netProfit = totalWon - totalLost;
-        
+            const netProfit = periodBets.reduce((acc, bet) => {
+                 if (bet.status !== 'won' && bet.status !== 'lost') return acc;
+                 
+                 if (bet.type === 'single') {
+                    const stake = bet.stake ?? 0;
+                    const odds = bet.odds ?? 0;
+                    if (bet.status === 'won') return acc + (stake * odds) - stake;
+                    if (bet.status === 'lost') return acc - stake;
+                 } else if (bet.type === 'surebet') {
+                    if (bet.status === 'won') return acc + (bet.guaranteedProfit ?? 0);
+                    if (bet.status === 'lost') return acc - (bet.totalStake ?? 0);
+                 }
+                 return acc;
+            }, 0);
+            
+            return { totalStaked, netProfit };
+        };
+
         const finishedBetsCount = bets.filter(b => b.status === 'won' || b.status === 'lost').length;
         const wonBetsCount = bets.filter(b => b.status === 'won').length;
         const winRate = finishedBetsCount > 0 ? (wonBetsCount / finishedBetsCount) * 100 : 0;
-
-        return { totalStaked, netProfit, winRate };
+        
+        return {
+            day: calculateStatsForPeriod('day'),
+            week: calculateStatsForPeriod('week'),
+            month: calculateStatsForPeriod('month'),
+            overallWinRate: winRate,
+        }
     }, [bets]);
 
      const filteredBets = useMemo(() => {
@@ -223,7 +237,7 @@ export default function BetsPage() {
                         Adicionar Aposta
                     </Button>
                 </div>
-
+                
                 <div className="mb-8">
                      <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
                         <Calculator className="w-7 h-7 text-primary" />
@@ -244,35 +258,57 @@ export default function BetsPage() {
                         </TabsContent>
                     </Tabs>
                 </div>
-                 {isLoading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                        {Array.from({ length: 3 }).map((_, i) => (
-                            <Skeleton key={i} className="h-[116px] w-full" />
-                        ))}
+
+                 <div className="mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                         <h3 className="text-2xl font-bold flex items-center gap-2">
+                            <Calendar className="w-7 h-7 text-primary" />
+                            Resumo por Período
+                         </h3>
+                         <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
+                            {(['day', 'week', 'month'] as Period[]).map(p => (
+                                <Button 
+                                    key={p}
+                                    variant={summaryPeriod === p ? "default" : "ghost"}
+                                    size="sm"
+                                    onClick={() => setSummaryPeriod(p)}
+                                    className={cn("capitalize", summaryPeriod === p && "shadow-md")}
+                                >
+                                    {p === 'day' ? 'Hoje' : p === 'week' ? 'Semana' : 'Mês'}
+                                </Button>
+                            ))}
+                         </div>
                     </div>
-                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                        <SummaryCard
-                            title="Total Apostado"
-                            value={summaryStats.totalStaked}
-                            icon={DollarSign}
-                            isCurrency
-                        />
-                         <SummaryCard
-                            title="Lucro / Prejuízo"
-                            value={summaryStats.netProfit}
-                            icon={summaryStats.netProfit >= 0 ? TrendingUp : TrendingDown}
-                            isCurrency
-                            className={summaryStats.netProfit >= 0 ? "text-green-500" : "text-destructive"}
-                        />
-                         <SummaryCard
-                            title="Taxa de Vitória"
-                            value={summaryStats.winRate}
-                            icon={Percent}
-                            isPercentage
-                        />
-                    </div>
-                 )}
+                     {isLoading ? (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {Array.from({ length: 3 }).map((_, i) => (
+                                <Skeleton key={i} className="h-[116px] w-full" />
+                            ))}
+                        </div>
+                     ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <SummaryCard
+                                title="Total Apostado"
+                                value={summaryStats[summaryPeriod].totalStaked}
+                                icon={Scale}
+                                isCurrency
+                            />
+                            <SummaryCard
+                                title="Lucro / Prejuízo"
+                                value={summaryStats[summaryPeriod].netProfit}
+                                icon={summaryStats[summaryPeriod].netProfit >= 0 ? TrendingUp : TrendingDown}
+                                isCurrency
+                                className={summaryStats[summaryPeriod].netProfit >= 0 ? "text-green-500" : "text-destructive"}
+                            />
+                             <SummaryCard
+                                title="Taxa de Vitória (Geral)"
+                                value={summaryStats.overallWinRate}
+                                icon={Target}
+                                isPercentage
+                            />
+                        </div>
+                     )}
+                </div>
 
                  <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
                     <div className="lg:col-span-3 h-[360px]">

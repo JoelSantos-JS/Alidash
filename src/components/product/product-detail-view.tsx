@@ -18,6 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 type ProductDetailViewProps = {
   product: Product;
@@ -144,16 +145,16 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
              </div>
            )}
 
-          <div className="mt-auto pt-6 flex flex-col sm:flex-row gap-3">
-              <Button onClick={onRegisterSale} className="flex-1 bg-green-600 hover:bg-green-700 text-white text-base py-6" disabled={isSoldOut}>
+          <div className="mt-auto pt-6 flex flex-col md:flex-row gap-2">
+              <Button onClick={onRegisterSale} className="flex-1" size="lg" disabled={isSoldOut}>
                   <ShoppingCart className="mr-2 h-5 w-5"/>
                   {isSoldOut ? 'Esgotado' : 'Registrar Venda'}
               </Button>
-               <Button onClick={onEdit} className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground text-base py-6">
+               <Button onClick={onEdit} className="flex-1" variant="outline" size="lg">
                   <Pencil className="mr-2 h-5 w-5"/>
                   Editar
               </Button>
-               <Button onClick={onDelete} variant="destructive" className="flex-1 text-base py-6">
+               <Button onClick={onDelete} variant="destructive" className="flex-1" size="lg">
                   <Trash2 className="mr-2 h-5 w-5"/>
                   Excluir
               </Button>

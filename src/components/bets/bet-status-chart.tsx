@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -96,3 +97,5 @@ export function BetStatusChart({ data, isLoading }: BetStatusChartProps) {
     </Card>
   )
 }
+
+    

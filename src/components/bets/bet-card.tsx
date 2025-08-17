@@ -192,3 +192,5 @@ export function BetCard({ bet, onEdit, onDelete }: BetCardProps) {
     </Card>
   );
 }
+
+    

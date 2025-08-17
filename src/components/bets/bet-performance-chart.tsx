@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts"
@@ -103,3 +104,5 @@ export function BetPerformanceChart({ data, isLoading }: BetPerformanceChartProp
     </Card>
   )
 }
+
+    

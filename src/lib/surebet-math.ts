@@ -1,3 +1,4 @@
+
 // ===============================
 // Biblioteca completa de matemática para Surebets
 // Inclui: verificação de arbitragem, alocação com fees,
@@ -314,3 +315,5 @@ export function hasSignificantOddsChange(
   
   return false;
 }
+
+    

@@ -1,3 +1,4 @@
+
 export interface Product {
   id: string;
   name: string;
@@ -109,3 +110,5 @@ export interface BetAnalysis {
     justification: string;
     suggestedActions: string[];
 }
+
+    

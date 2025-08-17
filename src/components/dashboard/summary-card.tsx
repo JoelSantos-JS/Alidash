@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
@@ -33,3 +34,5 @@ export function SummaryCard({ title, value, icon: Icon, isCurrency = false, isPe
         </Card>
     )
 }
+
+    

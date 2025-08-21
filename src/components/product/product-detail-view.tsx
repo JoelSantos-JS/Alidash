@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 
@@ -82,8 +81,8 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
                 </DialogHeader>
             </div>
           
-            {/* Conteúdo com Rolagem */}
-            <ScrollArea className="flex-1 min-h-0">
+            {/* Conteúdo com Rolagem Nativa */}
+            <div className="flex-1 min-h-0 overflow-y-auto">
                 <div className="px-6 py-4 space-y-4">
                     <DialogDescription className="text-base text-muted-foreground break-words">
                         {product.description}
@@ -200,20 +199,20 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
                         </div>
                     )}
                 </div>
-            </ScrollArea>
+            </div>
 
             {/* Rodapé Fixo */}
             <div className="p-6 pt-4 mt-auto border-t">
-                 <div className="flex flex-col gap-2 md:grid md:grid-cols-3">
-                    <Button onClick={onRegisterSale} size="lg" disabled={isSoldOut}>
+                 <div className="grid md:grid-cols-3 gap-2">
+                    <Button onClick={onRegisterSale} size="lg" disabled={isSoldOut} className="flex-1">
                         <ShoppingCart className="mr-2 h-5 w-5"/>
                         {isSoldOut ? 'Esgotado' : 'Registrar Venda'}
                     </Button>
-                    <Button onClick={onEdit} variant="outline" size="lg">
+                    <Button onClick={onEdit} variant="outline" size="lg" className="flex-1">
                         <Pencil className="mr-2 h-5 w-5"/>
                         Editar
                     </Button>
-                    <Button onClick={onDelete} variant="destructive" size="lg">
+                    <Button onClick={onDelete} variant="destructive" size="lg" className="flex-1">
                         <Trash2 className="mr-2 h-5 w-5"/>
                         Excluir
                     </Button>

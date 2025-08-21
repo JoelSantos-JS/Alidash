@@ -58,7 +58,7 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
           />
         </div>
         <div className="flex flex-col">
-            {/* Header fixo */}
+            {/* Header Fixo */}
             <div className="p-6 pb-0">
                  <div className="relative aspect-square md:hidden -mx-6 -mt-6 mb-6">
                     <Image

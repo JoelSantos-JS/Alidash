@@ -6,7 +6,7 @@ import { z } from "zod";
 import { Loader2, Package } from "lucide-react";
 import Link from "next/link";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,8 +51,8 @@ export default function SignupPage() {
         farFutureDate.setFullYear(farFutureDate.getFullYear() + 100);
         userDocData.proSubscription = {
             plan: 'lifetime',
-            startedAt: serverTimestamp(),
-            expiresAt: farFutureDate,
+            startedAt: Timestamp.fromDate(new Date()),
+            expiresAt: Timestamp.fromDate(farFutureDate),
         };
       }
 

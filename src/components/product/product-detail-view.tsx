@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from "next/image";
@@ -78,7 +79,7 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
                     </span>
                     </div>
                     <DialogTitle className="text-2xl font-bold pt-2">{product.name}</DialogTitle>
-                    <DialogDescription className="text-base text-muted-foreground pt-1">
+                    <DialogDescription className="text-base text-muted-foreground pt-1 break-words">
                     {product.description}
                     </DialogDescription>
                 </DialogHeader>
@@ -210,12 +211,14 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
                       Excluir
                   </Button>
               </div>
-              <Button asChild variant="link" className="mt-2 text-base w-full">
-                      <Link href={product.aliexpressLink} target="_blank">
-                          Ver no AliExpress
-                          <ExternalLink className="ml-2 h-5 w-5" />
-                      </Link>
-                  </Button>
+              {product.aliexpressLink && (
+                <Button asChild variant="link" className="mt-2 text-base w-full">
+                        <Link href={product.aliexpressLink} target="_blank">
+                            Ver no AliExpress
+                            <ExternalLink className="ml-2 h-5 w-5" />
+                        </Link>
+                    </Button>
+              )}
           </div>
         </div>
       </div>

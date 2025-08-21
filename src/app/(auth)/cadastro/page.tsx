@@ -58,23 +58,24 @@ export default function SignupPage() {
 
       await setDoc(doc(db, "users", user.uid), userDocData);
       
-      // If it's the supreme user, migrate data from local storage.
+      // If it's the super admin, migrate data from local storage.
       if(isSuperAdmin) {
          const products = localStorage.getItem('product-dash-products');
          const dreams = localStorage.getItem('product-dash-dreams');
          const bets = localStorage.getItem('product-dash-bets');
 
-         const userData = {
-            products: products ? JSON.parse(products) : [],
-            dreams: dreams ? JSON.parse(dreams) : [],
-            bets: bets ? JSON.parse(bets) : [],
-         };
+         const userData: Record<string, any> = {};
+        if (products) userData.products = JSON.parse(products);
+        if (dreams) userData.dreams = JSON.parse(dreams);
+        if (bets) userData.bets = JSON.parse(bets);
          
-         await setDoc(doc(db, "user-data", user.uid), userData, { merge: true });
+        if (Object.keys(userData).length > 0) {
+            await setDoc(doc(db, "user-data", user.uid), userData, { merge: true });
+        }
 
          toast({
             title: "Conta de Super Usuário Criada!",
-            description: "Seus dados locais foram migrados para sua conta.",
+            description: "Seus dados locais foram migrados para sua conta na nuvem.",
         });
       } else {
         toast({

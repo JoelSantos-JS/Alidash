@@ -1,3 +1,5 @@
+"use client"
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Lock, LogOut, Package } from "lucide-react";
@@ -10,7 +12,7 @@ type HeaderProps = {
 }
 
 export function Header({ onSecretClick }: HeaderProps) {
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
   const pathname = usePathname();
 
   const handleLogout = () => {
@@ -27,7 +29,7 @@ export function Header({ onSecretClick }: HeaderProps) {
             </Link>
           
            <div className="flex items-center gap-4">
-             {user && onSecretClick && (
+             {user && onSecretClick && isSuperAdmin && (
                 <Button variant="ghost" size="icon" onClick={onSecretClick}>
                   <Lock className="h-5 w-5 text-muted-foreground"/>
                   <span className="sr-only">Acesso Secreto</span>

@@ -204,16 +204,16 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
 
             {/* Rodapé Fixo */}
             <div className="p-6 pt-4 mt-auto border-t">
-                <div className="flex flex-col md:flex-row gap-2">
-                    <Button onClick={onRegisterSale} className="flex-1" size="lg" disabled={isSoldOut}>
+                 <div className="flex flex-col gap-2 md:grid md:grid-cols-3">
+                    <Button onClick={onRegisterSale} size="lg" disabled={isSoldOut}>
                         <ShoppingCart className="mr-2 h-5 w-5"/>
                         {isSoldOut ? 'Esgotado' : 'Registrar Venda'}
                     </Button>
-                    <Button onClick={onEdit} className="flex-1" variant="outline" size="lg">
+                    <Button onClick={onEdit} variant="outline" size="lg">
                         <Pencil className="mr-2 h-5 w-5"/>
                         Editar
                     </Button>
-                    <Button onClick={onDelete} variant="destructive" className="flex-1" size="lg">
+                    <Button onClick={onDelete} variant="destructive" size="lg">
                         <Trash2 className="mr-2 h-5 w-5"/>
                         Excluir
                     </Button>

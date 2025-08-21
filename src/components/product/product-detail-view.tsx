@@ -57,9 +57,9 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
             data-ai-hint="product lifestyle"
           />
         </div>
-        <div className="flex flex-col">
+        <div className="flex flex-col h-full">
             {/* Header Fixo */}
-            <div className="p-6 pb-0">
+            <div className="p-6 pb-4">
                  <div className="relative aspect-square md:hidden -mx-6 -mt-6 mb-6">
                     <Image
                         src={product.imageUrl}
@@ -84,12 +84,12 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
           
             {/* Conteúdo com Rolagem */}
             <ScrollArea className="flex-1 min-h-0">
-                <div className="px-6 py-4">
+                <div className="px-6 py-4 space-y-4">
                     <DialogDescription className="text-base text-muted-foreground break-words">
                         {product.description}
                     </DialogDescription>
 
-                    <Tabs defaultValue="financial" className="w-full mt-4">
+                    <Tabs defaultValue="financial" className="w-full">
                         <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="financial">Análise Financeira</TabsTrigger>
                             <TabsTrigger value="sales">Vendas</TabsTrigger>

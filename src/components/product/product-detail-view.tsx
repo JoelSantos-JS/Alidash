@@ -58,9 +58,9 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
           />
         </div>
         <div className="flex flex-col">
-          <ScrollArea className="flex-1 min-h-0">
-            <div className="p-6">
-                <div className="relative aspect-square md:hidden -mx-6 -mt-6 mb-6">
+            {/* Header fixo */}
+            <div className="p-6 pb-0">
+                 <div className="relative aspect-square md:hidden -mx-6 -mt-6 mb-6">
                     <Image
                         src={product.imageUrl}
                         alt={product.name}
@@ -79,150 +79,156 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
                     </span>
                     </div>
                     <DialogTitle className="text-2xl font-bold pt-2">{product.name}</DialogTitle>
-                    <DialogDescription className="text-base text-muted-foreground pt-1 break-words">
-                    {product.description}
-                    </DialogDescription>
                 </DialogHeader>
+            </div>
+          
+            {/* Conteúdo com Rolagem */}
+            <ScrollArea className="flex-1 min-h-0">
+                <div className="px-6 py-4">
+                    <DialogDescription className="text-base text-muted-foreground break-words">
+                        {product.description}
+                    </DialogDescription>
 
-                <Tabs defaultValue="financial" className="w-full mt-4">
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="financial">Análise Financeira</TabsTrigger>
-                        <TabsTrigger value="sales">Vendas</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="financial" className="mt-4">
-                        <div className="py-2 border-y grid grid-cols-2 gap-x-6 gap-y-4">
-                            <h3 className="font-semibold text-lg col-span-2">Análise Financeira</h3>
-                            
-                            <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md">
-                                <span className="text-sm text-muted-foreground">Preço de Venda</span>
-                                <span className="text-xl font-bold text-primary">
-                                    {product.sellingPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                </span>
-                            </div>
-
-                            <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md">
-                                <span className="text-sm text-muted-foreground">Custo Total</span>
-                                <span className="text-xl font-bold text-destructive">
-                                    {product.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                </span>
-                            </div>
-
-                            <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md">
-                                <span className="text-sm text-muted-foreground">Lucro Esperado</span>
-                                <span className={`text-xl font-bold ${product.expectedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {product.expectedProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                </span>
-                            </div>
-
-                            <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="text-sm text-muted-foreground">Margem/ROI</span>
-                                    <Tooltip delayDuration={100}>
-                                        <TooltipTrigger>
-                                            <Info className="w-3.5 h-3.5 text-muted-foreground"/>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>Margem de Lucro / Retorno Sobre Investimento</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Badge variant={isLowProfit ? "destructive" : "outline"} className={!isLowProfit ? "text-green-600 border-green-600" : ""}>
-                                        {isLowProfit && <AlertTriangle className="w-3.5 h-3.5 mr-1" />}
-                                        {product.profitMargin.toFixed(2)}%
-                                    </Badge>
-                                    <Badge variant="outline" className="text-blue-600 border-blue-600">{product.roi.toFixed(2)}%</Badge>
-                                </div>
-                            </div>
-
-                            <h3 className="font-semibold text-lg col-span-2 mt-4">Estoque</h3>
-                            <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md">
-                                <span className="text-sm text-muted-foreground">Estoque Atual</span>
-                                <span className="text-xl font-bold">
-                                    {product.quantity - product.quantitySold} / {product.quantity}
-                                </span>
-                            </div>
-                            <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md">
-                                <span className="text-sm text-muted-foreground">Vendidos</span>
-                                <span className="text-xl font-bold">
-                                    {product.quantitySold}
-                                </span>
-                            </div>
-                             {product.daysToSell !== undefined && (
-                                <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md col-span-2">
-                                    <span className="text-sm text-muted-foreground">Tempo para Esgotar</span>
-                                    <span className="text-xl font-bold">
-                                        {product.daysToSell} dias
+                    <Tabs defaultValue="financial" className="w-full mt-4">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="financial">Análise Financeira</TabsTrigger>
+                            <TabsTrigger value="sales">Vendas</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="financial" className="mt-4">
+                            <div className="py-2 border-y grid grid-cols-2 gap-x-6 gap-y-4">
+                                <h3 className="font-semibold text-lg col-span-2">Análise Financeira</h3>
+                                
+                                <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md">
+                                    <span className="text-sm text-muted-foreground">Preço de Venda</span>
+                                    <span className="text-xl font-bold text-primary">
+                                        {product.sellingPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                     </span>
                                 </div>
-                            )}
-                        </div>
-                    </TabsContent>
-                    <TabsContent value="sales" className="mt-4">
-                        {product.sales && product.sales.length > 0 ? (
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Data</TableHead>
-                                        <TableHead className="text-center">Qtd</TableHead>
-                                        <TableHead>Comprador</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {product.sales.map((sale: Sale) => (
-                                        <TableRow key={sale.id}>
-                                            <TableCell>{new Date(sale.date).toLocaleDateString('pt-BR')}</TableCell>
-                                            <TableCell className="text-center">{sale.quantity}</TableCell>
-                                            <TableCell>{sale.buyerName || 'Não informado'}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        ) : (
-                             <div className="text-center py-10 bg-muted/50 rounded-lg">
-                                <History className="mx-auto h-10 w-10 text-muted-foreground mb-4"/>
-                                <h4 className="font-semibold">Nenhuma Venda Registrada</h4>
-                                <p className="text-sm text-muted-foreground">O histórico de vendas para este produto está vazio.</p>
+
+                                <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md">
+                                    <span className="text-sm text-muted-foreground">Custo Total</span>
+                                    <span className="text-xl font-bold text-destructive">
+                                        {product.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    </span>
+                                </div>
+
+                                <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md">
+                                    <span className="text-sm text-muted-foreground">Lucro Esperado</span>
+                                    <span className={`text-xl font-bold ${product.expectedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {product.expectedProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    </span>
+                                </div>
+
+                                <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-sm text-muted-foreground">Margem/ROI</span>
+                                        <Tooltip delayDuration={100}>
+                                            <TooltipTrigger>
+                                                <Info className="w-3.5 h-3.5 text-muted-foreground"/>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>Margem de Lucro / Retorno Sobre Investimento</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Badge variant={isLowProfit ? "destructive" : "outline"} className={!isLowProfit ? "text-green-600 border-green-600" : ""}>
+                                            {isLowProfit && <AlertTriangle className="w-3.5 h-3.5 mr-1" />}
+                                            {product.profitMargin.toFixed(2)}%
+                                        </Badge>
+                                        <Badge variant="outline" className="text-blue-600 border-blue-600">{product.roi.toFixed(2)}%</Badge>
+                                    </div>
+                                </div>
+
+                                <h3 className="font-semibold text-lg col-span-2 mt-4">Estoque</h3>
+                                <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md">
+                                    <span className="text-sm text-muted-foreground">Estoque Atual</span>
+                                    <span className="text-xl font-bold">
+                                        {product.quantity - product.quantitySold} / {product.quantity}
+                                    </span>
+                                </div>
+                                <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md">
+                                    <span className="text-sm text-muted-foreground">Vendidos</span>
+                                    <span className="text-xl font-bold">
+                                        {product.quantitySold}
+                                    </span>
+                                </div>
+                                {product.daysToSell !== undefined && (
+                                    <div className="flex flex-col gap-1 p-3 bg-secondary/50 rounded-md col-span-2">
+                                        <span className="text-sm text-muted-foreground">Tempo para Esgotar</span>
+                                        <span className="text-xl font-bold">
+                                            {product.daysToSell} dias
+                                        </span>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </TabsContent>
-                </Tabs>
-                
-                {product.notes && (
-                    <div className='mt-4'>
-                        <h4 className='font-semibold flex items-center gap-2 mb-2'><NotebookText className="w-5 h-5 text-primary"/> Anotações Pessoais</h4>
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-secondary/50 p-3 rounded-md">{product.notes}</p>
-                    </div>
+                        </TabsContent>
+                        <TabsContent value="sales" className="mt-4">
+                            {product.sales && product.sales.length > 0 ? (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Data</TableHead>
+                                            <TableHead className="text-center">Qtd</TableHead>
+                                            <TableHead>Comprador</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {product.sales.map((sale: Sale) => (
+                                            <TableRow key={sale.id}>
+                                                <TableCell>{new Date(sale.date).toLocaleDateString('pt-BR')}</TableCell>
+                                                <TableCell className="text-center">{sale.quantity}</TableCell>
+                                                <TableCell>{sale.buyerName || 'Não informado'}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            ) : (
+                                <div className="text-center py-10 bg-muted/50 rounded-lg">
+                                    <History className="mx-auto h-10 w-10 text-muted-foreground mb-4"/>
+                                    <h4 className="font-semibold">Nenhuma Venda Registrada</h4>
+                                    <p className="text-sm text-muted-foreground">O histórico de vendas para este produto está vazio.</p>
+                                </div>
+                            )}
+                        </TabsContent>
+                    </Tabs>
+                    
+                    {product.notes && (
+                        <div className='mt-4'>
+                            <h4 className='font-semibold flex items-center gap-2 mb-2'><NotebookText className="w-5 h-5 text-primary"/> Anotações Pessoais</h4>
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-secondary/50 p-3 rounded-md">{product.notes}</p>
+                        </div>
+                    )}
+                </div>
+            </ScrollArea>
+
+            {/* Rodapé Fixo */}
+            <div className="p-6 pt-4 mt-auto border-t">
+                <div className="flex flex-col md:flex-row gap-2">
+                    <Button onClick={onRegisterSale} className="flex-1" size="lg" disabled={isSoldOut}>
+                        <ShoppingCart className="mr-2 h-5 w-5"/>
+                        {isSoldOut ? 'Esgotado' : 'Registrar Venda'}
+                    </Button>
+                    <Button onClick={onEdit} className="flex-1" variant="outline" size="lg">
+                        <Pencil className="mr-2 h-5 w-5"/>
+                        Editar
+                    </Button>
+                    <Button onClick={onDelete} variant="destructive" className="flex-1" size="lg">
+                        <Trash2 className="mr-2 h-5 w-5"/>
+                        Excluir
+                    </Button>
+                </div>
+                {product.aliexpressLink && (
+                    <Button asChild variant="link" className="mt-2 text-base w-full">
+                            <Link href={product.aliexpressLink} target="_blank">
+                                Ver no AliExpress
+                                <ExternalLink className="ml-2 h-5 w-5" />
+                            </Link>
+                        </Button>
                 )}
             </div>
-          </ScrollArea>
-          <div className="p-6 pt-0 mt-auto border-t">
-             <div className="flex flex-col md:flex-row gap-2 pt-6">
-                  <Button onClick={onRegisterSale} className="flex-1" size="lg" disabled={isSoldOut}>
-                      <ShoppingCart className="mr-2 h-5 w-5"/>
-                      {isSoldOut ? 'Esgotado' : 'Registrar Venda'}
-                  </Button>
-                  <Button onClick={onEdit} className="flex-1" variant="outline" size="lg">
-                      <Pencil className="mr-2 h-5 w-5"/>
-                      Editar
-                  </Button>
-                  <Button onClick={onDelete} variant="destructive" className="flex-1" size="lg">
-                      <Trash2 className="mr-2 h-5 w-5"/>
-                      Excluir
-                  </Button>
-              </div>
-              {product.aliexpressLink && (
-                <Button asChild variant="link" className="mt-2 text-base w-full">
-                        <Link href={product.aliexpressLink} target="_blank">
-                            Ver no AliExpress
-                            <ExternalLink className="ml-2 h-5 w-5" />
-                        </Link>
-                    </Button>
-              )}
-          </div>
         </div>
       </div>
     </TooltipProvider>
   );
 }
-

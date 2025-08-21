@@ -4,7 +4,7 @@ import { useState, useEffect, createContext, useContext, ReactNode } from 'react
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { usePathname, useRouter } from 'next/navigation';
-import { doc, getDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, Timestamp, setDoc } from 'firebase/firestore';
 import { UpgradeToProDialog } from '@/components/layout/upgrade-to-pro-dialog';
 
 interface ProSubscription {
@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         expiresAt: Timestamp.fromDate(expiresAt),
     };
 
-    await updateDoc(userDocRef, { proSubscription: newSubscription });
+    await setDoc(userDocRef, { proSubscription: newSubscription }, { merge: true });
     setProSubscription(newSubscription);
     setIsPro(true);
     setIsUpgradeModalOpen(false);

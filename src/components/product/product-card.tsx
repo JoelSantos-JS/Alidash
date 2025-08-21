@@ -47,7 +47,7 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
         </Badge>
       </CardHeader>
       <CardContent className="p-4 flex-1">
-        <CardTitle className="text-base font-semibold leading-tight mb-2 h-10">
+        <CardTitle className="text-base font-semibold leading-tight mb-2 min-h-10">
           {product.name}
         </CardTitle>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">

@@ -6,7 +6,7 @@ import { z } from "zod";
 import { Loader2, Package } from "lucide-react";
 import Link from "next/link";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,12 +39,24 @@ export default function SignupPage() {
       const isSuperAdmin = user.email === 'joeltere9@gmail.com';
 
       // Create a document for the user in Firestore
-      await setDoc(doc(db, "users", user.uid), {
+       const userDocData: any = {
         email: user.email,
-        createdAt: new Date(),
-        isPro: isSuperAdmin, // isPro is true only for the super admin
+        createdAt: serverTimestamp(),
         isSuperAdmin: isSuperAdmin,
-      });
+      };
+
+      if (isSuperAdmin) {
+        // Super admin gets a lifetime subscription
+        const farFutureDate = new Date();
+        farFutureDate.setFullYear(farFutureDate.getFullYear() + 100);
+        userDocData.proSubscription = {
+            plan: 'lifetime',
+            startedAt: serverTimestamp(),
+            expiresAt: farFutureDate,
+        };
+      }
+
+      await setDoc(doc(db, "users", user.uid), userDocData);
       
       // If it's the supreme user, migrate data from local storage.
       if(isSuperAdmin) {

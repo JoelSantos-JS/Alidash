@@ -18,9 +18,10 @@ type SupplierChartProps = {
     data: Product[];
     isLoading?: boolean;
     isPro: boolean;
+    onUpgradeClick: () => void;
 }
 
-export function SupplierChart({ data, isLoading, isPro }: SupplierChartProps) {
+export function SupplierChart({ data, isLoading, isPro, onUpgradeClick }: SupplierChartProps) {
   
   const chartData = React.useMemo(() => {
     const profitBySupplier = data.reduce((acc, product) => {
@@ -56,6 +57,7 @@ export function SupplierChart({ data, isLoading, isPro }: SupplierChartProps) {
                 <UpgradeToProCard 
                     title="Análise de Fornecedores"
                     description="Identifique seus fornecedores mais lucrativos e otimize suas compras com esta análise exclusiva para assinantes Pro."
+                    onUpgradeClick={onUpgradeClick}
                 />
             </div>
         )}

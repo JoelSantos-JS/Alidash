@@ -30,7 +30,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 const initialDreams: Dream[] = [];
 
 export default function DreamsPage() {
-  const { user, loading: authLoading, isPro } = useAuth();
+  const { user, loading: authLoading, isPro, openUpgradeModal } = useAuth();
   const [dreams, setDreams] = useState<Dream[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlanning, setIsPlanning] = useState<string | null>(null);
@@ -38,7 +38,6 @@ export default function DreamsPage() {
   const [dreamToEdit, setDreamToEdit] = useState<Dream | null>(null);
   const [dreamToDelete, setDreamToDelete] = useState<Dream | null>(null);
   const [dreamToRefine, setDreamToRefine] = useState<Dream | null>(null);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -156,8 +155,7 @@ export default function DreamsPage() {
 
   const handlePlanClick = (dream: Dream) => {
     if (!isPro) {
-        setDreamToRefine(dream); // Use dreamToRefine to show the modal with the right context
-        setShowUpgradeModal(true);
+        openUpgradeModal();
         return;
     }
     handlePlanDream(dream);
@@ -165,8 +163,7 @@ export default function DreamsPage() {
 
   const handleRefineClick = (dream: Dream) => {
      if (!isPro) {
-        setDreamToRefine(dream);
-        setShowUpgradeModal(true);
+        openUpgradeModal();
         return;
     }
     setDreamToRefine(dream);
@@ -343,31 +340,11 @@ export default function DreamsPage() {
     </AlertDialog>
 
     <DreamRefineDialog 
-        isOpen={!!dreamToRefine && !showUpgradeModal}
+        isOpen={!!dreamToRefine}
         onOpenChange={(isOpen) => !isOpen && setDreamToRefine(null)}
         onRefine={handleRefinePlan}
         dreamName={dreamToRefine?.name}
     />
-
-    <AlertDialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-            <AlertDialogTitle>Funcionalidade Pro</AlertDialogTitle>
-            <AlertDialogDescription>
-                O planejamento de sonhos com IA é um recurso exclusivo para assinantes Pro. Faça upgrade para gerar planos detalhados, obter dicas e acelerar a conquista dos seus objetivos!
-            </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-                setShowUpgradeModal(false)
-                setDreamToRefine(null)
-            }}>
-                Entendi
-            </AlertDialogCancel>
-            <AlertDialogAction>Fazer Upgrade</AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-    </AlertDialog>
     </>
   );
 }

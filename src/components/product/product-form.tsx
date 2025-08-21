@@ -118,7 +118,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
 
   const { formState: { isSubmitting }, watch, setValue, control } = form;
   const { toast } = useToast();
-  const { user, isPro, isSuperAdmin } = useAuth();
+  const { user, isPro, isSuperAdmin, openUpgradeModal } = useAuth();
   const [isSuggesting, setIsSuggesting] = React.useState({ price: false, description: false});
   const [isCustomCategory, setIsCustomCategory] = React.useState(false);
   
@@ -177,7 +177,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
 
   const handleSuggestPrice = async () => {
     if (!isPro) {
-        toast({ variant: "destructive", title: "Funcionalidade Pro", description: "A sugestão de preço com IA é um recurso Pro." });
+        openUpgradeModal();
         return;
     }
     const { name, category } = watchedValues;
@@ -214,7 +214,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
 
   const handleSuggestDescription = async () => {
      if (!isPro) {
-        toast({ variant: "destructive", title: "Funcionalidade Pro", description: "A sugestão de descrição com IA é um recurso Pro." });
+        openUpgradeModal();
         return;
     }
     const { name, description } = watchedValues;
@@ -315,7 +315,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                                              <TooltipProvider>
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
-                                                        <Button type="button" variant="link" size="sm" onClick={handleSuggestDescription} disabled={isSuggesting.description || !isPro} className="p-0 h-auto">
+                                                        <Button type="button" variant="link" size="sm" onClick={handleSuggestDescription} disabled={isSuggesting.description} className="p-0 h-auto">
                                                             {isSuggesting.description ? <Loader2 className="animate-spin mr-2" /> : (isPro ? <Sparkles className="mr-2 text-primary" /> : <Lock className="mr-2"/>) }
                                                             Sugerir com IA
                                                         </Button>
@@ -419,7 +419,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                                             <TooltipProvider>
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
-                                                        <Button type="button" size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" onClick={handleSuggestPrice} disabled={isSuggesting.price || !isPro}>
+                                                        <Button type="button" size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" onClick={handleSuggestPrice} disabled={isSuggesting.price}>
                                                             {isSuggesting.price ? <Loader2 className="animate-spin" /> : (isPro ? <Sparkles className="text-primary" /> : <Lock />) }
                                                         </Button>
                                                     </TooltipTrigger>

@@ -40,7 +40,7 @@ const initialBets: Bet[] = [];
 type Period = 'day' | 'week' | 'month';
 
 export default function BetsPage() {
-    const { user, loading: authLoading, isPro } = useAuth();
+    const { user, loading: authLoading, isPro, openUpgradeModal } = useAuth();
     const [bets, setBets] = useState<Bet[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -262,6 +262,7 @@ export default function BetsPage() {
                                 <UpgradeToProCard 
                                     title="Desbloqueie a Calculadora Avançada"
                                     description="A calculadora avançada permite análises complexas com taxas, limites e verificação de cenários para maximizar seus lucros."
+                                    onUpgradeClick={openUpgradeModal}
                                 />
                            )}
                         </TabsContent>

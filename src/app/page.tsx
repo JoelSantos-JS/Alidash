@@ -37,7 +37,7 @@ const initialProducts: Product[] = [];
 
 
 export default function Home() {
-  const { user, loading: authLoading, isPro } = useAuth();
+  const { user, loading: authLoading, isPro, openUpgradeModal } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -300,7 +300,7 @@ export default function Home() {
                 <CategoryChart data={products} isLoading={isLoading}/>
             </div>
              <div className="lg:col-span-5">
-                <SupplierChart data={products} isLoading={isLoading} isPro={isPro} />
+                <SupplierChart data={products} isLoading={isLoading} isPro={isPro} onUpgradeClick={openUpgradeModal} />
             </div>
         </div>
 

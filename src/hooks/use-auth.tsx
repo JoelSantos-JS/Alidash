@@ -4,13 +4,22 @@ import { useState, useEffect, createContext, useContext, ReactNode } from 'react
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { usePathname, useRouter } from 'next/navigation';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import { UpgradeToProDialog } from '@/components/layout/upgrade-to-pro-dialog';
+
+interface ProSubscription {
+    plan: 'biweekly' | 'monthly' | 'lifetime';
+    startedAt: Timestamp;
+    expiresAt: Timestamp;
+}
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isPro: boolean;
   isSuperAdmin: boolean;
+  proSubscription: ProSubscription | null;
+  openUpgradeModal: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,8 +29,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [isPro, setIsPro] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [proSubscription, setProSubscription] = useState<ProSubscription | null>(null);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+
+  const checkSubscriptionStatus = (sub: ProSubscription | null) => {
+    if (!sub) return false;
+    const now = new Date();
+    const expiresAtDate = sub.expiresAt.toDate();
+    return now < expiresAtDate;
+  };
+
+  const handleUpgrade = async (plan: 'biweekly' | 'monthly') => {
+    if (!user) return;
+    const userDocRef = doc(db, "users", user.uid);
+    const now = new Date();
+    const expiresAt = new Date(now);
+    
+    if (plan === 'biweekly') {
+        expiresAt.setDate(now.getDate() + 15);
+    } else { // monthly
+        expiresAt.setDate(now.getDate() + 30);
+    }
+
+    const newSubscription: ProSubscription = {
+        plan,
+        startedAt: Timestamp.fromDate(now),
+        expiresAt: Timestamp.fromDate(expiresAt),
+    };
+
+    await updateDoc(userDocRef, { proSubscription: newSubscription });
+    setProSubscription(newSubscription);
+    setIsPro(true);
+    setIsUpgradeModalOpen(false);
+  }
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -31,13 +73,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
             const userData = userDoc.data();
-            setIsPro(userData.isPro || false);
+            const subscription = userData.proSubscription || null;
+            setProSubscription(subscription);
+            setIsPro(checkSubscriptionStatus(subscription));
             setIsSuperAdmin(userData.isSuperAdmin || false);
         } else {
+            setProSubscription(null);
             setIsPro(false);
             setIsSuperAdmin(false);
         }
       } else {
+        setProSubscription(null);
         setIsPro(false);
         setIsSuperAdmin(false);
       }
@@ -59,7 +105,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user, loading, pathname, router]);
 
-  const value = { user, loading, isPro, isSuperAdmin };
+  const value = { 
+      user, 
+      loading, 
+      isPro, 
+      isSuperAdmin,
+      proSubscription,
+      openUpgradeModal: () => setIsUpgradeModalOpen(true)
+  };
   
   if (loading && !(pathname.startsWith('/login') || pathname.startsWith('/cadastro'))) {
     return (
@@ -72,7 +125,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+        {children}
+        <UpgradeToProDialog 
+            isOpen={isUpgradeModalOpen}
+            onOpenChange={setIsUpgradeModalOpen}
+            onUpgrade={handleUpgrade}
+        />
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {

@@ -7,9 +7,10 @@ import { Star, Zap } from "lucide-react";
 interface UpgradeToProCardProps {
     title: string;
     description: string;
+    onUpgradeClick: () => void;
 }
 
-export function UpgradeToProCard({ title, description }: UpgradeToProCardProps) {
+export function UpgradeToProCard({ title, description, onUpgradeClick }: UpgradeToProCardProps) {
     return (
         <Card className="w-full max-w-md mx-auto text-center shadow-lg border-2 border-primary/50 bg-gradient-to-br from-card to-primary/10">
             <CardHeader>
@@ -22,7 +23,7 @@ export function UpgradeToProCard({ title, description }: UpgradeToProCardProps) 
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <Button size="lg" className="w-full shadow-lg">
+                <Button size="lg" className="w-full shadow-lg" onClick={onUpgradeClick}>
                     <Zap className="mr-2 h-5 w-5" />
                     Fazer Upgrade para o Pro
                 </Button>

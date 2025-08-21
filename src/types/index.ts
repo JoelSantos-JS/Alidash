@@ -1,4 +1,5 @@
 
+
 export interface Product {
   id: string;
   name: string;
@@ -35,6 +36,7 @@ export interface Product {
   // Métricas
   roi: number;
   actualProfit: number;
+  daysToSell?: number; // métrica de tempo para vender
 }
 
 export interface Sale {
@@ -110,5 +112,3 @@ export interface BetAnalysis {
     justification: string;
     suggestedActions: string[];
 }
-
-    

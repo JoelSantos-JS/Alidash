@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { DollarSign, Package, TrendingUp } from "lucide-react";
+import { DollarSign, Package, TrendingUp, Clock } from "lucide-react";
 
 import type { Product } from "@/types";
 import {
@@ -55,6 +55,12 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
                 <Package className="w-4 h-4"/>
                 <span>{product.quantity - product.quantitySold} em estoque</span>
             </div>
+             {product.daysToSell !== undefined && (
+                 <div className="flex items-center gap-1">
+                    <Clock className="w-4 h-4"/>
+                    <span>Vendido em {product.daysToSell} dias</span>
+                </div>
+            )}
         </div>
       </CardContent>
       <CardFooter className="p-4 pt-0 flex justify-between items-center">

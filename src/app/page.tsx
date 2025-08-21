@@ -13,7 +13,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, DollarSign, Package, TrendingUp, ShoppingCart, AlertTriangle, Target } from "lucide-react";
+import { PlusCircle, DollarSign, Package, TrendingUp, ShoppingCart, AlertTriangle, Target, Archive } from "lucide-react";
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import { CategoryChart } from "@/components/dashboard/category-chart";
 import { ProfitChart } from "@/components/dashboard/profit-chart";
@@ -31,6 +31,7 @@ import { SaleForm } from "@/components/product/sale-form";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { SupplierChart } from "@/components/dashboard/supplier-chart";
 
 const initialProducts: Product[] = [];
 
@@ -109,7 +110,7 @@ export default function Home() {
     const projectedProfit = products.reduce((acc, p) => acc + (p.expectedProfit * (p.quantity - p.quantitySold)), 0);
     const productsInStock = products.reduce((acc, p) => acc + (p.quantity - p.quantitySold), 0);
     const productsSolds = products.reduce((acc, p) => acc + p.quantitySold, 0);
-    const averageMargin = products.length > 0 ? products.reduce((acc, p) => acc + p.profitMargin, 0) / products.length : 0;
+    const lowStockCount = products.filter(p => (p.quantity - p.quantitySold) <= 2 && p.status !== 'sold').length;
 
     return {
         totalInvested,
@@ -117,7 +118,7 @@ export default function Home() {
         projectedProfit,
         productsInStock,
         productsSolds,
-        averageMargin
+        lowStockCount,
     }
   }, [products]);
 
@@ -189,12 +190,22 @@ export default function Home() {
             const newActualProfit = p.expectedProfit * newQuantitySold;
             const newStatus = newQuantitySold >= p.quantity ? 'sold' : p.status;
             
+            // Calculate days to sell
+            const salesHistory = [...(p.sales || []), newSale].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            let daysToSell;
+            if (newStatus === 'sold') {
+                const purchaseDate = new Date(p.purchaseDate).getTime();
+                const lastSaleDate = new Date(salesHistory[salesHistory.length - 1].date).getTime();
+                daysToSell = Math.ceil((lastSaleDate - purchaseDate) / (1000 * 60 * 60 * 24));
+            }
+
             return {
                 ...p,
                 quantitySold: newQuantitySold,
                 actualProfit: newActualProfit,
                 status: newStatus,
-                sales: [...(p.sales || []), newSale]
+                sales: salesHistory,
+                daysToSell: daysToSell ?? p.daysToSell,
             }
         }
         return p;
@@ -236,13 +247,13 @@ export default function Home() {
         </div>
 
         {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                 {Array.from({ length: 5 }).map((_, i) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                 {Array.from({ length: 6 }).map((_, i) => (
                     <Skeleton key={i} className="h-[116px] w-full" />
                 ))}
             </div>
         ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 <SummaryCard 
                     title="Total Investido"
                     value={summaryStats.totalInvested}
@@ -271,6 +282,12 @@ export default function Home() {
                     value={summaryStats.productsSolds}
                     icon={ShoppingCart}
                 />
+                <SummaryCard 
+                    title="Alerta de Estoque Baixo"
+                    value={summaryStats.lowStockCount}
+                    icon={Archive}
+                    className={summaryStats.lowStockCount > 0 ? "text-destructive" : ""}
+                />
             </div>
         )}
 
@@ -281,6 +298,9 @@ export default function Home() {
             </div>
             <div className="lg:col-span-2">
                 <CategoryChart data={products} isLoading={isLoading}/>
+            </div>
+             <div className="lg:col-span-5">
+                <SupplierChart data={products} isLoading={isLoading} />
             </div>
         </div>
 

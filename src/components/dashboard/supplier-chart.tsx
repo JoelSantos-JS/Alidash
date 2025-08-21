@@ -12,13 +12,15 @@ import {
 } from "@/components/ui/card"
 import type { Product } from "@/types"
 import { Skeleton } from "../ui/skeleton";
+import { UpgradeToProCard } from "../layout/upgrade-to-pro-card";
 
 type SupplierChartProps = {
     data: Product[];
     isLoading?: boolean;
+    isPro: boolean;
 }
 
-export function SupplierChart({ data, isLoading }: SupplierChartProps) {
+export function SupplierChart({ data, isLoading, isPro }: SupplierChartProps) {
   
   const chartData = React.useMemo(() => {
     const profitBySupplier = data.reduce((acc, product) => {
@@ -45,10 +47,18 @@ export function SupplierChart({ data, isLoading }: SupplierChartProps) {
   return (
     <Card className="h-full">
       <CardHeader>
-        <CardTitle>Lucro por Fornecedor</CardTitle>
+        <CardTitle>Lucro por Fornecedor (Pro)</CardTitle>
         <CardDescription>Análise do lucro realizado por cada fornecedor</CardDescription>
       </CardHeader>
-      <CardContent className="h-[300px]">
+      <CardContent className="h-[300px] relative">
+        {!isPro && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center backdrop-blur-sm">
+                <UpgradeToProCard 
+                    title="Análise de Fornecedores"
+                    description="Identifique seus fornecedores mais lucrativos e otimize suas compras com esta análise exclusiva para assinantes Pro."
+                />
+            </div>
+        )}
         {isLoading ? (
             <div className="w-full h-full flex items-end gap-2 px-4">
                 {skeletonHeights.map((height, i) => (

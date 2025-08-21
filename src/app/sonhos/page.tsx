@@ -30,7 +30,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 const initialDreams: Dream[] = [];
 
 export default function DreamsPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isPro } = useAuth();
   const [dreams, setDreams] = useState<Dream[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlanning, setIsPlanning] = useState<string | null>(null);
@@ -38,6 +38,7 @@ export default function DreamsPage() {
   const [dreamToEdit, setDreamToEdit] = useState<Dream | null>(null);
   const [dreamToDelete, setDreamToDelete] = useState<Dream | null>(null);
   const [dreamToRefine, setDreamToRefine] = useState<Dream | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -101,7 +102,7 @@ export default function DreamsPage() {
   }, [dreams, isLoading, user, authLoading, toast]);
   
   useEffect(() => {
-    if (isLoading || dreams.length === 0) return;
+    if (isLoading || dreams.length === 0 || !isPro) return;
 
     // Find the dream with the lowest progress percentage
     const dreamWithLowestProgress = dreams
@@ -125,7 +126,7 @@ export default function DreamsPage() {
         }, 2000); // Delay to allow the user to settle
       }
     }
-  }, [isLoading, dreams, toast]);
+  }, [isLoading, dreams, toast, isPro]);
 
   const handleOpenForm = (dream: Dream | null = null) => {
     setDreamToEdit(dream);
@@ -153,7 +154,26 @@ export default function DreamsPage() {
      toast({ variant: 'destructive', title: "Sonho Excluído!", description: `O sonho "${dream.name}" foi removido.` });
   }
 
+  const handlePlanClick = (dream: Dream) => {
+    if (!isPro) {
+        setDreamToRefine(dream); // Use dreamToRefine to show the modal with the right context
+        setShowUpgradeModal(true);
+        return;
+    }
+    handlePlanDream(dream);
+  }
+
+  const handleRefineClick = (dream: Dream) => {
+     if (!isPro) {
+        setDreamToRefine(dream);
+        setShowUpgradeModal(true);
+        return;
+    }
+    setDreamToRefine(dream);
+  }
+
   const handlePlanDream = async (dream: Dream) => {
+    if (!isPro) return;
     setIsPlanning(dream.id);
     try {
       const existingPlan = dream.plan;
@@ -184,7 +204,7 @@ export default function DreamsPage() {
   }
 
   const handleRefinePlan = async (instruction: string) => {
-    if (!dreamToRefine) return;
+    if (!dreamToRefine || !isPro) return;
     const dreamId = dreamToRefine.id;
     setIsPlanning(dreamId);
     setDreamToRefine(null);
@@ -260,8 +280,9 @@ export default function DreamsPage() {
                         dream={dream}
                         plan={dream.plan}
                         isPlanning={isPlanning === dream.id}
-                        onPlan={() => handlePlanDream(dream)}
-                        onRefine={() => setDreamToRefine(dream)}
+                        isPro={isPro}
+                        onPlan={() => handlePlanClick(dream)}
+                        onRefine={() => handleRefineClick(dream)}
                         onEdit={() => handleOpenForm(dream)}
                         onDelete={() => setDreamToDelete(dream)}
                     />
@@ -322,11 +343,31 @@ export default function DreamsPage() {
     </AlertDialog>
 
     <DreamRefineDialog 
-        isOpen={!!dreamToRefine}
+        isOpen={!!dreamToRefine && !showUpgradeModal}
         onOpenChange={(isOpen) => !isOpen && setDreamToRefine(null)}
         onRefine={handleRefinePlan}
         dreamName={dreamToRefine?.name}
     />
+
+    <AlertDialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>Funcionalidade Pro</AlertDialogTitle>
+            <AlertDialogDescription>
+                O planejamento de sonhos com IA é um recurso exclusivo para assinantes Pro. Faça upgrade para gerar planos detalhados, obter dicas e acelerar a conquista dos seus objetivos!
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+                setShowUpgradeModal(false)
+                setDreamToRefine(null)
+            }}>
+                Entendi
+            </AlertDialogCancel>
+            <AlertDialogAction>Fazer Upgrade</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }

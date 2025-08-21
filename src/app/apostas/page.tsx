@@ -32,6 +32,7 @@ import { SurebetCalculator } from '@/components/bets/surebet-calculator';
 import { AdvancedSurebetCalculator } from '@/components/bets/advanced-surebet-calculator';
 import { isToday, isThisWeek, isThisMonth } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { UpgradeToProCard } from '@/components/layout/upgrade-to-pro-card';
 
 
 const initialBets: Bet[] = [];
@@ -39,7 +40,7 @@ const initialBets: Bet[] = [];
 type Period = 'day' | 'week' | 'month';
 
 export default function BetsPage() {
-    const { user, loading: authLoading } = useAuth();
+    const { user, loading: authLoading, isPro } = useAuth();
     const [bets, setBets] = useState<Bet[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -247,7 +248,7 @@ export default function BetsPage() {
                     <Tabs defaultValue="simple" className="w-full">
                         <TabsList className="grid w-full grid-cols-2 mb-6">
                             <TabsTrigger value="simple">Calculadora Simples</TabsTrigger>
-                            <TabsTrigger value="advanced">Calculadora Avançada</TabsTrigger>
+                            <TabsTrigger value="advanced">Calculadora Avançada (Pro)</TabsTrigger>
                         </TabsList>
                         
                         <TabsContent value="simple">
@@ -255,7 +256,14 @@ export default function BetsPage() {
                         </TabsContent>
                         
                         <TabsContent value="advanced">
-                            <AdvancedSurebetCalculator />
+                           {isPro ? (
+                                <AdvancedSurebetCalculator />
+                           ) : (
+                                <UpgradeToProCard 
+                                    title="Desbloqueie a Calculadora Avançada"
+                                    description="A calculadora avançada permite análises complexas com taxas, limites e verificação de cenários para maximizar seus lucros."
+                                />
+                           )}
                         </TabsContent>
                     </Tabs>
                 </div>
@@ -381,5 +389,3 @@ export default function BetsPage() {
         </>
     )
 }
-
-    

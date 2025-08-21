@@ -1,9 +1,9 @@
 "use client";
 
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CalendarIcon, Loader2, Sparkles, Package, ClipboardList } from "lucide-react";
+import { CalendarIcon, Loader2, Sparkles, Package, ClipboardList, Lock } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import React from "react";
@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrackingView } from "./tracking-view";
 import { useAuth } from "@/hooks/use-auth";
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 
 const productSchema = z.object({
@@ -117,12 +118,10 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
 
   const { formState: { isSubmitting }, watch, setValue, control } = form;
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isPro, isSuperAdmin } = useAuth();
   const [isSuggesting, setIsSuggesting] = React.useState({ price: false, description: false});
   const [isCustomCategory, setIsCustomCategory] = React.useState(false);
   
-  // Check if user is supreme admin
-  const isSupremeUser = user?.email === 'joeltere9@gmail.com';
 
   const watchedValues = watch();
   const watchedCategory = watch("category");
@@ -177,6 +176,10 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
   };
 
   const handleSuggestPrice = async () => {
+    if (!isPro) {
+        toast({ variant: "destructive", title: "Funcionalidade Pro", description: "A sugestão de preço com IA é um recurso Pro." });
+        return;
+    }
     const { name, category } = watchedValues;
     const { totalCost } = calculateFinancials(watchedValues);
     
@@ -210,6 +213,10 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
   }
 
   const handleSuggestDescription = async () => {
+     if (!isPro) {
+        toast({ variant: "destructive", title: "Funcionalidade Pro", description: "A sugestão de descrição com IA é um recurso Pro." });
+        return;
+    }
     const { name, description } = watchedValues;
     if (!name) {
         toast({ variant: "destructive", title: "Nome do Produto Necessário", description: "Por favor, preencha o nome do produto primeiro." });
@@ -243,10 +250,10 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
             <Tabs defaultValue="details">
-                 <TabsList className={`mx-6 grid w-[calc(100%-48px)] ${isSupremeUser ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                 <TabsList className={`mx-6 grid w-[calc(100%-48px)] ${isSuperAdmin ? 'grid-cols-3' : 'grid-cols-2'}`}>
                     <TabsTrigger value="details"><Package className="mr-2 h-4 w-4"/> Detalhes do Produto</TabsTrigger>
                     <TabsTrigger value="tracking"><ClipboardList className="mr-2 h-4 w-4"/> Rastreio</TabsTrigger>
-                    {isSupremeUser && (
+                    {isSuperAdmin && (
                         <TabsTrigger value="settings"><Sparkles className="mr-2 h-4 w-4"/> Configurações</TabsTrigger>
                     )}
                 </TabsList>
@@ -305,10 +312,17 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                                     <FormLabel>
                                         <div className="flex items-center justify-between">
                                             <span>Descrição</span>
-                                             <Button type="button" variant="link" size="sm" onClick={handleSuggestDescription} disabled={isSuggesting.description} className="p-0 h-auto">
-                                                {isSuggesting.description ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2 text-primary" />}
-                                                Sugerir com IA
-                                            </Button>
+                                             <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button type="button" variant="link" size="sm" onClick={handleSuggestDescription} disabled={isSuggesting.description || !isPro} className="p-0 h-auto">
+                                                            {isSuggesting.description ? <Loader2 className="animate-spin mr-2" /> : (isPro ? <Sparkles className="mr-2 text-primary" /> : <Lock className="mr-2"/>) }
+                                                            Sugerir com IA
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    {!isPro && <TooltipContent><p>Funcionalidade Pro</p></TooltipContent>}
+                                                </Tooltip>
+                                            </TooltipProvider>
                                         </div>
                                     </FormLabel>
                                     <FormControl><Textarea {...field} /></FormControl>
@@ -402,9 +416,16 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                                             <FormControl>
                                                 <Input type="number" step="0.01" {...field} className="pr-10"/>
                                             </FormControl>
-                                            <Button type="button" size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" onClick={handleSuggestPrice} disabled={isSuggesting.price}>
-                                                {isSuggesting.price ? <Loader2 className="animate-spin" /> : <Sparkles className="text-primary" />}
-                                            </Button>
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button type="button" size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" onClick={handleSuggestPrice} disabled={isSuggesting.price || !isPro}>
+                                                            {isSuggesting.price ? <Loader2 className="animate-spin" /> : (isPro ? <Sparkles className="text-primary" /> : <Lock />) }
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    {!isPro && <TooltipContent><p>Funcionalidade Pro</p></TooltipContent>}
+                                                </Tooltip>
+                                            </TooltipProvider>
                                         </div>
                                         <FormMessage />
                                     </FormItem>
@@ -603,7 +624,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                         </div>
                     </ScrollArea>
                 </TabsContent>
-                {isSupremeUser && (
+                {isSuperAdmin && (
                 <TabsContent value="settings">
                     <ScrollArea className="h-[65vh]">
                         <div className="space-y-6 px-6 pt-4 pb-6">
@@ -704,8 +725,8 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                 )}
             </Tabs>
 
-             <div className="p-6 pt-2 flex flex-col sm:flex-row justify-between items-center gap-4 bg-gradient-to-r from-slate-100/50 to-gray-200/50 dark:from-slate-800/30 dark:to-gray-800/30 border-t">
-                <div className="flex-1 flex flex-wrap gap-x-4 gap-y-1 items-center">
+            <div className="flex flex-col sm:flex-row items-center gap-4 border-t bg-muted/30 p-4">
+                <div className="flex flex-1 flex-wrap items-center gap-x-4 gap-y-1">
                     <div>
                         <span className="text-sm text-muted-foreground">Custo Total/un</span>
                         <p className="font-bold text-lg text-destructive">{totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
@@ -723,9 +744,9 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                         </p>
                     </div>
                 </div>
-                <div className="flex gap-2 w-full sm:w-auto">
-                    <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting} className="flex-1 sm:flex-none">Cancelar</Button>
-                    <Button type="submit" disabled={isSubmitting} className="flex-1 sm:flex-none">
+                <div className="flex w-full sm:w-auto gap-2">
+                    <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting} className="flex-1 sm:flex-auto">Cancelar</Button>
+                    <Button type="submit" disabled={isSubmitting} className="flex-1 sm:flex-auto">
                         {isSubmitting ? <Loader2 className="animate-spin" /> : (productToEdit ? "Salvar Alterações" : "Adicionar Produto")}
                     </Button>
                 </div>

@@ -5,15 +5,18 @@ import type { Dream, DreamPlan } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Wand2, PiggyBank, ListChecks, Info, Loader2, Edit, Trash2, NotebookText, Sparkles, MoreVertical } from 'lucide-react';
+import { Wand2, PiggyBank, ListChecks, Info, Loader2, Edit, Trash2, NotebookText, Sparkles, MoreVertical, Lock } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Separator } from '../ui/separator';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface DreamCardProps {
   dream: Dream;
   plan?: DreamPlan | null;
   isPlanning?: boolean;
+  isPro: boolean;
   onPlan: () => void;
   onRefine: () => void;
   onEdit: () => void;
@@ -27,7 +30,7 @@ const statusMap = {
 };
 
 
-export function DreamCard({ dream, plan, isPlanning = false, onPlan, onRefine, onEdit, onDelete }: DreamCardProps) {
+export function DreamCard({ dream, plan, isPlanning = false, isPro, onPlan, onRefine, onEdit, onDelete }: DreamCardProps) {
   const progress = dream.targetAmount > 0 ? (dream.currentAmount / dream.targetAmount) * 100 : 0;
   const statusInfo = statusMap[dream.status];
 
@@ -117,16 +120,43 @@ export function DreamCard({ dream, plan, isPlanning = false, onPlan, onRefine, o
           )}
         </div>
       <CardFooter className="p-4 bg-secondary/30 flex gap-2 mt-auto">
-         <Button className="flex-1" onClick={onPlan} disabled={isPlanning}>
-            {isPlanning ? (
-                <><Loader2 className="mr-2 animate-spin"/> Gerando...</>
-            ) : (
-                <><Wand2 className="mr-2"/> {plan ? 'Novo Plano' : 'Planejar com IA'}</>
-            )}
-        </Button>
-        <Button variant="outline" onClick={onRefine} disabled={!plan || isPlanning}>
-            <Sparkles className="mr-2"/> Aprimorar
-        </Button>
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <div className="flex-1">
+                        <Button className="w-full" onClick={onPlan} disabled={isPlanning || !isPro}>
+                            {isPlanning ? (
+                                <><Loader2 className="mr-2 animate-spin"/> Gerando...</>
+                            ) : !isPro ? (
+                                <><Lock className="mr-2"/> Planejar com IA</>
+                            ) : (
+                                <><Wand2 className="mr-2"/> {plan ? 'Novo Plano' : 'Planejar com IA'}</>
+                            )}
+                        </Button>
+                    </div>
+                </TooltipTrigger>
+                {!isPro && (
+                     <TooltipContent>
+                        <p>Funcionalidade Pro: Faça upgrade para usar a IA.</p>
+                    </TooltipContent>
+                )}
+            </Tooltip>
+             <Tooltip>
+                <TooltipTrigger asChild>
+                    <div className='flex-shrink-0'>
+                        <Button variant="outline" onClick={onRefine} disabled={!plan || isPlanning || !isPro}>
+                            {!isPro ? <Lock className="mr-2"/> : <Sparkles className="mr-2"/>}
+                             Aprimorar
+                        </Button>
+                    </div>
+                </TooltipTrigger>
+                 {!isPro && (
+                     <TooltipContent>
+                        <p>Funcionalidade Pro: Faça upgrade para usar a IA.</p>
+                    </TooltipContent>
+                )}
+            </Tooltip>
+        </TooltipProvider>
         
         <DropdownMenu>
             <DropdownMenuTrigger asChild>

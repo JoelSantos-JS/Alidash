@@ -2,15 +2,15 @@
 
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isPro: boolean;
+  isSuperAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,6 +19,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPro, setIsPro] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -26,16 +27,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       if (user) {
-        // Check for pro status
         const userDocRef = doc(db, "users", user.uid);
         const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists() && userDoc.data().isPro) {
-          setIsPro(true);
+        if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setIsPro(userData.isPro || false);
+            setIsSuperAdmin(userData.isSuperAdmin || false);
         } else {
-          setIsPro(false);
+            setIsPro(false);
+            setIsSuperAdmin(false);
         }
       } else {
         setIsPro(false);
+        setIsSuperAdmin(false);
       }
       setLoading(false);
     });
@@ -55,13 +59,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user, loading, pathname, router]);
 
-  const value = { user, loading, isPro };
+  const value = { user, loading, isPro, isSuperAdmin };
   
   if (loading && !(pathname.startsWith('/login') || pathname.startsWith('/cadastro'))) {
     return (
-        <div className="flex items-center justify-center h-screen">
+        <div className="flex items-center justify-center h-screen bg-background">
             <div className="text-center">
-                <p className="text-lg">Carregando...</p>
+                <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4"/>
+                <p className="text-lg text-muted-foreground">Carregando...</p>
             </div>
         </div>
     );
@@ -77,3 +82,6 @@ export const useAuth = () => {
   }
   return context;
 };
+
+// Add Loader2 to the imports in use-auth.tsx for the loading screen
+import { Loader2 } from 'lucide-react';

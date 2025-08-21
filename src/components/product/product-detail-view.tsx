@@ -58,7 +58,7 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
           />
         </div>
         <div className="flex flex-col">
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 min-h-0">
             <div className="p-6">
                 <div className="relative aspect-square md:hidden -mx-6 -mt-6 mb-6">
                     <Image
@@ -196,8 +196,8 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
                 )}
             </div>
           </ScrollArea>
-          <div className="p-6 pt-0 mt-auto">
-             <div className="flex flex-col md:flex-row gap-2">
+          <div className="p-6 pt-0 mt-auto border-t">
+             <div className="flex flex-col md:flex-row gap-2 pt-6">
                   <Button onClick={onRegisterSale} className="flex-1" size="lg" disabled={isSoldOut}>
                       <ShoppingCart className="mr-2 h-5 w-5"/>
                       {isSoldOut ? 'Esgotado' : 'Registrar Venda'}
@@ -225,3 +225,4 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
     </TooltipProvider>
   );
 }
+

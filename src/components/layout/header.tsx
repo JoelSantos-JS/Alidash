@@ -71,7 +71,7 @@ export function Header({ onSecretClick }: HeaderProps) {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                     <DropdownMenuItem>
+                     <DropdownMenuItem asChild>
                         <Link href="/perfil" className="flex items-center w-full">
                             <UserIcon className="mr-2 h-4 w-4" />
                             <span>Perfil</span>

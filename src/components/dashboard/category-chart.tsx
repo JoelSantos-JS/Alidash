@@ -52,7 +52,7 @@ export function CategoryChart({ data, isLoading }: CategoryChartProps) {
 
   return (
     <Card className="flex flex-col h-full">
-      <CardHeader className="items-center pb-0">
+      <CardHeader>
         <CardTitle>Produtos por Categoria</CardTitle>
         <CardDescription>Distribuição dos produtos cadastrados</CardDescription>
       </CardHeader>

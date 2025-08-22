@@ -9,7 +9,6 @@ import { ProductSearch } from "@/components/product/product-search";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductDetailView } from "@/components/product/product-detail-view";
 import { ProductForm } from "@/components/product/product-form";
-import { PasswordDialog } from "@/components/layout/password-dialog";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -46,7 +45,6 @@ export default function Home() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSaleFormOpen, setIsSaleFormOpen] = useState(false);
-  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const { toast } = useToast();
@@ -222,16 +220,10 @@ export default function Home() {
     });
   }
 
-  const handlePasswordSuccess = (path: 'sonhos' | 'apostas') => {
-    setIsPasswordDialogOpen(false);
-    router.push(`/${path}`);
-  };
-
-
   return (
     <>
     <div className="flex flex-col min-h-screen">
-      <Header onSecretClick={() => setIsPasswordDialogOpen(true)} />
+      <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div className="max-w-2xl">
@@ -411,11 +403,6 @@ export default function Home() {
         </AlertDialogContent>
     </AlertDialog>
     
-    <PasswordDialog 
-        isOpen={isPasswordDialogOpen}
-        onOpenChange={setIsPasswordDialogOpen}
-        onSuccess={handlePasswordSuccess}
-    />
     </>
   );
 }

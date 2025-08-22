@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Lock, LogOut, Package, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { auth } from "@/lib/firebase";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,15 +15,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import React from "react";
+import { PasswordDialog } from "./password-dialog";
 
 
-type HeaderProps = {
-  onSecretClick?: () => void;
-}
-
-export function Header({ onSecretClick }: HeaderProps) {
+export function Header() {
   const { user, isSuperAdmin } = useAuth();
-  const pathname = usePathname();
+  const router = useRouter();
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = React.useState(false);
 
   const handleLogout = () => {
     auth.signOut();
@@ -34,7 +33,13 @@ export function Header({ onSecretClick }: HeaderProps) {
     return email.substring(0, 2).toUpperCase();
   }
 
+  const handlePasswordSuccess = (path: 'sonhos' | 'apostas') => {
+    setIsPasswordDialogOpen(false);
+    router.push(`/${path}`);
+  };
+
   return (
+    <>
     <header className="border-b bg-card">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
@@ -44,8 +49,8 @@ export function Header({ onSecretClick }: HeaderProps) {
             </Link>
           
            <div className="flex items-center gap-4">
-             {user && onSecretClick && isSuperAdmin && (
-                <Button variant="ghost" size="icon" onClick={onSecretClick}>
+             {user && isSuperAdmin && (
+                <Button variant="ghost" size="icon" onClick={() => setIsPasswordDialogOpen(true)}>
                   <Lock className="h-5 w-5 text-muted-foreground"/>
                   <span className="sr-only">Acesso Secreto</span>
                 </Button>
@@ -88,5 +93,11 @@ export function Header({ onSecretClick }: HeaderProps) {
         </div>
       </div>
     </header>
+     <PasswordDialog 
+        isOpen={isPasswordDialogOpen}
+        onOpenChange={setIsPasswordDialogOpen}
+        onSuccess={handlePasswordSuccess}
+    />
+    </>
   );
 }

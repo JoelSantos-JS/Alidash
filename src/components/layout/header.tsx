@@ -67,6 +67,7 @@ export function Header() {
                       <span>Dashboard de Apostas</span>
                     </Link>
                   </DropdownMenuItem>
+
                 </DropdownMenuContent>
               </DropdownMenu>
             )}

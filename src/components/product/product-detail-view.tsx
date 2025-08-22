@@ -46,7 +46,7 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
 
   return (
     <TooltipProvider>
-      <div className="grid grid-cols-1 md:grid-cols-2 max-h-[90vh]">
+      <div className="grid grid-cols-1 md:grid-cols-2 h-full max-h-[90vh]">
         <div className="relative aspect-square md:aspect-auto hidden md:block">
           <Image
             src={product.imageUrl}
@@ -56,10 +56,10 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
             data-ai-hint="product lifestyle"
           />
         </div>
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full min-h-0">
             {/* Header Fixo */}
-            <div className="p-6 pb-4">
-                 <div className="relative aspect-square md:hidden -mx-6 -mt-6 mb-6">
+            <div className="flex-shrink-0 p-6 pb-4">
+                 <div className="relative aspect-square md:hidden -mx-6 -mt-6 mb-6 flex-shrink-0">
                     <Image
                         src={product.imageUrl}
                         alt={product.name}
@@ -82,7 +82,7 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
             </div>
           
             {/* Conteúdo com Rolagem Nativa */}
-            <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
                 <div className="px-6 py-4 space-y-4">
                     <DialogDescription className="text-base text-muted-foreground break-words">
                         {product.description}
@@ -202,7 +202,7 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
             </div>
 
             {/* Rodapé Fixo */}
-            <div className="p-6 pt-4 mt-auto border-t">
+            <div className="flex-shrink-0 p-6 pt-4 border-t">
                  <div className="grid md:grid-cols-3 gap-2">
                     <Button onClick={onRegisterSale} size="lg" disabled={isSoldOut} className="flex-1">
                         <ShoppingCart className="mr-2 h-5 w-5"/>

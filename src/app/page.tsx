@@ -12,6 +12,7 @@ import { ProductForm } from "@/components/product/product-form";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, DollarSign, Package, TrendingUp, ShoppingCart, AlertTriangle, Target, Archive } from "lucide-react";
 import { SummaryCard } from "@/components/dashboard/summary-card";
@@ -33,6 +34,25 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { SupplierChart } from "@/components/dashboard/supplier-chart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+interface ExtendedSale extends Sale {
+  productName?: string;
+  productId?: string;
+}
+
+// Função utilitária para limpar dados undefined
+const cleanUndefinedValues = (obj: any): any => {
+  return JSON.parse(JSON.stringify(obj, (key, value) => {
+    if (value === undefined) return null;
+    if (value instanceof Date) return value.toISOString();
+    return value;
+  }));
+};
 
 const initialProducts: Product[] = [];
 
@@ -47,6 +67,9 @@ export default function Home() {
   const [isSaleFormOpen, setIsSaleFormOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [salesSearchTerm, setSalesSearchTerm] = useState("");
+  const [selectedSalesProduct, setSelectedSalesProduct] = useState<string>("all");
+  const [salesDateFilter, setSalesDateFilter] = useState<string>("all");
   const { toast } = useToast();
   const router = useRouter();
 
@@ -63,8 +86,15 @@ export default function Home() {
              const parsedProducts = data.map((p: any) => ({
                 ...p,
                 purchaseDate: p.purchaseDate?.toDate ? p.purchaseDate.toDate() : new Date(p.purchaseDate),
-                sales: p.sales ? p.sales.map((s: any) => ({...s, date: s.date?.toDate ? s.date.toDate() : new Date(s.date)})) : [],
+                sales: p.sales ? p.sales.map((s: any) => ({
+                    ...s, 
+                    date: s.date?.toDate ? s.date.toDate() : 
+                          typeof s.date === 'string' ? new Date(s.date) : 
+                          new Date(s.date)
+                })) : [],
             }));
+            console.log('📥 Produtos carregados:', parsedProducts.length);
+            console.log('📦 Produtos com vendas:', parsedProducts.filter((p: any) => p.sales && p.sales.length > 0).map((p: any) => ({ name: p.name, salesCount: p.sales.length })));
             setProducts(parsedProducts);
         } else {
             setProducts(initialProducts);
@@ -81,7 +111,15 @@ export default function Home() {
     const saveData = async () => {
         try {
             const docRef = doc(db, "user-data", user.uid);
-            await setDoc(docRef, { products }, { merge: true });
+            
+            // Limpar dados undefined antes de salvar
+            const cleanProducts = products.map(product => cleanUndefinedValues(product));
+            
+            console.log('💾 Salvando produtos no Firestore:', cleanProducts.length, 'produtos');
+            console.log('📊 Produtos com vendas:', cleanProducts.filter(p => p.sales && p.sales.length > 0).map(p => ({ name: p.name, salesCount: p.sales.length })));
+            
+            await setDoc(docRef, { products: cleanProducts }, { merge: true });
+            console.log('✅ Produtos salvos com sucesso no Firestore');
         } catch (error) {
             console.error("Failed to save products to Firestore", error);
             toast({
@@ -133,9 +171,7 @@ export default function Home() {
   };
 
   const handleSaveProduct = (productData: Product) => {
-     const sanitizedProductData = JSON.parse(JSON.stringify(productData, (key, value) => {
-        return value === undefined ? null : value;
-     }));
+     const sanitizedProductData = cleanUndefinedValues(productData);
 
     if(productToEdit) {
       // Editar
@@ -178,11 +214,18 @@ export default function Home() {
   }
   
   const handleRegisterSale = (product: Product, saleData: Omit<Sale, 'id' | 'date'>) => {
+    console.log('🔄 Registrando venda:', { product: product.name, saleData });
+    
+    // Limpar dados undefined da venda
+    const cleanSaleData = cleanUndefinedValues(saleData);
+    
     const newSale: Sale = {
-        ...saleData,
+        ...cleanSaleData,
         id: new Date().getTime().toString(),
         date: new Date(),
     }
+    
+    console.log('📝 Nova venda criada:', newSale);
 
     const updatedProducts = products.map(p => {
         if (p.id === product.id) {
@@ -211,6 +254,8 @@ export default function Home() {
         return p;
     });
 
+    console.log('📊 Produtos atualizados:', updatedProducts.find(p => p.id === product.id));
+    
     setProducts(updatedProducts);
     setIsSaleFormOpen(false);
     setSelectedProduct(null);
@@ -219,6 +264,85 @@ export default function Home() {
         description: `${saleData.quantity} unidade(s) de "${product.name}" vendida(s).`,
     });
   }
+
+  // Funções para o histórico de vendas
+  const allSales = useMemo(() => {
+    const sales: ExtendedSale[] = [];
+    products.forEach((product) => {
+      if (product.sales && product.sales.length > 0) {
+        console.log(`📦 Produto ${product.name} tem ${product.sales.length} vendas:`, product.sales);
+        product.sales.forEach((sale: Sale) => {
+          sales.push({
+            ...sale,
+            productName: product.name,
+            productId: product.id
+          });
+        });
+      }
+    });
+    console.log('🛒 Total de vendas encontradas:', sales.length);
+    return sales.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [products]);
+
+  const filteredSales = useMemo(() => {
+    let filtered = [...allSales];
+
+    // Filtro por termo de busca
+    if (salesSearchTerm) {
+      filtered = filtered.filter(sale => 
+        sale.productName?.toLowerCase().includes(salesSearchTerm.toLowerCase()) ||
+        sale.buyerName?.toLowerCase().includes(salesSearchTerm.toLowerCase())
+      );
+    }
+
+    // Filtro por produto
+    if (selectedSalesProduct !== "all") {
+      filtered = filtered.filter(sale => sale.productId === selectedSalesProduct);
+    }
+
+    // Filtro por data
+    if (salesDateFilter !== "all") {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      switch (salesDateFilter) {
+        case "today":
+          filtered = filtered.filter(sale => {
+            const saleDate = new Date(sale.date);
+            return saleDate >= today;
+          });
+          break;
+        case "week":
+          const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+          filtered = filtered.filter(sale => {
+            const saleDate = new Date(sale.date);
+            return saleDate >= weekAgo;
+          });
+          break;
+        case "month":
+          const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+          filtered = filtered.filter(sale => {
+            const saleDate = new Date(sale.date);
+            return saleDate >= monthAgo;
+          });
+          break;
+      }
+    }
+
+    return filtered;
+  }, [allSales, salesSearchTerm, selectedSalesProduct, salesDateFilter]);
+
+  const salesStats = useMemo(() => {
+    const totalRevenue = filteredSales.reduce((total, sale) => {
+      const product = products.find(p => p.id === sale.productId);
+      return total + (product?.sellingPrice || 0) * sale.quantity;
+    }, 0);
+
+    const totalItems = filteredSales.reduce((total, sale) => total + sale.quantity, 0);
+    const averageTicket = filteredSales.length > 0 ? totalRevenue / filteredSales.length : 0;
+
+    return { totalRevenue, totalItems, averageTicket };
+  }, [filteredSales, products]);
 
   return (
     <>
@@ -244,6 +368,7 @@ export default function Home() {
             <TabsList className="mb-6">
                 <TabsTrigger value="dashboard">Dashboard Geral</TabsTrigger>
                 <TabsTrigger value="suppliers">Análise de Fornecedores</TabsTrigger>
+                <TabsTrigger value="sales">Histórico de Vendas</TabsTrigger>
             </TabsList>
             <TabsContent value="dashboard">
                  {isLoading ? (
@@ -298,45 +423,177 @@ export default function Home() {
                         <CategoryChart data={products} isLoading={isLoading}/>
                     </div>
                 </div>
+
+                {/* Seção de Produtos */}
+                <div className="mb-8">
+                    <ProductSearch onSearch={handleSearch} />
+                </div>
+
+                {isLoading ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                      <Skeleton key={i} className="h-[350px] w-full" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {filteredProducts.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        onSelect={() => setSelectedProduct(product)}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {filteredProducts.length === 0 && !isLoading && (
+                  <div className="text-center py-16">
+                    <h3 className="text-xl font-medium">Nenhum Produto Encontrado</h3>
+                    <p className="text-muted-foreground">
+                      Tente um termo de busca diferente ou adicione um novo produto.
+                    </p>
+                  </div>
+                )}
             </TabsContent>
             <TabsContent value="suppliers">
                  <div className="grid grid-cols-1 gap-6 mb-8">
                     <SupplierChart data={products} isLoading={isLoading} isPro={isPro} onUpgradeClick={openUpgradeModal} />
                 </div>
             </TabsContent>
+            <TabsContent value="sales">
+                <div className="space-y-6">
+                    {/* Filtros */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Buscar</label>
+                            <Input
+                                placeholder="Produto ou comprador..."
+                                value={salesSearchTerm}
+                                onChange={(e) => setSalesSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Produto</label>
+                            <Select value={selectedSalesProduct} onValueChange={setSelectedSalesProduct}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Todos os produtos" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todos os produtos</SelectItem>
+                                    {products.map(product => (
+                                        <SelectItem key={product.id} value={product.id}>
+                                            {product.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Período</label>
+                            <Select value={salesDateFilter} onValueChange={setSalesDateFilter}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Todos os períodos" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todos os períodos</SelectItem>
+                                    <SelectItem value="today">Hoje</SelectItem>
+                                    <SelectItem value="week">Últimos 7 dias</SelectItem>
+                                    <SelectItem value="month">Últimos 30 dias</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    {/* Cards de Resumo */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <SummaryCard 
+                            title="Receita Total"
+                            value={salesStats.totalRevenue}
+                            icon={DollarSign}
+                            isCurrency
+                        />
+                        <SummaryCard 
+                            title="Itens Vendidos"
+                            value={salesStats.totalItems}
+                            icon={ShoppingCart}
+                        />
+                        <SummaryCard 
+                            title="Ticket Médio"
+                            value={salesStats.averageTicket}
+                            icon={TrendingUp}
+                            isCurrency
+                        />
+                    </div>
+
+                    {/* Tabela de Vendas */}
+                    <div className="border rounded-lg">
+                        <div className="p-6 border-b">
+                            <h3 className="text-lg font-semibold">Histórico de Vendas</h3>
+                            <p className="text-sm text-muted-foreground">
+                                {filteredSales.length} vendas encontradas
+                            </p>
+                        </div>
+                        <div className="p-6">
+                            {filteredSales.length > 0 ? (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Data</TableHead>
+                                            <TableHead>Produto</TableHead>
+                                            <TableHead className="text-center">Quantidade</TableHead>
+                                            <TableHead>Comprador</TableHead>
+                                            <TableHead className="text-right">Valor Unitário</TableHead>
+                                            <TableHead className="text-right">Valor Total</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredSales.map((sale) => {
+                                            const product = products.find(p => p.id === sale.productId);
+                                            const unitPrice = product?.sellingPrice || 0;
+                                            const totalPrice = unitPrice * sale.quantity;
+                                            
+                                            return (
+                                                <TableRow key={`${sale.productId}-${sale.date}-${sale.quantity}`}>
+                                                    <TableCell>
+                                                        {format(new Date(sale.date), 'dd/MM/yyyy', { locale: ptBR })}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="font-medium">{sale.productName || "N/A"}</div>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Badge variant="secondary">{sale.quantity}</Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {sale.buyerName || "Não informado"}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        {unitPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-medium">
+                                                        {totalPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            ) : (
+                                <div className="text-center py-12">
+                                    <ShoppingCart className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                                    <h3 className="text-lg font-medium mb-2">Nenhuma venda encontrada</h3>
+                                    <p className="text-muted-foreground">
+                                        {allSales.length === 0 
+                                            ? "Você ainda não registrou nenhuma venda." 
+                                            : "Tente ajustar os filtros para encontrar mais vendas."}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </TabsContent>
         </Tabs>
-
-
-        <div className="mb-8">
-            <ProductSearch onSearch={handleSearch} />
-        </div>
-
-        {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-[350px] w-full" />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onSelect={() => setSelectedProduct(product)}
-              />
-            ))}
-          </div>
-        )}
-
-        {filteredProducts.length === 0 && !isLoading && (
-          <div className="text-center py-16">
-            <h3 className="text-xl font-medium">Nenhum Produto Encontrado</h3>
-            <p className="text-muted-foreground">
-              Tente um termo de busca diferente ou adicione um novo produto.
-            </p>
-          </div>
-        )}
       </main>
 
       <Dialog
@@ -350,7 +607,7 @@ export default function Home() {
           }
         }}
       >
-        <DialogContent className="max-w-4xl p-0">
+                <DialogContent className="max-w-4xl p-0 max-h-[95vh] overflow-hidden">
           {isFormOpen ? (
             <ProductForm 
                 onSave={handleSaveProduct}
@@ -361,14 +618,16 @@ export default function Home() {
                 }}
             />
           ) : isSaleFormOpen && selectedProduct ? (
-             <SaleForm
-                product={selectedProduct}
-                onSave={(saleData) => handleRegisterSale(selectedProduct, saleData)}
-                onCancel={() => {
-                    setIsSaleFormOpen(false)
-                    setSelectedProduct(null)
-                }}
-             />
+             <div className="p-6">
+               <SaleForm
+                  product={selectedProduct}
+                  onSave={(saleData) => handleRegisterSale(selectedProduct, saleData)}
+                  onCancel={() => {
+                      setIsSaleFormOpen(false)
+                      setSelectedProduct(null)
+                  }}
+               />
+             </div>
           ) : selectedProduct ? (
             <ProductDetailView 
                 product={selectedProduct} 

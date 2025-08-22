@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Inicializar Supabase apenas se as variáveis de ambiente estiverem disponíveis
+let supabase: any = null
+
+if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
+}
 
 export async function POST(request: Request) {
   try {
@@ -12,6 +17,15 @@ export async function POST(request: Request) {
     
     if (!backupData.userId) {
       return NextResponse.json({ error: 'userId é obrigatório' }, { status: 400 })
+    }
+
+    // Verificar se o Supabase está configurado
+    if (!supabase) {
+      return NextResponse.json({ 
+        success: false,
+        message: 'Backup não configurado - Supabase não disponível',
+        error: 'SUPABASE_NOT_CONFIGURED'
+      }, { status: 503 })
     }
 
     // Preparar dados para Supabase
@@ -75,6 +89,16 @@ export async function GET(request: Request) {
     
     if (!userId) {
       return NextResponse.json({ error: 'userId é obrigatório' }, { status: 400 })
+    }
+
+    // Verificar se o Supabase está configurado
+    if (!supabase) {
+      return NextResponse.json({ 
+        exists: false,
+        lastSync: null,
+        itemCounts: null,
+        error: 'SUPABASE_NOT_CONFIGURED'
+      })
     }
 
     const { data, error } = await supabase

@@ -51,34 +51,52 @@ export default function LoginPage() {
   return (
     <>
       <div className="text-center mb-8">
-        <Package className="h-10 w-10 text-primary mx-auto mb-4" />
-        <h1 className="text-3xl font-bold">Bem-vindo de Volta!</h1>
-        <p className="text-muted-foreground">Faça login para acessar seu dashboard.</p>
+        <Package className="h-12 w-12 text-white mx-auto mb-4 drop-shadow-lg" />
+        <h1 className="text-3xl font-bold text-white mb-2 drop-shadow-lg">Bem-vindo de Volta!</h1>
+        <p className="text-white/80">Faça login para acessar seu dashboard.</p>
       </div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <FormField control={form.control} name="email" render={({ field }) => (
             <FormItem>
-              <FormLabel>E-mail</FormLabel>
-              <FormControl><Input type="email" {...field} placeholder="seu@email.com" /></FormControl>
+              <FormLabel className="text-white">E-mail</FormLabel>
+              <FormControl>
+                <Input 
+                  type="email" 
+                  {...field} 
+                  placeholder="seu@email.com" 
+                  className="bg-white/20 border-white/30 text-white placeholder:text-white/50 focus:bg-white/30"
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )} />
           <FormField control={form.control} name="password" render={({ field }) => (
             <FormItem>
-              <FormLabel>Senha</FormLabel>
-              <FormControl><Input type="password" {...field} placeholder="••••••••" /></FormControl>
+              <FormLabel className="text-white">Senha</FormLabel>
+              <FormControl>
+                <Input 
+                  type="password" 
+                  {...field} 
+                  placeholder="••••••••" 
+                  className="bg-white/20 border-white/30 text-white placeholder:text-white/50 focus:bg-white/30"
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )} />
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
+          <Button 
+            type="submit" 
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg" 
+            disabled={isSubmitting}
+          >
             {isSubmitting ? <Loader2 className="animate-spin" /> : "Entrar"}
           </Button>
         </form>
       </Form>
-      <p className="text-center text-sm text-muted-foreground mt-6">
+      <p className="text-center text-sm text-white/70 mt-6">
         Não tem uma conta?{' '}
-        <Link href="/cadastro" className="text-primary hover:underline">
+        <Link href="/cadastro" className="text-white hover:text-blue-300 underline">
           Cadastre-se
         </Link>
       </p>

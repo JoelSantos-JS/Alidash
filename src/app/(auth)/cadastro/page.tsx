@@ -106,34 +106,52 @@ export default function SignupPage() {
   return (
     <>
       <div className="text-center mb-8">
-        <Package className="h-10 w-10 text-primary mx-auto mb-4" />
-        <h1 className="text-3xl font-bold">Crie sua Conta</h1>
-        <p className="text-muted-foreground">Comece a gerenciar seus produtos e sonhos.</p>
+        <Package className="h-12 w-12 text-white mx-auto mb-4 drop-shadow-lg" />
+        <h1 className="text-3xl font-bold text-white mb-2 drop-shadow-lg">Crie sua Conta</h1>
+        <p className="text-white/80">Comece a gerenciar seus produtos e sonhos.</p>
       </div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <FormField control={form.control} name="email" render={({ field }) => (
             <FormItem>
-              <FormLabel>E-mail</FormLabel>
-              <FormControl><Input type="email" {...field} placeholder="seu@email.com" /></FormControl>
+              <FormLabel className="text-white">E-mail</FormLabel>
+              <FormControl>
+                <Input 
+                  type="email" 
+                  {...field} 
+                  placeholder="seu@email.com" 
+                  className="bg-white/20 border-white/30 text-white placeholder:text-white/50 focus:bg-white/30"
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )} />
           <FormField control={form.control} name="password" render={({ field }) => (
             <FormItem>
-              <FormLabel>Senha</FormLabel>
-              <FormControl><Input type="password" {...field} placeholder="Pelo menos 6 caracteres" /></FormControl>
+              <FormLabel className="text-white">Senha</FormLabel>
+              <FormControl>
+                <Input 
+                  type="password" 
+                  {...field} 
+                  placeholder="Pelo menos 6 caracteres" 
+                  className="bg-white/20 border-white/30 text-white placeholder:text-white/50 focus:bg-white/30"
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )} />
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
+          <Button 
+            type="submit" 
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg" 
+            disabled={isSubmitting}
+          >
             {isSubmitting ? <Loader2 className="animate-spin" /> : "Criar Conta"}
           </Button>
         </form>
       </Form>
-      <p className="text-center text-sm text-muted-foreground mt-6">
+      <p className="text-center text-sm text-white/70 mt-6">
         Já tem uma conta?{' '}
-        <Link href="/login" className="text-primary hover:underline">
+        <Link href="/login" className="text-white hover:text-blue-300 underline">
           Faça login
         </Link>
       </p>

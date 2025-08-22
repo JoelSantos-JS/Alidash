@@ -5,6 +5,7 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import { doc, getDoc, Timestamp, setDoc } from 'firebase/firestore';
+import { backupUserData } from '@/lib/backup-client';
 import { UpgradeToProDialog } from '@/components/layout/upgrade-to-pro-dialog';
 
 interface ProSubscription {
@@ -19,7 +20,9 @@ interface AuthContextType {
   isPro: boolean;
   isSuperAdmin: boolean;
   proSubscription: ProSubscription | null;
+  productLimit: number;
   openUpgradeModal: () => void;
+  logoutWithBackup: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -105,13 +108,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user, loading, pathname, router]);
 
+  const logoutWithBackup = async () => {
+    if (user) {
+      try {
+        console.log('🔄 Fazendo backup antes do logout...');
+        await backupUserData(user);
+        console.log('✅ Backup automático concluído');
+      } catch (error) {
+        console.error('❌ Erro no backup automático:', error);
+      }
+    }
+    await auth.signOut();
+  };
+
   const value = { 
       user, 
       loading, 
       isPro, 
       isSuperAdmin,
       proSubscription,
-      openUpgradeModal: () => setIsUpgradeModalOpen(true)
+      productLimit: isPro ? Infinity : 20,
+      openUpgradeModal: () => setIsUpgradeModalOpen(true),
+      logoutWithBackup
   };
   
   if (loading && !(pathname.startsWith('/login') || pathname.startsWith('/cadastro'))) {

@@ -1,4 +1,5 @@
 import React from 'react';
+import { BlackHoleBackground } from '@/components/ui/black-hole-background';
 
 export default function AuthLayout({
     children,
@@ -6,10 +7,13 @@ export default function AuthLayout({
     children: React.ReactNode;
 }) {
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-           <div className="w-full max-w-md p-8">
-            {children}
-           </div>
+        <div className="flex items-center justify-center min-h-screen relative">
+            <BlackHoleBackground />
+            <div className="w-full max-w-md p-8 relative z-10">
+                <div className="bg-white/10 backdrop-blur-md rounded-lg p-8 border border-white/20 shadow-2xl">
+                    {children}
+                </div>
+            </div>
         </div>
     );
 }

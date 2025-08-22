@@ -9,12 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { User, ShieldCheck, Calendar, LogOut, Zap, LayoutDashboard, KeyRound, BarChart } from "lucide-react";
 import { auth } from "@/lib/firebase";
+import { BackupStatusCard } from "@/components/layout/backup-status-card";
 
 export default function ProfilePage() {
-    const { user, isPro, isSuperAdmin, proSubscription, openUpgradeModal } = useAuth();
+    const { user, isPro, isSuperAdmin, proSubscription, openUpgradeModal, logoutWithBackup } = useAuth();
 
-    const handleLogout = () => {
-        auth.signOut();
+    const handleLogout = async () => {
+        await logoutWithBackup();
     };
 
     const planName = proSubscription?.plan === 'lifetime' ? 'Vitalício' 
@@ -110,6 +111,9 @@ export default function ProfilePage() {
                             </CardContent>
                         </Card>
                     )}
+
+                    {/* Card de Backup */}
+                    <BackupStatusCard />
                 </div>
             </main>
         </div>

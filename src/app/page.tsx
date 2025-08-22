@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -32,6 +33,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { SupplierChart } from "@/components/dashboard/supplier-chart";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const initialProducts: Product[] = [];
 
@@ -246,63 +248,71 @@ export default function Home() {
             </Button>
         </div>
 
-        {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                 {Array.from({ length: 6 }).map((_, i) => (
-                    <Skeleton key={i} className="h-[116px] w-full" />
-                ))}
-            </div>
-        ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                <SummaryCard 
-                    title="Total Investido"
-                    value={summaryStats.totalInvested}
-                    icon={DollarSign}
-                    isCurrency
-                />
-                <SummaryCard 
-                    title="Lucro Realizado"
-                    value={summaryStats.totalActualProfit}
-                    icon={TrendingUp}
-                    isCurrency
-                />
-                <SummaryCard 
-                    title="Lucro Potencial"
-                    value={summaryStats.projectedProfit}
-                    icon={Target}
-                    isCurrency
-                />
-                <SummaryCard 
-                    title="Produtos em Estoque"
-                    value={summaryStats.productsInStock}
-                    icon={Package}
-                />
-                 <SummaryCard 
-                    title="Produtos Vendidos"
-                    value={summaryStats.productsSolds}
-                    icon={ShoppingCart}
-                />
-                <SummaryCard 
-                    title="Alerta de Estoque Baixo"
-                    value={summaryStats.lowStockCount}
-                    icon={Archive}
-                    className={summaryStats.lowStockCount > 0 ? "text-destructive" : ""}
-                />
-            </div>
-        )}
-
-
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
-            <div className="lg:col-span-3">
-                <ProfitChart data={products} isLoading={isLoading}/>
-            </div>
-            <div className="lg:col-span-2">
-                <CategoryChart data={products} isLoading={isLoading}/>
-            </div>
-             <div className="lg:col-span-5">
-                <SupplierChart data={products} isLoading={isLoading} isPro={isPro} onUpgradeClick={openUpgradeModal} />
-            </div>
-        </div>
+        <Tabs defaultValue="dashboard" className="w-full">
+            <TabsList className="mb-6">
+                <TabsTrigger value="dashboard">Dashboard Geral</TabsTrigger>
+                <TabsTrigger value="suppliers">Análise de Fornecedores</TabsTrigger>
+            </TabsList>
+            <TabsContent value="dashboard">
+                 {isLoading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <Skeleton key={i} className="h-[116px] w-full" />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                        <SummaryCard 
+                            title="Total Investido"
+                            value={summaryStats.totalInvested}
+                            icon={DollarSign}
+                            isCurrency
+                        />
+                        <SummaryCard 
+                            title="Lucro Realizado"
+                            value={summaryStats.totalActualProfit}
+                            icon={TrendingUp}
+                            isCurrency
+                        />
+                        <SummaryCard 
+                            title="Lucro Potencial"
+                            value={summaryStats.projectedProfit}
+                            icon={Target}
+                            isCurrency
+                        />
+                        <SummaryCard 
+                            title="Produtos em Estoque"
+                            value={summaryStats.productsInStock}
+                            icon={Package}
+                        />
+                        <SummaryCard 
+                            title="Produtos Vendidos"
+                            value={summaryStats.productsSolds}
+                            icon={ShoppingCart}
+                        />
+                        <SummaryCard 
+                            title="Alerta de Estoque Baixo"
+                            value={summaryStats.lowStockCount}
+                            icon={Archive}
+                            className={summaryStats.lowStockCount > 0 ? "text-destructive" : ""}
+                        />
+                    </div>
+                )}
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
+                    <div className="lg:col-span-3">
+                        <ProfitChart data={products} isLoading={isLoading}/>
+                    </div>
+                    <div className="lg:col-span-2">
+                        <CategoryChart data={products} isLoading={isLoading}/>
+                    </div>
+                </div>
+            </TabsContent>
+            <TabsContent value="suppliers">
+                 <div className="grid grid-cols-1 gap-6 mb-8">
+                    <SupplierChart data={products} isLoading={isLoading} isPro={isPro} onUpgradeClick={openUpgradeModal} />
+                </div>
+            </TabsContent>
+        </Tabs>
 
 
         <div className="mb-8">
@@ -409,3 +419,5 @@ export default function Home() {
     </>
   );
 }
+
+    

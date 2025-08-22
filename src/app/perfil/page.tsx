@@ -1,16 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { User, ShieldCheck, Calendar, LogOut, Zap } from "lucide-react";
+import { User, ShieldCheck, Calendar, LogOut, Zap, LayoutDashboard, KeyRound, BarChart } from "lucide-react";
 import { auth } from "@/lib/firebase";
 
 export default function ProfilePage() {
-    const { user, isPro, proSubscription, openUpgradeModal } = useAuth();
+    const { user, isPro, isSuperAdmin, proSubscription, openUpgradeModal } = useAuth();
 
     const handleLogout = () => {
         auth.signOut();
@@ -24,8 +25,8 @@ export default function ProfilePage() {
         <div className="min-h-screen bg-background">
             <Header />
             <main className="container mx-auto px-4 py-8">
-                <div className="max-w-2xl mx-auto">
-                    <div className="flex items-center gap-4 mb-8">
+                <div className="max-w-2xl mx-auto space-y-8">
+                    <div className="flex items-center gap-4">
                         <User className="w-10 h-10 text-primary" />
                         <div>
                             <h1 className="text-3xl font-bold">Meu Perfil</h1>
@@ -83,6 +84,32 @@ export default function ProfilePage() {
                             </Button>
                         </CardFooter>
                     </Card>
+
+                    {isSuperAdmin && (
+                        <Card>
+                             <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <LayoutDashboard />
+                                    Painéis de Administrador
+                                </CardTitle>
+                                <CardDescription>Acesso rápido aos painéis de controle secretos.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <Button asChild size="lg" variant="secondary">
+                                    <Link href="/sonhos">
+                                        <KeyRound className="mr-2"/>
+                                        Dashboard de Sonhos
+                                    </Link>
+                                </Button>
+                                <Button asChild size="lg" variant="secondary">
+                                    <Link href="/apostas">
+                                        <BarChart className="mr-2"/>
+                                        Dashboard de Apostas
+                                    </Link>
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
             </main>
         </div>

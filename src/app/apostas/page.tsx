@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import type { Bet } from '@/types';
 import { Header } from "@/components/layout/header";
 import { Button } from '@/components/ui/button';
-import { PlusCircle, BarChart, AlertTriangle, Calendar, TrendingUp, TrendingDown, Calculator, Scale, Target } from 'lucide-react';
+import { PlusCircle, BarChart, AlertTriangle, Calendar, TrendingUp, TrendingDown, Calculator, Scale, Target, ListChecks, LayoutDashboard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BetCard } from '@/components/bets/bet-card';
@@ -240,110 +240,118 @@ export default function BetsPage() {
                     </Button>
                 </div>
                 
-                <div className="mb-8">
-                     <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                        <Calculator className="w-7 h-7 text-primary" />
-                        Calculadoras de Surebet
-                     </h3>
-                    <Tabs defaultValue="simple" className="w-full">
-                        <TabsList className="grid w-full grid-cols-2 mb-6">
-                            <TabsTrigger value="simple">Calculadora Simples</TabsTrigger>
-                            <TabsTrigger value="advanced">Calculadora Avançada (Pro)</TabsTrigger>
-                        </TabsList>
-                        
-                        <TabsContent value="simple">
-                            <SurebetCalculator />
-                        </TabsContent>
-                        
-                        <TabsContent value="advanced">
-                           {isPro ? (
-                                <AdvancedSurebetCalculator />
-                           ) : (
-                                <UpgradeToProCard 
-                                    title="Desbloqueie a Calculadora Avançada"
-                                    description="A calculadora avançada permite análises complexas com taxas, limites e verificação de cenários para maximizar seus lucros."
-                                    onUpgradeClick={openUpgradeModal}
-                                />
-                           )}
-                        </TabsContent>
-                    </Tabs>
-                </div>
-
-                 <div className="mb-8">
-                    <div className="flex items-center justify-between mb-4">
-                         <h3 className="text-2xl font-bold flex items-center gap-2">
-                            <Calendar className="w-7 h-7 text-primary" />
-                            Resumo por Período
-                         </h3>
-                         <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
-                            {(['day', 'week', 'month'] as Period[]).map(p => (
-                                <Button 
-                                    key={p}
-                                    variant={summaryPeriod === p ? "default" : "ghost"}
-                                    size="sm"
-                                    onClick={() => setSummaryPeriod(p)}
-                                    className={cn("capitalize", summaryPeriod === p && "shadow-md")}
-                                >
-                                    {p === 'day' ? 'Hoje' : p === 'week' ? 'Semana' : 'Mês'}
-                                </Button>
-                            ))}
-                         </div>
-                    </div>
-                     {isLoading ? (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {Array.from({ length: 3 }).map((_, i) => (
-                                <Skeleton key={i} className="h-[116px] w-full" />
-                            ))}
-                        </div>
-                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <SummaryCard
-                                title="Total Apostado"
-                                value={summaryStats[summaryPeriod].totalStaked}
-                                icon={Scale}
-                                isCurrency
-                            />
-                            <SummaryCard
-                                title="Lucro / Prejuízo"
-                                value={summaryStats[summaryPeriod].netProfit}
-                                icon={summaryStats[summaryPeriod].netProfit >= 0 ? TrendingUp : TrendingDown}
-                                isCurrency
-                                className={summaryStats[summaryPeriod].netProfit >= 0 ? "text-green-500" : "text-destructive"}
-                            />
-                             <SummaryCard
-                                title="Taxa de Vitória (Geral)"
-                                value={summaryStats.overallWinRate}
-                                icon={Target}
-                                isPercentage
-                            />
-                        </div>
-                     )}
-                </div>
-
-                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
-                    <div className="lg:col-span-3 h-[360px]">
-                        <BetPerformanceChart data={bets} isLoading={isLoading}/>
-                    </div>
-                    <div className="lg:col-span-2 h-[360px]">
-                        <BetStatusChart data={bets} isLoading={isLoading}/>
-                    </div>
-                 </div>
-                 
-                 <h3 className="text-2xl font-bold mb-4">Minhas Apostas</h3>
-                <Tabs defaultValue="pending" onValueChange={setFilterStatus} className="w-full">
-                    <TabsList className="grid w-full grid-cols-5 mb-6">
-                        <TabsTrigger value="all">Todas</TabsTrigger>
-                        <TabsTrigger value="pending">Em Andamento</TabsTrigger>
-                        <TabsTrigger value="won">Ganhos</TabsTrigger>
-                        <TabsTrigger value="lost">Perdidas</TabsTrigger>
-                        <TabsTrigger value="other">Outras</TabsTrigger>
+                 <Tabs defaultValue="dashboard" className="w-full">
+                    <TabsList className="mb-6 grid w-full grid-cols-3">
+                        <TabsTrigger value="dashboard"><LayoutDashboard className="mr-2 h-4 w-4"/> Resumo Geral</TabsTrigger>
+                        <TabsTrigger value="bets"><ListChecks className="mr-2 h-4 w-4"/> Minhas Apostas</TabsTrigger>
+                        <TabsTrigger value="calculators"><Calculator className="mr-2 h-4 w-4"/> Calculadoras</TabsTrigger>
                     </TabsList>
                     
-                    <TabsContent value="all">{renderBetList()}</TabsContent>
-                    <TabsContent value="pending">{renderBetList()}</TabsContent>
-                    <TabsContent value="won">{renderBetList()}</TabsContent>
-                    <TabsContent value="lost">{renderBetList()}</TabsContent>
-                    <TabsContent value="other">{renderBetList()}</TabsContent>
+                    <TabsContent value="dashboard" className="space-y-8">
+                         <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-2xl font-bold flex items-center gap-2">
+                                    <Calendar className="w-7 h-7 text-primary" />
+                                    Resumo por Período
+                                </h3>
+                                <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
+                                    {(['day', 'week', 'month'] as Period[]).map(p => (
+                                        <Button 
+                                            key={p}
+                                            variant={summaryPeriod === p ? "default" : "ghost"}
+                                            size="sm"
+                                            onClick={() => setSummaryPeriod(p)}
+                                            className={cn("capitalize", summaryPeriod === p && "shadow-md")}
+                                        >
+                                            {p === 'day' ? 'Hoje' : p === 'week' ? 'Semana' : 'Mês'}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </div>
+                            {isLoading ? (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    {Array.from({ length: 3 }).map((_, i) => (
+                                        <Skeleton key={i} className="h-[116px] w-full" />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <SummaryCard
+                                        title="Total Apostado"
+                                        value={summaryStats[summaryPeriod].totalStaked}
+                                        icon={Scale}
+                                        isCurrency
+                                    />
+                                    <SummaryCard
+                                        title="Lucro / Prejuízo"
+                                        value={summaryStats[summaryPeriod].netProfit}
+                                        icon={summaryStats[summaryPeriod].netProfit >= 0 ? TrendingUp : TrendingDown}
+                                        isCurrency
+                                        className={summaryStats[summaryPeriod].netProfit >= 0 ? "text-green-500" : "text-destructive"}
+                                    />
+                                    <SummaryCard
+                                        title="Taxa de Vitória (Geral)"
+                                        value={summaryStats.overallWinRate}
+                                        icon={Target}
+                                        isPercentage
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                            <div className="lg:col-span-3 h-[360px]">
+                                <BetPerformanceChart data={bets} isLoading={isLoading}/>
+                            </div>
+                            <div className="lg:col-span-2 h-[360px]">
+                                <BetStatusChart data={bets} isLoading={isLoading}/>
+                            </div>
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="bets">
+                        <Tabs defaultValue="pending" onValueChange={setFilterStatus} className="w-full">
+                            <TabsList className="grid w-full grid-cols-5 mb-6">
+                                <TabsTrigger value="all">Todas</TabsTrigger>
+                                <TabsTrigger value="pending">Em Andamento</TabsTrigger>
+                                <TabsTrigger value="won">Ganhos</TabsTrigger>
+                                <TabsTrigger value="lost">Perdidas</TabsTrigger>
+                                <TabsTrigger value="other">Outras</TabsTrigger>
+                            </TabsList>
+                            
+                            <TabsContent value="all">{renderBetList()}</TabsContent>
+                            <TabsContent value="pending">{renderBetList()}</TabsContent>
+                            <TabsContent value="won">{renderBetList()}</TabsContent>
+                            <TabsContent value="lost">{renderBetList()}</TabsContent>
+                            <TabsContent value="other">{renderBetList()}</TabsContent>
+                        </Tabs>
+                    </TabsContent>
+
+                     <TabsContent value="calculators">
+                         <Tabs defaultValue="simple" className="w-full">
+                            <TabsList className="grid w-full grid-cols-2 mb-6">
+                                <TabsTrigger value="simple">Calculadora Simples</TabsTrigger>
+                                <TabsTrigger value="advanced">Calculadora Avançada (Pro)</TabsTrigger>
+                            </TabsList>
+                            
+                            <TabsContent value="simple">
+                                <SurebetCalculator />
+                            </TabsContent>
+                            
+                            <TabsContent value="advanced">
+                            {isPro ? (
+                                    <AdvancedSurebetCalculator />
+                            ) : (
+                                    <UpgradeToProCard 
+                                        title="Desbloqueie a Calculadora Avançada"
+                                        description="A calculadora avançada permite análises complexas com taxas, limites e verificação de cenários para maximizar seus lucros."
+                                        onUpgradeClick={openUpgradeModal}
+                                    />
+                            )}
+                            </TabsContent>
+                        </Tabs>
+                    </TabsContent>
+
                 </Tabs>
             </main>
         </div>

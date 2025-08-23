@@ -56,13 +56,13 @@ export function CategoryChart({ data, isLoading }: CategoryChartProps) {
         <CardTitle>Produtos por Categoria</CardTitle>
         <CardDescription>Distribuição dos produtos cadastrados</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 pb-0 flex items-center justify-center h-[300px]">
+      <CardContent className="flex-1 pb-0 flex items-center justify-center h-[250px] sm:h-[300px]">
         {isLoading ? (
-            <Skeleton className="w-[250px] h-[250px] rounded-full" />
+            <Skeleton className="w-[200px] h-[200px] sm:w-[250px] sm:h-[250px] rounded-full" />
         ) : chartData.length > 0 ? (
             <ChartContainer
             config={chartConfig}
-            className="mx-auto aspect-square max-h-[250px]"
+            className="mx-auto aspect-square max-h-[200px] sm:max-h-[250px]"
             >
             <PieChart>
                 <Tooltip
@@ -73,8 +73,9 @@ export function CategoryChart({ data, isLoading }: CategoryChartProps) {
                 data={chartData}
                 dataKey="value"
                 nameKey="name"
-                innerRadius={60}
-                strokeWidth={5}
+                innerRadius={40}
+                outerRadius={80}
+                strokeWidth={3}
                 >
                 {chartData.map((entry) => (
                     <Cell key={`cell-${entry.name}`} fill={entry.fill} />
@@ -83,9 +84,9 @@ export function CategoryChart({ data, isLoading }: CategoryChartProps) {
             </PieChart>
             </ChartContainer>
         ) : (
-            <div className="text-center text-muted-foreground py-10">
-                <p>Nenhum dado para exibir.</p>
-                <p className="text-sm">Adicione produtos para ver o gráfico.</p>
+            <div className="text-center text-muted-foreground py-8 sm:py-10 px-4">
+                <p className="text-sm sm:text-base">Nenhum dado para exibir.</p>
+                <p className="text-xs sm:text-sm">Adicione produtos para ver o gráfico.</p>
             </div>
         )}
       </CardContent>

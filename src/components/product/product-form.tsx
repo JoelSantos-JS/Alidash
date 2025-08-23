@@ -118,7 +118,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
 
   const { formState: { isSubmitting }, watch, setValue, control } = form;
   const { toast } = useToast();
-  const { user, isPro, isSuperAdmin, openUpgradeModal } = useAuth();
+  const { user, isPro, openUpgradeModal } = useAuth();
   const [isSuggesting, setIsSuggesting] = React.useState({ price: false, description: false});
   const [isCustomCategory, setIsCustomCategory] = React.useState(false);
   
@@ -250,10 +250,10 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
             <Tabs defaultValue="details">
-                 <TabsList className={`mx-6 grid w-[calc(100%-48px)] ${isSuperAdmin ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                 <TabsList className={`mx-6 grid w-[calc(100%-48px)] ${user?.email === 'joeltere9@gmail.com' ? 'grid-cols-3' : 'grid-cols-2'}`}>
                     <TabsTrigger value="details"><Package className="mr-2 h-4 w-4"/> Detalhes do Produto</TabsTrigger>
                     <TabsTrigger value="tracking"><ClipboardList className="mr-2 h-4 w-4"/> Rastreio</TabsTrigger>
-                    {isSuperAdmin && (
+                    {user?.email === 'joeltere9@gmail.com' && (
                         <TabsTrigger value="settings"><Sparkles className="mr-2 h-4 w-4"/> Configurações</TabsTrigger>
                     )}
                 </TabsList>
@@ -519,11 +519,13 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                                                 variant="outline" 
                                                 size="sm"
                                                 onClick={() => {
-                                                    navigator.clipboard.writeText(field.value);
-                                                    toast({
-                                                        title: "Código copiado!",
-                                                        description: "O código de rastreio foi copiado para a área de transferência.",
-                                                    });
+                                                    if (field.value) {
+                                                        navigator.clipboard.writeText(field.value);
+                                                        toast({
+                                                            title: "Código copiado!",
+                                                            description: "O código de rastreio foi copiado para a área de transferência.",
+                                                        });
+                                                    }
                                                 }}
                                             >
                                                 Copiar
@@ -574,11 +576,13 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                                                 size="sm"
                                                 onClick={() => {
                                                      // Copy tracking code to clipboard for easy access
-                                                     navigator.clipboard.writeText(field.value);
-                                                     toast({
-                                                         title: "Código copiado!",
-                                                         description: "O código de rastreio foi copiado para a área de transferência.",
-                                                     });
+                                                     if (field.value) {
+                                                         navigator.clipboard.writeText(field.value);
+                                                         toast({
+                                                             title: "Código copiado!",
+                                                             description: "O código de rastreio foi copiado para a área de transferência.",
+                                                         });
+                                                     }
                                                  }}
                                             >
                                                 Copiar
@@ -624,7 +628,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                         </div>
                     </ScrollArea>
                 </TabsContent>
-                {isSuperAdmin && (
+                {user?.email === 'joeltere9@gmail.com' && (
                 <TabsContent value="settings">
                     <ScrollArea className="h-[65vh]">
                         <div className="space-y-6 px-6 pt-4 pb-6">

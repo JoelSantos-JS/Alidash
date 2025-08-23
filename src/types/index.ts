@@ -44,6 +44,7 @@ export interface Sale {
     date: Date;
     quantity: number;
     buyerName?: string;
+    productId?: string;
 }
 
 

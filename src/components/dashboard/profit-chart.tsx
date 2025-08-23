@@ -41,37 +41,70 @@ export function ProfitChart({ data, isLoading }: ProfitChartProps) {
         <CardTitle>Análise de Lucro vs. Custo</CardTitle>
         <CardDescription>Top 10 produtos mais lucrativos</CardDescription>
       </CardHeader>
-      <CardContent className="h-[300px]">
+      <CardContent className="h-[250px] sm:h-[300px]">
         {isLoading ? (
-            <div className="w-full h-full flex items-end gap-2 px-4">
+            <div className="w-full h-full flex items-end gap-1 sm:gap-2 px-2 sm:px-4">
                 {skeletonHeights.map((height, i) => (
                     <Skeleton key={i} className="h-full w-full" style={{height: `${height}%`}} />
                 ))}
             </div>
         ) : chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData}>
+            <BarChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `R$${value}`}/>
+                <XAxis 
+                    dataKey="name" 
+                    fontSize={10} 
+                    tickLine={false} 
+                    axisLine={false}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                    interval={0}
+                />
+                <YAxis 
+                    fontSize={10} 
+                    tickLine={false} 
+                    axisLine={false} 
+                    tickFormatter={(value) => `R$${value}`}
+                    width={50}
+                />
                 <Tooltip 
                     cursor={{fill: 'hsl(var(--muted))'}}
                     contentStyle={{
                         background: 'hsl(var(--background))',
                         border: '1px solid hsl(var(--border))',
                         borderRadius: 'var(--radius)',
+                        fontSize: '12px'
                     }}
+                    formatter={(value: any, name: any) => [
+                        `R$ ${value.toLocaleString('pt-BR')}`, 
+                        name === 'lucro' ? 'Lucro Realizado' : 'Custo Total'
+                    ]}
                 />
-                <Legend iconType="circle" />
-                <Bar dataKey="lucro" name="Lucro Realizado" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="custo" name="Custo Total" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                <Legend 
+                    iconType="circle" 
+                    wrapperStyle={{ fontSize: '12px' }}
+                />
+                <Bar 
+                    dataKey="lucro" 
+                    name="Lucro Realizado" 
+                    fill="hsl(var(--primary))" 
+                    radius={[4, 4, 0, 0]} 
+                />
+                <Bar 
+                    dataKey="custo" 
+                    name="Custo Total" 
+                    fill="hsl(var(--destructive))" 
+                    radius={[4, 4, 0, 0]} 
+                />
             </BarChart>
             </ResponsiveContainer>
         ) : (
-             <div className="h-full flex items-center justify-center text-center text-muted-foreground">
+             <div className="h-full flex items-center justify-center text-center text-muted-foreground p-4">
                 <div>
-                    <p>Nenhum dado para exibir.</p>
-                    <p className="text-sm">Adicione produtos com lucro para ver o gráfico.</p>
+                    <p className="text-sm sm:text-base">Nenhum dado para exibir.</p>
+                    <p className="text-xs sm:text-sm">Adicione produtos com lucro para ver o gráfico.</p>
                 </div>
             </div>
         )}

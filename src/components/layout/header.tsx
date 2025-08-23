@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Package, User as UserIcon, LogOut, LayoutDashboard, KeyRound, BarChart, Menu } from "lucide-react";
+import { Package, User as UserIcon, LogOut, LayoutDashboard, KeyRound, BarChart, Menu, Settings } from "lucide-react";
+import { AccountTypeToggle } from "@/components/ui/account-type-toggle";
+import { Logo } from "@/components/ui/logo";
 import { useAuth } from "@/hooks/use-auth";
 import { auth } from "@/lib/firebase";
 import {
@@ -16,7 +18,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 export function Header() {
-  const { user, isSuperAdmin, logoutWithBackup } = useAuth();
+  const { user, logoutWithBackup, accountType, setAccountType } = useAuth();
 
   const handleLogout = async () => {
     await logoutWithBackup();
@@ -32,13 +34,19 @@ export function Header() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
             <Link href="/" className="flex items-center gap-2 cursor-pointer">
-                <Package className="h-7 w-7 text-primary" />
-                <span className="text-xl font-bold">ProductDash</span>
+                <Logo size="lg" />
+                <span className="text-xl font-bold">Zeromize</span>
             </Link>
+            
+            {/* Account Type Toggle */}
+            <AccountTypeToggle 
+              value={accountType} 
+              onValueChange={setAccountType}
+            />
           
-                      <div className="flex items-center gap-4">
-            {/* Menu de Navegação dos Dashboards - Apenas para Admin */}
-            {user && (isSuperAdmin || user?.email === 'joeltere9@gmail.com') && (
+            <div className="flex items-center gap-4">
+            {/* Menu de Navegação dos Dashboards - Apenas para joeltere9@gmail.com */}
+            {user && user?.email === 'joeltere9@gmail.com' && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-2">
@@ -97,6 +105,12 @@ export function Header() {
                           <Link href="/perfil" className="flex items-center w-full">
                               <UserIcon className="mr-2 h-4 w-4" />
                               <span>Perfil</span>
+                          </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                          <Link href="/perfil?tab=settings" className="flex items-center w-full">
+                              <Settings className="mr-2 h-4 w-4" />
+                              <span>Configurações</span>
                           </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={handleLogout}>

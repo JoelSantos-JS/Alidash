@@ -18,9 +18,10 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   isPro: boolean;
-  isSuperAdmin: boolean;
   proSubscription: ProSubscription | null;
   productLimit: number;
+  accountType: 'personal' | 'business';
+  setAccountType: (type: 'personal' | 'business') => void;
   openUpgradeModal: () => void;
   logoutWithBackup: () => Promise<void>;
 }
@@ -31,9 +32,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPro, setIsPro] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
   const [proSubscription, setProSubscription] = useState<ProSubscription | null>(null);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [accountType, setAccountType] = useState<'personal' | 'business'>('personal');
   const pathname = usePathname();
   const router = useRouter();
 
@@ -79,16 +81,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const subscription = userData.proSubscription || null;
             setProSubscription(subscription);
             setIsPro(checkSubscriptionStatus(subscription));
-            setIsSuperAdmin(userData.isSuperAdmin || false);
+
         } else {
             setProSubscription(null);
             setIsPro(false);
-            setIsSuperAdmin(false);
         }
       } else {
         setProSubscription(null);
         setIsPro(false);
-        setIsSuperAdmin(false);
       }
       setLoading(false);
     });
@@ -125,9 +125,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       user, 
       loading, 
       isPro, 
-      isSuperAdmin,
       proSubscription,
       productLimit: isPro ? Infinity : 20,
+      accountType,
+      setAccountType,
       openUpgradeModal: () => setIsUpgradeModalOpen(true),
       logoutWithBackup
   };

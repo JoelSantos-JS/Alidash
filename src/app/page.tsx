@@ -40,7 +40,9 @@ import {
   X,
   PiggyBank,
   Wallet,
-  Info
+  Info,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import { CategoryChart } from "@/components/dashboard/category-chart";
@@ -85,6 +87,9 @@ import { StatusLegend } from "@/components/dashboard/status-legend";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AccountTypeToggle } from "@/components/ui/account-type-toggle";
 import { Logo } from "@/components/ui/logo";
+import { RevenueSection } from "@/components/dashboard/revenue-section";
+import { ExpensesSection } from "@/components/dashboard/expenses-section";
+import { TransactionsSection } from "@/components/dashboard/transactions-section";
 import Link from "next/link";
 
 interface ExtendedSale extends Sale {
@@ -203,6 +208,27 @@ export default function Home() {
   
   // Memoize expensive calculations
   const memoizedAccountType = useMemo(() => accountType, [accountType]);
+
+  // Função wrapper para trocar tipo de conta com notificação
+  const handleAccountTypeChange = (type: 'personal' | 'business') => {
+    setAccountType(type);
+    
+    // Mostrar notificação de confirmação
+    toast({
+      title: `Modo ${type === 'personal' ? 'Pessoal' : 'Empresarial'} ativado`,
+      description: `Dashboard alterado para visualização ${type === 'personal' ? 'pessoal' : 'empresarial'}`,
+      duration: 2000,
+    });
+  };
+
+  // Função para scroll das tabs
+  const handleTabScroll = (direction: 'left' | 'right') => {
+    const tabsList = document.querySelector('.responsive-tabs');
+    if (tabsList) {
+      const scrollAmount = direction === 'left' ? -200 : 200;
+      tabsList.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -300,8 +326,39 @@ export default function Home() {
             // 4. Aplicar os dados
             setProducts(finalProducts);
             setMonthlyBudget(finalBudget);
-            setDreams(firebaseDreams);
-            setBets(firebaseBets);
+            
+            // Dados de exemplo para sonhos e apostas se não houver dados reais
+            const exampleDreams = firebaseDreams.length > 0 ? firebaseDreams : [
+              {
+                id: "1",
+                name: "Viagem para Europa",
+                targetAmount: 14000,
+                currentAmount: 3000,
+                status: "in_progress"
+              }
+            ];
+            
+            const exampleBets = firebaseBets.length > 0 ? firebaseBets : [
+              {
+                id: "1",
+                stake: 90,
+                status: "won",
+                earnedFreebetValue: 790
+              },
+              {
+                id: "2", 
+                stake: 50,
+                status: "pending"
+              },
+              {
+                id: "3",
+                stake: 30,
+                status: "pending"
+              }
+            ];
+            
+            setDreams(exampleDreams);
+            setBets(exampleBets);
             
             console.log('📊 Dashboard carregado com:', {
                 produtos: finalProducts.length,
@@ -711,18 +768,49 @@ export default function Home() {
   return (
     <>
     <div className="flex h-screen bg-background">
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      
+      {/* Floating Account Type Toggle for Mobile */}
+      <div className="fixed bottom-4 left-4 z-50 md:hidden">
+        <div className="relative">
+          <Button
+            variant="default"
+            size="lg"
+            className="rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 bg-gradient-to-r from-purple-500 to-blue-600 text-white border-2 border-white/20 no-pulse"
+            onClick={() => handleAccountTypeChange(memoizedAccountType === 'personal' ? 'business' : 'personal')}
+          >
+            {memoizedAccountType === 'personal' ? (
+              <>
+                <User className="h-5 w-5 mr-2" />
+                <span className="text-sm font-semibold">Pessoal</span>
+              </>
+            ) : (
+              <>
+                <Building className="h-5 w-5 mr-2" />
+                <span className="text-sm font-semibold">Empresarial</span>
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
       {/* Sidebar */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r transform transition-transform duration-200 ease-in-out",
+        "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r transform transition-transform duration-200 ease-in-out shadow-lg md:shadow-none",
         sidebarOpen ? "translate-x-0" : "-translate-x-full",
         "md:relative md:translate-x-0"
       )}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-between p-6 border-b">
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b">
             <div className="flex items-center gap-2">
               <Logo size="lg" />
-              <span className="text-xl font-bold">Zeromize</span>
+              <span className="text-lg sm:text-xl font-bold">Zeromize</span>
             </div>
             <Button
               variant="ghost"
@@ -735,65 +823,85 @@ export default function Home() {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-2">
+          <nav className="flex-1 p-3 sm:p-4 space-y-2">
             <Button
               variant="default"
-              className="w-full justify-start gap-3"
+              className="w-full justify-start gap-2 sm:gap-3"
               size="lg"
               onClick={() => router.push('/')}
             >
               <Clock className="h-4 w-4" />
-              Dashboard
+              <span className="text-sm sm:text-base">Dashboard</span>
             </Button>
             
-            <Button variant="ghost" className="w-full justify-start gap-3" size="lg">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start gap-2 sm:gap-3" 
+              size="lg"
+              onClick={() => router.push('/receitas')}
+            >
               <ArrowUp className="h-4 w-4" />
-              Receitas
+              <span className="text-sm sm:text-base">Receitas</span>
             </Button>
             
-            <Button variant="ghost" className="w-full justify-start gap-3" size="lg">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start gap-2 sm:gap-3" 
+              size="lg"
+              onClick={() => router.push('/despesas')}
+            >
               <ArrowDown className="h-4 w-4" />
-              Despesas
+              <span className="text-sm sm:text-base">Despesas</span>
             </Button>
             
-            <Button variant="ghost" className="w-full justify-start gap-3" size="lg">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start gap-2 sm:gap-3" 
+              size="lg"
+              onClick={() => router.push('/transacoes')}
+            >
               <BarChart3 className="h-4 w-4" />
-              Transações
+              <span className="text-sm sm:text-base">Transações</span>
             </Button>
             
-            <Button variant="ghost" className="w-full justify-start gap-3" size="lg">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start gap-2 sm:gap-3" 
+              size="lg"
+              onClick={() => router.push('/dividas')}
+            >
               <FileText className="h-4 w-4" />
-              Dívidas
+              <span className="text-sm sm:text-base">Dívidas</span>
             </Button>
             
-            <Button variant="ghost" className="w-full justify-start gap-3" size="lg">
+            <Button variant="ghost" className="w-full justify-start gap-2 sm:gap-3" size="lg">
               <Tag className="h-4 w-4" />
-              Categorias
+              <span className="text-sm sm:text-base">Categorias</span>
             </Button>
             
-            <Button variant="ghost" className="w-full justify-start gap-3" size="lg">
+            <Button variant="ghost" className="w-full justify-start gap-2 sm:gap-3" size="lg">
               <BarChart3 className="h-4 w-4" />
-              Relatórios
+              <span className="text-sm sm:text-base">Relatórios</span>
             </Button>
             
-            <Button variant="ghost" className="w-full justify-start gap-3" size="lg">
+            <Button variant="ghost" className="w-full justify-start gap-2 sm:gap-3" size="lg">
               <TargetIcon className="h-4 w-4" />
-              Metas
+              <span className="text-sm sm:text-base">Metas</span>
             </Button>
             
-            <Button variant="ghost" className="w-full justify-start gap-3" size="lg">
+            <Button variant="ghost" className="w-full justify-start gap-2 sm:gap-3" size="lg">
               <div className="w-4 h-4 bg-green-500 rounded flex items-center justify-center">
                 <span className="text-white text-xs font-bold">W</span>
               </div>
-              WhatsApp
+              <span className="text-sm sm:text-base">WhatsApp</span>
             </Button>
           </nav>
 
           {/* User Section */}
-          <div className="p-4 border-t">
+          <div className="p-3 sm:p-4 border-t">
             <Button 
               variant="ghost" 
-              className="w-full justify-start gap-3" 
+              className="w-full justify-start gap-2 sm:gap-3" 
               size="lg"
               onClick={async () => {
                 try {
@@ -804,35 +912,55 @@ export default function Home() {
               }}
             >
               <LogOut className="h-4 w-4" />
-              Sair
+              <span className="text-sm sm:text-base">Sair</span>
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+              {/* Main Content */}
+        <div className="flex-1 flex flex-col overflow-hidden relative">
         {/* Top Header */}
-        <header className="bg-card border-b px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <header className="bg-card border-b px-3 sm:px-4 md:px-6 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
               <Button
                 variant="ghost"
                 size="sm"
-                className="md:hidden"
+                className="md:hidden flex-shrink-0"
                 onClick={() => setSidebarOpen(true)}
               >
                 <Menu className="h-4 w-4" />
               </Button>
               
-              <div>
-                <h1 className="text-2xl font-bold">
-                  Dashboard {memoizedAccountType === 'personal' ? 'Pessoal' : 'Empresarial'}
-                </h1>
-                <div className="text-sm text-muted-foreground">
-                  Visão geral das suas finanças {memoizedAccountType === 'personal' ? 'pessoal' : 'empresarial'}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h1 className="text-lg sm:text-xl md:text-2xl font-bold truncate">
+                    Dashboard {memoizedAccountType === 'personal' ? 'Pessoal' : 'Empresarial'}
+                  </h1>
+                  <div className={cn(
+                    "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium flex-shrink-0",
+                    memoizedAccountType === 'personal' 
+                      ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                      : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                  )}>
+                    {memoizedAccountType === 'personal' ? (
+                      <>
+                        <User className="h-3 w-3" />
+                        <span>Pessoal</span>
+                      </>
+                    ) : (
+                      <>
+                        <Building className="h-3 w-3" />
+                        <span>Empresarial</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
+                  <span className="truncate">Visão geral das suas finanças {memoizedAccountType === 'personal' ? 'pessoal' : 'empresarial'}</span>
                   {products.length > 0 && products !== initialProducts && (
-                    <span className="ml-2 inline-flex items-center gap-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                    <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex-shrink-0">
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                       Dados Reais
                     </span>
@@ -841,18 +969,20 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              {/* Account Type Toggle */}
+            <div className="flex items-center gap-1 sm:gap-2 md:gap-4 flex-shrink-0">
+              {/* Account Type Toggle - Visible on screens >= 475px */}
               <AccountTypeToggle 
                 value={memoizedAccountType} 
-                onValueChange={setAccountType}
+                onValueChange={handleAccountTypeChange}
+                className="hidden xs:flex"
               />
 
-              {/* Period Selector */}
-              <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
+              {/* Period Selector - Compact on mobile */}
+              <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
                 <Button
                   variant={periodFilter === "day" ? "default" : "ghost"}
                   size="sm"
+                  className="text-xs px-2 sm:px-3 h-8 sm:h-9"
                   onClick={() => setPeriodFilter("day")}
                 >
                   Dia
@@ -860,13 +990,15 @@ export default function Home() {
                 <Button
                   variant={periodFilter === "week" ? "default" : "ghost"}
                   size="sm"
+                  className="text-xs px-2 sm:px-3 h-8 sm:h-9"
                   onClick={() => setPeriodFilter("week")}
                 >
-                  Semana
+                  Sem
                 </Button>
                 <Button
                   variant={periodFilter === "month" ? "default" : "ghost"}
                   size="sm"
+                  className="text-xs px-2 sm:px-3 h-8 sm:h-9"
                   onClick={() => setPeriodFilter("month")}
                 >
                   Mês
@@ -875,38 +1007,41 @@ export default function Home() {
 
               <ThemeToggle />
 
-              <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <CalendarIcon className="h-4 w-4" />
-                    {format(selectedDate, 'dd/MM/yyyy', { locale: ptBR })}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(date) => {
-                      if (date) {
-                        setSelectedDate(date);
-                        setIsCalendarOpen(false);
-                        toast({
-                          title: "Data selecionada",
-                          description: `Período atualizado para ${format(date, 'dd/MM/yyyy', { locale: ptBR })}`,
-                        });
-                      }
-                    }}
-                    initialFocus
-                    locale={ptBR}
-                  />
-                </PopoverContent>
-              </Popover>
+              {/* Calendar - Hidden on mobile */}
+              <div className="hidden sm:block">
+                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <CalendarIcon className="h-4 w-4" />
+                      {format(selectedDate, 'dd/MM/yyyy', { locale: ptBR })}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={(date) => {
+                        if (date) {
+                          setSelectedDate(date);
+                          setIsCalendarOpen(false);
+                          toast({
+                            title: "Data selecionada",
+                            description: `Período atualizado para ${format(date, 'dd/MM/yyyy', { locale: ptBR })}`,
+                          });
+                        }
+                      }}
+                      initialFocus
+                      locale={ptBR}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
 
               {/* User Avatar */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 hover:bg-muted/50 transition-colors">
-                    <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-lg border-2 border-white/20 hover:scale-105 transition-transform">
+                  <Button variant="ghost" className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0 hover:bg-muted/50 transition-colors flex-shrink-0">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center text-white text-xs sm:text-sm font-semibold shadow-lg border-2 border-white/20 hover:scale-105 transition-transform">
                       {getInitials(user?.email)}
                     </div>
                   </Button>
@@ -953,28 +1088,28 @@ export default function Home() {
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-auto p-6 will-change-scroll scroll-smooth">
+        <main className="flex-1 overflow-auto p-3 sm:p-4 md:p-6 will-change-scroll scroll-smooth">
           {memoizedAccountType === 'personal' ? (
             // Dashboard Pessoal
             <>
               {/* Personal Finance Header */}
-              <Card className="mb-6 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
-                        <User className="h-6 w-6 text-white" />
+              <Card className="mb-4 sm:mb-6 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-500 rounded-lg flex items-center justify-center">
+                        <User className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                       </div>
                       <div>
-                        <h2 className="text-lg font-semibold">
+                        <h2 className="text-base sm:text-lg font-semibold">
                           Resumo Financeiro Pessoal: {periodLabel}/{format(new Date(), 'yyyy')}
                         </h2>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs sm:text-sm text-muted-foreground">
                           Período: {periodDateRange}
                         </p>
                       </div>
                     </div>
-                    <Badge variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                    <Badge variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 self-start sm:self-auto">
                       Controle Pessoal
                     </Badge>
                   </div>
@@ -982,62 +1117,62 @@ export default function Home() {
               </Card>
 
               {/* Personal Metrics Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="responsive-grid responsive-grid-4 mb-6 md:mb-8">
                 <Card className="transform-gpu">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-medium text-muted-foreground">Ganhos do mês</h3>
-                      <ArrowUp className="h-4 w-4 text-green-600" />
+                  <CardContent className="p-3 sm:p-4 md:p-6">
+                    <div className="flex items-center justify-between mb-2 sm:mb-4">
+                      <h3 className="text-xs sm:text-sm font-medium text-muted-foreground">Ganhos do mês</h3>
+                      <ArrowUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
                     </div>
-                    <div className="text-2xl font-bold mb-2">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold mb-1 sm:mb-2 break-words">
                       {summaryStats.periodRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </div>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-xs sm:text-sm text-muted-foreground">
                       Salário + extras
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card className="transform-gpu">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-medium text-muted-foreground">Gastos do mês</h3>
-                      <ArrowDown className="h-4 w-4 text-red-600" />
+                  <CardContent className="p-3 sm:p-4 md:p-6">
+                    <div className="flex items-center justify-between mb-2 sm:mb-4">
+                      <h3 className="text-xs sm:text-sm font-medium text-muted-foreground">Gastos do mês</h3>
+                      <ArrowDown className="h-3 w-3 sm:h-4 sm:w-4 text-red-600" />
                     </div>
-                    <div className="text-2xl font-bold mb-2">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold mb-1 sm:mb-2 break-words">
                       {summaryStats.periodExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </div>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-xs sm:text-sm text-muted-foreground">
                       Contas + despesas
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card className="transform-gpu">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-medium text-muted-foreground">Economia</h3>
-                      <PiggyBank className="h-4 w-4 text-green-600" />
+                  <CardContent className="p-3 sm:p-4 md:p-6">
+                    <div className="flex items-center justify-between mb-2 sm:mb-4">
+                      <h3 className="text-xs sm:text-sm font-medium text-muted-foreground">Economia</h3>
+                      <PiggyBank className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
                     </div>
-                    <div className="text-2xl font-bold mb-2">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold mb-1 sm:mb-2">
                       {summaryStats.periodBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </div>
-                    <div className="text-sm text-green-600">
+                    <div className="text-xs sm:text-sm text-green-600">
                       {summaryStats.periodRevenue > 0 ? ((summaryStats.periodBalance / summaryStats.periodRevenue) * 100).toFixed(1) : '0.0'}% do ganho
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card className="transform-gpu border-2 border-purple-200 dark:border-purple-800">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-medium text-muted-foreground">Meta de Economia</h3>
-                      <Target className="h-4 w-4 text-purple-600" />
+                  <CardContent className="p-3 sm:p-4 md:p-6">
+                    <div className="flex items-center justify-between mb-2 sm:mb-4">
+                      <h3 className="text-xs sm:text-sm font-medium text-muted-foreground">Meta de Economia</h3>
+                      <Target className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600" />
                     </div>
-                    <div className="text-2xl font-bold mb-2 text-purple-600">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold mb-1 sm:mb-2 text-purple-600">
                       R$ 1.500,00
                     </div>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-xs sm:text-sm text-muted-foreground">
                       {summaryStats.periodBalance >= 1500 ? '✅ Meta atingida!' : `${((summaryStats.periodBalance / 1500) * 100).toFixed(1)}% da meta`}
                     </div>
                   </CardContent>
@@ -1045,31 +1180,31 @@ export default function Home() {
               </div>
 
               {/* Personal Budget Section */}
-              <Card className="mb-8">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Wallet className="h-5 w-5" />
+              <Card className="mb-6 sm:mb-8">
+                <CardHeader className="pb-3 sm:pb-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <Wallet className="h-4 w-4 sm:h-5 sm:w-5" />
                     Orçamento Pessoal
                   </CardTitle>
-                  <CardDescription>Controle suas despesas pessoais</CardDescription>
+                  <CardDescription className="text-xs sm:text-sm">Controle suas despesas pessoais</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-purple-600">R$ 3.000,00</div>
-                      <div className="text-sm text-muted-foreground">Orçamento Mensal</div>
+                  <div className="responsive-grid responsive-grid-3">
+                    <div className="responsive-card bg-purple-50 dark:bg-purple-950/20">
+                      <div className="responsive-number text-purple-600 mb-2">R$ 3.000,00</div>
+                      <div className="text-sm text-muted-foreground font-medium">Orçamento Mensal</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-red-600">
+                    <div className="responsive-card bg-red-50 dark:bg-red-950/20">
+                      <div className="responsive-number text-red-600 mb-2">
                         {summaryStats.periodExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </div>
-                      <div className="text-sm text-muted-foreground">Gastos Realizados</div>
+                      <div className="text-sm text-muted-foreground font-medium">Gastos Realizados</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">
+                    <div className="responsive-card bg-green-50 dark:bg-green-950/20">
+                      <div className="responsive-number text-green-600 mb-2">
                         {(3000 - summaryStats.periodExpenses).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </div>
-                      <div className="text-sm text-muted-foreground">Disponível</div>
+                      <div className="text-sm text-muted-foreground font-medium">Disponível</div>
                     </div>
                   </div>
                 </CardContent>
@@ -1079,23 +1214,23 @@ export default function Home() {
             // Dashboard Empresarial
             <>
               {/* Business Finance Header */}
-              <Card className="mb-6 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
-                        <Building className="h-6 w-6 text-white" />
+              <Card className="mb-4 sm:mb-6 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                        <Building className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                       </div>
                       <div>
-                        <h2 className="text-lg font-semibold">
+                        <h2 className="text-base sm:text-lg font-semibold">
                           Resumo Financeiro Empresarial: {periodLabel}/{format(new Date(), 'yyyy')}
                         </h2>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs sm:text-sm text-muted-foreground">
                           Período: {periodDateRange}
                         </p>
                       </div>
                     </div>
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 self-start sm:self-auto">
                       Saldo Positivo
                     </Badge>
                   </div>
@@ -1104,7 +1239,7 @@ export default function Home() {
 
               {/* System Alerts */}
               {systemAlerts.length > 0 && (
-                <div className="mb-6">
+                <div className="mb-4 sm:mb-6">
                   <div className="space-y-2">
                     {systemAlerts.map((alert, index) => {
                       const Icon = alert.icon;
@@ -1112,7 +1247,7 @@ export default function Home() {
                         <div
                           key={index}
                           className={cn(
-                            "flex items-center gap-3 p-3 rounded-lg border",
+                            "flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border",
                             alert.type === 'error' 
                               ? "bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800" 
                               : alert.type === 'warning'
@@ -1121,12 +1256,12 @@ export default function Home() {
                           )}
                         >
                           <Icon className={cn(
-                            "h-4 w-4",
+                            "h-3 w-3 sm:h-4 sm:w-4",
                             alert.type === 'error' ? "text-red-600" : 
                             alert.type === 'warning' ? "text-yellow-600" : "text-blue-600"
                           )} />
                           <span className={cn(
-                            "text-sm font-medium",
+                            "text-xs sm:text-sm font-medium",
                             alert.type === 'error' ? "text-red-800 dark:text-red-200" : 
                             alert.type === 'warning' ? "text-yellow-800 dark:text-yellow-200" : "text-blue-800 dark:text-blue-200"
                           )}>
@@ -1140,47 +1275,47 @@ export default function Home() {
               )}
 
               {/* Business Metrics Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="responsive-grid responsive-grid-4 mb-6 md:mb-8">
                 <Card className="transform-gpu">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-medium text-muted-foreground">Receitas no período</h3>
-                      <ArrowUp className="h-4 w-4 text-green-600" />
+                  <CardContent className="p-3 sm:p-4 md:p-6">
+                    <div className="flex items-center justify-between mb-2 sm:mb-4">
+                      <h3 className="text-xs sm:text-sm font-medium text-muted-foreground">Receitas no período</h3>
+                      <ArrowUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
                     </div>
-                    <div className="text-2xl font-bold mb-2">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold mb-1 sm:mb-2">
                       {summaryStats.periodRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </div>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-xs sm:text-sm text-muted-foreground">
                       0.0%
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card className="transform-gpu">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-medium text-muted-foreground">Despesas no período</h3>
-                      <Clock className="h-4 w-4 text-red-600" />
+                  <CardContent className="p-3 sm:p-4 md:p-6">
+                    <div className="flex items-center justify-between mb-2 sm:mb-4">
+                      <h3 className="text-xs sm:text-sm font-medium text-muted-foreground">Despesas no período</h3>
+                      <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-red-600" />
                     </div>
-                    <div className="text-2xl font-bold mb-2">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold mb-1 sm:mb-2 break-words">
                       {summaryStats.periodExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </div>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-xs sm:text-sm text-muted-foreground">
                       Pendente: R$ 0,00
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card className="transform-gpu">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-medium text-muted-foreground">Saldo do período</h3>
-                      <ArrowUp className="h-4 w-4 text-green-600" />
+                  <CardContent className="p-3 sm:p-4 md:p-6">
+                    <div className="flex items-center justify-between mb-2 sm:mb-4">
+                      <h3 className="text-xs sm:text-sm font-medium text-muted-foreground">Saldo do período</h3>
+                      <ArrowUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
                     </div>
-                    <div className="text-2xl font-bold mb-2">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold mb-1 sm:mb-2">
                       {summaryStats.periodBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </div>
-                    <div className="text-sm text-green-600">
+                    <div className="text-xs sm:text-sm text-green-600">
                       6.2%
                     </div>
                   </CardContent>
@@ -1237,22 +1372,54 @@ export default function Home() {
 
           {/* Business Dashboard Content - Only show for business mode */}
           {memoizedAccountType === 'business' ? (
-            <Tabs defaultValue="dashboard" className="w-full">
-              <TabsList className="mb-6">
-                <TabsTrigger value="dashboard">Dashboard Geral</TabsTrigger>
-                <TabsTrigger value="suppliers">Análise de Fornecedores</TabsTrigger>
-                <TabsTrigger value="sales">Histórico de Vendas</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="dashboard">
+                          <Tabs defaultValue="dashboard" className="w-full">
+                <div className="relative tabs-container">
+                  {/* Botões de navegação */}
+                  <button 
+                    className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-background/80 hover:bg-background border rounded-l-md p-1 text-muted-foreground hover:text-foreground transition-colors nav-button"
+                    onClick={() => handleTabScroll('left')}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  
+                  <button 
+                    className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-background/80 hover:bg-background border rounded-r-md p-1 text-muted-foreground hover:text-foreground transition-colors nav-button"
+                    onClick={() => handleTabScroll('right')}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                  
+                  <TabsList className="mb-4 sm:mb-6 overflow-x-auto flex-wrap gap-1 responsive-tabs scrollbar-hide px-8">
+                                <TabsTrigger value="dashboard" className="text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
+                  <span className="hidden sm:inline">Dashboard Geral</span>
+                  <span className="sm:hidden">Dashboard</span>
+                </TabsTrigger>
+                <TabsTrigger value="suppliers" className="text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
+                  <span className="hidden sm:inline">Análise de Fornecedores</span>
+                  <span className="sm:hidden">Fornecedores</span>
+                </TabsTrigger>
+                <TabsTrigger value="sales" className="text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
+                  <span className="hidden sm:inline">Histórico de Vendas</span>
+                  <span className="sm:hidden">Vendas</span>
+                </TabsTrigger>
+                <TabsTrigger value="revenue" className="text-xs sm:text-sm whitespace-nowrap flex-shrink-0">Receitas</TabsTrigger>
+                <TabsTrigger value="expenses" className="text-xs sm:text-sm whitespace-nowrap flex-shrink-0">Despesas</TabsTrigger>
+                <TabsTrigger value="transactions" className="text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
+                  <span className="hidden sm:inline">Transações</span>
+                  <span className="sm:hidden">Trans.</span>
+                </TabsTrigger>
+                              </TabsList>
+                </div>
+                
+                <TabsContent value="dashboard">
                 {isLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
                     {Array.from({ length: 6 }).map((_, i) => (
-                      <Skeleton key={i} className="h-[116px] w-full" />
+                      <Skeleton key={i} className="h-[100px] sm:h-[116px] w-full" />
                     ))}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
                     <SummaryCard 
                       title="Total Investido"
                       value={summaryStats.totalInvested}
@@ -1290,7 +1457,7 @@ export default function Home() {
                 </div>
               )}
               
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6 mb-6 sm:mb-8">
                 <div className="lg:col-span-3">
                   <ProfitChart data={products} isLoading={isLoading}/>
                 </div>
@@ -1300,10 +1467,10 @@ export default function Home() {
               </div>
 
               {/* Seção de Produtos */}
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold">Produtos</h2>
-                  <Button onClick={() => handleOpenForm()} className="gap-2">
+              <div className="mb-6 sm:mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 mb-4">
+                  <h2 className="text-lg sm:text-xl font-semibold">Produtos</h2>
+                  <Button onClick={() => handleOpenForm()} className="gap-2 text-sm sm:text-base">
                     <PlusCircle className="h-4 w-4"/>
                     Adicionar Produto
                   </Button>
@@ -1312,13 +1479,13 @@ export default function Home() {
               </div>
 
               {isLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
                   {Array.from({ length: 8 }).map((_, i) => (
-                    <Skeleton key={i} className="h-[350px] w-full" />
+                    <Skeleton key={i} className="h-[300px] sm:h-[350px] w-full" />
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
                   {filteredProducts.map((product) => (
                     <ProductCard
                       key={product.id}
@@ -1330,9 +1497,9 @@ export default function Home() {
               )}
 
               {filteredProducts.length === 0 && !isLoading && (
-                <div className="text-center py-16">
-                  <h3 className="text-xl font-medium">Nenhum Produto Encontrado</h3>
-                  <p className="text-muted-foreground">
+                <div className="text-center py-8 sm:py-16">
+                  <h3 className="text-lg sm:text-xl font-medium">Nenhum Produto Encontrado</h3>
+                  <p className="text-sm sm:text-base text-muted-foreground">
                     Tente um termo de busca diferente ou adicione um novo produto.
                   </p>
                 </div>
@@ -1348,19 +1515,20 @@ export default function Home() {
             <TabsContent value="sales">
               <div className="space-y-6">
                 {/* Filtros */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Buscar</label>
+                    <label className="text-xs sm:text-sm font-medium">Buscar</label>
                     <Input
                       placeholder="Produto ou comprador..."
                       value={salesSearchTerm}
                       onChange={(e) => setSalesSearchTerm(e.target.value)}
+                      className="text-xs sm:text-sm"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Produto</label>
+                    <label className="text-xs sm:text-sm font-medium">Produto</label>
                     <Select value={selectedSalesProduct} onValueChange={setSelectedSalesProduct}>
-                      <SelectTrigger>
+                      <SelectTrigger className="text-xs sm:text-sm">
                         <SelectValue placeholder="Todos os produtos" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1374,9 +1542,9 @@ export default function Home() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Período</label>
+                    <label className="text-xs sm:text-sm font-medium">Período</label>
                     <Select value={salesDateFilter} onValueChange={setSalesDateFilter}>
-                      <SelectTrigger>
+                      <SelectTrigger className="text-xs sm:text-sm">
                         <SelectValue placeholder="Todos os períodos" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1390,7 +1558,7 @@ export default function Home() {
                 </div>
 
                 {/* Cards de Resumo */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
                   <SummaryCard 
                     title="Receita Total"
                     value={salesStats.totalRevenue}
@@ -1412,13 +1580,13 @@ export default function Home() {
 
                 {/* Tabela de Vendas */}
                 <div className="border rounded-lg">
-                  <div className="p-6 border-b">
-                    <h3 className="text-lg font-semibold">Histórico de Vendas</h3>
-                    <p className="text-sm text-muted-foreground">
+                  <div className="p-4 sm:p-6 border-b">
+                    <h3 className="text-base sm:text-lg font-semibold">Histórico de Vendas</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       {filteredSales.length} vendas encontradas
                     </p>
                   </div>
-                  <div className="p-6">
+                  <div className="p-4 sm:p-6">
                     {filteredSales.length > 0 ? (
                       <Table>
                         <TableHeader>
@@ -1463,10 +1631,10 @@ export default function Home() {
                         </TableBody>
                       </Table>
                     ) : (
-                      <div className="text-center py-12">
-                        <ShoppingCart className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-medium mb-2">Nenhuma venda encontrada</h3>
-                        <p className="text-muted-foreground">
+                      <div className="text-center py-8 sm:py-12">
+                        <ShoppingCart className="mx-auto h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground mb-3 sm:mb-4" />
+                        <h3 className="text-base sm:text-lg font-medium mb-2">Nenhuma venda encontrada</h3>
+                        <p className="text-sm sm:text-base text-muted-foreground">
                           {allSales.length === 0 
                             ? "Você ainda não registrou nenhuma venda." 
                             : "Tente ajustar os filtros para encontrar mais vendas."}
@@ -1477,96 +1645,117 @@ export default function Home() {
                 </div>
               </div>
             </TabsContent>
+            
+            <TabsContent value="revenue">
+              <RevenueSection 
+                products={products}
+                periodFilter={periodFilter}
+              />
+            </TabsContent>
+            
+            <TabsContent value="expenses">
+              <ExpensesSection 
+                products={products}
+                periodFilter={periodFilter}
+              />
+            </TabsContent>
+            
+            <TabsContent value="transactions">
+              <TransactionsSection 
+                products={products}
+                periodFilter={periodFilter}
+              />
+            </TabsContent>
           </Tabs>
           ) : (
             // Personal Dashboard Content
-            <div className="space-y-8">
+            <div className="space-y-6 sm:space-y-8">
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Target className="h-5 w-5" />
+                <CardHeader className="pb-3 sm:pb-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <Target className="h-4 w-4 sm:h-5 sm:w-5" />
                     Metas Pessoais
                   </CardTitle>
-                  <CardDescription>Suas metas financeiras pessoais</CardDescription>
+                  <CardDescription className="text-xs sm:text-sm">Suas metas financeiras pessoais</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600">R$ 1.500,00</div>
-                      <div className="text-sm text-muted-foreground">Meta de Economia</div>
-                      <div className="text-xs text-green-600 mt-1">
-                        {summaryStats.periodBalance >= 1500 ? '✅ Atingida!' : `${((summaryStats.periodBalance / 1500) * 100).toFixed(1)}%`}
+                                  <CardContent>
+                    <div className="responsive-grid responsive-grid-3">
+                      <div className="responsive-card bg-purple-50 dark:bg-purple-950/20">
+                        <div className="responsive-number text-purple-600 mb-2">R$ 1.500,00</div>
+                        <div className="text-sm text-muted-foreground font-medium">Meta de Economia</div>
+                        <div className="text-sm text-green-600 mt-2 font-medium">
+                          {summaryStats.periodBalance >= 1500 ? '✅ Atingida!' : `${((summaryStats.periodBalance / 1500) * 100).toFixed(1)}%`}
+                        </div>
+                      </div>
+                      <div className="responsive-card bg-blue-50 dark:bg-blue-950/20">
+                        <div className="responsive-number text-blue-600 mb-2">R$ 5.000,00</div>
+                        <div className="text-sm text-muted-foreground font-medium">Meta de Investimento</div>
+                        <div className="text-sm text-blue-600 mt-2 font-medium">0.0%</div>
+                      </div>
+                      <div className="responsive-card bg-green-50 dark:bg-green-950/20">
+                        <div className="responsive-number text-green-600 mb-2">R$ 10.000,00</div>
+                        <div className="text-sm text-muted-foreground font-medium">Reserva de Emergência</div>
+                        <div className="text-sm text-green-600 mt-2 font-medium">0.0%</div>
                       </div>
                     </div>
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">R$ 5.000,00</div>
-                      <div className="text-sm text-muted-foreground">Meta de Investimento</div>
-                      <div className="text-xs text-blue-600 mt-1">0.0%</div>
-                    </div>
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">R$ 10.000,00</div>
-                      <div className="text-sm text-muted-foreground">Reserva de Emergência</div>
-                      <div className="text-xs text-green-600 mt-1">0.0%</div>
-                    </div>
-                  </div>
-                </CardContent>
+                  </CardContent>
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
+                <CardHeader className="pb-3 sm:pb-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
                     Resumo Pessoal
                   </CardTitle>
-                  <CardDescription>Visão geral das suas finanças pessoais</CardDescription>
+                  <CardDescription className="text-xs sm:text-sm">Visão geral das suas finanças pessoais</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">
-                        {summaryStats.periodRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                  <CardContent>
+                    <div className="responsive-grid responsive-grid-2">
+                      <div className="responsive-card bg-green-50 dark:bg-green-950/20">
+                        <div className="responsive-number text-green-600 mb-2">
+                          {summaryStats.periodRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </div>
+                        <div className="text-sm text-muted-foreground font-medium">Total de Ganhos</div>
                       </div>
-                      <div className="text-sm text-muted-foreground">Total de Ganhos</div>
-                    </div>
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-red-600">
-                        {summaryStats.periodExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      <div className="responsive-card bg-red-50 dark:bg-red-950/20">
+                        <div className="responsive-number text-red-600 mb-2">
+                          {summaryStats.periodExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </div>
+                        <div className="text-sm text-muted-foreground font-medium">Total de Gastos</div>
                       </div>
-                      <div className="text-sm text-muted-foreground">Total de Gastos</div>
                     </div>
-                  </div>
-                </CardContent>
+                  </CardContent>
               </Card>
 
               {/* Seção de Sonhos */}
               {dreams.length > 0 && (
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Target className="h-5 w-5" />
+                  <CardHeader className="pb-3 sm:pb-6">
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                      <Target className="h-4 w-4 sm:h-5 sm:w-5" />
                       Meus Sonhos
                     </CardTitle>
-                    <CardDescription>Progresso dos seus objetivos financeiros</CardDescription>
+                    <CardDescription className="text-xs sm:text-sm">Progresso dos seus objetivos financeiros</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="text-center p-3 border rounded-lg">
-                        <div className="text-xl font-bold text-purple-600">
+                    <div className="responsive-grid responsive-grid-3">
+                      <div className="responsive-card bg-purple-50 dark:bg-purple-950/20">
+                        <div className="responsive-number text-purple-600 mb-2">
                           {summaryStats.totalDreamsValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </div>
-                        <div className="text-sm text-muted-foreground">Meta Total</div>
+                        <div className="text-sm text-muted-foreground font-medium">Meta Total</div>
                       </div>
-                      <div className="text-center p-3 border rounded-lg">
-                        <div className="text-xl font-bold text-green-600">
+                      <div className="responsive-card bg-green-50 dark:bg-green-950/20">
+                        <div className="responsive-number text-green-600 mb-2">
                           {summaryStats.totalDreamsSaved.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </div>
-                        <div className="text-sm text-muted-foreground">Já Economizado</div>
+                        <div className="text-sm text-muted-foreground font-medium">Já Economizado</div>
                       </div>
-                      <div className="text-center p-3 border rounded-lg">
-                        <div className="text-xl font-bold text-blue-600">
+                      <div className="responsive-card bg-blue-50 dark:bg-blue-950/20">
+                        <div className="responsive-number text-blue-600 mb-2">
                           {summaryStats.activeDreams}
                         </div>
-                        <div className="text-sm text-muted-foreground">Sonhos Ativos</div>
+                        <div className="text-sm text-muted-foreground font-medium">Sonhos Ativos</div>
                       </div>
                     </div>
                   </CardContent>
@@ -1576,35 +1765,35 @@ export default function Home() {
               {/* Seção de Apostas */}
               {bets.length > 0 && (
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Target className="h-5 w-5" />
+                  <CardHeader className="pb-3 sm:pb-6">
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                      <Target className="h-4 w-4 sm:h-5 sm:w-5" />
                       Minhas Apostas
                     </CardTitle>
-                    <CardDescription>Resumo das suas apostas esportivas</CardDescription>
+                    <CardDescription className="text-xs sm:text-sm">Resumo das suas apostas esportivas</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="text-center p-3 border rounded-lg">
-                        <div className="text-xl font-bold text-orange-600">
+                    <div className="responsive-grid responsive-grid-3">
+                      <div className="responsive-card bg-orange-50 dark:bg-orange-950/20">
+                        <div className="responsive-number text-orange-600 mb-2">
                           {summaryStats.totalBetsStake.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </div>
-                        <div className="text-sm text-muted-foreground">Total Apostado</div>
+                        <div className="text-sm text-muted-foreground font-medium">Total Apostado</div>
                       </div>
-                      <div className="text-center p-3 border rounded-lg">
+                      <div className="responsive-card bg-green-50 dark:bg-green-950/20">
                         <div className={cn(
-                          "text-xl font-bold",
+                          "responsive-number mb-2",
                           summaryStats.totalBetsProfit >= 0 ? "text-green-600" : "text-red-600"
                         )}>
                           {summaryStats.totalBetsProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </div>
-                        <div className="text-sm text-muted-foreground">Lucro/Prejuízo</div>
+                        <div className="text-sm text-muted-foreground font-medium">Lucro/Prejuízo</div>
                       </div>
-                      <div className="text-center p-3 border rounded-lg">
-                        <div className="text-xl font-bold text-yellow-600">
+                      <div className="responsive-card bg-yellow-50 dark:bg-yellow-950/20">
+                        <div className="responsive-number text-yellow-600 mb-2">
                           {summaryStats.pendingBets}
                         </div>
-                        <div className="text-sm text-muted-foreground">Apostas Pendentes</div>
+                        <div className="text-sm text-muted-foreground font-medium">Apostas Pendentes</div>
                       </div>
                     </div>
                   </CardContent>
@@ -1613,6 +1802,17 @@ export default function Home() {
             </div>
           )}
         </main>
+        
+        {/* Floating Action Button for Mobile */}
+        <div className="fixed bottom-4 right-4 z-30 md:hidden">
+          <Button
+            size="lg"
+            className="h-14 w-14 rounded-full shadow-lg"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+        </div>
       </div>
     </div>
 

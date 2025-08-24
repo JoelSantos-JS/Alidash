@@ -48,7 +48,7 @@ export function ProductSearch({ onSearch }: ProductSearchProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex gap-2">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col sm:flex-row gap-2">
         <FormField
           control={form.control}
           name="query"
@@ -56,10 +56,10 @@ export function ProductSearch({ onSearch }: ProductSearchProps) {
             <FormItem className="flex-1">
               <FormControl>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                   <Input
                     placeholder="Busque por nome do produto..."
-                    className="pl-10 h-11"
+                    className="pl-9 sm:pl-10 h-10 sm:h-11 text-sm sm:text-base"
                     {...field}
                   />
                 </div>
@@ -68,9 +68,10 @@ export function ProductSearch({ onSearch }: ProductSearchProps) {
             </FormItem>
           )}
         />
-        <Button type="submit" size="lg">
-            <Search className="mr-2 h-5 w-5" />
-            Buscar
+        <Button type="submit" size="lg" className="text-sm sm:text-base">
+            <Search className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="hidden sm:inline">Buscar</span>
+            <span className="sm:hidden">Buscar</span>
         </Button>
       </form>
     </Form>

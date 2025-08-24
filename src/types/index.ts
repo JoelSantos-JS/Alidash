@@ -113,3 +113,73 @@ export interface BetAnalysis {
     justification: string;
     suggestedActions: string[];
 }
+
+// Novos tipos para receitas, despesas e transações independentes
+export interface Revenue {
+  id: string;
+  date: Date;
+  description: string;
+  amount: number;
+  category: string;
+  source: 'sale' | 'commission' | 'bonus' | 'other';
+  notes?: string;
+  productId?: string; // Se relacionado a um produto
+}
+
+export interface Expense {
+  id: string;
+  date: Date;
+  description: string;
+  amount: number;
+  category: string;
+  type: 'purchase' | 'shipping' | 'tax' | 'marketing' | 'operational' | 'other';
+  supplier?: string;
+  notes?: string;
+  productId?: string; // Se relacionado a um produto
+}
+
+export interface Transaction {
+  id: string;
+  date: Date;
+  description: string;
+  amount: number;
+  type: 'revenue' | 'expense';
+  category: string;
+  subcategory?: string;
+  paymentMethod?: 'pix' | 'credit_card' | 'debit_card' | 'bank_transfer' | 'cash';
+  status: 'completed' | 'pending' | 'cancelled';
+  notes?: string;
+  tags?: string[];
+}
+
+export interface Debt {
+  id: string;
+  creditorName: string; // Nome do credor
+  description: string; // Descrição da dívida
+  originalAmount: number; // Valor original da dívida
+  currentAmount: number; // Valor atual (pode ter juros, multas, etc.)
+  interestRate?: number; // Taxa de juros (% ao mês)
+  dueDate: Date; // Data de vencimento
+  createdDate: Date; // Data de criação da dívida
+  category: 'credit_card' | 'loan' | 'financing' | 'supplier' | 'personal' | 'other';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: 'pending' | 'overdue' | 'paid' | 'negotiating' | 'cancelled';
+  paymentMethod?: 'pix' | 'credit_card' | 'debit_card' | 'bank_transfer' | 'cash';
+  installments?: {
+    total: number;
+    paid: number;
+    amount: number; // Valor de cada parcela
+  };
+  payments?: DebtPayment[]; // Histórico de pagamentos
+  notes?: string;
+  tags?: string[];
+}
+
+export interface DebtPayment {
+  id: string;
+  debtId: string;
+  date: Date;
+  amount: number;
+  paymentMethod: 'pix' | 'credit_card' | 'debit_card' | 'bank_transfer' | 'cash';
+  notes?: string;
+}

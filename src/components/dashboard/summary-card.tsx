@@ -23,11 +23,11 @@ export function SummaryCard({ title, value, icon: Icon, isCurrency = false, isPe
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{title}</CardTitle>
-                <Icon className={cn("h-4 w-4 text-muted-foreground", className)} />
+                <CardTitle className="text-xs sm:text-sm font-medium">{title}</CardTitle>
+                <Icon className={cn("h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground", className)} />
             </CardHeader>
             <CardContent>
-                <div className={cn("text-2xl font-bold", className)}>
+                <div className={cn("text-lg sm:text-xl md:text-2xl font-bold", className)}>
                     {formattedValue}
                 </div>
             </CardContent>

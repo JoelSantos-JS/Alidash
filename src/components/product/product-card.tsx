@@ -42,37 +42,37 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
             data-ai-hint="product image"
           />
         </div>
-        <Badge className={`absolute top-2 right-2 border-transparent text-white ${statusInfo.color}`}>
+        <Badge className={`absolute top-1 right-1 sm:top-2 sm:right-2 border-transparent text-white text-xs sm:text-sm ${statusInfo.color}`}>
           {statusInfo.label}
         </Badge>
       </CardHeader>
-      <CardContent className="p-4 flex-1">
-        <CardTitle className="text-base font-semibold leading-tight mb-2 min-h-10">
+      <CardContent className="p-3 sm:p-4 flex-1">
+        <CardTitle className="text-sm sm:text-base font-semibold leading-tight mb-2 min-h-8 sm:min-h-10">
           {product.name}
         </CardTitle>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
-                <Package className="w-4 h-4"/>
+                <Package className="w-3 h-3 sm:w-4 sm:h-4"/>
                 <span>{product.quantity - product.quantitySold} em estoque</span>
             </div>
              {product.daysToSell !== undefined && (
                  <div className="flex items-center gap-1">
-                    <Clock className="w-4 h-4"/>
+                    <Clock className="w-3 h-3 sm:w-4 sm:h-4"/>
                     <span>Vendido em {product.daysToSell} dias</span>
                 </div>
             )}
         </div>
       </CardContent>
-      <CardFooter className="p-4 pt-0 flex justify-between items-center">
+      <CardFooter className="p-3 sm:p-4 pt-0 flex justify-between items-center">
         <div className="flex items-center gap-1">
-            <DollarSign className="w-5 h-5 text-primary"/>
-            <span className="text-lg font-bold text-primary">
+            <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-primary"/>
+            <span className="text-base sm:text-lg font-bold text-primary">
             {product.sellingPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </span>
         </div>
         <div className="flex items-center gap-1 text-green-600">
-            <TrendingUp className="w-4 h-4"/>
-            <span className="font-medium text-sm">{product.profitMargin.toFixed(2)}%</span>
+            <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4"/>
+            <span className="font-medium text-xs sm:text-sm">{product.profitMargin.toFixed(2)}%</span>
         </div>
       </CardFooter>
     </Card>

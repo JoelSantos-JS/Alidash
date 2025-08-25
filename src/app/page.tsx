@@ -471,8 +471,34 @@ export default function Home() {
       return acc;
     }, 0);
 
-    const periodBalance = periodRevenue - periodExpenses;
-    const expenseRatio = periodRevenue > 0 ? (periodExpenses / periodRevenue) * 100 : 0;
+    // Se não há dados no período atual, usar dados dos últimos 30 dias
+    let finalPeriodRevenue = periodRevenue;
+    let finalPeriodExpenses = periodExpenses;
+    
+    if (periodRevenue === 0 && periodExpenses === 0) {
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const recentSales = products.flatMap(p => 
+        p.sales?.filter(s => new Date(s.date) >= thirtyDaysAgo) || []
+      );
+      
+      finalPeriodRevenue = recentSales.reduce((acc, sale) => {
+        const product = products.find(p => p.id === sale.productId);
+        return acc + (product?.sellingPrice || 0) * sale.quantity;
+      }, 0);
+
+      finalPeriodExpenses = products.reduce((acc, product) => {
+        const purchaseDate = new Date(product.purchaseDate);
+        if (purchaseDate >= thirtyDaysAgo) {
+          return acc + (product.totalCost * product.quantity);
+        }
+        return acc;
+      }, 0);
+    }
+
+    const periodBalance = finalPeriodRevenue - finalPeriodExpenses;
+    const expenseRatio = finalPeriodRevenue > 0 ? (finalPeriodExpenses / finalPeriodRevenue) * 100 : 0;
+
+
 
     // Determinar saúde financeira
     let financialHealth = "Excelente";
@@ -495,8 +521,8 @@ export default function Home() {
         productsInStock,
         productsSolds,
         lowStockCount,
-        periodRevenue,
-        periodExpenses,
+        periodRevenue: finalPeriodRevenue,
+        periodExpenses: finalPeriodExpenses,
         periodBalance,
         expenseRatio,
         financialHealth,
@@ -879,7 +905,12 @@ export default function Home() {
               <span className="text-sm sm:text-base">Categorias</span>
             </Button>
             
-            <Button variant="ghost" className="w-full justify-start gap-2 sm:gap-3" size="lg">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start gap-2 sm:gap-3" 
+              size="lg"
+              onClick={() => router.push('/relatorios')}
+            >
               <BarChart3 className="h-4 w-4" />
               <span className="text-sm sm:text-base">Relatórios</span>
             </Button>
@@ -970,11 +1001,10 @@ export default function Home() {
             </div>
 
             <div className="flex items-center gap-1 sm:gap-2 md:gap-4 flex-shrink-0">
-              {/* Account Type Toggle - Visible on screens >= 475px */}
+              {/* Account Type Toggle - Always visible */}
               <AccountTypeToggle 
                 value={memoizedAccountType} 
                 onValueChange={handleAccountTypeChange}
-                className="hidden xs:flex"
               />
 
               {/* Period Selector - Compact on mobile */}

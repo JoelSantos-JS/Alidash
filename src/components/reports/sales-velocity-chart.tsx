@@ -152,28 +152,28 @@ export function SalesVelocityChart({ data, isLoading }: SalesVelocityChartProps)
       const data = payload[0].payload;
       return (
         <div className="bg-background border rounded-lg p-3 shadow-lg">
-          <p className="font-semibold text-sm mb-2">{data.displayDate}</p>
+          <div className="font-semibold text-sm mb-2">{data.displayDate}</div>
           <div className="space-y-1 text-xs">
-            <p className="flex justify-between">
+            <div className="flex justify-between">
               <span>Vendas:</span>
               <span className="font-medium">{data.vendas} unidades</span>
-            </p>
-            <p className="flex justify-between">
+            </div>
+            <div className="flex justify-between">
               <span>Receita:</span>
               <span className="font-medium text-green-600">R$ {data.receita.toLocaleString('pt-BR')}</span>
-            </p>
+            </div>
             {data.produtos.length > 0 && (
               <div className="mt-2">
-                <p className="font-medium text-xs mb-1">Produtos vendidos:</p>
+                <div className="font-medium text-xs mb-1">Produtos vendidos:</div>
                 {data.produtos.slice(0, 3).map((produto: any, index: number) => (
-                  <p key={index} className="text-xs text-muted-foreground">
+                  <div key={index} className="text-xs text-muted-foreground">
                     • {produto.name.split(" ").slice(0, 2).join(" ")} ({produto.quantity}x)
-                  </p>
+                  </div>
                 ))}
                 {data.produtos.length > 3 && (
-                  <p className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground">
                     +{data.produtos.length - 3} outros...
-                  </p>
+                  </div>
                 )}
               </div>
             )}

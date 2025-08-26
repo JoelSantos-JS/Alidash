@@ -157,7 +157,7 @@ export function SupplierPerformanceChart({ data, isLoading }: SupplierPerformanc
         <div className="bg-background border rounded-lg p-3 shadow-lg">
           <p className="font-semibold text-sm mb-2">{data.supplier}</p>
           <div className="space-y-1 text-xs">
-            <p className="flex justify-between">
+            <div className="flex justify-between">
               <span>Classificação:</span>
               <Badge 
                 style={{ backgroundColor: data.ratingColor, color: 'white' }}
@@ -165,7 +165,7 @@ export function SupplierPerformanceChart({ data, isLoading }: SupplierPerformanc
               >
                 {data.rating}
               </Badge>
-            </p>
+            </div>
             <p className="flex justify-between">
               <span>Produtos:</span>
               <span className="font-medium">{data.produtos} tipos</span>
@@ -216,7 +216,7 @@ export function SupplierPerformanceChart({ data, isLoading }: SupplierPerformanc
               <span>Score:</span>
               <span className="font-medium text-primary">{data.score.toFixed(1)}</span>
             </p>
-            <p className="flex justify-between">
+            <div className="flex justify-between">
               <span>Classificação:</span>
               <Badge 
                 style={{ backgroundColor: data.ratingColor, color: 'white' }}
@@ -224,7 +224,7 @@ export function SupplierPerformanceChart({ data, isLoading }: SupplierPerformanc
               >
                 {data.rating}
               </Badge>
-            </p>
+            </div>
           </div>
         </div>
       );

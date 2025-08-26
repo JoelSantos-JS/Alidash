@@ -218,9 +218,9 @@ export function ExpensesSection({ products, periodFilter, expenses = [] }: Expen
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Despesas Totais</CardTitle>
@@ -300,51 +300,63 @@ export function ExpensesSection({ products, periodFilter, expenses = [] }: Expen
         </CardHeader>
         <CardContent>
           {expensesData.expenses.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {expensesData.expenses.map((expense) => {
-                  const IconComponent = getExpenseTypeIcon(expense.type);
-                  return (
-                    <TableRow key={expense.id}>
-                      <TableCell>
-                        {format(expense.date, 'dd/MM/yyyy', { locale: ptBR })}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <IconComponent className="h-4 w-4" />
-                          {expense.description}
-                        </div>
-                        {expense.subcategory && (
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {expense.subcategory}
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs md:text-sm">Data</TableHead>
+                    <TableHead className="text-xs md:text-sm">Descrição</TableHead>
+                    <TableHead className="hidden sm:table-cell text-xs md:text-sm">Categoria</TableHead>
+                    <TableHead className="hidden md:table-cell text-xs md:text-sm">Tipo</TableHead>
+                    <TableHead className="text-right text-xs md:text-sm">Valor</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {expensesData.expenses.map((expense) => {
+                    const IconComponent = getExpenseTypeIcon(expense.type);
+                    return (
+                      <TableRow key={expense.id}>
+                        <TableCell className="text-xs md:text-sm">
+                          <div className="md:hidden">{format(expense.date, 'dd/MM', { locale: ptBR })}</div>
+                          <div className="hidden md:block">{format(expense.date, 'dd/MM/yyyy', { locale: ptBR })}</div>
+                        </TableCell>
+                        <TableCell className="font-medium text-xs md:text-sm">
+                          <div className="flex items-center gap-1 md:gap-2">
+                            <IconComponent className="h-3 w-3 md:h-4 md:w-4" />
+                            <div className="max-w-[120px] md:max-w-none truncate">
+                              {expense.description}
+                            </div>
                           </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{expense.category}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getExpenseTypeColor(expense.type) as any}>
-                          {getExpenseTypeLabel(expense.type)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-medium text-red-600">
-                        -{expense.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                          {expense.subcategory && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {expense.subcategory}
+                            </div>
+                          )}
+                          <div className="sm:hidden text-xs text-muted-foreground mt-1 flex gap-1">
+                            <Badge variant="outline" className="text-xs">{expense.category}</Badge>
+                            <Badge variant={getExpenseTypeColor(expense.type) as any} className="text-xs">
+                              {getExpenseTypeLabel(expense.type)}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <Badge variant="outline" className="text-xs">{expense.category}</Badge>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <Badge variant={getExpenseTypeColor(expense.type) as any} className="text-xs">
+                            {getExpenseTypeLabel(expense.type)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-red-600 text-xs md:text-sm">
+                          <div className="md:hidden">-{expense.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace('R$', 'R$')}</div>
+                          <div className="hidden md:block">-{expense.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
             <div className="text-center py-12">
               <CreditCard className="mx-auto h-12 w-12 text-muted-foreground mb-4" />

@@ -260,9 +260,9 @@ export default function DespesasPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-card border-b px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <header className="bg-card border-b px-3 md:px-6 py-3 md:py-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2 md:gap-4">
             <Button
               variant="ghost"
               size="sm"
@@ -270,77 +270,84 @@ export default function DespesasPage() {
               className="flex items-center gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
-              Voltar
+              <span className="hidden sm:inline">Voltar</span>
             </Button>
             
             <div>
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                <ArrowDown className="h-6 w-6 text-red-500" />
+              <h1 className="text-lg md:text-2xl font-bold flex items-center gap-2">
+                <ArrowDown className="h-5 w-5 md:h-6 md:w-6 text-red-500" />
                 Despesas
               </h1>
-              <p className="text-sm text-muted-foreground">
-                Controle detalhado das suas despesas de produtos
+              <p className="text-xs md:text-sm text-muted-foreground">
+                <span className="hidden sm:inline">Controle detalhado das suas despesas de produtos</span>
+                <span className="sm:hidden">Suas despesas de produtos</span>
                 {products.length > 0 && products !== initialProducts && (
                   <span className="ml-2 inline-flex items-center gap-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
                     <span className="w-2 h-2 bg-green-500 rounded-full block"></span>
-                    Dados Reais
+                    <span className="hidden sm:inline">Dados Reais</span>
+                    <span className="sm:hidden">Real</span>
                   </span>
                 )}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between md:gap-4">
+            {/* Period Selector */}
+            <div className="flex items-center gap-1 md:gap-2 bg-muted rounded-lg p-1">
+              <Button
+                variant={periodFilter === "day" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setPeriodFilter("day")}
+                className="text-xs md:text-sm px-2 md:px-3"
+              >
+                Dia
+              </Button>
+              <Button
+                variant={periodFilter === "week" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setPeriodFilter("week")}
+                className="text-xs md:text-sm px-2 md:px-3"
+              >
+                Semana
+              </Button>
+              <Button
+                variant={periodFilter === "month" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setPeriodFilter("month")}
+                className="text-xs md:text-sm px-2 md:px-3"
+              >
+                Mês
+              </Button>
+            </div>
+
             {/* Add New Expense Button */}
             <Button
               onClick={() => {
                 setExpenseToEdit(null);
                 setIsFormOpen(true);
               }}
-              className="flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Adicionar Nova Despesa
-            </Button>
-
-            {/* Period Selector */}
-            <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
-            <Button
-              variant={periodFilter === "day" ? "default" : "ghost"}
               size="sm"
-              onClick={() => setPeriodFilter("day")}
+              className="flex items-center gap-1 md:gap-2 text-xs md:text-sm"
             >
-              Dia
+              <Plus className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Adicionar Nova Despesa</span>
+              <span className="sm:hidden">Nova</span>
             </Button>
-            <Button
-              variant={periodFilter === "week" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setPeriodFilter("week")}
-            >
-              Semana
-            </Button>
-            <Button
-              variant={periodFilter === "month" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setPeriodFilter("month")}
-            >
-              Mês
-            </Button>
-            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="p-6">
+      <main className="p-3 md:p-6">
         {isLoading ? (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="space-y-4 md:space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
               {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-[116px] w-full" />
+                <Skeleton key={i} className="h-[100px] md:h-[116px] w-full" />
               ))}
             </div>
-            <Skeleton className="h-[400px] w-full" />
+            <Skeleton className="h-[300px] md:h-[400px] w-full" />
           </div>
         ) : (
           <ExpensesSection 

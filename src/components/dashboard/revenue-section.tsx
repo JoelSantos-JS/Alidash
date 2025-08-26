@@ -142,9 +142,9 @@ export function RevenueSection({ products, periodFilter, revenues = [] }: Revenu
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
@@ -222,40 +222,49 @@ export function RevenueSection({ products, periodFilter, revenues = [] }: Revenu
         </CardHeader>
         <CardContent>
           {revenueData.revenues.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {revenueData.revenues.map((revenue) => (
-                  <TableRow key={revenue.id}>
-                    <TableCell>
-                      {format(revenue.date, 'dd/MM/yyyy', { locale: ptBR })}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {revenue.description}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{revenue.category}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="default">
-                        Venda
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-medium text-green-600">
-                      +{revenue.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs md:text-sm">Data</TableHead>
+                    <TableHead className="text-xs md:text-sm">Descrição</TableHead>
+                    <TableHead className="hidden sm:table-cell text-xs md:text-sm">Categoria</TableHead>
+                    <TableHead className="hidden md:table-cell text-xs md:text-sm">Tipo</TableHead>
+                    <TableHead className="text-right text-xs md:text-sm">Valor</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {revenueData.revenues.map((revenue) => (
+                    <TableRow key={revenue.id}>
+                      <TableCell className="text-xs md:text-sm">
+                        <div className="md:hidden">{format(revenue.date, 'dd/MM', { locale: ptBR })}</div>
+                        <div className="hidden md:block">{format(revenue.date, 'dd/MM/yyyy', { locale: ptBR })}</div>
+                      </TableCell>
+                      <TableCell className="font-medium text-xs md:text-sm">
+                        <div className="max-w-[120px] md:max-w-none truncate">
+                          {revenue.description}
+                        </div>
+                        <div className="sm:hidden text-xs text-muted-foreground mt-1">
+                          <Badge variant="outline" className="text-xs">{revenue.category}</Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <Badge variant="outline" className="text-xs">{revenue.category}</Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Badge variant="default" className="text-xs">
+                          Venda
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-green-600 text-xs md:text-sm">
+                        <div className="md:hidden">+{revenue.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace('R$', 'R$')}</div>
+                        <div className="hidden md:block">+{revenue.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
             <div className="text-center py-12">
               <DollarSign className="mx-auto h-12 w-12 text-muted-foreground mb-4" />

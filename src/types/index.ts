@@ -183,3 +183,50 @@ export interface DebtPayment {
   paymentMethod: 'pix' | 'credit_card' | 'debit_card' | 'bank_transfer' | 'cash';
   notes?: string;
 }
+
+export interface Goal {
+  id: string;
+  name: string;
+  description?: string;
+  category: 'financial' | 'business' | 'personal' | 'health' | 'education' | 'other';
+  type: 'savings' | 'revenue' | 'profit' | 'roi' | 'quantity' | 'percentage' | 'custom';
+  targetValue: number;
+  currentValue: number;
+  unit: 'BRL' | 'USD' | 'percentage' | 'quantity' | 'days' | 'custom';
+  deadline: Date;
+  createdDate: Date;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  status: 'active' | 'paused' | 'completed' | 'cancelled' | 'overdue';
+  milestones?: GoalMilestone[];
+  reminders?: GoalReminder[];
+  notes?: string;
+  tags?: string[];
+  linkedEntities?: {
+    products?: string[]; // IDs de produtos relacionados
+    dreams?: string[]; // IDs de sonhos relacionados
+    transactions?: string[]; // IDs de transações relacionadas
+  };
+}
+
+export interface GoalMilestone {
+  id: string;
+  goalId: string;
+  name: string;
+  targetValue: number;
+  targetDate: Date;
+  isCompleted: boolean;
+  completedDate?: Date;
+  reward?: string;
+  notes?: string;
+}
+
+export interface GoalReminder {
+  id: string;
+  goalId: string;
+  type: 'daily' | 'weekly' | 'monthly' | 'custom';
+  frequency: number; // Para custom: dias entre lembretes
+  message: string;
+  isActive: boolean;
+  lastSent?: Date;
+  nextSend: Date;
+}

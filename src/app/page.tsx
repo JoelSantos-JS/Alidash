@@ -802,29 +802,7 @@ export default function Home() {
         />
       )}
       
-      {/* Floating Account Type Toggle for Mobile */}
-      <div className="fixed bottom-4 left-4 z-50 md:hidden">
-        <div className="relative">
-          <Button
-            variant="default"
-            size="lg"
-            className="rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 bg-gradient-to-r from-purple-500 to-blue-600 text-white border-2 border-white/20 no-pulse"
-            onClick={() => handleAccountTypeChange(memoizedAccountType === 'personal' ? 'business' : 'personal')}
-          >
-            {memoizedAccountType === 'personal' ? (
-              <>
-                <User className="h-5 w-5 mr-2" />
-                <span className="text-sm font-semibold">Pessoal</span>
-              </>
-            ) : (
-              <>
-                <Building className="h-5 w-5 mr-2" />
-                <span className="text-sm font-semibold">Empresarial</span>
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
+
       {/* Sidebar */}
       <div className={cn(
         "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r transform transition-transform duration-200 ease-in-out shadow-lg md:shadow-none",
@@ -900,7 +878,12 @@ export default function Home() {
               <span className="text-sm sm:text-base">Dívidas</span>
             </Button>
             
-            <Button variant="ghost" className="w-full justify-start gap-2 sm:gap-3" size="lg">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start gap-2 sm:gap-3" 
+              size="lg"
+              onClick={() => router.push('/categorias')}
+            >
               <Tag className="h-4 w-4" />
               <span className="text-sm sm:text-base">Categorias</span>
             </Button>
@@ -915,7 +898,12 @@ export default function Home() {
               <span className="text-sm sm:text-base">Relatórios</span>
             </Button>
             
-            <Button variant="ghost" className="w-full justify-start gap-2 sm:gap-3" size="lg">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start gap-2 sm:gap-3" 
+              size="lg"
+              onClick={() => router.push('/metas')}
+            >
               <TargetIcon className="h-4 w-4" />
               <span className="text-sm sm:text-base">Metas</span>
             </Button>
@@ -958,7 +946,7 @@ export default function Home() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="md:hidden flex-shrink-0"
+                className="md:hidden flex-shrink-0 h-9 w-9 p-0"
                 onClick={() => setSidebarOpen(true)}
               >
                 <Menu className="h-4 w-4" />
@@ -966,11 +954,11 @@ export default function Home() {
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <h1 className="text-lg sm:text-xl md:text-2xl font-bold truncate">
+                  <h1 className="text-base sm:text-xl md:text-2xl font-bold truncate">
                     Dashboard {memoizedAccountType === 'personal' ? 'Pessoal' : 'Empresarial'}
                   </h1>
                   <div className={cn(
-                    "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium flex-shrink-0",
+                    "hidden sm:flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium flex-shrink-0",
                     memoizedAccountType === 'personal' 
                       ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
                       : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
@@ -991,7 +979,7 @@ export default function Home() {
                 <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
                   <span className="truncate">Visão geral das suas finanças {memoizedAccountType === 'personal' ? 'pessoal' : 'empresarial'}</span>
                   {products.length > 0 && products !== initialProducts && (
-                    <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex-shrink-0">
+                    <span className="hidden sm:inline-flex items-center gap-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex-shrink-0">
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                       Dados Reais
                     </span>
@@ -1001,11 +989,13 @@ export default function Home() {
             </div>
 
             <div className="flex items-center gap-1 sm:gap-2 md:gap-4 flex-shrink-0">
-              {/* Account Type Toggle - Always visible */}
-              <AccountTypeToggle 
-                value={memoizedAccountType} 
-                onValueChange={handleAccountTypeChange}
-              />
+              {/* Account Type Toggle - Hidden on mobile, shown in header */}
+              <div className="hidden sm:block">
+                <AccountTypeToggle 
+                  value={memoizedAccountType} 
+                  onValueChange={handleAccountTypeChange}
+                />
+              </div>
 
               {/* Period Selector - Compact on mobile */}
               <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
@@ -1833,14 +1823,29 @@ export default function Home() {
           )}
         </main>
         
-        {/* Floating Action Button for Mobile */}
+        {/* Floating Account Type Toggle for Mobile */}
         <div className="fixed bottom-4 right-4 z-30 md:hidden">
           <Button
             size="lg"
-            className="h-14 w-14 rounded-full shadow-lg"
-            onClick={() => setSidebarOpen(true)}
+            className={cn(
+              "h-14 w-14 rounded-full shadow-xl border-2 border-white/20 transition-all duration-300 hover:scale-110 active:scale-95 relative overflow-hidden",
+              memoizedAccountType === 'personal'
+                ? "bg-gradient-to-r from-purple-500 via-purple-600 to-blue-600 shadow-purple-500/25"
+                : "bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 shadow-blue-500/25"
+            )}
+            onClick={() => handleAccountTypeChange(memoizedAccountType === 'personal' ? 'business' : 'personal')}
           >
-            <Menu className="h-6 w-6" />
+            {/* Glow effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-full" />
+            
+            {/* Icon */}
+            <div className="relative z-10 text-white">
+              {memoizedAccountType === 'personal' ? (
+                <User className="h-6 w-6" />
+              ) : (
+                <Building className="h-6 w-6" />
+              )}
+            </div>
           </Button>
         </div>
       </div>

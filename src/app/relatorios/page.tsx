@@ -29,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 // Componentes de relatórios
 import { ProfitabilityAnalysisChart } from "@/components/reports/profitability-analysis-chart";
@@ -39,6 +40,7 @@ import { InventoryStatusChart } from "@/components/reports/inventory-status-char
 import { SupplierPerformanceChart } from "@/components/reports/supplier-performance-chart";
 import { SalesTrendsChart } from "@/components/reports/sales-trends-chart";
 import { ProfitMarginAnalysisChart } from "@/components/reports/profit-margin-analysis-chart";
+import { ReportsSidebar } from "@/components/reports/reports-sidebar";
 
 // Dados iniciais (mesmos da página principal)
 const initialProducts: Product[] = [
@@ -147,6 +149,7 @@ export default function ReportsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [periodFilter, setPeriodFilter] = useState<"week" | "month" | "quarter" | "year">("month");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Carregar dados dos produtos
   useEffect(() => {
@@ -274,13 +277,79 @@ export default function ReportsPage() {
     }
   }, [periodFilter]);
 
+  // Handler functions for sidebar
+  const handleExport = () => {
+    toast({
+      title: "Exportação Iniciada",
+      description: "Seu relatório está sendo gerado. Aguarde alguns segundos.",
+    });
+    // Add actual export logic here
+  };
+
+  const handleRefresh = async () => {
+    setIsLoading(true);
+    try {
+      // Simulate refresh delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Here you could re-fetch data
+      toast({
+        title: "Dados Atualizados",
+        description: "Os relatórios foram atualizados com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: "Erro na Atualização",
+        description: "Não foi possível atualizar os dados.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex">
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={cn(
+        "fixed inset-y-0 left-0 z-50 transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <ReportsSidebar
+          data={filteredProducts}
+          periodFilter={periodFilter}
+          categoryFilter={categoryFilter}
+          onPeriodFilterChange={setPeriodFilter}
+          onCategoryFilterChange={setCategoryFilter}
+          onExport={handleExport}
+          onRefresh={handleRefresh}
+          isLoading={isLoading}
+        />
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 min-w-0">
       {/* Header */}
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="lg:hidden"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+              >
+                <BarChart3 className="h-4 w-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -302,7 +371,7 @@ export default function ReportsPage() {
             </div>
             
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-2">
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleExport}>
                 <Download className="h-4 w-4" />
                 Exportar
               </Button>
@@ -311,49 +380,6 @@ export default function ReportsPage() {
                 Produtos: {reportStats.totalProducts}
               </Badge>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filtros */}
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="flex flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              <Select value={periodFilter} onValueChange={(value: any) => setPeriodFilter(value)}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Período" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="week">Última Semana</SelectItem>
-                  <SelectItem value="month">Último Mês</SelectItem>
-                  <SelectItem value="quarter">Último Trimestre</SelectItem>
-                  <SelectItem value="year">Último Ano</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4" />
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {categories.map(category => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="text-sm text-muted-foreground">
-            Período: {periodLabel} • Última atualização: {format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
           </div>
         </div>
       </div>
@@ -466,6 +492,7 @@ export default function ReportsPage() {
             </div>
           </TabsContent>
         </Tabs>
+      </div>
       </div>
     </div>
   );

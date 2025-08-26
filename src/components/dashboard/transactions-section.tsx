@@ -245,9 +245,9 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Saldo Líquido</CardTitle>
@@ -321,60 +321,65 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar transações..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+          <div className="flex flex-col gap-3 md:gap-4 mb-4 md:mb-6">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar transações..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 md:pl-10 text-xs md:text-sm h-8 md:h-10"
+                  />
+                </div>
               </div>
+              <Button
+                variant="outline"
+                onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                className="flex items-center gap-1 md:gap-2 text-xs md:text-sm h-8 md:h-10 px-2 md:px-4"
+              >
+                <Filter className="h-3 w-3 md:h-4 md:w-4" />
+                <span className="hidden sm:inline">{sortOrder === 'desc' ? 'Mais recente' : 'Mais antigo'}</span>
+                <span className="sm:hidden">{sortOrder === 'desc' ? 'Recente' : 'Antigo'}</span>
+              </Button>
             </div>
-            <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os tipos</SelectItem>
-                <SelectItem value="income">Receitas</SelectItem>
-                <SelectItem value="expense">Despesas</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterCategory} onValueChange={setFilterCategory}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas categorias</SelectItem>
-                {transactionsData.categories.map(category => (
-                  <SelectItem key={category} value={category}>{category}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-              className="flex items-center gap-2"
-            >
-              <Filter className="h-4 w-4" />
-              {sortOrder === 'desc' ? 'Mais recente' : 'Mais antigo'}
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
+              <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
+                <SelectTrigger className="w-full sm:w-[140px] md:w-[180px] text-xs md:text-sm h-8 md:h-10">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os tipos</SelectItem>
+                  <SelectItem value="income">Receitas</SelectItem>
+                  <SelectItem value="expense">Despesas</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterCategory} onValueChange={setFilterCategory}>
+                <SelectTrigger className="w-full sm:w-[140px] md:w-[180px] text-xs md:text-sm h-8 md:h-10">
+                  <SelectValue placeholder="Categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas categorias</SelectItem>
+                  {transactionsData.categories.map(category => (
+                    <SelectItem key={category} value={category}>{category}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {filteredTransactions.length > 0 ? (
-            <div className="border rounded-lg">
+            <div className="border rounded-lg overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                    <TableHead className="text-right">Saldo</TableHead>
+                    <TableHead className="text-xs md:text-sm">Data</TableHead>
+                    <TableHead className="text-xs md:text-sm">Descrição</TableHead>
+                    <TableHead className="hidden sm:table-cell text-xs md:text-sm">Categoria</TableHead>
+                    <TableHead className="hidden md:table-cell text-xs md:text-sm">Tipo</TableHead>
+                    <TableHead className="text-right text-xs md:text-sm">Valor</TableHead>
+                    <TableHead className="hidden lg:table-cell text-right text-xs md:text-sm">Saldo</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -382,33 +387,49 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
                     const IconComponent = getTransactionIcon(transaction.source);
                     return (
                       <TableRow key={transaction.id}>
-                        <TableCell>
-                          {format(transaction.date, 'dd/MM/yyyy', { locale: ptBR })}
+                        <TableCell className="text-xs md:text-sm">
+                          <div className="md:hidden">{format(transaction.date, 'dd/MM', { locale: ptBR })}</div>
+                          <div className="hidden md:block">{format(transaction.date, 'dd/MM/yyyy', { locale: ptBR })}</div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <IconComponent className="h-4 w-4" />
+                        <TableCell className="text-xs md:text-sm">
+                          <div className="flex items-center gap-1 md:gap-2">
+                            <IconComponent className="h-3 w-3 md:h-4 md:w-4" />
                             <div>
-                              <div className="font-medium">{transaction.description}</div>
+                              <div className="font-medium max-w-[120px] md:max-w-none truncate">{transaction.description}</div>
                               <div className="text-xs text-muted-foreground">
                                 {transaction.subcategory}
+                              </div>
+                              <div className="sm:hidden flex gap-1 mt-1">
+                                <Badge variant="outline" className="text-xs">{transaction.category}</Badge>
+                                <Badge variant={transaction.type === 'income' ? 'default' : 'destructive'} className="text-xs">
+                                  {transaction.type === 'income' ? 'R' : 'D'}
+                                </Badge>
                               </div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{transaction.category}</Badge>
+                        <TableCell className="hidden sm:table-cell">
+                          <Badge variant="outline" className="text-xs">{transaction.category}</Badge>
                         </TableCell>
-                        <TableCell>
-                          <Badge variant={transaction.type === 'income' ? 'default' : 'destructive'}>
+                        <TableCell className="hidden md:table-cell">
+                          <Badge variant={transaction.type === 'income' ? 'default' : 'destructive'} className="text-xs">
                             {transaction.type === 'income' ? 'Receita' : 'Despesa'}
                           </Badge>
                         </TableCell>
-                        <TableCell className={`text-right font-medium ${getTransactionColor(transaction.type)}`}>
-                          {transaction.type === 'income' ? '+' : '-'}
-                          {transaction.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        <TableCell className={`text-right font-medium text-xs md:text-sm ${getTransactionColor(transaction.type)}`}>
+                          <div className="md:hidden">
+                            {transaction.type === 'income' ? '+' : '-'}
+                            {transaction.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace('R$', 'R$')}
+                          </div>
+                          <div className="hidden md:block">
+                            {transaction.type === 'income' ? '+' : '-'}
+                            {transaction.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </div>
+                          <div className="lg:hidden text-xs text-muted-foreground mt-1">
+                            Saldo: {(transaction.balance || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace('R$', 'R$')}
+                          </div>
                         </TableCell>
-                        <TableCell className={`text-right font-medium ${getBalanceColor(transaction.balance || 0)}`}>
+                        <TableCell className={`hidden lg:table-cell text-right font-medium text-xs md:text-sm ${getBalanceColor(transaction.balance || 0)}`}>
                           {(transaction.balance || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </TableCell>
                       </TableRow>

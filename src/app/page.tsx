@@ -91,6 +91,7 @@ import { RevenueSection } from "@/components/dashboard/revenue-section";
 import { ExpensesSection } from "@/components/dashboard/expenses-section";
 import { TransactionsSection } from "@/components/dashboard/transactions-section";
 import Link from "next/link";
+import { notifyProductCreated, notifyProductSold } from '@/lib/n8n-events';
 
 interface ExtendedSale extends Sale {
   productName?: string;

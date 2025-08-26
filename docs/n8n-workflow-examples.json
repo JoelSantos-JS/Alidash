@@ -1,0 +1,459 @@
+{
+  "workflows": [
+    {
+      "name": "Alidash - Sync Products from AliExpress",
+      "description": "Automaticamente importa produtos do AliExpress para o Alidash",
+      "nodes": [
+        {
+          "id": "webhook-trigger",
+          "type": "n8n-nodes-base.webhook",
+          "name": "Webhook Trigger",
+          "parameters": {
+            "path": "alidash-product-import",
+            "httpMethod": "POST"
+          },
+          "position": [240, 300]
+        },
+        {
+          "id": "aliexpress-scraper",
+          "type": "n8n-nodes-base.httpRequest",
+          "name": "Get AliExpress Product",
+          "parameters": {
+            "url": "={{ $json.aliexpressUrl }}",
+            "method": "GET",
+            "headers": {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+          },
+          "position": [460, 300]
+        },
+        {
+          "id": "extract-product-data",
+          "type": "n8n-nodes-base.code",
+          "name": "Extract Product Data",
+          "parameters": {
+            "jsCode": "// Extract product information from AliExpress HTML\nconst cheerio = require('cheerio');\nconst $ = cheerio.load($input.first().json.body);\n\n// Extract product details\nconst productData = {\n  name: $('.product-title-text').text().trim(),\n  price: parseFloat($('.product-price-current').text().replace(/[^0-9.]/g, '')),\n  images: [],\n  description: $('.product-description').text().trim(),\n  shipping: $('.shipping-info').text().trim(),\n  rating: parseFloat($('.rating-value').text()) || 0,\n  reviews: parseInt($('.review-count').text().replace(/[^0-9]/g, '')) || 0\n};\n\n// Extract images\n$('.product-image img').each((i, el) => {\n  const src = $(el).attr('src');\n  if (src) productData.images.push(src);\n});\n\nreturn [{ json: productData }];"
+          },
+          "position": [680, 300]
+        },
+        {
+          "id": "calculate-costs",
+          "type": "n8n-nodes-base.code",
+          "name": "Calculate Costs",
+          "parameters": {
+            "jsCode": "const productData = $input.first().json;\nconst webhookData = $('webhook-trigger').first().json;\n\n// Calculate costs based on user preferences\nconst purchasePrice = productData.price;\nconst shippingCost = purchasePrice * 0.15; // 15% shipping\nconst importTaxes = purchasePrice * 0.12; // 12% import taxes\nconst packagingCost = 5; // Fixed packaging cost\nconst marketingCost = purchasePrice * 0.05; // 5% marketing\nconst otherCosts = 10; // Fixed other costs\n\nconst totalCost = purchasePrice + shippingCost + importTaxes + packagingCost + marketingCost + otherCosts;\nconst suggestedPrice = totalCost * (1 + (webhookData.targetMargin || 0.4)); // 40% margin\nconst expectedProfit = suggestedPrice - totalCost;\nconst profitMargin = (expectedProfit / suggestedPrice) * 100;\n\nconst calculatedProduct = {\n  ...productData,\n  id: `prod_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,\n  category: webhookData.category || 'Importados',\n  supplier: 'AliExpress',\n  aliexpressLink: webhookData.aliexpressUrl,\n  imageUrl: productData.images[0] || '',\n  purchasePrice,\n  shippingCost,\n  importTaxes,\n  packagingCost,\n  marketingCost,\n  otherCosts,\n  totalCost,\n  sellingPrice: suggestedPrice,\n  expectedProfit,\n  profitMargin,\n  sales: [],\n  quantity: webhookData.quantity || 1,\n  quantitySold: 0,\n  status: 'purchased',\n  purchaseDate: new Date().toISOString(),\n  roi: 0,\n  actualProfit: 0\n};\n\nreturn [{ json: calculatedProduct }];"
+          },
+          "position": [900, 300]
+        },
+        {
+          "id": "send-to-alidash",
+          "type": "n8n-nodes-base.httpRequest",
+          "name": "Send to Alidash",
+          "parameters": {
+            "url": "https://your-alidash-domain.com/api/n8n/products",
+            "method": "POST",
+            "headers": {
+              "Content-Type": "application/json",
+              "x-api-key": "={{ $('webhook-trigger').first().json.apiKey }}"
+            },
+            "body": {
+              "action": "create",
+              "data": "={{ $json }}"
+            }
+          },
+          "position": [1120, 300]
+        },
+        {
+          "id": "notify-success",
+          "type": "n8n-nodes-base.telegram",
+          "name": "Notify Success",
+          "parameters": {
+            "chatId": "YOUR_TELEGRAM_CHAT_ID",
+            "text": "✅ Produto importado com sucesso!\n\n📦 **{{ $('calculate-costs').first().json.name }}**\n💰 Preço de compra: R$ {{ $('calculate-costs').first().json.purchasePrice.toFixed(2) }}\n🏷️ Preço sugerido: R$ {{ $('calculate-costs').first().json.sellingPrice.toFixed(2) }}\n📈 Margem: {{ $('calculate-costs').first().json.profitMargin.toFixed(1) }}%\n🔗 [Ver no Alidash](https://your-alidash-domain.com/produtos)"
+          },
+          "position": [1340, 300]
+        }
+      ],
+      "connections": {
+        "webhook-trigger": {
+          "main": [[{"node": "aliexpress-scraper", "type": "main", "index": 0}]]
+        },
+        "aliexpress-scraper": {
+          "main": [[{"node": "extract-product-data", "type": "main", "index": 0}]]
+        },
+        "extract-product-data": {
+          "main": [[{"node": "calculate-costs", "type": "main", "index": 0}]]
+        },
+        "calculate-costs": {
+          "main": [[{"node": "send-to-alidash", "type": "main", "index": 0}]]
+        },
+        "send-to-alidash": {
+          "main": [[{"node": "notify-success", "type": "main", "index": 0}]]
+        }
+      }
+    },
+    {
+      "name": "Alidash - Goal Progress Monitor",
+      "description": "Monitora o progresso das metas e envia alertas",
+      "nodes": [
+        {
+          "id": "schedule-trigger",
+          "type": "n8n-nodes-base.cron",
+          "name": "Daily Check",
+          "parameters": {
+            "rule": {
+              "hour": 9,
+              "minute": 0
+            }
+          },
+          "position": [240, 300]
+        },
+        {
+          "id": "get-goals",
+          "type": "n8n-nodes-base.httpRequest",
+          "name": "Get Goals from Alidash",
+          "parameters": {
+            "url": "https://your-alidash-domain.com/api/n8n/analytics",
+            "method": "GET",
+            "headers": {
+              "x-api-key": "YOUR_ALIDASH_API_KEY"
+            },
+            "qs": {
+              "startDate": "={{ new Date(Date.now() - 30*24*60*60*1000).toISOString() }}",
+              "endDate": "={{ new Date().toISOString() }}",
+              "insights": "true"
+            }
+          },
+          "position": [460, 300]
+        },
+        {
+          "id": "analyze-goals",
+          "type": "n8n-nodes-base.code",
+          "name": "Analyze Goal Progress",
+          "parameters": {
+            "jsCode": "const analytics = $input.first().json.analytics;\nconst goals = analytics.goals;\n\nconst alerts = [];\n\n// Check completion rate\nif (goals.completionRate < 50) {\n  alerts.push({\n    type: 'warning',\n    message: `Taxa de conclusão baixa: ${goals.completionRate.toFixed(1)}%`,\n    suggestion: 'Considere revisar suas metas ou ajustar os prazos'\n  });\n}\n\n// Check overdue goals\nif (goals.overdue > 0) {\n  alerts.push({\n    type: 'urgent',\n    message: `${goals.overdue} meta(s) em atraso`,\n    suggestion: 'Priorize as metas em atraso ou redefina os prazos'\n  });\n}\n\n// Check insights\nif (analytics.insights.recommendations.length > 0) {\n  analytics.insights.recommendations.forEach(rec => {\n    alerts.push({\n      type: 'info',\n      message: 'Recomendação',\n      suggestion: rec\n    });\n  });\n}\n\nreturn [{ json: { analytics, alerts } }];"
+          },
+          "position": [680, 300]
+        },
+        {
+          "id": "send-report",
+          "type": "n8n-nodes-base.emailSend",
+          "name": "Send Daily Report",
+          "parameters": {
+            "fromEmail": "noreply@your-domain.com",
+            "toEmail": "your-email@domain.com",
+            "subject": "📊 Relatório Diário de Metas - Alidash",
+            "html": "<h2>Relatório Diário de Metas</h2>\n<h3>Resumo</h3>\n<ul>\n<li><strong>Total de metas:</strong> {{ $json.analytics.goals.total }}</li>\n<li><strong>Concluídas:</strong> {{ $json.analytics.goals.completed }}</li>\n<li><strong>Em progresso:</strong> {{ $json.analytics.goals.inProgress }}</li>\n<li><strong>Em atraso:</strong> {{ $json.analytics.goals.overdue }}</li>\n<li><strong>Taxa de conclusão:</strong> {{ $json.analytics.goals.completionRate.toFixed(1) }}%</li>\n</ul>\n\n<h3>Alertas</h3>\n{{ $json.alerts.map(alert => `<div style='padding: 10px; margin: 5px 0; border-left: 4px solid ${alert.type === 'urgent' ? '#ef4444' : alert.type === 'warning' ? '#f59e0b' : '#3b82f6'};'>\n<strong>${alert.message}</strong><br>\n<em>${alert.suggestion}</em>\n</div>`).join('') }}\n\n<p><a href='https://your-alidash-domain.com/metas'>Ver todas as metas</a></p>"
+          },
+          "position": [900, 300]
+        }
+      ],
+      "connections": {
+        "schedule-trigger": {
+          "main": [[{"node": "get-goals", "type": "main", "index": 0}]]
+        },
+        "get-goals": {
+          "main": [[{"node": "analyze-goals", "type": "main", "index": 0}]]
+        },
+        "analyze-goals": {
+          "main": [[{"node": "send-report", "type": "main", "index": 0}]]
+        }
+      }
+    },
+    {
+      "name": "Alidash - Product Sale Notification",
+      "description": "Recebe notificações de vendas e envia para múltiplos canais",
+      "nodes": [
+        {
+          "id": "webhook-sale",
+          "type": "n8n-nodes-base.webhook",
+          "name": "Sale Webhook",
+          "parameters": {
+            "path": "alidash-sale-notification",
+            "httpMethod": "POST"
+          },
+          "position": [240, 300]
+        },
+        {
+          "id": "validate-sale",
+          "type": "n8n-nodes-base.code",
+          "name": "Validate Sale Data",
+          "parameters": {
+            "jsCode": "const saleData = $input.first().json;\n\n// Validate required fields\nif (!saleData.eventType || saleData.eventType !== 'product.sold') {\n  throw new Error('Invalid event type');\n}\n\nif (!saleData.data || !saleData.data.product || !saleData.data.sale) {\n  throw new Error('Missing sale data');\n}\n\nconst { product, sale } = saleData.data;\n\n// Calculate metrics\nconst revenue = sale.revenue;\nconst profit = sale.profit;\nconst profitMargin = revenue > 0 ? (profit / revenue) * 100 : 0;\n\nreturn [{\n  json: {\n    ...saleData,\n    metrics: {\n      revenue,\n      profit,\n      profitMargin\n    }\n  }\n}];"
+          },
+          "position": [460, 300]
+        },
+        {
+          "id": "format-message",
+          "type": "n8n-nodes-base.code",
+          "name": "Format Messages",
+          "parameters": {
+            "jsCode": "const data = $input.first().json;\nconst { product, sale } = data.data;\nconst { revenue, profit, profitMargin } = data.metrics;\n\n// Format for different channels\nconst messages = {\n  telegram: `🎉 **VENDA REALIZADA!**\n\n📦 Produto: ${product.name}\n👤 Comprador: ${sale.buyerName}\n📊 Quantidade: ${sale.quantity}\n💰 Receita: R$ ${revenue.toFixed(2)}\n💵 Lucro: R$ ${profit.toFixed(2)}\n📈 Margem: ${profitMargin.toFixed(1)}%\n📅 Data: ${new Date(sale.date).toLocaleDateString('pt-BR')}`,\n  \n  email: {\n    subject: `🎉 Nova venda: ${product.name}`,\n    html: `\n      <h2>Nova Venda Realizada!</h2>\n      <div style='background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0;'>\n        <h3>${product.name}</h3>\n        <p><strong>Comprador:</strong> ${sale.buyerName}</p>\n        <p><strong>Quantidade:</strong> ${sale.quantity}</p>\n        <p><strong>Receita:</strong> R$ ${revenue.toFixed(2)}</p>\n        <p><strong>Lucro:</strong> R$ ${profit.toFixed(2)}</p>\n        <p><strong>Margem:</strong> ${profitMargin.toFixed(1)}%</p>\n        <p><strong>Data:</strong> ${new Date(sale.date).toLocaleDateString('pt-BR')}</p>\n      </div>\n      <p><a href='https://your-alidash-domain.com/produtos/${product.id}'>Ver produto no Alidash</a></p>\n    `\n  },\n  \n  slack: {\n    text: `🎉 Nova venda realizada!`,\n    blocks: [\n      {\n        type: 'section',\n        text: {\n          type: 'mrkdwn',\n          text: `*${product.name}* foi vendido para *${sale.buyerName}*`\n        }\n      },\n      {\n        type: 'section',\n        fields: [\n          { type: 'mrkdwn', text: `*Receita:*\\nR$ ${revenue.toFixed(2)}` },\n          { type: 'mrkdwn', text: `*Lucro:*\\nR$ ${profit.toFixed(2)}` },\n          { type: 'mrkdwn', text: `*Margem:*\\n${profitMargin.toFixed(1)}%` },\n          { type: 'mrkdwn', text: `*Quantidade:*\\n${sale.quantity}` }\n        ]\n      }\n    ]\n  }\n};\n\nreturn [{ json: { ...data, messages } }];"
+          },
+          "position": [680, 300]
+        },
+        {
+          "id": "send-telegram",
+          "type": "n8n-nodes-base.telegram",
+          "name": "Send to Telegram",
+          "parameters": {
+            "chatId": "YOUR_TELEGRAM_CHAT_ID",
+            "text": "={{ $json.messages.telegram }}",
+            "parseMode": "Markdown"
+          },
+          "position": [900, 200]
+        },
+        {
+          "id": "send-email",
+          "type": "n8n-nodes-base.emailSend",
+          "name": "Send Email",
+          "parameters": {
+            "fromEmail": "vendas@your-domain.com",
+            "toEmail": "your-email@domain.com",
+            "subject": "={{ $json.messages.email.subject }}",
+            "html": "={{ $json.messages.email.html }}"
+          },
+          "position": [900, 300]
+        },
+        {
+          "id": "send-slack",
+          "type": "n8n-nodes-base.slack",
+          "name": "Send to Slack",
+          "parameters": {
+            "channel": "#vendas",
+            "text": "={{ $json.messages.slack.text }}",
+            "blocks": "={{ $json.messages.slack.blocks }}"
+          },
+          "position": [900, 400]
+        },
+        {
+          "id": "update-spreadsheet",
+          "type": "n8n-nodes-base.googleSheets",
+          "name": "Update Google Sheets",
+          "parameters": {
+            "operation": "append",
+            "sheetId": "YOUR_GOOGLE_SHEET_ID",
+            "range": "Vendas!A:H",
+            "values": [
+              [
+                "={{ new Date($json.data.sale.date).toLocaleDateString('pt-BR') }}",
+                "={{ $json.data.product.name }}",
+                "={{ $json.data.product.category }}",
+                "={{ $json.data.sale.buyerName }}",
+                "={{ $json.data.sale.quantity }}",
+                "={{ $json.metrics.revenue }}",
+                "={{ $json.metrics.profit }}",
+                "={{ $json.metrics.profitMargin }}"
+              ]
+            ]
+          },
+          "position": [1120, 300]
+        }
+      ],
+      "connections": {
+        "webhook-sale": {
+          "main": [[{"node": "validate-sale", "type": "main", "index": 0}]]
+        },
+        "validate-sale": {
+          "main": [[{"node": "format-message", "type": "main", "index": 0}]]
+        },
+        "format-message": {
+          "main": [
+            [
+              {"node": "send-telegram", "type": "main", "index": 0},
+              {"node": "send-email", "type": "main", "index": 0},
+              {"node": "send-slack", "type": "main", "index": 0},
+              {"node": "update-spreadsheet", "type": "main", "index": 0}
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "Alidash - Automated Backup",
+      "description": "Backup automático dos dados do Alidash",
+      "nodes": [
+        {
+          "id": "backup-schedule",
+          "type": "n8n-nodes-base.cron",
+          "name": "Daily Backup",
+          "parameters": {
+            "rule": {
+              "hour": 2,
+              "minute": 0
+            }
+          },
+          "position": [240, 300]
+        },
+        {
+          "id": "get-all-data",
+          "type": "n8n-nodes-base.httpRequest",
+          "name": "Get All Data",
+          "parameters": {
+            "url": "https://your-alidash-domain.com/api/n8n/analytics",
+            "method": "GET",
+            "headers": {
+              "x-api-key": "YOUR_ALIDASH_API_KEY"
+            },
+            "qs": {
+              "startDate": "2020-01-01",
+              "endDate": "={{ new Date().toISOString() }}",
+              "insights": "true"
+            }
+          },
+          "position": [460, 300]
+        },
+        {
+          "id": "format-backup",
+          "type": "n8n-nodes-base.code",
+          "name": "Format Backup",
+          "parameters": {
+            "jsCode": "const data = $input.first().json;\nconst timestamp = new Date().toISOString();\nconst filename = `alidash-backup-${timestamp.split('T')[0]}.json`;\n\nconst backup = {\n  timestamp,\n  version: '1.0',\n  source: 'alidash-n8n-backup',\n  data\n};\n\nreturn [{\n  json: backup,\n  binary: {\n    data: {\n      data: Buffer.from(JSON.stringify(backup, null, 2)),\n      mimeType: 'application/json',\n      fileName: filename\n    }\n  }\n}];"
+          },
+          "position": [680, 300]
+        },
+        {
+          "id": "save-to-drive",
+          "type": "n8n-nodes-base.googleDrive",
+          "name": "Save to Google Drive",
+          "parameters": {
+            "operation": "upload",
+            "folderId": "YOUR_GOOGLE_DRIVE_FOLDER_ID",
+            "name": "={{ $json.binary.data.fileName }}",
+            "binaryData": true,
+            "binaryPropertyName": "data"
+          },
+          "position": [900, 300]
+        },
+        {
+          "id": "notify-backup",
+          "type": "n8n-nodes-base.telegram",
+          "name": "Notify Backup Complete",
+          "parameters": {
+            "chatId": "YOUR_TELEGRAM_CHAT_ID",
+            "text": "✅ Backup do Alidash concluído!\n\n📅 Data: {{ new Date().toLocaleDateString('pt-BR') }}\n📊 Produtos: {{ $('get-all-data').first().json.analytics.products.total }}\n🎯 Metas: {{ $('get-all-data').first().json.analytics.goals.total }}\n💰 Transações: {{ $('get-all-data').first().json.analytics.transactions.transactionCount }}\n\n💾 Arquivo salvo no Google Drive"
+          },
+          "position": [1120, 300]
+        }
+      ],
+      "connections": {
+        "backup-schedule": {
+          "main": [[{"node": "get-all-data", "type": "main", "index": 0}]]
+        },
+        "get-all-data": {
+          "main": [[{"node": "format-backup", "type": "main", "index": 0}]]
+        },
+        "format-backup": {
+          "main": [[{"node": "save-to-drive", "type": "main", "index": 0}]]
+        },
+        "save-to-drive": {
+          "main": [[{"node": "notify-backup", "type": "main", "index": 0}]]
+        }
+      }
+    }
+  ],
+  "setup_instructions": {
+    "prerequisites": [
+      "Instância N8N configurada e rodando",
+      "API Key do Alidash gerada",
+      "Webhooks configurados no Alidash",
+      "Credenciais dos serviços externos (Telegram, Email, etc.)"
+    ],
+    "steps": [
+      {
+        "step": 1,
+        "title": "Configurar Credenciais",
+        "description": "Configure as credenciais necessárias no N8N",
+        "details": [
+          "Telegram Bot Token",
+          "Configurações de Email (SMTP)",
+          "Google Drive API",
+          "Slack Webhook URL",
+          "API Key do Alidash"
+        ]
+      },
+      {
+        "step": 2,
+        "title": "Importar Workflows",
+        "description": "Importe os workflows JSON no N8N",
+        "details": [
+          "Acesse N8N > Workflows > Import from JSON",
+          "Cole o JSON do workflow desejado",
+          "Configure os parâmetros específicos",
+          "Teste o workflow"
+        ]
+      },
+      {
+        "step": 3,
+        "title": "Configurar Webhooks",
+        "description": "Configure os webhooks no Alidash",
+        "details": [
+          "Acesse Alidash > Configurações > Integração N8N",
+          "Adicione a URL do webhook do N8N",
+          "Selecione os eventos desejados",
+          "Configure o secret para validação"
+        ]
+      },
+      {
+        "step": 4,
+        "title": "Testar Integração",
+        "description": "Teste a integração completa",
+        "details": [
+          "Execute um workflow manualmente",
+          "Verifique se os dados chegam corretamente",
+          "Teste os webhooks com eventos reais",
+          "Monitore os logs para erros"
+        ]
+      }
+    ]
+  },
+  "api_endpoints": {
+    "base_url": "https://your-alidash-domain.com/api/n8n",
+    "authentication": {
+      "type": "API Key",
+      "header": "x-api-key",
+      "description": "Inclua sua API key do Alidash no header x-api-key"
+    },
+    "endpoints": [
+      {
+        "path": "/products",
+        "methods": ["GET", "POST", "PUT"],
+        "description": "Gerenciar produtos",
+        "parameters": {
+          "GET": ["limit", "status", "category", "lastSync"],
+          "POST": ["action", "data"],
+          "PUT": ["products", "syncType"]
+        }
+      },
+      {
+        "path": "/analytics",
+        "methods": ["GET", "POST"],
+        "description": "Obter analytics e relatórios",
+        "parameters": {
+          "GET": ["startDate", "endDate", "insights"],
+          "POST": ["reportType", "filters", "metrics"]
+        }
+      },
+      {
+        "path": "/webhooks",
+        "methods": ["GET", "POST", "PUT"],
+        "description": "Gerenciar webhooks",
+        "parameters": {
+          "GET": ["action"],
+          "POST": ["eventType", "data"],
+          "PUT": ["url", "events", "secret", "headers"]
+        }
+      },
+      {
+        "path": "/auth",
+        "methods": ["GET", "POST", "DELETE"],
+        "description": "Gerenciar API keys",
+        "parameters": {
+          "GET": ["userId"],
+          "POST": ["userId", "permissions", "description", "expiresInDays"],
+          "DELETE": ["apiKey", "userId"]
+        }
+      }
+    ]
+  }
+}

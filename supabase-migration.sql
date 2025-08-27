@@ -279,6 +279,7 @@ CREATE TABLE IF NOT EXISTS revenues (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    time TIME, -- Hora no formato HH:MM
     description TEXT NOT NULL,
     amount DECIMAL(10,2) NOT NULL,
     category TEXT NOT NULL,
@@ -296,6 +297,7 @@ CREATE TABLE IF NOT EXISTS expenses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    time TIME, -- Hora no formato HH:MM
     description TEXT NOT NULL,
     amount DECIMAL(10,2) NOT NULL,
     category TEXT NOT NULL,

@@ -118,6 +118,7 @@ export interface BetAnalysis {
 export interface Revenue {
   id: string;
   date: Date;
+  time?: string; // Hora calculada automaticamente do timestamp
   description: string;
   amount: number;
   category: string;
@@ -129,6 +130,7 @@ export interface Revenue {
 export interface Expense {
   id: string;
   date: Date;
+  time?: string; // Hora calculada automaticamente do timestamp
   description: string;
   amount: number;
   category: string;

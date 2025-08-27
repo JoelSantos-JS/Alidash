@@ -8,7 +8,7 @@ import { ArrowLeft, ArrowUp, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useDualSync } from '@/lib/dual-database-sync';
-import { supabaseAdminService } from '@/lib/supabase-service';
+
 import { db } from "@/lib/firebase";
 import type { Product, Revenue } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -178,41 +178,50 @@ export default function ReceitasPage() {
         // Carregar receitas do Supabase
         let supabaseRevenues: Revenue[] = [];
         try {
-          console.log('🔄 Carregando receitas do Supabase...');
+          console.log('🔍 Tentando buscar receitas do Supabase...');
           
-          // Usar API endpoint para garantir que o usuário existe e carregar receitas
-          const response = await fetch(`/api/setup/database?userId=${user.uid}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              firebase_uid: user.uid,
-              email: user.email || '',
-              name: user.displayName,
-              avatar_url: user.photoURL
-            })
-          });
+          // Primeiro, buscar o usuário no Supabase usando API route
+          const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
           
-          if (response.ok) {
-            const result = await response.json();
-            console.log('✅ Setup do usuário no Supabase concluído:', result.user.id);
-            setSupabaseUserId(result.user.id);
+          if (userResponse.ok) {
+            const userResult = await userResponse.json();
+            const supabaseUser = userResult.user;
             
-            // Carregar receitas usando o ID do Supabase
-            try {
-              supabaseRevenues = await supabaseAdminService.getRevenues(result.user.id);
+            console.log('✅ Usuário encontrado no Supabase:', supabaseUser.id);
+            setSupabaseUserId(supabaseUser.id);
+            
+            // Agora buscar as receitas usando API route
+            const revenuesResponse = await fetch(`/api/revenues/get?user_id=${supabaseUser.id}`);
+            
+            if (revenuesResponse.ok) {
+              const revenuesResult = await revenuesResponse.json();
+              supabaseRevenues = revenuesResult.revenues.map((revenue: any) => {
+                console.log('🔄 Convertendo receita:', revenue);
+                const date = new Date(revenue.date);
+                const time = date.toTimeString().slice(0, 5);
+                console.log('🕐 Hora extraída:', time, 'de', revenue.date);
+                return {
+                  id: revenue.id,
+                  date: date,
+                  time: time, // Extrai HH:MM do timestamp
+                  description: revenue.description,
+                  amount: parseFloat(revenue.amount),
+                  category: revenue.category || 'Outros',
+                  source: revenue.source || 'other',
+                  notes: revenue.notes,
+                  productId: revenue.product_id
+                };
+              });
               console.log('📊 Receitas do Supabase:', supabaseRevenues.length);
-            } catch (revenueError) {
-              console.warn('⚠️ Erro ao carregar receitas, mas usuário foi configurado:', revenueError);
+            } else {
+              console.error('❌ Erro ao buscar receitas:', await revenuesResponse.text());
             }
           } else {
-            const errorData = await response.json();
-            console.warn('⚠️ Erro no setup do usuário:', errorData.error);
+            console.log('⚠️ Usuário não encontrado no Supabase, usando apenas Firebase');
           }
         } catch (error) {
-          console.error('❌ Erro ao configurar usuário no Supabase:', error);
-          console.error('Detalhes do erro:', JSON.stringify(error, null, 2));
+          console.error('❌ Erro ao buscar receitas do Supabase:', error);
+          console.log('📥 Continuando apenas com dados do Firebase');
         }
 
         // Combinar receitas do Firebase e Supabase (priorizando Supabase)
@@ -239,6 +248,23 @@ export default function ReceitasPage() {
           supabaseRevenues: supabaseRevenues.length,
           firebaseRevenues: firebaseRevenues.length
         });
+        
+        // Debug detalhado das receitas
+        console.log('🔍 Debug das receitas do Supabase:', supabaseRevenues);
+        console.log('🔍 Debug das receitas do Firebase:', firebaseRevenues);
+        console.log('🔍 Debug das receitas finais:', uniqueRevenues);
+        
+        // Debug detalhado de cada receita
+        uniqueRevenues.forEach((revenue, index) => {
+          console.log(`📊 Receita ${index + 1}:`, {
+            id: revenue.id,
+            description: revenue.description,
+            amount: revenue.amount,
+            category: revenue.category,
+            source: revenue.source,
+            date: revenue.date
+          });
+        });
 
       } catch (error) {
         console.error('❌ Erro ao carregar dados:', error);
@@ -251,29 +277,7 @@ export default function ReceitasPage() {
     fetchData();
   }, [user, authLoading]);
 
-  // Salvar receitas com sincronização dual
-  useEffect(() => {
-    if (isLoading || authLoading || !user) return;
 
-    const saveData = async () => {
-      try {
-        // Para arrays de receitas, ainda usamos Firebase como fallback
-        // mas implementamos sincronização individual para novas receitas
-        const docRef = doc(db, "user-data", user.uid);
-        await setDoc(docRef, { revenues }, { merge: true });
-        console.log('✅ Receitas salvas (Firebase + preparado para Supabase)');
-      } catch (error) {
-        console.error("Failed to save revenues", error);
-        toast({
-          variant: 'destructive',
-          title: "Erro ao Salvar Dados",
-          description: "Não foi possível salvar as receitas na nuvem.",
-        });
-      }
-    };
-    
-    saveData();
-  }, [revenues, isLoading, user, authLoading, toast]);
 
   const handleSaveRevenue = async (revenueData: Revenue) => {
     if (revenueToEdit) {

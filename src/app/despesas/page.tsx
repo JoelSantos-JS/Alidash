@@ -191,17 +191,21 @@ export default function DespesasPage() {
             
             if (expensesResponse.ok) {
               const expensesResult = await expensesResponse.json();
-              supabaseExpenses = expensesResult.expenses.map((expense: any) => ({
-                id: expense.id,
-                date: new Date(expense.date),
-                description: expense.description,
-                amount: expense.amount,
-                category: expense.category,
-                type: expense.type,
-                supplier: expense.supplier,
-                notes: expense.notes,
-                productId: expense.product_id
-              }));
+              supabaseExpenses = expensesResult.expenses.map((expense: any) => {
+                const date = new Date(expense.date);
+                return {
+                  id: expense.id,
+                  date: date,
+                  time: date.toTimeString().slice(0, 5), // Extrai HH:MM do timestamp
+                  description: expense.description,
+                  amount: expense.amount,
+                  category: expense.category,
+                  type: expense.type,
+                  supplier: expense.supplier,
+                  notes: expense.notes,
+                  productId: expense.product_id
+                };
+              });
               console.log('📊 Despesas do Supabase:', supabaseExpenses.length);
             } else {
               console.error('❌ Erro ao buscar despesas:', await expensesResponse.text());

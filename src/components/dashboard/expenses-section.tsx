@@ -18,6 +18,7 @@ interface ExpensesSectionProps {
 interface ExpenseItem {
   id: string;
   date: Date;
+  time?: string;
   description: string;
   amount: number;
   type: 'product_purchase' | 'operational';
@@ -317,8 +318,14 @@ export function ExpensesSection({ products, periodFilter, expenses = [] }: Expen
                     return (
                       <TableRow key={expense.id}>
                         <TableCell className="text-xs md:text-sm">
-                          <div className="md:hidden">{format(expense.date, 'dd/MM', { locale: ptBR })}</div>
-                          <div className="hidden md:block">{format(expense.date, 'dd/MM/yyyy', { locale: ptBR })}</div>
+                          <div className="md:hidden">
+                            {format(expense.date, 'dd/MM', { locale: ptBR })}
+                            {expense.time && <div className="text-xs text-muted-foreground">{expense.time}</div>}
+                          </div>
+                          <div className="hidden md:block">
+                            {format(expense.date, 'dd/MM/yyyy', { locale: ptBR })}
+                            {expense.time && <div className="text-xs text-muted-foreground">{expense.time}</div>}
+                          </div>
                         </TableCell>
                         <TableCell className="font-medium text-xs md:text-sm">
                           <div className="flex items-center gap-1 md:gap-2">

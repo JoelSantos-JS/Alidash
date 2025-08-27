@@ -833,9 +833,11 @@ export class SupabaseService {
   }
 
   private convertRevenueFromSupabase(data: any): Revenue {
+    const date = new Date(data.date);
     return {
       id: data.id,
-      date: new Date(data.date),
+      date: date,
+      time: date.toTimeString().slice(0, 5), // Extrai HH:MM do timestamp
       description: data.description,
       amount: data.amount,
       category: data.category,
@@ -846,9 +848,11 @@ export class SupabaseService {
   }
 
   private convertExpenseFromSupabase(data: any): Expense {
+    const date = new Date(data.date);
     return {
       id: data.id,
-      date: new Date(data.date),
+      date: date,
+      time: date.toTimeString().slice(0, 5), // Extrai HH:MM do timestamp
       description: data.description,
       amount: data.amount,
       category: data.category,

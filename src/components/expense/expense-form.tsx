@@ -181,19 +181,23 @@ export function ExpenseForm({ onSave, onCancel, expenseToEdit }: ExpenseFormProp
             />
           </div>
 
-          <FormField
-            control={form.control}
-            name="supplier"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Fornecedor (opcional)</FormLabel>
-                <FormControl>
-                  <Input placeholder="Ex: AliExpress, fornecedor local" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="supplier"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Fornecedor (opcional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: AliExpress, fornecedor local" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+
+          </div>
 
           <FormField
             control={form.control}

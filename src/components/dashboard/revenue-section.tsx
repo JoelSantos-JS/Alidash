@@ -18,10 +18,12 @@ interface RevenueSectionProps {
 interface RevenueItem {
   id: string;
   date: Date;
+  time?: string;
   description: string;
   amount: number;
   type: 'sale' | 'revenue';
   category: string;
+  source?: string;
 }
 
 export function RevenueSection({ products, periodFilter, revenues = [] }: RevenueSectionProps) {
@@ -41,7 +43,7 @@ export function RevenueSection({ products, periodFilter, revenues = [] }: Revenu
     };
 
     const periodStart = getPeriodStart();
-    const revenues: RevenueItem[] = [];
+    const allRevenues: RevenueItem[] = [];
 
     // Receitas de vendas de produtos
     products.forEach(product => {
@@ -49,7 +51,7 @@ export function RevenueSection({ products, periodFilter, revenues = [] }: Revenu
         product.sales
           .filter(sale => new Date(sale.date) >= periodStart)
           .forEach(sale => {
-            revenues.push({
+            allRevenues.push({
               id: `sale-${sale.id}`,
               date: new Date(sale.date),
               description: `Venda: ${product.name} (${sale.quantity}x)`,
@@ -64,9 +66,10 @@ export function RevenueSection({ products, periodFilter, revenues = [] }: Revenu
     // Adicionar receitas independentes
     revenues.forEach(revenue => {
       if (new Date(revenue.date) >= periodStart) {
-        revenues.push({
+        allRevenues.push({
           id: `revenue-${revenue.id}`,
           date: new Date(revenue.date),
+          time: revenue.time,
           description: revenue.description,
           amount: revenue.amount,
           type: 'revenue',
@@ -76,12 +79,12 @@ export function RevenueSection({ products, periodFilter, revenues = [] }: Revenu
     });
 
     // Ordenar por data (mais recente primeiro)
-    revenues.sort((a, b) => b.date.getTime() - a.date.getTime());
+    allRevenues.sort((a, b) => b.date.getTime() - a.date.getTime());
 
     // Calcular totais
-    const totalRevenue = revenues.reduce((acc, item) => acc + item.amount, 0);
-    const salesRevenue = revenues.filter(r => r.type === 'sale').reduce((acc, item) => acc + item.amount, 0);
-    const totalTransactions = revenues.length;
+    const totalRevenue = allRevenues.reduce((acc, item) => acc + item.amount, 0);
+    const salesRevenue = allRevenues.filter(r => r.type === 'sale').reduce((acc, item) => acc + item.amount, 0);
+    const totalTransactions = allRevenues.length;
 
     // Calcular crescimento (comparar com período anterior)
     const previousPeriodStart = new Date(periodStart);
@@ -124,13 +127,13 @@ export function RevenueSection({ products, periodFilter, revenues = [] }: Revenu
     const growthPercentage = previousTotal > 0 ? ((totalRevenue - previousTotal) / previousTotal) * 100 : 0;
 
     return {
-      revenues,
+      revenues: allRevenues,
       totalRevenue,
       salesRevenue,
       totalTransactions,
       growthPercentage
     };
-  }, [products, periodFilter]);
+  }, [products, periodFilter, revenues]);
 
   const getPeriodLabel = () => {
     switch (periodFilter) {
@@ -234,12 +237,20 @@ export function RevenueSection({ products, periodFilter, revenues = [] }: Revenu
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {revenueData.revenues.map((revenue) => (
-                    <TableRow key={revenue.id}>
-                      <TableCell className="text-xs md:text-sm">
-                        <div className="md:hidden">{format(revenue.date, 'dd/MM', { locale: ptBR })}</div>
-                        <div className="hidden md:block">{format(revenue.date, 'dd/MM/yyyy', { locale: ptBR })}</div>
-                      </TableCell>
+                  {revenueData.revenues.map((revenue) => {
+                    console.log('📊 Renderizando receita:', { id: revenue.id, time: revenue.time, date: revenue.date });
+                    return (
+                      <TableRow key={revenue.id}>
+                        <TableCell className="text-xs md:text-sm">
+                          <div className="md:hidden">
+                            {format(revenue.date, 'dd/MM', { locale: ptBR })}
+                            {revenue.time && <div className="text-xs text-muted-foreground">{revenue.time}</div>}
+                          </div>
+                          <div className="hidden md:block">
+                            {format(revenue.date, 'dd/MM/yyyy', { locale: ptBR })}
+                            {revenue.time && <div className="text-xs text-muted-foreground">{revenue.time}</div>}
+                          </div>
+                        </TableCell>
                       <TableCell className="font-medium text-xs md:text-sm">
                         <div className="max-w-[120px] md:max-w-none truncate">
                           {revenue.description}
@@ -253,7 +264,7 @@ export function RevenueSection({ products, periodFilter, revenues = [] }: Revenu
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <Badge variant="default" className="text-xs">
-                          Venda
+                          {revenue.type === 'sale' ? 'Venda' : 'Receita'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-medium text-green-600 text-xs md:text-sm">
@@ -261,7 +272,8 @@ export function RevenueSection({ products, periodFilter, revenues = [] }: Revenu
                         <div className="hidden md:block">+{revenue.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  );
+                })}
                 </TableBody>
               </Table>
             </div>

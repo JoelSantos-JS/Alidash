@@ -8,6 +8,8 @@ import { doc, getDoc, Timestamp, setDoc } from 'firebase/firestore';
 import { backupUserData } from '@/lib/backup-client';
 import { UpgradeToProDialog } from '@/components/layout/upgrade-to-pro-dialog';
 
+import { Loader2 } from 'lucide-react';
+
 interface ProSubscription {
     plan: 'biweekly' | 'monthly' | 'lifetime';
     startedAt: Timestamp;
@@ -32,7 +34,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPro, setIsPro] = useState(false);
-
   const [proSubscription, setProSubscription] = useState<ProSubscription | null>(null);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [accountType, setAccountType] = useState<'personal' | 'business'>('personal');
@@ -68,12 +69,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setProSubscription(newSubscription);
     setIsPro(true);
     setIsUpgradeModalOpen(false);
-  }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
+      
+      // Sincronizar usuário com Supabase quando fizer login
       if (user) {
+        try {
+          console.log('🔄 Sincronizando usuário com Supabase:', user.email);
+          
+          // Usar API route para sincronizar usuário
+          const response = await fetch('/api/auth/sync-user', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              firebase_uid: user.uid,
+              email: user.email,
+              name: user.displayName,
+              avatar_url: user.photoURL
+            })
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            console.log('🎉 Usuário sincronizado com Supabase:', {
+              id: result.user.id,
+              email: result.user.email,
+              firebase_uid: result.user.firebase_uid,
+              action: result.action
+            });
+          } else {
+            console.error('❌ Erro na sincronização com Supabase:', await response.text());
+          }
+          
+        } catch (error) {
+          console.error('❌ Erro na sincronização com Supabase:', error);
+        }
+
+        // Verificar status da assinatura Pro
         const userDocRef = doc(db, "users", user.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
@@ -81,7 +118,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const subscription = userData.proSubscription || null;
             setProSubscription(subscription);
             setIsPro(checkSubscriptionStatus(subscription));
-
         } else {
             setProSubscription(null);
             setIsPro(false);
@@ -90,6 +126,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setProSubscription(null);
         setIsPro(false);
       }
+      
       setLoading(false);
     });
 
@@ -163,6 +200,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-// Add Loader2 to the imports in use-auth.tsx for the loading screen
-import { Loader2 } from 'lucide-react';

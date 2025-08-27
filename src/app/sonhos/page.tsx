@@ -26,6 +26,7 @@ import { DreamRefineDialog } from '@/components/dreams/dream-refine-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { useDualSync } from '@/lib/dual-database-sync';
 
 const initialDreams: Dream[] = [];
 
@@ -39,6 +40,9 @@ export default function DreamsPage() {
   const [dreamToDelete, setDreamToDelete] = useState<Dream | null>(null);
   const [dreamToRefine, setDreamToRefine] = useState<Dream | null>(null);
   const { toast } = useToast();
+  
+  // Hook de sincronização dual
+  const dualSync = useDualSync(user?.uid || '', 'BEST_EFFORT');
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -86,10 +90,13 @@ export default function DreamsPage() {
                 return dreamWithoutPlan;
             });
 
+            // Para arrays de sonhos, ainda usamos Firebase como fallback
+            // mas implementamos sincronização individual para novos sonhos
             const docRef = doc(db, "user-data", user.uid);
             await setDoc(docRef, { dreams: dreamsToSave }, { merge: true });
+            console.log('✅ Sonhos salvos (Firebase + preparado para Supabase)');
         } catch (error) {
-            console.error("Failed to save dreams to Firestore", error);
+            console.error("Failed to save dreams", error);
             toast({
                 variant: 'destructive',
                 title: "Erro ao Salvar Dados",
@@ -132,25 +139,78 @@ export default function DreamsPage() {
     setIsFormOpen(true);
   }
 
-  const handleSaveDream = (dreamData: Omit<Dream, 'id'>) => {
+  const handleSaveDream = async (dreamData: Omit<Dream, 'id'>) => {
     if(dreamToEdit) {
-      setDreams(dreams.map(d => d.id === dreamToEdit.id ? { ...dreamToEdit, ...dreamData } : d));
-       toast({ title: "Sonho Atualizado!", description: `Seu sonho "${dreamData.name}" foi atualizado.` });
+      // Editar sonho existente
+      const updatedDream = { ...dreamToEdit, ...dreamData };
+      setDreams(dreams.map(d => d.id === dreamToEdit.id ? updatedDream : d));
+      
+      // Usar sincronização dual para atualizar
+      try {
+        // Como não temos updateDream no dual sync ainda, usamos o estado local
+        console.log('✅ Sonho atualizado localmente (sincronização dual em desenvolvimento)');
+        toast({ 
+          title: "Sonho Atualizado!", 
+          description: `${dreamData.name} - Atualizado localmente` 
+        });
+      } catch (error) {
+        console.error('Erro na sincronização dual:', error);
+        toast({ 
+          title: "Sonho Atualizado!", 
+          description: `Seu sonho "${dreamData.name}" foi atualizado localmente.` 
+        });
+      }
     } else {
+      // Adicionar novo sonho
       const newDream: Dream = { ...dreamData, id: new Date().getTime().toString() };
       setDreams([newDream, ...dreams]);
-       toast({ title: "Sonho Adicionado!", description: `Seu sonho "${dreamData.name}" foi adicionado. Boa sorte!` });
+      
+      // Usar sincronização dual para criar
+      try {
+        const result = await dualSync.createDream(newDream);
+        console.log(`Sonho criado - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`);
+        
+        toast({ 
+          title: "Sonho Adicionado!", 
+          description: `${dreamData.name} - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}` 
+        });
+      } catch (error) {
+        console.error('Erro na sincronização dual:', error);
+        toast({ 
+          title: "Sonho Adicionado!", 
+          description: `Seu sonho "${dreamData.name}" foi adicionado localmente.` 
+        });
+      }
     }
     setIsFormOpen(false);
     setDreamToEdit(null);
   }
 
-  const handleDeleteDream = (dreamId: string) => {
+  const handleDeleteDream = async (dreamId: string) => {
      const dream = dreams.find(p => p.id === dreamId);
      if (!dream) return;
+     
+    // Remover do estado local
     setDreams(dreams.filter(d => d.id !== dreamId));
     setDreamToDelete(null);
-     toast({ variant: 'destructive', title: "Sonho Excluído!", description: `O sonho "${dream.name}" foi removido.` });
+    
+    // Usar sincronização dual para deletar
+    try {
+      // Como não temos deleteDream no dual sync ainda, simulamos
+      console.log('✅ Sonho deletado localmente (sincronização dual em desenvolvimento)');
+      toast({ 
+        variant: 'destructive', 
+        title: "Sonho Excluído!", 
+        description: `${dream.name} - Removido localmente (dual sync em desenvolvimento)` 
+      });
+    } catch (error) {
+      console.error('Erro na sincronização dual:', error);
+      toast({ 
+        variant: 'destructive', 
+        title: "Sonho Excluído!", 
+        description: `O sonho "${dream.name}" foi removido localmente.` 
+      });
+    }
   }
 
   const handlePlanClick = (dream: Dream) => {

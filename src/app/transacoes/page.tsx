@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowUpDown, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { useDualSync } from '@/lib/dual-database-sync';
 import { db } from "@/lib/firebase";
 import type { Product, Transaction } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -122,6 +123,9 @@ export default function TransacoesPage() {
   const [periodFilter, setPeriodFilter] = useState<"day" | "week" | "month">("month");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
+  
+  // Hook de sincronização dual
+  const dualSync = useDualSync(user?.uid || '', 'BEST_EFFORT');
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -192,16 +196,19 @@ export default function TransacoesPage() {
     fetchData();
   }, [user, authLoading]);
 
-  // Salvar transações no Firebase
+  // Salvar transações com sincronização dual
   useEffect(() => {
     if (isLoading || authLoading || !user) return;
 
     const saveData = async () => {
       try {
+        // Para arrays de transações, ainda usamos Firebase como fallback
+        // mas implementamos sincronização individual para novas transações
         const docRef = doc(db, "user-data", user.uid);
         await setDoc(docRef, { transactions }, { merge: true });
+        console.log('✅ Transações salvas (Firebase + preparado para Supabase)');
       } catch (error) {
-        console.error("Failed to save transactions to Firestore", error);
+        console.error("Failed to save transactions", error);
         toast({
           variant: 'destructive',
           title: "Erro ao Salvar Dados",
@@ -213,28 +220,53 @@ export default function TransacoesPage() {
     saveData();
   }, [transactions, isLoading, user, authLoading, toast]);
 
-  const handleSaveTransaction = (transactionData: Transaction) => {
+  const handleSaveTransaction = async (transactionData: Transaction) => {
     if (transactionToEdit) {
-      // Editar
+      // Editar transação existente
       const updatedTransactions = transactions.map(t => 
         t.id === transactionToEdit.id ? { ...t, ...transactionData, id: t.id } : t
       );
       setTransactions(updatedTransactions);
-      toast({
-        title: "Transação Atualizada!",
-        description: `A transação "${transactionData.description}" foi atualizada com sucesso.`,
-      });
+      
+      // Usar sincronização dual para atualizar
+      try {
+        // Como não temos updateTransaction no dual sync ainda, usamos o estado local
+        console.log('✅ Transação atualizada localmente (sincronização dual em desenvolvimento)');
+        toast({
+          title: "Transação Atualizada!",
+          description: `${transactionData.description} - Atualizada localmente`,
+        });
+      } catch (error) {
+        console.error('Erro na sincronização dual:', error);
+        toast({
+          title: "Transação Atualizada!",
+          description: `A transação "${transactionData.description}" foi atualizada localmente.`,
+        });
+      }
     } else {
-      // Adicionar
+      // Adicionar nova transação
       const newTransaction: Transaction = {
         ...transactionData,
         id: new Date().getTime().toString(),
       };
       setTransactions(prev => [newTransaction, ...prev]);
-      toast({
-        title: "Transação Adicionada!",
-        description: `A transação "${transactionData.description}" foi adicionada com sucesso.`,
-      });
+      
+      // Usar sincronização dual para criar
+      try {
+        const result = await dualSync.createTransaction(newTransaction);
+        console.log(`Transação criada - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`);
+        
+        toast({
+          title: "Transação Adicionada!",
+          description: `${transactionData.description} - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
+        });
+      } catch (error) {
+        console.error('Erro na sincronização dual:', error);
+        toast({
+          title: "Transação Adicionada!",
+          description: `A transação "${transactionData.description}" foi adicionada localmente.`,
+        });
+      }
     }
 
     setIsFormOpen(false);

@@ -69,6 +69,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { useDualSync } from '@/lib/dual-database-sync';
 import { SupplierChart } from "@/components/dashboard/supplier-chart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -206,6 +207,9 @@ const initialProducts: Product[] = [
 
 export default function Home() {
   const { user, loading: authLoading, isPro, openUpgradeModal, logoutWithBackup, accountType, setAccountType } = useAuth();
+  
+  // Hook de sincronização dual
+  const dualSync = useDualSync(user?.uid || '', 'BEST_EFFORT');
   
   // Memoize expensive calculations
   const memoizedAccountType = useMemo(() => accountType, [accountType]);
@@ -384,18 +388,21 @@ export default function Home() {
     
     const saveData = async () => {
         try {
-            const docRef = doc(db, "user-data", user.uid);
-            
             // Limpar dados undefined antes de salvar
             const cleanProducts = products.map(product => cleanUndefinedValues(product));
             
-            console.log('💾 Salvando produtos no Firestore:', cleanProducts.length, 'produtos');
+            console.log('💾 Salvando produtos com sincronização dual:', cleanProducts.length, 'produtos');
             console.log('📊 Produtos com vendas:', cleanProducts.filter(p => p.sales && p.sales.length > 0).map(p => ({ name: p.name, salesCount: p.sales.length })));
             
+            // Usar sincronização dual para salvar produtos
+            // Como não temos um método direto para salvar arrays, vamos usar o Firebase como fallback
+            // e implementar sincronização individual para novos produtos
+            const docRef = doc(db, "user-data", user.uid);
             await setDoc(docRef, { products: cleanProducts }, { merge: true });
-            console.log('✅ Produtos salvos com sucesso no Firestore');
+            
+            console.log('✅ Produtos salvos com sucesso (Firebase + preparado para Supabase)');
         } catch (error) {
-            console.error("Failed to save products to Firestore", error);
+            console.error("Failed to save products", error);
             toast({
                 variant: 'destructive',
                 title: "Erro ao Salvar Dados",
@@ -549,47 +556,91 @@ export default function Home() {
     setSelectedProduct(null);
   };
 
-  const handleSaveProduct = (productData: Product) => {
+  const handleSaveProduct = async (productData: Product) => {
      const sanitizedProductData = cleanUndefinedValues(productData);
 
     if(productToEdit) {
-      // Editar
+      // Editar produto existente
       const updatedProducts = products.map(p => p.id === productToEdit.id ? { ...p, ...sanitizedProductData, id: p.id } : p)
       setProducts(updatedProducts);
-       toast({
-        title: "Produto Atualizado!",
-        description: `O produto "${productData.name}" foi atualizado com sucesso.`,
-      });
+      
+      // Usar sincronização dual para atualizar
+      try {
+        const result = await dualSync.updateProduct(productToEdit.id, sanitizedProductData);
+        console.log(`Produto atualizado - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`);
+        
+        toast({
+          title: "Produto Atualizado!",
+          description: `${productData.name} - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
+        });
+      } catch (error) {
+        console.error('Erro na sincronização dual:', error);
+        toast({
+          title: "Produto Atualizado!",
+          description: `O produto "${productData.name}" foi atualizado localmente.`,
+        });
+      }
     } else {
-       // Adicionar
+       // Adicionar novo produto
       const newProduct: Product = {
         ...sanitizedProductData,
         id: new Date().getTime().toString(),
         sales: [],
       }
       setProducts(prev => [newProduct, ...prev]);
-       toast({
-        title: "Produto Adicionado!",
-        description: `O produto "${productData.name}" foi adicionado com sucesso.`,
-      });
+      
+      // Usar sincronização dual para criar
+      try {
+        const result = await dualSync.createProduct(newProduct);
+        console.log(`Produto criado - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`);
+        
+        toast({
+          title: "Produto Adicionado!",
+          description: `${productData.name} - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
+        });
+        
+        // Notificar N8N sobre o novo produto
+        await notifyProductCreated(newProduct);
+      } catch (error) {
+        console.error('Erro na sincronização dual:', error);
+        toast({
+          title: "Produto Adicionado!",
+          description: `O produto "${productData.name}" foi adicionado localmente.`,
+        });
+      }
     }
 
     setIsFormOpen(false);
     setProductToEdit(null);
   }
 
-  const handleDeleteProduct = (productId: string) => {
+  const handleDeleteProduct = async (productId: string) => {
     const product = products.find(p => p.id === productId);
     if (!product) return;
 
+    // Remover do estado local
     setProducts(products.filter(p => p.id !== productId));
     setProductToDelete(null);
     setSelectedProduct(null);
-    toast({
+    
+    // Usar sincronização dual para deletar
+    try {
+      const result = await dualSync.deleteProduct(productId);
+      console.log(`Produto deletado - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`);
+      
+      toast({
         variant: 'destructive',
         title: "Produto Excluído!",
-        description: `O produto "${product.name}" foi excluído com sucesso.`,
-    });
+        description: `${product.name} - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
+      });
+    } catch (error) {
+      console.error('Erro na sincronização dual:', error);
+      toast({
+        variant: 'destructive',
+        title: "Produto Excluído!",
+        description: `O produto "${product.name}" foi excluído localmente.`,
+      });
+    }
   }
   
   const handleRegisterSale = (product: Product, saleData: Omit<Sale, 'id' | 'date'>) => {

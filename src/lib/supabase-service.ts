@@ -15,16 +15,35 @@ import type {
   Expense 
 } from '@/types'
 
+// Verificar se as variáveis de ambiente estão definidas
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+console.log('🔧 Configuração Supabase:', {
+  url: supabaseUrl ? 'Definida' : 'Não definida',
+  anonKey: supabaseAnonKey ? 'Definida' : 'Não definida',
+  serviceKey: supabaseServiceKey ? 'Definida' : 'Não definida'
+})
+
+if (!supabaseUrl) {
+  throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
+}
+
+if (!supabaseAnonKey) {
+  throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is required')
+}
+
 // Client-side Supabase client
 export const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  supabaseUrl,
+  supabaseAnonKey
 )
 
 // Server-side Supabase client (for API routes)
 export const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  supabaseUrl,
+  supabaseServiceKey || supabaseAnonKey // Fallback para anon key se service key não estiver disponível
 )
 
 /**
@@ -275,6 +294,15 @@ export class SupabaseService {
     return this.convertTransactionFromSupabase(data)
   }
 
+  async deleteTransaction(id: string) {
+    const { error } = await this.client
+      .from('transactions')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+  }
+
   async getTransactions(userId: string, filters?: {
     type?: 'revenue' | 'expense'
     category?: string
@@ -354,6 +382,219 @@ export class SupabaseService {
   }
 
   // =====================================
+  // REVENUE OPERATIONS
+  // =====================================
+
+  async createRevenue(userId: string, revenueData: Omit<Revenue, 'id'>) {
+    console.log('💰 Criando receita no Supabase:', {
+      userId,
+      revenueData: {
+        description: revenueData.description,
+        amount: revenueData.amount,
+        category: revenueData.category,
+        source: revenueData.source
+      }
+    })
+    
+    const insertData = {
+      user_id: userId,
+      date: revenueData.date.toISOString(),
+      description: revenueData.description,
+      amount: revenueData.amount,
+      category: revenueData.category,
+      source: revenueData.source,
+      notes: revenueData.notes,
+      product_id: revenueData.productId
+    }
+    
+    console.log('📝 Dados para inserção:', insertData)
+    
+    const { data, error } = await this.client
+      .from('revenues')
+      .insert(insertData as any)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('❌ Erro ao inserir receita:', error)
+      throw error
+    }
+    
+    console.log('✅ Receita criada com sucesso:', data)
+    return this.convertRevenueFromSupabase(data)
+  }
+
+  async getRevenues(userId: string, filters?: {
+    category?: string
+    source?: string
+    startDate?: Date
+    endDate?: Date
+  }) {
+    let query = this.client
+      .from('revenues')
+      .select('*')
+      .eq('user_id', userId)
+
+    if (filters?.category) {
+      query = query.eq('category', filters.category)
+    }
+    if (filters?.source) {
+      query = query.eq('source', filters.source)
+    }
+    if (filters?.startDate) {
+      query = query.gte('date', filters.startDate.toISOString())
+    }
+    if (filters?.endDate) {
+      query = query.lte('date', filters.endDate.toISOString())
+    }
+
+    const { data, error } = await query.order('date', { ascending: false })
+
+    if (error) throw error
+    return data.map(revenue => this.convertRevenueFromSupabase(revenue))
+  }
+
+  async updateRevenue(id: string, updates: Partial<Revenue>) {
+    const updateData: any = {}
+    
+    if (updates.date) updateData.date = updates.date.toISOString()
+    if (updates.description !== undefined) updateData.description = updates.description
+    if (updates.amount !== undefined) updateData.amount = updates.amount
+    if (updates.category !== undefined) updateData.category = updates.category
+    if (updates.source !== undefined) updateData.source = updates.source
+    if (updates.notes !== undefined) updateData.notes = updates.notes
+    if (updates.productId !== undefined) updateData.product_id = updates.productId
+
+    const { data, error } = await this.client
+      .from('revenues')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return this.convertRevenueFromSupabase(data)
+  }
+
+  async deleteRevenue(id: string) {
+    const { error } = await this.client
+      .from('revenues')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+  }
+
+  // =====================================
+  // EXPENSE OPERATIONS
+  // =====================================
+
+  async createExpense(userId: string, expenseData: Omit<Expense, 'id'>) {
+    console.log('💸 Criando despesa no Supabase:', {
+      userId,
+      expenseData: {
+        description: expenseData.description,
+        amount: expenseData.amount,
+        category: expenseData.category
+      }
+    })
+    
+    const insertData = {
+      user_id: userId,
+      date: expenseData.date.toISOString(),
+      description: expenseData.description,
+      amount: expenseData.amount,
+      category: expenseData.category,
+      type: expenseData.type || 'other',
+      supplier: expenseData.supplier,
+      notes: expenseData.notes,
+      product_id: expenseData.productId
+    }
+    
+    console.log('📝 Dados para inserção:', insertData)
+    
+    const { data, error } = await this.client
+      .from('expenses')
+      .insert(insertData as any)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('❌ Erro ao inserir despesa:', error)
+      throw error
+    }
+    
+    console.log('✅ Despesa criada com sucesso:', data)
+    return this.convertExpenseFromSupabase(data)
+  }
+
+  async getExpenses(userId: string, filters?: {
+    category?: string
+    type?: string
+    supplier?: string
+    startDate?: Date
+    endDate?: Date
+  }) {
+    let query = this.client
+      .from('expenses')
+      .select('*')
+      .eq('user_id', userId)
+
+    if (filters?.category) {
+      query = query.eq('category', filters.category)
+    }
+    if (filters?.type) {
+      query = query.eq('type', filters.type)
+    }
+    if (filters?.supplier) {
+      query = query.eq('supplier', filters.supplier)
+    }
+    if (filters?.startDate) {
+      query = query.gte('date', filters.startDate.toISOString())
+    }
+    if (filters?.endDate) {
+      query = query.lte('date', filters.endDate.toISOString())
+    }
+
+    const { data, error } = await query.order('date', { ascending: false })
+
+    if (error) throw error
+    return data.map(expense => this.convertExpenseFromSupabase(expense))
+  }
+
+  async updateExpense(id: string, updates: Partial<Expense>) {
+    const updateData: any = {}
+    
+    if (updates.date) updateData.date = updates.date.toISOString()
+    if (updates.description !== undefined) updateData.description = updates.description
+    if (updates.amount !== undefined) updateData.amount = updates.amount
+    if (updates.category !== undefined) updateData.category = updates.category
+    if (updates.type !== undefined) updateData.type = updates.type
+    if (updates.supplier !== undefined) updateData.supplier = updates.supplier
+    if (updates.notes !== undefined) updateData.notes = updates.notes
+    if (updates.productId !== undefined) updateData.product_id = updates.productId
+
+    const { data, error } = await this.client
+      .from('expenses')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return this.convertExpenseFromSupabase(data)
+  }
+
+  async deleteExpense(id: string) {
+    const { error } = await this.client
+      .from('expenses')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+  }
+
+  // =====================================
   // DREAM OPERATIONS
   // =====================================
 
@@ -375,6 +616,15 @@ export class SupabaseService {
 
     if (error) throw error
     return this.convertDreamFromSupabase(data)
+  }
+
+  async deleteDream(id: string) {
+    const { error } = await this.client
+      .from('dreams')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
   }
 
   async getDreams(userId: string) {
@@ -418,6 +668,15 @@ export class SupabaseService {
 
     if (error) throw error
     return this.convertBetFromSupabase(data)
+  }
+
+  async deleteBet(id: string) {
+    const { error } = await this.client
+      .from('bets')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
   }
 
   async getBets(userId: string) {
@@ -570,6 +829,33 @@ export class SupabaseService {
       guaranteedProfit: data.guaranteed_profit,
       profitPercentage: data.profit_percentage,
       analysis: data.analysis
+    }
+  }
+
+  private convertRevenueFromSupabase(data: any): Revenue {
+    return {
+      id: data.id,
+      date: new Date(data.date),
+      description: data.description,
+      amount: data.amount,
+      category: data.category,
+      source: data.source,
+      notes: data.notes,
+      productId: data.product_id
+    }
+  }
+
+  private convertExpenseFromSupabase(data: any): Expense {
+    return {
+      id: data.id,
+      date: new Date(data.date),
+      description: data.description,
+      amount: data.amount,
+      category: data.category,
+      type: data.type,
+      supplier: data.supplier,
+      notes: data.notes,
+      productId: data.product_id
     }
   }
 

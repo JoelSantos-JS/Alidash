@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowUp, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { useDualSync } from '@/lib/dual-database-sync';
+import { supabaseAdminService } from '@/lib/supabase-service';
 import { db } from "@/lib/firebase";
 import type { Product, Revenue } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -122,14 +124,21 @@ export default function ReceitasPage() {
   const [periodFilter, setPeriodFilter] = useState<"day" | "week" | "month">("month");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [revenueToEdit, setRevenueToEdit] = useState<Revenue | null>(null);
+  
+  // Estado para armazenar o ID do usuário no Supabase
+  const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null);
+  
+  // Hook de sincronização dual
+  const dualSync = useDualSync(supabaseUserId || user?.uid || '', 'BEST_EFFORT');
 
   useEffect(() => {
     if (authLoading || !user) return;
 
     const fetchData = async () => {
       try {
-        console.log('🔄 Carregando dados de produtos para receitas:', user.uid);
+        console.log('🔄 Carregando dados de produtos e receitas:', user.uid);
         
+        // Carregar produtos do Firebase (mantendo compatibilidade)
         const docRef = doc(db, "user-data", user.uid);
         const docSnap = await getDoc(docRef);
 
@@ -166,6 +175,54 @@ export default function ReceitasPage() {
           }
         }
 
+        // Carregar receitas do Supabase
+        let supabaseRevenues: Revenue[] = [];
+        try {
+          console.log('🔄 Carregando receitas do Supabase...');
+          
+          // Usar API endpoint para garantir que o usuário existe e carregar receitas
+          const response = await fetch(`/api/setup/database?userId=${user.uid}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              firebase_uid: user.uid,
+              email: user.email || '',
+              name: user.displayName,
+              avatar_url: user.photoURL
+            })
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log('✅ Setup do usuário no Supabase concluído:', result.user.id);
+            setSupabaseUserId(result.user.id);
+            
+            // Carregar receitas usando o ID do Supabase
+            try {
+              supabaseRevenues = await supabaseAdminService.getRevenues(result.user.id);
+              console.log('📊 Receitas do Supabase:', supabaseRevenues.length);
+            } catch (revenueError) {
+              console.warn('⚠️ Erro ao carregar receitas, mas usuário foi configurado:', revenueError);
+            }
+          } else {
+            const errorData = await response.json();
+            console.warn('⚠️ Erro no setup do usuário:', errorData.error);
+          }
+        } catch (error) {
+          console.error('❌ Erro ao configurar usuário no Supabase:', error);
+          console.error('Detalhes do erro:', JSON.stringify(error, null, 2));
+        }
+
+        // Combinar receitas do Firebase e Supabase (priorizando Supabase)
+        const allRevenues = [...supabaseRevenues, ...firebaseRevenues];
+        
+        // Remover duplicatas baseado no ID
+        const uniqueRevenues = allRevenues.filter((revenue, index, self) => 
+          index === self.findIndex(r => r.id === revenue.id)
+        );
+
         let finalProducts = firebaseProducts;
         if (finalProducts.length === 0) {
           console.log('📥 Nenhum produto encontrado, usando dados de exemplo');
@@ -175,10 +232,12 @@ export default function ReceitasPage() {
         }
 
         setProducts(finalProducts);
-        setRevenues(firebaseRevenues);
-        console.log('📊 Receitas carregadas com:', {
+        setRevenues(uniqueRevenues);
+        console.log('📊 Dados carregados:', {
           produtos: finalProducts.length,
-          receitas: firebaseRevenues.length
+          receitas: uniqueRevenues.length,
+          supabaseRevenues: supabaseRevenues.length,
+          firebaseRevenues: firebaseRevenues.length
         });
 
       } catch (error) {
@@ -192,16 +251,19 @@ export default function ReceitasPage() {
     fetchData();
   }, [user, authLoading]);
 
-  // Salvar receitas no Firebase
+  // Salvar receitas com sincronização dual
   useEffect(() => {
     if (isLoading || authLoading || !user) return;
 
     const saveData = async () => {
       try {
+        // Para arrays de receitas, ainda usamos Firebase como fallback
+        // mas implementamos sincronização individual para novas receitas
         const docRef = doc(db, "user-data", user.uid);
         await setDoc(docRef, { revenues }, { merge: true });
+        console.log('✅ Receitas salvas (Firebase + preparado para Supabase)');
       } catch (error) {
-        console.error("Failed to save revenues to Firestore", error);
+        console.error("Failed to save revenues", error);
         toast({
           variant: 'destructive',
           title: "Erro ao Salvar Dados",
@@ -213,28 +275,68 @@ export default function ReceitasPage() {
     saveData();
   }, [revenues, isLoading, user, authLoading, toast]);
 
-  const handleSaveRevenue = (revenueData: Revenue) => {
+  const handleSaveRevenue = async (revenueData: Revenue) => {
     if (revenueToEdit) {
-      // Editar
-      const updatedRevenues = revenues.map(r => 
-        r.id === revenueToEdit.id ? { ...r, ...revenueData, id: r.id } : r
-      );
-      setRevenues(updatedRevenues);
-      toast({
-        title: "Receita Atualizada!",
-        description: `A receita "${revenueData.description}" foi atualizada com sucesso.`,
-      });
+      // Editar receita existente
+      try {
+        const result = await dualSync.updateRevenue(revenueToEdit.id, revenueData);
+        
+        if (result.success) {
+          const updatedRevenues = revenues.map(r => 
+            r.id === revenueToEdit.id ? { ...r, ...revenueData, id: r.id } : r
+          );
+          setRevenues(updatedRevenues);
+          
+          toast({
+            title: "Receita Atualizada!",
+            description: `${revenueData.description} - Sincronizada com sucesso`,
+          });
+        } else {
+          toast({
+            variant: 'destructive',
+            title: "Erro ao Atualizar Receita",
+            description: `Falha na sincronização: ${result.errors.join(', ')}`,
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao atualizar receita:', error);
+        toast({
+          variant: 'destructive',
+          title: "Erro ao Atualizar Receita",
+          description: "Não foi possível atualizar a receita.",
+        });
+      }
     } else {
-      // Adicionar
-      const newRevenue: Revenue = {
-        ...revenueData,
-        id: new Date().getTime().toString(),
-      };
-      setRevenues(prev => [newRevenue, ...prev]);
-      toast({
-        title: "Receita Adicionada!",
-        description: `A receita "${revenueData.description}" foi adicionada com sucesso.`,
-      });
+      // Adicionar nova receita
+      try {
+        const result = await dualSync.createRevenue(revenueData);
+        
+        if (result.success) {
+          const newRevenue: Revenue = {
+            ...revenueData,
+            id: new Date().getTime().toString(),
+          };
+          setRevenues(prev => [newRevenue, ...prev]);
+          
+          toast({
+            title: "Receita Adicionada!",
+            description: `${revenueData.description} - Sincronizada com sucesso`,
+          });
+        } else {
+          toast({
+            variant: 'destructive',
+            title: "Erro ao Criar Receita",
+            description: `Falha na sincronização: ${result.errors.join(', ')}`,
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao criar receita:', error);
+        toast({
+          variant: 'destructive',
+          title: "Erro ao Criar Receita",
+          description: "Não foi possível criar a receita.",
+        });
+      }
     }
 
     setIsFormOpen(false);

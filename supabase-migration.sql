@@ -70,12 +70,8 @@ CREATE TABLE IF NOT EXISTS products (
     
     -- Sales
     selling_price DECIMAL(10,2) NOT NULL DEFAULT 0,
-    expected_profit DECIMAL(10,2) GENERATED ALWAYS AS (selling_price - total_cost) STORED,
-    profit_margin DECIMAL(5,2) GENERATED ALWAYS AS (
-        CASE WHEN selling_price > 0 
-        THEN ((selling_price - total_cost) / selling_price * 100)
-        ELSE 0 END
-    ) STORED,
+    expected_profit DECIMAL(10,2) DEFAULT 0,
+    profit_margin DECIMAL(5,2) DEFAULT 0,
     
     -- Control
     quantity INTEGER NOT NULL DEFAULT 1,
@@ -467,6 +463,23 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Function to calculate product profit metrics
+CREATE OR REPLACE FUNCTION calculate_product_profit()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Calculate total_cost, expected_profit, and profit_margin
+    NEW.expected_profit := NEW.selling_price - (NEW.purchase_price + NEW.shipping_cost + NEW.import_taxes + NEW.packaging_cost + NEW.marketing_cost + NEW.other_costs);
+    
+    NEW.profit_margin := CASE 
+        WHEN NEW.selling_price > 0 THEN 
+            (NEW.expected_profit / NEW.selling_price * 100)
+        ELSE 0 
+    END;
+    
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
 -- Create triggers for updated_at
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -478,16 +491,20 @@ CREATE TRIGGER update_bets_updated_at BEFORE UPDATE ON bets FOR EACH ROW EXECUTE
 CREATE TRIGGER update_revenues_updated_at BEFORE UPDATE ON revenues FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_expenses_updated_at BEFORE UPDATE ON expenses FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Create triggers for product profit calculation
+CREATE TRIGGER calculate_product_profit_on_insert BEFORE INSERT ON products FOR EACH ROW EXECUTE FUNCTION calculate_product_profit();
+CREATE TRIGGER calculate_product_profit_on_update BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION calculate_product_profit();
+
 -- Function to calculate product metrics after sales
 CREATE OR REPLACE FUNCTION calculate_product_metrics()
 RETURNS TRIGGER AS $$
 BEGIN
     UPDATE products SET
         quantity_sold = (SELECT COALESCE(SUM(quantity), 0) FROM sales WHERE product_id = NEW.product_id),
-        actual_profit = (SELECT COALESCE(SUM(total_amount), 0) FROM sales WHERE product_id = NEW.product_id) - total_cost,
+        actual_profit = (SELECT COALESCE(SUM(total_amount), 0) FROM sales WHERE product_id = NEW.product_id) - (purchase_price + shipping_cost + import_taxes + packaging_cost + marketing_cost + other_costs),
         roi = CASE 
-            WHEN total_cost > 0 THEN 
-                (((SELECT COALESCE(SUM(total_amount), 0) FROM sales WHERE product_id = NEW.product_id) - total_cost) / total_cost * 100)
+            WHEN (purchase_price + shipping_cost + import_taxes + packaging_cost + marketing_cost + other_costs) > 0 THEN 
+                (((SELECT COALESCE(SUM(total_amount), 0) FROM sales WHERE product_id = NEW.product_id) - (purchase_price + shipping_cost + import_taxes + packaging_cost + marketing_cost + other_costs)) / (purchase_price + shipping_cost + import_taxes + packaging_cost + marketing_cost + other_costs) * 100)
             ELSE 0 
         END,
         days_to_sell = CASE 

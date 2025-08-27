@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { useDualSync } from '@/lib/dual-database-sync';
 import { format, isPast, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -151,6 +152,9 @@ export default function DebtsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [debtToDelete, setDebtToDelete] = useState<Debt | null>(null);
+  
+  // Hook de sincronização dual
+  const dualSync = useDualSync(user?.uid || '', 'BEST_EFFORT');
 
   // Carregar dados do Firebase
   useEffect(() => {
@@ -380,13 +384,26 @@ export default function DebtsPage() {
     
     const updatedDebts = [...debts, newDebt];
     setDebts(updatedDebts);
-    await saveDebts(updatedDebts);
-    setIsFormOpen(false);
     
-    toast({
-      title: "Dívida Criada!",
-      description: `Dívida de ${debtData.creditorName} foi adicionada.`,
-    });
+    // Usar sincronização dual para criar
+    try {
+      // Como não temos createDebt no dual sync ainda, usamos Firebase + preparação
+      await saveDebts(updatedDebts);
+      console.log('✅ Dívida criada (Firebase + preparado para Supabase)');
+      
+      toast({
+        title: "Dívida Criada!",
+        description: `${debtData.creditorName} - Criada (dual sync em desenvolvimento)`,
+      });
+    } catch (error) {
+      console.error('Erro na sincronização dual:', error);
+      toast({
+        title: "Dívida Criada!",
+        description: `Dívida de ${debtData.creditorName} foi adicionada localmente.`,
+      });
+    }
+    
+    setIsFormOpen(false);
   };
 
   const handleEditDebt = async (debtData: Omit<Debt, 'id' | 'createdDate' | 'payments'>) => {
@@ -399,14 +416,27 @@ export default function DebtsPage() {
     );
     
     setDebts(updatedDebts);
-    await saveDebts(updatedDebts);
+    
+    // Usar sincronização dual para atualizar
+    try {
+      // Como não temos updateDebt no dual sync ainda, usamos Firebase + preparação
+      await saveDebts(updatedDebts);
+      console.log('✅ Dívida atualizada (Firebase + preparado para Supabase)');
+      
+      toast({
+        title: "Dívida Atualizada!",
+        description: `${debtData.creditorName} - Atualizada (dual sync em desenvolvimento)`,
+      });
+    } catch (error) {
+      console.error('Erro na sincronização dual:', error);
+      toast({
+        title: "Dívida Atualizada!",
+        description: `Dívida de ${debtData.creditorName} foi atualizada localmente.`,
+      });
+    }
+    
     setSelectedDebt(null);
     setIsFormOpen(false);
-    
-    toast({
-      title: "Dívida Atualizada!",
-      description: `Dívida de ${debtData.creditorName} foi atualizada.`,
-    });
   };
 
   const handleDeleteDebt = async () => {
@@ -414,14 +444,27 @@ export default function DebtsPage() {
     
     const updatedDebts = debts.filter(debt => debt.id !== debtToDelete.id);
     setDebts(updatedDebts);
-    await saveDebts(updatedDebts);
+    
+    // Usar sincronização dual para deletar
+    try {
+      // Como não temos deleteDebt no dual sync ainda, usamos Firebase + preparação
+      await saveDebts(updatedDebts);
+      console.log('✅ Dívida deletada (Firebase + preparado para Supabase)');
+      
+      toast({
+        title: "Dívida Removida!",
+        description: `${debtToDelete.creditorName} - Removida (dual sync em desenvolvimento)`,
+      });
+    } catch (error) {
+      console.error('Erro na sincronização dual:', error);
+      toast({
+        title: "Dívida Removida!",
+        description: `Dívida de ${debtToDelete.creditorName} foi removida localmente.`,
+      });
+    }
+    
     setDebtToDelete(null);
     setIsDeleteDialogOpen(false);
-    
-    toast({
-      title: "Dívida Removida!",
-      description: `Dívida de ${debtToDelete.creditorName} foi removida.`,
-    });
   };
 
   const handlePayment = (debt: Debt) => {

@@ -1,10 +1,10 @@
-import { SupabaseService } from './supabase-service'
+import { SupabaseService, supabaseAdminService } from './supabase-service'
 import { db as firebaseDb } from './firebase'
-import { doc, setDoc, updateDoc, deleteDoc, collection, addDoc } from 'firebase/firestore'
+import { doc, setDoc, updateDoc, deleteDoc, collection, addDoc, getDoc } from 'firebase/firestore'
 import type { Product, Dream, Bet, Goal, Transaction, Debt, Revenue, Expense } from '@/types'
 
 // Instância do serviço Supabase
-const supabaseService = new SupabaseService()
+const supabaseService = supabaseAdminService
 
 export interface DualSyncResult {
   success: boolean
@@ -34,6 +34,374 @@ export class DualDatabaseSync {
       prioritizeSupabase: false,
       rollbackOnFailure: true,
       ...options
+    }
+  }
+
+  // =====================================
+  // REVENUES (REVENUES)
+  // =====================================
+
+  async createRevenue(revenueData: Omit<Revenue, 'id'>): Promise<DualSyncResult> {
+    const result: DualSyncResult = {
+      success: false,
+      firebaseSuccess: false,
+      supabaseSuccess: false,
+      errors: []
+    }
+
+    let firebaseId: string | null = null
+    let supabaseId: string | null = null
+
+    try {
+      // 1. Tentar criar no Firebase
+      try {
+        const firebaseRef = doc(firebaseDb, 'user-data', this.userId)
+        const docSnap = await getDoc(firebaseRef)
+        const currentData = docSnap.exists() ? docSnap.data() : {}
+        const currentRevenues = currentData.revenues || []
+        
+        const newRevenue = {
+          ...revenueData,
+          id: new Date().getTime().toString(),
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+        
+        await setDoc(firebaseRef, {
+          ...currentData,
+          revenues: [newRevenue, ...currentRevenues]
+        }, { merge: true })
+        
+        firebaseId = newRevenue.id
+        result.firebaseSuccess = true
+        console.log('✅ Receita criada no Firebase:', firebaseId)
+      } catch (error) {
+        result.errors.push(`Firebase: ${error}`)
+        if (this.options.prioritizeFirebase) {
+          throw new Error('Falha prioritária no Firebase')
+        }
+      }
+
+      // 2. Tentar criar no Supabase
+      try {
+        // Verificar se o usuário existe no Supabase primeiro
+        let supabaseUser = await supabaseAdminService.getUserByFirebaseUid(this.userId)
+        
+        if (!supabaseUser) {
+          console.log('👤 Usuário não encontrado no Supabase durante criação de receita')
+          // Se não encontrar, usar o Firebase UID diretamente (fallback)
+          const supabaseRevenue = await supabaseAdminService.createRevenue(this.userId, revenueData)
+          supabaseId = supabaseRevenue.id
+        } else {
+          const supabaseRevenue = await supabaseAdminService.createRevenue(supabaseUser.id, revenueData)
+          supabaseId = supabaseRevenue.id
+        }
+        
+        result.supabaseSuccess = true
+        console.log('✅ Receita criada no Supabase:', supabaseId)
+      } catch (error) {
+        result.errors.push(`Supabase: ${error}`)
+        console.error('Erro detalhado do Supabase:', error)
+        if (this.options.prioritizeSupabase) {
+          throw new Error('Falha prioritária no Supabase')
+        }
+      }
+
+      // 3. Verificar se pelo menos um foi bem-sucedido
+      result.success = result.firebaseSuccess || result.supabaseSuccess
+
+      // 4. Rollback se necessário
+      if (!result.success || (this.options.rollbackOnFailure && (!result.firebaseSuccess || !result.supabaseSuccess))) {
+        await this.rollbackRevenueCreation(firebaseId, supabaseId)
+        result.success = false
+      }
+
+      return result
+
+    } catch (error) {
+      result.errors.push(`Erro geral: ${error}`)
+      await this.rollbackRevenueCreation(firebaseId, supabaseId)
+      return result
+    }
+  }
+
+  async updateRevenue(revenueId: string, updates: Partial<Revenue>): Promise<DualSyncResult> {
+    const result: DualSyncResult = {
+      success: false,
+      firebaseSuccess: false,
+      supabaseSuccess: false,
+      errors: []
+    }
+
+    try {
+      // 1. Tentar atualizar no Firebase
+      try {
+        const firebaseRef = doc(firebaseDb, 'user-data', this.userId)
+        const docSnap = await getDoc(firebaseRef)
+        if (docSnap.exists()) {
+          const currentData = docSnap.data()
+          const currentRevenues = currentData.revenues || []
+          const updatedRevenues = currentRevenues.map((r: any) => 
+            r.id === revenueId ? { ...r, ...updates, updatedAt: new Date() } : r
+          )
+          
+          await setDoc(firebaseRef, {
+            ...currentData,
+            revenues: updatedRevenues
+          }, { merge: true })
+        }
+        result.firebaseSuccess = true
+        console.log('✅ Receita atualizada no Firebase:', revenueId)
+      } catch (error) {
+        result.errors.push(`Firebase: ${error}`)
+      }
+
+      // 2. Tentar atualizar no Supabase
+      try {
+        await supabaseAdminService.updateRevenue(revenueId, updates)
+        result.supabaseSuccess = true
+        console.log('✅ Receita atualizada no Supabase:', revenueId)
+      } catch (error) {
+        result.errors.push(`Supabase: ${error}`)
+      }
+
+      result.success = result.firebaseSuccess || result.supabaseSuccess
+      return result
+
+    } catch (error) {
+      result.errors.push(`Erro geral: ${error}`)
+      return result
+    }
+  }
+
+  async deleteRevenue(revenueId: string): Promise<DualSyncResult> {
+    const result: DualSyncResult = {
+      success: false,
+      firebaseSuccess: false,
+      supabaseSuccess: false,
+      errors: []
+    }
+
+    try {
+      // 1. Tentar deletar do Firebase
+      try {
+        const firebaseRef = doc(firebaseDb, 'user-data', this.userId)
+        const docSnap = await getDoc(firebaseRef)
+        if (docSnap.exists()) {
+          const currentData = docSnap.data()
+          const currentRevenues = currentData.revenues || []
+          const filteredRevenues = currentRevenues.filter((r: any) => r.id !== revenueId)
+          
+          await setDoc(firebaseRef, {
+            ...currentData,
+            revenues: filteredRevenues
+          }, { merge: true })
+        }
+        result.firebaseSuccess = true
+        console.log('✅ Receita removida do Firebase:', revenueId)
+      } catch (error) {
+        result.errors.push(`Firebase: ${error}`)
+      }
+
+      // 2. Tentar deletar do Supabase
+      try {
+        await supabaseAdminService.deleteRevenue(revenueId)
+        result.supabaseSuccess = true
+        console.log('✅ Receita removida do Supabase:', revenueId)
+      } catch (error) {
+        result.errors.push(`Supabase: ${error}`)
+      }
+
+      result.success = result.firebaseSuccess || result.supabaseSuccess
+      return result
+
+    } catch (error) {
+      result.errors.push(`Erro geral: ${error}`)
+      return result
+    }
+  }
+
+  // =====================================
+  // DESPESAS (EXPENSES)
+  // =====================================
+
+  async createExpense(expenseData: Omit<Expense, 'id'>): Promise<DualSyncResult> {
+    const result: DualSyncResult = {
+      success: false,
+      firebaseSuccess: false,
+      supabaseSuccess: false,
+      errors: []
+    }
+
+    let firebaseId: string | null = null
+    let supabaseId: string | null = null
+
+    try {
+      // 1. Tentar criar no Firebase
+      try {
+        const firebaseRef = doc(firebaseDb, 'user-data', this.userId)
+        const docSnap = await getDoc(firebaseRef)
+        const currentData = docSnap.exists() ? docSnap.data() : {}
+        const currentExpenses = currentData.expenses || []
+        
+        const newExpense = {
+          ...expenseData,
+          id: new Date().getTime().toString(),
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+        
+        await setDoc(firebaseRef, {
+          ...currentData,
+          expenses: [newExpense, ...currentExpenses]
+        }, { merge: true })
+        
+        firebaseId = newExpense.id
+        result.firebaseSuccess = true
+        console.log('✅ Despesa criada no Firebase:', firebaseId)
+      } catch (error) {
+        result.errors.push(`Firebase: ${error}`)
+        if (this.options.prioritizeFirebase) {
+          throw new Error('Falha prioritária no Firebase')
+        }
+      }
+
+      // 2. Tentar criar no Supabase
+      try {
+        // Verificar se o usuário existe no Supabase primeiro
+        let supabaseUser = await supabaseAdminService.getUserByFirebaseUid(this.userId)
+        
+        if (!supabaseUser) {
+          console.log('👤 Usuário não encontrado no Supabase durante criação de despesa')
+          // Se não encontrar, usar o Firebase UID diretamente (fallback)
+          const supabaseExpense = await supabaseAdminService.createExpense(this.userId, expenseData)
+          supabaseId = supabaseExpense.id
+        } else {
+          const supabaseExpense = await supabaseAdminService.createExpense(supabaseUser.id, expenseData)
+          supabaseId = supabaseExpense.id
+        }
+        
+        result.supabaseSuccess = true
+        console.log('✅ Despesa criada no Supabase:', supabaseId)
+      } catch (error) {
+        result.errors.push(`Supabase: ${error}`)
+        console.error('Erro detalhado do Supabase:', error)
+        if (this.options.prioritizeSupabase) {
+          throw new Error('Falha prioritária no Supabase')
+        }
+      }
+
+      // 3. Verificar se pelo menos um foi bem-sucedido
+      result.success = result.firebaseSuccess || result.supabaseSuccess
+
+      // 4. Rollback se necessário
+      if (!result.success || (this.options.rollbackOnFailure && (!result.firebaseSuccess || !result.supabaseSuccess))) {
+        await this.rollbackExpenseCreation(firebaseId, supabaseId)
+        result.success = false
+      }
+
+      return result
+
+    } catch (error) {
+      result.errors.push(`Erro geral: ${error}`)
+      await this.rollbackExpenseCreation(firebaseId, supabaseId)
+      return result
+    }
+  }
+
+  async updateExpense(expenseId: string, updates: Partial<Expense>): Promise<DualSyncResult> {
+    const result: DualSyncResult = {
+      success: false,
+      firebaseSuccess: false,
+      supabaseSuccess: false,
+      errors: []
+    }
+
+    try {
+      // 1. Tentar atualizar no Firebase
+      try {
+        const firebaseRef = doc(firebaseDb, 'user-data', this.userId)
+        const docSnap = await getDoc(firebaseRef)
+        if (docSnap.exists()) {
+          const currentData = docSnap.data()
+          const currentExpenses = currentData.expenses || []
+          const updatedExpenses = currentExpenses.map((e: any) => 
+            e.id === expenseId ? { ...e, ...updates, updatedAt: new Date() } : e
+          )
+          
+          await setDoc(firebaseRef, {
+            ...currentData,
+            expenses: updatedExpenses
+          }, { merge: true })
+        }
+        result.firebaseSuccess = true
+        console.log('✅ Despesa atualizada no Firebase:', expenseId)
+      } catch (error) {
+        result.errors.push(`Firebase: ${error}`)
+      }
+
+      // 2. Tentar atualizar no Supabase
+      try {
+        await supabaseAdminService.updateExpense(expenseId, updates)
+        result.supabaseSuccess = true
+        console.log('✅ Despesa atualizada no Supabase:', expenseId)
+      } catch (error) {
+        result.errors.push(`Supabase: ${error}`)
+      }
+
+      result.success = result.firebaseSuccess || result.supabaseSuccess
+      return result
+
+    } catch (error) {
+      result.errors.push(`Erro geral: ${error}`)
+      return result
+    }
+  }
+
+  async deleteExpense(expenseId: string): Promise<DualSyncResult> {
+    const result: DualSyncResult = {
+      success: false,
+      firebaseSuccess: false,
+      supabaseSuccess: false,
+      errors: []
+    }
+
+    try {
+      // 1. Tentar deletar do Firebase
+      try {
+        const firebaseRef = doc(firebaseDb, 'user-data', this.userId)
+        const docSnap = await getDoc(firebaseRef)
+        if (docSnap.exists()) {
+          const currentData = docSnap.data()
+          const currentExpenses = currentData.expenses || []
+          const filteredExpenses = currentExpenses.filter((e: any) => e.id !== expenseId)
+          
+          await setDoc(firebaseRef, {
+            ...currentData,
+            expenses: filteredExpenses
+          }, { merge: true })
+        }
+        result.firebaseSuccess = true
+        console.log('✅ Despesa removida do Firebase:', expenseId)
+      } catch (error) {
+        result.errors.push(`Firebase: ${error}`)
+      }
+
+      // 2. Tentar deletar do Supabase
+      try {
+        await supabaseAdminService.deleteExpense(expenseId)
+        result.supabaseSuccess = true
+        console.log('✅ Despesa removida do Supabase:', expenseId)
+      } catch (error) {
+        result.errors.push(`Supabase: ${error}`)
+      }
+
+      result.success = result.firebaseSuccess || result.supabaseSuccess
+      return result
+
+    } catch (error) {
+      result.errors.push(`Erro geral: ${error}`)
+      return result
     }
   }
 
@@ -440,6 +808,68 @@ export class DualDatabaseSync {
       }
     }
   }
+
+  private async rollbackRevenueCreation(firebaseId: string | null, supabaseId: string | null) {
+    if (firebaseId) {
+      try {
+        const firebaseRef = doc(firebaseDb, 'user-data', this.userId)
+        const docSnap = await getDoc(firebaseRef)
+        if (docSnap.exists()) {
+          const currentData = docSnap.data()
+          const currentRevenues = currentData.revenues || []
+          const filteredRevenues = currentRevenues.filter((r: any) => r.id !== firebaseId)
+          
+          await setDoc(firebaseRef, {
+            ...currentData,
+            revenues: filteredRevenues
+          }, { merge: true })
+        }
+        console.log('🔄 Rollback: Receita removida do Firebase')
+      } catch (error) {
+        console.error('❌ Erro no rollback Firebase:', error)
+      }
+    }
+
+    if (supabaseId) {
+      try {
+        await supabaseAdminService.deleteRevenue(supabaseId)
+        console.log('🔄 Rollback: Receita removida do Supabase')
+      } catch (error) {
+        console.error('❌ Erro no rollback Supabase:', error)
+      }
+    }
+  }
+
+  private async rollbackExpenseCreation(firebaseId: string | null, supabaseId: string | null) {
+    if (firebaseId) {
+      try {
+        const firebaseRef = doc(firebaseDb, 'user-data', this.userId)
+        const docSnap = await getDoc(firebaseRef)
+        if (docSnap.exists()) {
+          const currentData = docSnap.data()
+          const currentExpenses = currentData.expenses || []
+          const filteredExpenses = currentExpenses.filter((e: any) => e.id !== firebaseId)
+          
+          await setDoc(firebaseRef, {
+            ...currentData,
+            expenses: filteredExpenses
+          }, { merge: true })
+        }
+        console.log('🔄 Rollback: Despesa removida do Firebase')
+      } catch (error) {
+        console.error('❌ Erro no rollback Firebase:', error)
+      }
+    }
+
+    if (supabaseId) {
+      try {
+        await supabaseAdminService.deleteExpense(supabaseId)
+        console.log('🔄 Rollback: Despesa removida do Supabase')
+      } catch (error) {
+        console.error('❌ Erro no rollback Supabase:', error)
+      }
+    }
+  }
 }
 
 // =====================================
@@ -496,6 +926,12 @@ export function useDualSync(userId: string, preset: keyof typeof DualSyncPresets
     deleteProduct: (id: string) => dualSync.deleteProduct(id),
     createTransaction: (data: Omit<Transaction, 'id'>) => dualSync.createTransaction(data),
     createDream: (data: Omit<Dream, 'id'>) => dualSync.createDream(data),
-    createBet: (data: Omit<Bet, 'id'>) => dualSync.createBet(data)
+    createBet: (data: Omit<Bet, 'id'>) => dualSync.createBet(data),
+    createRevenue: (data: Omit<Revenue, 'id'>) => dualSync.createRevenue(data),
+    updateRevenue: (id: string, data: Partial<Revenue>) => dualSync.updateRevenue(id, data),
+    deleteRevenue: (id: string) => dualSync.deleteRevenue(id),
+    createExpense: (data: Omit<Expense, 'id'>) => dualSync.createExpense(data),
+    updateExpense: (id: string, data: Partial<Expense>) => dualSync.updateExpense(id, data),
+    deleteExpense: (id: string) => dualSync.deleteExpense(id)
   }
 }

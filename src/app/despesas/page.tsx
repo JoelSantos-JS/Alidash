@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowDown, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { useDualSync } from '@/lib/dual-database-sync';
 import { db } from "@/lib/firebase";
 import type { Product, Expense } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ExpenseForm } from "@/components/expense/expense-form";
 import { useToast } from "@/hooks/use-toast";
+
 
 const initialProducts: Product[] = [
   {
@@ -122,14 +124,18 @@ export default function DespesasPage() {
   const [periodFilter, setPeriodFilter] = useState<"day" | "week" | "month">("month");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [expenseToEdit, setExpenseToEdit] = useState<Expense | null>(null);
+  
+  // Hook de sincronização dual
+  const dualSync = useDualSync(user?.uid || '', 'BEST_EFFORT');
 
   useEffect(() => {
     if (authLoading || !user) return;
 
     const fetchData = async () => {
       try {
-        console.log('🔄 Carregando dados de produtos para despesas:', user.uid);
+        console.log('🔄 Carregando dados de produtos e despesas:', user.uid);
         
+        // Buscar produtos do Firebase (como antes)
         const docRef = doc(db, "user-data", user.uid);
         const docSnap = await getDoc(docRef);
 
@@ -166,25 +172,73 @@ export default function DespesasPage() {
           }
         }
 
+        // Tentar buscar despesas do Supabase
+        let supabaseExpenses: Expense[] = [];
+        try {
+          console.log('🔍 Tentando buscar despesas do Supabase...');
+          
+          // Primeiro, buscar o usuário no Supabase usando API route
+          const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
+          
+          if (userResponse.ok) {
+            const userResult = await userResponse.json();
+            const supabaseUser = userResult.user;
+            
+            console.log('✅ Usuário encontrado no Supabase:', supabaseUser.id);
+            
+            // Agora buscar as despesas usando API route
+            const expensesResponse = await fetch(`/api/expenses/get?user_id=${supabaseUser.id}`);
+            
+            if (expensesResponse.ok) {
+              const expensesResult = await expensesResponse.json();
+              supabaseExpenses = expensesResult.expenses.map((expense: any) => ({
+                id: expense.id,
+                date: new Date(expense.date),
+                description: expense.description,
+                amount: expense.amount,
+                category: expense.category,
+                type: expense.type,
+                supplier: expense.supplier,
+                notes: expense.notes,
+                productId: expense.product_id
+              }));
+              console.log('📊 Despesas do Supabase:', supabaseExpenses.length);
+            } else {
+              console.error('❌ Erro ao buscar despesas:', await expensesResponse.text());
+            }
+          } else {
+            console.log('⚠️ Usuário não encontrado no Supabase, usando apenas Firebase');
+          }
+        } catch (error) {
+          console.error('❌ Erro ao buscar despesas do Supabase:', error);
+          console.log('📥 Continuando apenas com dados do Firebase');
+        }
+
+        // Combinar dados: priorizar Supabase para despesas, Firebase para produtos
         let finalProducts = firebaseProducts;
         if (finalProducts.length === 0) {
           console.log('📥 Nenhum produto encontrado, usando dados de exemplo');
           finalProducts = initialProducts;
         } else {
-          console.log('✅ Usando produtos reais do banco de dados');
+          console.log('✅ Usando produtos reais do Firebase');
         }
 
+        // Para despesas, usar Supabase se disponível, senão Firebase
+        let finalExpenses = supabaseExpenses.length > 0 ? supabaseExpenses : firebaseExpenses;
+        
         setProducts(finalProducts);
-        setExpenses(firebaseExpenses);
-        console.log('📊 Despesas carregadas com:', {
+        setExpenses(finalExpenses);
+        console.log('📊 Dados carregados com:', {
           produtos: finalProducts.length,
-          despesas: firebaseExpenses.length
+          despesas: finalExpenses.length,
+          fonte_despesas: supabaseExpenses.length > 0 ? 'Supabase' : 'Firebase'
         });
 
       } catch (error) {
         console.error('❌ Erro ao carregar dados:', error);
         console.log('📥 Usando dados de exemplo devido ao erro');
         setProducts(initialProducts);
+        setExpenses([]);
       }
       setIsLoading(false);
     }
@@ -192,49 +246,70 @@ export default function DespesasPage() {
     fetchData();
   }, [user, authLoading]);
 
-  // Salvar despesas no Firebase
-  useEffect(() => {
-    if (isLoading || authLoading || !user) return;
 
-    const saveData = async () => {
-      try {
-        const docRef = doc(db, "user-data", user.uid);
-        await setDoc(docRef, { expenses }, { merge: true });
-      } catch (error) {
-        console.error("Failed to save expenses to Firestore", error);
-        toast({
-          variant: 'destructive',
-          title: "Erro ao Salvar Dados",
-          description: "Não foi possível salvar as despesas na nuvem.",
-        });
-      }
-    };
-    
-    saveData();
-  }, [expenses, isLoading, user, authLoading, toast]);
 
-  const handleSaveExpense = (expenseData: Expense) => {
+  const handleSaveExpense = async (expenseData: Expense) => {
     if (expenseToEdit) {
-      // Editar
+      // Editar despesa existente
       const updatedExpenses = expenses.map(e => 
         e.id === expenseToEdit.id ? { ...e, ...expenseData, id: e.id } : e
       );
       setExpenses(updatedExpenses);
-      toast({
-        title: "Despesa Atualizada!",
-        description: `A despesa "${expenseData.description}" foi atualizada com sucesso.`,
-      });
+      
+      // Usar sincronização dual para atualizar
+      try {
+        const result = await dualSync.updateExpense(expenseToEdit.id, expenseData);
+        if (result.success) {
+          toast({
+            title: "Despesa Atualizada!",
+            description: `${expenseData.description} - Atualizada com sucesso`,
+          });
+        } else {
+          console.error('Erro na sincronização dual:', result.errors);
+          toast({
+            variant: 'destructive',
+            title: "Erro ao Atualizar",
+            description: "A despesa foi atualizada localmente, mas houve problemas na sincronização.",
+          });
+        }
+      } catch (error) {
+        console.error('Erro na sincronização dual:', error);
+        toast({
+          title: "Despesa Atualizada!",
+          description: `A despesa "${expenseData.description}" foi atualizada localmente.`,
+        });
+      }
     } else {
-      // Adicionar
+      // Adicionar nova despesa
       const newExpense: Expense = {
         ...expenseData,
         id: new Date().getTime().toString(),
       };
       setExpenses(prev => [newExpense, ...prev]);
-      toast({
-        title: "Despesa Adicionada!",
-        description: `A despesa "${expenseData.description}" foi adicionada com sucesso.`,
-      });
+      
+      // Usar sincronização dual para criar
+      try {
+        const result = await dualSync.createExpense(expenseData);
+        if (result.success) {
+          toast({
+            title: "Despesa Adicionada!",
+            description: `${expenseData.description} - Criada com sucesso`,
+          });
+        } else {
+          console.error('Erro na sincronização dual:', result.errors);
+          toast({
+            variant: 'destructive',
+            title: "Erro ao Salvar",
+            description: "A despesa foi adicionada localmente, mas houve problemas na sincronização.",
+          });
+        }
+      } catch (error) {
+        console.error('Erro na sincronização dual:', error);
+        toast({
+          title: "Despesa Adicionada!",
+          description: `A despesa "${expenseData.description}" foi adicionada localmente.`,
+        });
+      }
     }
 
     setIsFormOpen(false);

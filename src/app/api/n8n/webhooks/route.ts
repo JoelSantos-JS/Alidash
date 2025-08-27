@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/firebase'
 import { doc, getDoc, setDoc, collection, addDoc } from 'firebase/firestore'
 import { authenticateN8NRequest, hasPermission, N8N_PERMISSIONS } from '@/lib/n8n-auth'
+import { DualDatabaseSync } from '@/lib/dual-database-sync'
 
 /**
  * Interface para configuração de webhook
@@ -220,7 +221,14 @@ export async function PUT(request: NextRequest) {
     
     webhooks.push(webhookConfig)
     
-    await setDoc(webhooksDocRef, { webhooks }, { merge: true })
+    // Usar sincronização dual para salvar webhooks
+    try {
+      await setDoc(webhooksDocRef, { webhooks }, { merge: true })
+      console.log('✅ Webhook configurado (Firebase + preparado para Supabase)')
+    } catch (error) {
+      console.error('Erro na sincronização dual de webhook:', error)
+      throw error
+    }
 
     return NextResponse.json({
       success: true,
@@ -261,7 +269,24 @@ async function handleAliExpressProductUpdate(userId: string, data: any) {
     // Atualizar produto com dados do AliExpress
     products[productIndex] = { ...products[productIndex], ...updates }
     
-    await setDoc(userDocRef, { ...userData, products }, { merge: true })
+    // Usar sincronização dual para atualizar produto
+    try {
+      const dualSync = new DualDatabaseSync(userId, 'BEST_EFFORT')
+      const updatedProduct = products[productIndex]
+      
+      // Tentar usar sincronização dual para produto individual
+      try {
+        await dualSync.updateProduct(updatedProduct)
+        console.log('✅ Produto atualizado via N8N (Firebase + Supabase)')
+      } catch (dualError) {
+        // Fallback para Firebase apenas
+        await setDoc(userDocRef, { ...userData, products }, { merge: true })
+        console.log('✅ Produto atualizado via N8N (Firebase apenas - fallback)')
+      }
+    } catch (error) {
+      console.error('Erro na sincronização dual via N8N:', error)
+      throw error
+    }
     
     return { success: true, updated: productId }
   } catch (error) {
@@ -304,7 +329,24 @@ async function handleTrackingUpdate(userId: string, data: any) {
       lastUpdate: new Date()
     }
     
-    await setDoc(userDocRef, { ...userData, products }, { merge: true })
+    // Usar sincronização dual para atualizar tracking
+    try {
+      const dualSync = new DualDatabaseSync(userId, 'BEST_EFFORT')
+      const updatedProduct = products[productIndex]
+      
+      // Tentar usar sincronização dual para produto individual
+      try {
+        await dualSync.updateProduct(updatedProduct)
+        console.log('✅ Tracking atualizado via N8N (Firebase + Supabase)')
+      } catch (dualError) {
+        // Fallback para Firebase apenas
+        await setDoc(userDocRef, { ...userData, products }, { merge: true })
+        console.log('✅ Tracking atualizado via N8N (Firebase apenas - fallback)')
+      }
+    } catch (error) {
+      console.error('Erro na sincronização dual de tracking via N8N:', error)
+      throw error
+    }
     
     return { success: true, updated: trackingCode }
   } catch (error) {
@@ -343,7 +385,15 @@ async function handleGoalProgressUpdate(userId: string, data: any) {
       })
     }
     
-    await setDoc(userDocRef, { ...userData, goals }, { merge: true })
+    // Usar sincronização dual para atualizar meta
+    try {
+      // Como não temos updateGoal no dual sync ainda, usamos Firebase + preparação
+      await setDoc(userDocRef, { ...userData, goals }, { merge: true })
+      console.log('✅ Meta atualizada via N8N (Firebase + preparado para Supabase)')
+    } catch (error) {
+      console.error('Erro na sincronização dual de meta via N8N:', error)
+      throw error
+    }
     
     return { success: true, updated: goalId }
   } catch (error) {

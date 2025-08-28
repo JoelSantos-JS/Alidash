@@ -103,7 +103,7 @@ export function ExpensesSection({ products, periodFilter, expenses = [] }: Expen
       expenses.forEach(expense => {
         if (new Date(expense.date) >= periodStart) {
           allExpenses.push({
-            id: `independent-${expense.id}`,
+            id: `expense-${expense.id}`, // Mudando de independent- para expense-
             date: new Date(expense.date),
             description: expense.description,
             amount: expense.amount,

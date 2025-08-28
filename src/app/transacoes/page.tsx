@@ -6,14 +6,16 @@ import { TransactionsSection } from "@/components/dashboard/transactions-section
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowUpDown, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { useDualSync } from '@/lib/dual-database-sync';
+import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
+
 import { db } from "@/lib/firebase";
 import type { Product, Transaction } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TransactionForm } from "@/components/transaction/transaction-form";
+import { InstallmentManager } from "@/components/transaction/installment-manager";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 
 const initialProducts: Product[] = [
@@ -123,28 +125,28 @@ export default function TransacoesPage() {
   const [periodFilter, setPeriodFilter] = useState<"day" | "week" | "month">("month");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
+  const [activeTab, setActiveTab] = useState("transactions");
   
-  // Hook de sincronização dual
-  const dualSync = useDualSync(user?.uid || '', 'BEST_EFFORT');
+
 
   useEffect(() => {
     if (authLoading || !user) return;
 
     const fetchData = async () => {
       try {
-        console.log('🔄 Carregando dados de produtos para transações:', user.uid);
+        console.log('🔄 Carregando dados de produtos e transações:', user.uid);
         
+        // Carregar produtos do Firebase (mantendo compatibilidade)
         const docRef = doc(db, "user-data", user.uid);
         const docSnap = await getDoc(docRef);
 
         let firebaseProducts: Product[] = [];
-        let firebaseTransactions: Transaction[] = [];
+        let supabaseTransactions: Transaction[] = [];
 
         if (docSnap.exists()) {
           const userData = docSnap.data();
           console.log('📦 Dados encontrados no Firebase:', {
-            products: userData.products?.length || 0,
-            transactions: userData.transactions?.length || 0
+            products: userData.products?.length || 0
           });
           
           if (userData.products && userData.products.length > 0) {
@@ -160,14 +162,55 @@ export default function TransacoesPage() {
               })) : [],
             }));
           }
+        }
 
-          if (userData.transactions && userData.transactions.length > 0) {
-            const data = userData.transactions;
-            firebaseTransactions = data.map((t: any) => ({
-              ...t,
-              date: t.date?.toDate ? t.date.toDate() : new Date(t.date)
-            }));
+        // Carregar transações do Supabase (PRINCIPAL)
+        try {
+          console.log('🔍 Tentando buscar transações do Supabase...');
+          
+          // Primeiro, buscar o usuário no Supabase usando API route
+          const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
+          
+          if (userResponse.ok) {
+            const userResult = await userResponse.json();
+            const supabaseUser = userResult.user;
+            
+            console.log('✅ Usuário encontrado no Supabase:', supabaseUser.id);
+            
+            // Agora buscar as transações usando API route
+            const transactionsResponse = await fetch(`/api/transactions/get?user_id=${supabaseUser.id}`);
+            
+            if (transactionsResponse.ok) {
+              const transactionsResult = await transactionsResponse.json();
+              supabaseTransactions = transactionsResult.transactions.map((transaction: any) => {
+                console.log('🔄 Convertendo transação:', transaction);
+                return {
+                  id: transaction.id,
+                  date: new Date(transaction.date),
+                  description: transaction.description,
+                  amount: parseFloat(transaction.amount),
+                  type: transaction.type,
+                  category: transaction.category,
+                  subcategory: transaction.subcategory,
+                  paymentMethod: transaction.payment_method,
+                  status: transaction.status,
+                  notes: transaction.notes,
+                  tags: transaction.tags,
+                  productId: transaction.product_id,
+                  isInstallment: transaction.is_installment || false,
+                  installmentInfo: transaction.installment_info ? JSON.parse(transaction.installment_info) : null
+                };
+              });
+              console.log('📊 Transações do Supabase:', supabaseTransactions.length);
+            } else {
+              console.error('❌ Erro ao buscar transações:', await transactionsResponse.text());
+            }
+          } else {
+            console.log('⚠️ Usuário não encontrado no Supabase, usando apenas Firebase');
           }
+        } catch (error) {
+          console.error('❌ Erro ao buscar transações do Supabase:', error);
+          console.log('📥 Continuando apenas com dados do Firebase');
         }
 
         let finalProducts = firebaseProducts;
@@ -179,16 +222,18 @@ export default function TransacoesPage() {
         }
 
         setProducts(finalProducts);
-        setTransactions(firebaseTransactions);
-        console.log('📊 Transações carregadas com:', {
+        setTransactions(supabaseTransactions);
+        console.log('📊 Dados carregados:', {
           produtos: finalProducts.length,
-          transacoes: firebaseTransactions.length
+          transacoes: supabaseTransactions.length,
+          fonte_transacoes: 'Supabase'
         });
 
       } catch (error) {
         console.error('❌ Erro ao carregar dados:', error);
         console.log('📥 Usando dados de exemplo devido ao erro');
         setProducts(initialProducts);
+        setTransactions([]);
       }
       setIsLoading(false);
     }
@@ -196,29 +241,8 @@ export default function TransacoesPage() {
     fetchData();
   }, [user, authLoading]);
 
-  // Salvar transações com sincronização dual
-  useEffect(() => {
-    if (isLoading || authLoading || !user) return;
-
-    const saveData = async () => {
-      try {
-        // Para arrays de transações, ainda usamos Firebase como fallback
-        // mas implementamos sincronização individual para novas transações
-        const docRef = doc(db, "user-data", user.uid);
-        await setDoc(docRef, { transactions }, { merge: true });
-        console.log('✅ Transações salvas (Firebase + preparado para Supabase)');
-      } catch (error) {
-        console.error("Failed to save transactions", error);
-        toast({
-          variant: 'destructive',
-          title: "Erro ao Salvar Dados",
-          description: "Não foi possível salvar as transações na nuvem.",
-        });
-      }
-    };
-    
-    saveData();
-  }, [transactions, isLoading, user, authLoading, toast]);
+  // Removido o useEffect que salvava automaticamente as transações
+  // para evitar loops e duplicação de dados
 
   const handleSaveTransaction = async (transactionData: Transaction) => {
     if (transactionToEdit) {
@@ -228,40 +252,65 @@ export default function TransacoesPage() {
       );
       setTransactions(updatedTransactions);
       
-      // Usar sincronização dual para atualizar
-      try {
-        // Como não temos updateTransaction no dual sync ainda, usamos o estado local
-        console.log('✅ Transação atualizada localmente (sincronização dual em desenvolvimento)');
-        toast({
-          title: "Transação Atualizada!",
-          description: `${transactionData.description} - Atualizada localmente`,
-        });
-      } catch (error) {
-        console.error('Erro na sincronização dual:', error);
-        toast({
-          title: "Transação Atualizada!",
-          description: `A transação "${transactionData.description}" foi atualizada localmente.`,
-        });
-      }
+      toast({
+        title: "Transação Atualizada!",
+        description: `${transactionData.description} - Atualizada com sucesso`,
+      });
     } else {
       // Adicionar nova transação
       const newTransaction: Transaction = {
         ...transactionData,
         id: new Date().getTime().toString(),
       };
+      
+      // Adicionar ao estado local
       setTransactions(prev => [newTransaction, ...prev]);
       
-      // Usar sincronização dual para criar
+      // Salvar no Supabase
       try {
-        const result = await dualSync.createTransaction(newTransaction);
-        console.log(`Transação criada - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`);
+        // Primeiro, buscar o usuário no Supabase
+        const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
         
-        toast({
-          title: "Transação Adicionada!",
-          description: `${transactionData.description} - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
-        });
+        if (userResponse.ok) {
+          const userResult = await userResponse.json();
+          const supabaseUser = userResult.user;
+          
+          // Criar transação no Supabase
+          const createResponse = await fetch('/api/transactions/create', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              user_id: supabaseUser.id,
+              transaction: newTransaction
+            })
+          });
+          
+          if (createResponse.ok) {
+            const result = await createResponse.json();
+            console.log('✅ Transação criada no Supabase:', result.transaction.id);
+            
+            toast({
+              title: "Transação Adicionada!",
+              description: `${transactionData.description} - Salva no Supabase com sucesso`,
+            });
+          } else {
+            console.error('❌ Erro ao criar transação no Supabase:', await createResponse.text());
+            toast({
+              title: "Transação Adicionada!",
+              description: `A transação "${transactionData.description}" foi adicionada localmente.`,
+            });
+          }
+        } else {
+          console.error('❌ Usuário não encontrado no Supabase');
+          toast({
+            title: "Transação Adicionada!",
+            description: `A transação "${transactionData.description}" foi adicionada localmente.`,
+          });
+        }
       } catch (error) {
-        console.error('Erro na sincronização dual:', error);
+        console.error('Erro ao salvar no Supabase:', error);
         toast({
           title: "Transação Adicionada!",
           description: `A transação "${transactionData.description}" foi adicionada localmente.`,
@@ -271,6 +320,17 @@ export default function TransacoesPage() {
 
     setIsFormOpen(false);
     setTransactionToEdit(null);
+  };
+
+  const handleUpdateTransaction = (updatedTransaction: Transaction) => {
+    const updatedTransactions = transactions.map(t => 
+      t.id === updatedTransaction.id ? updatedTransaction : t
+    );
+    setTransactions(updatedTransactions);
+  };
+
+  const handleDeleteTransaction = (id: string) => {
+    setTransactions(prev => prev.filter(t => t.id !== id));
   };
 
   if (authLoading) {
@@ -382,11 +442,29 @@ export default function TransacoesPage() {
             <Skeleton className="h-[300px] md:h-[400px] w-full" />
           </div>
         ) : (
-          <TransactionsSection 
-            products={products}
-            periodFilter={periodFilter}
-            transactions={transactions}
-          />
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="transactions">Todas as Transações</TabsTrigger>
+              <TabsTrigger value="installments">Compras Parceladas</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="transactions" className="space-y-6">
+              <TransactionsSection 
+                products={products}
+                periodFilter={periodFilter}
+                transactions={transactions}
+              />
+            </TabsContent>
+
+            <TabsContent value="installments" className="space-y-6">
+              <InstallmentManager
+                transactions={transactions}
+                onSaveTransaction={handleSaveTransaction}
+                onUpdateTransaction={handleUpdateTransaction}
+                onDeleteTransaction={handleDeleteTransaction}
+              />
+            </TabsContent>
+          </Tabs>
         )}
       </main>
 

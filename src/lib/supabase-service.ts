@@ -285,7 +285,10 @@ export class SupabaseService {
         payment_method: transactionData.paymentMethod,
         status: transactionData.status,
         notes: transactionData.notes,
-        tags: transactionData.tags
+        tags: transactionData.tags,
+        // Campos para compras parceladas
+        is_installment: transactionData.isInstallment || false,
+        installment_info: transactionData.installmentInfo ? JSON.stringify(transactionData.installmentInfo) : null
       } as any)
       .select()
       .single()
@@ -749,7 +752,10 @@ export class SupabaseService {
       paymentMethod: data.payment_method,
       status: data.status,
       notes: data.notes,
-      tags: data.tags
+      tags: data.tags,
+      // Campos para compras parceladas
+      isInstallment: data.is_installment || false,
+      installmentInfo: data.installment_info ? JSON.parse(data.installment_info) : undefined
     }
   }
 

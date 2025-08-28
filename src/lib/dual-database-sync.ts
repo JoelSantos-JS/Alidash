@@ -563,19 +563,25 @@ export class DualDatabaseSync {
     let supabaseId: string | null = null
 
     try {
+      // Gerar ID único para a transação
+      const transactionId = new Date().getTime().toString();
+      const transactionWithId = {
+        ...transactionData,
+        id: transactionId,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
       // 1. Criar no Firebase
       try {
         const firebaseRef = collection(firebaseDb, 'user-data', this.userId, 'transactions')
-        const firebaseDoc = await addDoc(firebaseRef, {
-          ...transactionData,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        })
+        const firebaseDoc = await addDoc(firebaseRef, transactionWithId)
         firebaseId = firebaseDoc.id
         result.firebaseSuccess = true
-        console.log('✅ Transação criada no Firebase:', firebaseId)
+        console.log('✅ Transação criada no Firebase:', firebaseId, 'com ID interno:', transactionId)
       } catch (error) {
         result.errors.push(`Firebase: ${error}`)
+        console.error('❌ Erro ao criar transação no Firebase:', error)
       }
 
       // 2. Criar no Supabase
@@ -586,6 +592,7 @@ export class DualDatabaseSync {
         console.log('✅ Transação criada no Supabase:', supabaseId)
       } catch (error) {
         result.errors.push(`Supabase: ${error}`)
+        console.error('❌ Erro ao criar transação no Supabase:', error)
       }
 
       result.success = result.firebaseSuccess || result.supabaseSuccess

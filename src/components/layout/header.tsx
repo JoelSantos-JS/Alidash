@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Package, User as UserIcon, LogOut, LayoutDashboard, KeyRound, BarChart, Menu, Settings } from "lucide-react";
+import { Package, User as UserIcon, LogOut, LayoutDashboard, KeyRound, BarChart, Menu, Settings, CreditCard } from "lucide-react";
 import { AccountTypeToggle } from "@/components/ui/account-type-toggle";
 import { Logo } from "@/components/ui/logo";
 import { useAuth } from "@/hooks/use-auth";
@@ -75,6 +75,7 @@ export function Header() {
                       <span>Dashboard de Apostas</span>
                     </Link>
                   </DropdownMenuItem>
+
 
                 </DropdownMenuContent>
               </DropdownMenu>

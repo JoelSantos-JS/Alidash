@@ -138,6 +138,16 @@ export interface Expense {
   supplier?: string;
   notes?: string;
   productId?: string; // Se relacionado a um produto
+  // Campos para compras parceladas no cartão
+  isInstallment?: boolean;
+  installmentInfo?: {
+    totalAmount: number; // Valor total da compra
+    totalInstallments: number; // Número total de parcelas
+    currentInstallment: number; // Parcela atual (1, 2, 3...)
+    installmentAmount: number; // Valor de cada parcela
+    remainingAmount: number; // Valor restante a pagar
+    nextDueDate?: Date; // Próxima data de vencimento
+  };
 }
 
 export interface Transaction {
@@ -152,6 +162,16 @@ export interface Transaction {
   status: 'completed' | 'pending' | 'cancelled';
   notes?: string;
   tags?: string[];
+  // Campos para compras parceladas no cartão
+  isInstallment?: boolean;
+  installmentInfo?: {
+    totalAmount: number; // Valor total da compra
+    totalInstallments: number; // Número total de parcelas
+    currentInstallment: number; // Parcela atual (1, 2, 3...)
+    installmentAmount: number; // Valor de cada parcela
+    remainingAmount: number; // Valor restante a pagar
+    nextDueDate?: Date; // Próxima data de vencimento
+  };
 }
 
 export interface Debt {

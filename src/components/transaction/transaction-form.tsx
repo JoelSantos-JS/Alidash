@@ -7,6 +7,7 @@ import { z } from "zod";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import React from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { cn, calculateInstallmentInfo, generateInstallmentTransactions } from "@/lib/utils";
 import type { Transaction } from "@/types";
 
 const transactionSchema = z.object({
@@ -29,6 +30,10 @@ const transactionSchema = z.object({
   status: z.enum(['completed', 'pending', 'cancelled']),
   date: z.date(),
   notes: z.string().optional(),
+  // Campos para parcelamento
+  isInstallment: z.boolean().default(false),
+  totalInstallments: z.number().min(1).optional(),
+  currentInstallment: z.number().min(1).optional(),
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -66,6 +71,7 @@ const transactionStatuses = [
 
 export function TransactionForm({ onSave, onCancel, transactionToEdit }: TransactionFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showInstallmentFields, setShowInstallmentFields] = useState(false);
 
   const form = useForm<TransactionFormData>({
     resolver: zodResolver(transactionSchema),
@@ -79,18 +85,47 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
       status: transactionToEdit?.status || "completed",
       date: transactionToEdit?.date || new Date(),
       notes: transactionToEdit?.notes || "",
+      isInstallment: transactionToEdit?.isInstallment || false,
+      totalInstallments: transactionToEdit?.installmentInfo?.totalInstallments || 1,
+      currentInstallment: transactionToEdit?.installmentInfo?.currentInstallment || 1,
     },
   });
+
+  const watchPaymentMethod = form.watch("paymentMethod");
+  const watchIsInstallment = form.watch("isInstallment");
+  const watchAmount = form.watch("amount");
+  const watchTotalInstallments = form.watch("totalInstallments");
+
+  // Mostrar campos de parcelamento apenas para cartão de crédito
+  React.useEffect(() => {
+    setShowInstallmentFields(watchPaymentMethod === 'credit_card');
+  }, [watchPaymentMethod]);
 
   const onSubmit = async (data: TransactionFormData) => {
     setIsSubmitting(true);
     try {
-      const transaction: Transaction = {
+      let transaction: Transaction = {
         id: transactionToEdit?.id || new Date().getTime().toString(),
         ...data,
         date: data.date,
         tags: transactionToEdit?.tags || [],
       };
+
+      // Se for uma compra parcelada, adicionar informações de parcelamento
+      if (data.isInstallment && data.totalInstallments && data.totalInstallments > 1) {
+        const installmentInfo = calculateInstallmentInfo(
+          data.amount,
+          data.totalInstallments,
+          data.currentInstallment || 1
+        );
+        
+        transaction = {
+          ...transaction,
+          isInstallment: true,
+          installmentInfo,
+          tags: [...(transaction.tags || []), 'parcelado', 'cartão-credito'],
+        };
+      }
       
       onSave(transaction);
     } catch (error) {
@@ -315,6 +350,105 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
               </FormItem>
             )}
           />
+
+          {showInstallmentFields && (
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="isInstallment"
+                render={({ field }) => (
+                  <FormItem className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="isInstallment"
+                      checked={field.value}
+                      onChange={(e) => field.onChange(e.target.checked)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <FormLabel htmlFor="isInstallment" className="text-sm font-medium">
+                      💳 É uma compra parcelada no cartão?
+                    </FormLabel>
+                  </FormItem>
+                )}
+              />
+
+              {watchIsInstallment && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="totalInstallments"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Total de Parcelas</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="1"
+                            min="1"
+                            placeholder="Ex: 12"
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="currentInstallment"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Parcela Atual</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="1"
+                            min="1"
+                            placeholder="Ex: 1"
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+
+              {/* Preview de informações de parcelamento */}
+              {watchIsInstallment && watchTotalInstallments && watchTotalInstallments > 1 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-blue-900 mb-3">📋 Resumo do Parcelamento</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-blue-800 font-medium">Valor Total:</span>
+                      <span className="ml-2 text-gray-900 font-semibold">R$ {watchAmount.toFixed(2)}</span>
+                    </div>
+                    <div>
+                      <span className="text-blue-800 font-medium">Parcelas:</span>
+                      <span className="ml-2 text-gray-900 font-semibold">{watchTotalInstallments}x</span>
+                    </div>
+                    <div>
+                      <span className="text-blue-800 font-medium">Valor da Parcela:</span>
+                      <span className="ml-2 text-gray-900 font-semibold">R$ {(watchAmount / watchTotalInstallments).toFixed(2)}</span>
+                    </div>
+                    <div>
+                      <span className="text-blue-800 font-medium">Próximo Vencimento:</span>
+                      <span className="ml-2 text-gray-900 font-semibold">
+                        {format(new Date(), "dd/MM/yyyy", { locale: ptBR })}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-3 text-xs text-blue-700 font-medium">
+                    💡 Esta compra será automaticamente categorizada como "Compras Parceladas" e você receberá lembretes de vencimento.
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={onCancel}>

@@ -33,7 +33,7 @@ interface TransactionsSectionProps {
   transactions?: TransactionType[];
 }
 
-interface Transaction {
+interface DisplayTransaction {
   id: string;
   date: Date;
   description: string;
@@ -67,106 +67,157 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
     };
 
     const periodStart = getPeriodStart();
-    const transactions: Transaction[] = [];
+    const processedTransactions: DisplayTransaction[] = [];
+    const usedIds = new Set<string>(); // Para garantir IDs únicos
+    const transactionKeyMap = new Map<string, DisplayTransaction>(); // Para detectar duplicatas por chave única
 
-    // Receitas de vendas de produtos
+    // Função para gerar chave única para uma transação
+    const generateTransactionKey = (transaction: any, source: string): string => {
+      const date = new Date(transaction.date).toISOString().split('T')[0]; // YYYY-MM-DD
+      const amount = transaction.amount?.toString() || '0';
+      const description = transaction.description?.toLowerCase().trim() || '';
+      
+      return `${source}-${date}-${amount}-${description}`;
+    };
+
+    // Função para gerar ID único
+    const generateUniqueId = (baseId: string): string => {
+      let uniqueId = baseId;
+      let counter = 1;
+      
+      while (usedIds.has(uniqueId)) {
+        uniqueId = `${baseId}-${counter}`;
+        counter++;
+      }
+      
+      usedIds.add(uniqueId);
+      return uniqueId;
+    };
+
+    // 1. Adicionar transações independentes (incluindo parceladas) - PRIORIDADE
+    transactions.forEach((originalTransaction: TransactionType) => {
+      if (new Date(originalTransaction.date) >= periodStart) {
+        let description = originalTransaction.description;
+        if (originalTransaction.isInstallment && originalTransaction.installmentInfo) {
+          description = `${originalTransaction.description} (${originalTransaction.installmentInfo.currentInstallment}/${originalTransaction.installmentInfo.totalInstallments})`;
+        }
+
+        const transactionKey = generateTransactionKey(originalTransaction, 'independent');
+        
+        // Verificar se já existe uma transação com a mesma chave
+        if (!transactionKeyMap.has(transactionKey)) {
+          const uniqueId = generateUniqueId(originalTransaction.id);
+          
+          const displayTransaction: DisplayTransaction = {
+            id: uniqueId,
+            date: new Date(originalTransaction.date),
+            description: description,
+            amount: originalTransaction.amount,
+            type: originalTransaction.type === 'revenue' ? 'income' : 'expense',
+            category: originalTransaction.category,
+            subcategory: originalTransaction.subcategory || (originalTransaction.isInstallment ? 'Compra Parcelada' : 'Transação Independente'),
+            source: 'independent'
+          };
+          
+          processedTransactions.push(displayTransaction);
+          transactionKeyMap.set(transactionKey, displayTransaction);
+        } else {
+          console.log('🚫 Transação duplicada detectada e ignorada:', {
+            description: description,
+            amount: originalTransaction.amount,
+            date: originalTransaction.date,
+            existingKey: transactionKey
+          });
+        }
+      }
+    });
+
+    // 2. Adicionar vendas de produtos (apenas se não houver conflito)
     products.forEach(product => {
       if (product.sales) {
         product.sales
           .filter(sale => new Date(sale.date) >= periodStart)
           .forEach(sale => {
-            transactions.push({
-              id: `sale-${sale.id}`,
-              date: new Date(sale.date),
-              description: `Venda: ${product.name} (${sale.quantity}x)`,
+            const saleTransaction = {
+              date: sale.date,
               amount: product.sellingPrice * sale.quantity,
-              type: 'income',
-              category: product.category,
-              subcategory: 'Venda de Produto',
-              source: 'sale'
-            });
+              description: `Venda: ${product.name} (${sale.quantity}x)`
+            };
+            
+            const transactionKey = generateTransactionKey(saleTransaction, 'sale');
+            
+            // Verificar se já existe uma transação com a mesma chave
+            if (!transactionKeyMap.has(transactionKey)) {
+              const baseId = `sale-${sale.id}`;
+              const uniqueId = generateUniqueId(baseId);
+              
+              const displayTransaction: DisplayTransaction = {
+                id: uniqueId,
+                date: new Date(sale.date),
+                description: saleTransaction.description,
+                amount: saleTransaction.amount,
+                type: 'income',
+                category: product.category,
+                subcategory: 'Venda de Produto',
+                source: 'sale'
+              };
+              
+              processedTransactions.push(displayTransaction);
+              transactionKeyMap.set(transactionKey, displayTransaction);
+            } else {
+              console.log('🚫 Venda duplicada detectada e ignorada:', {
+                description: saleTransaction.description,
+                amount: saleTransaction.amount,
+                date: sale.date,
+                existingKey: transactionKey
+              });
+            }
           });
       }
     });
 
-    // Focando apenas em receitas de produtos
-
-    // Adicionar transações independentes
-    transactions.forEach(transaction => {
-      if (new Date(transaction.date) >= periodStart) {
-        transactions.push({
-          id: `independent-${transaction.id}`,
-          date: new Date(transaction.date),
-          description: transaction.description,
-          amount: transaction.amount,
-          type: transaction.type === 'revenue' ? 'income' : 'expense',
-          category: transaction.category,
-          subcategory: transaction.subcategory || 'Transação Independente',
-          source: 'independent'
-        });
-      }
-    });
-
-    // Despesas de compra de produtos
+    // 3. Adicionar compras de produtos (apenas se não houver conflito)
     products
       .filter(product => new Date(product.purchaseDate) >= periodStart)
       .forEach(product => {
-        transactions.push({
-          id: `purchase-${product.id}`,
-          date: new Date(product.purchaseDate),
-          description: `Compra: ${product.name} (${product.quantity}x)`,
+        const purchaseTransaction = {
+          date: product.purchaseDate,
           amount: product.totalCost * product.quantity,
-          type: 'expense',
-          category: product.category,
-          subcategory: 'Compra de Produto',
-          source: 'product_purchase'
-        });
-
-        // Custos operacionais detalhados
-        if (product.shippingCost > 0) {
-          transactions.push({
-            id: `shipping-${product.id}`,
+          description: `Compra: ${product.name} (${product.quantity}x)`
+        };
+        
+        const transactionKey = generateTransactionKey(purchaseTransaction, 'purchase');
+        
+        // Verificar se já existe uma transação com a mesma chave
+        if (!transactionKeyMap.has(transactionKey)) {
+          const baseId = `purchase-${product.id}`;
+          const uniqueId = generateUniqueId(baseId);
+          
+          const displayTransaction: DisplayTransaction = {
+            id: uniqueId,
             date: new Date(product.purchaseDate),
-            description: `Frete: ${product.name}`,
-            amount: product.shippingCost,
+            description: purchaseTransaction.description,
+            amount: purchaseTransaction.amount,
             type: 'expense',
-            category: 'Logística',
-            subcategory: 'Frete',
-            source: 'operational'
-          });
-        }
-
-        if (product.importTaxes > 0) {
-          transactions.push({
-            id: `taxes-${product.id}`,
-            date: new Date(product.purchaseDate),
-            description: `Impostos: ${product.name}`,
-            amount: product.importTaxes,
-            type: 'expense',
-            category: 'Impostos',
-            subcategory: 'Importação',
-            source: 'operational'
-          });
-        }
-
-        if (product.marketingCost > 0) {
-          transactions.push({
-            id: `marketing-${product.id}`,
-            date: new Date(product.purchaseDate),
-            description: `Marketing: ${product.name}`,
-            amount: product.marketingCost,
-            type: 'expense',
-            category: 'Marketing',
-            subcategory: 'Promoção',
-            source: 'operational'
+            category: product.category,
+            subcategory: 'Compra de Produto',
+            source: 'product_purchase'
+          };
+          
+          processedTransactions.push(displayTransaction);
+          transactionKeyMap.set(transactionKey, displayTransaction);
+        } else {
+          console.log('🚫 Compra duplicada detectada e ignorada:', {
+            description: purchaseTransaction.description,
+            amount: purchaseTransaction.amount,
+            date: product.purchaseDate,
+            existingKey: transactionKey
           });
         }
       });
 
-    // Focando apenas em despesas de produtos
-
     // Ordenar por data
-    transactions.sort((a, b) => {
+    processedTransactions.sort((a, b) => {
       if (sortOrder === 'desc') {
         return b.date.getTime() - a.date.getTime();
       } else {
@@ -176,7 +227,7 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
 
     // Calcular saldo acumulado
     let runningBalance = 0;
-    transactions.forEach(transaction => {
+    processedTransactions.forEach(transaction => {
       if (transaction.type === 'income') {
         runningBalance += transaction.amount;
       } else {
@@ -186,23 +237,30 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
     });
 
     // Calcular estatísticas
-    const totalIncome = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-    const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+    const totalIncome = processedTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+    const totalExpenses = processedTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
     const netBalance = totalIncome - totalExpenses;
-    const totalTransactions = transactions.length;
+    const totalTransactions = processedTransactions.length;
 
     // Obter categorias únicas para filtro
-    const categories = Array.from(new Set(transactions.map(t => t.category))).sort();
+    const categories = Array.from(new Set(processedTransactions.map(t => t.category))).sort();
+
+    console.log('📊 Processamento de transações concluído:', {
+      totalProcessed: processedTransactions.length,
+      uniqueKeys: transactionKeyMap.size,
+      periodStart: periodStart.toISOString(),
+      sortOrder
+    });
 
     return {
-      transactions,
+      transactions: processedTransactions,
       totalIncome,
       totalExpenses,
       netBalance,
       totalTransactions,
       categories
     };
-  }, [products, periodFilter, sortOrder]);
+  }, [products, transactions, periodFilter, sortOrder]);
 
   // Filtrar transações
   const filteredTransactions = useMemo(() => {
@@ -398,12 +456,18 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
                               <div className="font-medium max-w-[120px] md:max-w-none truncate">{transaction.description}</div>
                               <div className="text-xs text-muted-foreground">
                                 {transaction.subcategory}
+                                {transaction.subcategory === 'Compra Parcelada' && (
+                                  <span className="ml-1 text-blue-600">💳</span>
+                                )}
                               </div>
                               <div className="sm:hidden flex gap-1 mt-1">
                                 <Badge variant="outline" className="text-xs">{transaction.category}</Badge>
                                 <Badge variant={transaction.type === 'income' ? 'default' : 'destructive'} className="text-xs">
                                   {transaction.type === 'income' ? 'R' : 'D'}
                                 </Badge>
+                                {transaction.subcategory === 'Compra Parcelada' && (
+                                  <Badge variant="secondary" className="text-xs text-blue-600">💳</Badge>
+                                )}
                               </div>
                             </div>
                           </div>

@@ -139,7 +139,7 @@ export class SupabaseService {
       quantity: productData.quantity,
       quantity_sold: productData.quantitySold,
       status: productData.status,
-      purchase_date: productData.purchaseDate.toISOString(),
+      purchase_date: productData.purchaseDate instanceof Date ? productData.purchaseDate.toISOString() : new Date(productData.purchaseDate).toISOString(),
       roi: productData.roi,
       actual_profit: productData.actualProfit,
       days_to_sell: productData.daysToSell

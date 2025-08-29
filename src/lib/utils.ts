@@ -75,3 +75,23 @@ export function getNextInstallmentDate(currentDate: Date, installmentNumber: num
   nextDate.setMonth(nextDate.getMonth() + installmentNumber);
   return nextDate;
 }
+
+export function formatCurrency(value: number, currency: string = 'BRL'): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value)
+}
+
+export function formatCurrencyCompact(value: number, currency: string = 'BRL'): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    notation: value >= 1000000 ? 'compact' : 'standard',
+    compactDisplay: 'short'
+  }).format(value)
+}

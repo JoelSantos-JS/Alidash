@@ -409,6 +409,47 @@ export class DualDatabaseSync {
   // PRODUTOS
   // =====================================
 
+  async getProducts(): Promise<Product[]> {
+    try {
+      // Tentar buscar do Firebase primeiro (fonte primária)
+      try {
+        const firebaseRef = doc(firebaseDb, 'user-data', this.userId)
+        const docSnap = await getDoc(firebaseRef)
+        
+        if (docSnap.exists()) {
+          const userData = docSnap.data()
+          const products = userData.products || []
+          console.log(`✅ ${products.length} produtos encontrados no Firebase`)
+          return products.map((product: any) => ({
+            ...product,
+            purchaseDate: product.purchaseDate?.toDate?.() || new Date(product.purchaseDate) || new Date(),
+            sales: product.sales?.map((sale: any) => ({
+              ...sale,
+              date: sale.date?.toDate?.() || new Date(sale.date) || new Date()
+            })) || []
+          }))
+        }
+        
+        console.log('✅ Nenhum produto encontrado no Firebase')
+      } catch (error) {
+        console.log('⚠️ Erro ao buscar produtos do Firebase, tentando Supabase:', error)
+      }
+
+      // Fallback para Supabase
+      try {
+        const supabaseProducts = await supabaseService.getProducts(this.userId)
+        console.log(`✅ ${supabaseProducts.length} produtos encontrados no Supabase (fallback)`)
+        return supabaseProducts
+      } catch (error) {
+        console.error('❌ Erro ao buscar produtos do Supabase:', error)
+        return []
+      }
+    } catch (error) {
+      console.error('❌ Erro geral ao buscar produtos:', error)
+      return []
+    }
+  }
+
   async createProduct(productData: Omit<Product, 'id'>): Promise<DualSyncResult> {
     const result: DualSyncResult = {
       success: false,
@@ -423,13 +464,24 @@ export class DualDatabaseSync {
     try {
       // 1. Tentar criar no Firebase
       try {
-        const firebaseRef = collection(firebaseDb, 'user-data', this.userId, 'products')
-        const firebaseDoc = await addDoc(firebaseRef, {
+        const firebaseRef = doc(firebaseDb, 'user-data', this.userId)
+        const docSnap = await getDoc(firebaseRef)
+        const currentData = docSnap.exists() ? docSnap.data() : {}
+        const currentProducts = currentData.products || []
+        
+        const newProduct = {
           ...productData,
+          id: new Date().getTime().toString(),
           createdAt: new Date(),
           updatedAt: new Date()
-        })
-        firebaseId = firebaseDoc.id
+        }
+        
+        await setDoc(firebaseRef, {
+          ...currentData,
+          products: [newProduct, ...currentProducts]
+        }, { merge: true })
+        
+        firebaseId = newProduct.id
         result.firebaseSuccess = true
         console.log('✅ Produto criado no Firebase:', firebaseId)
       } catch (error) {

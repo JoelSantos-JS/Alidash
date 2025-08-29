@@ -113,11 +113,19 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
 
       // Se for uma compra parcelada, adicionar informações de parcelamento
       if (data.isInstallment && data.totalInstallments && data.totalInstallments > 1) {
+        console.log('🎯 Criando transação parcelada:', {
+          amount: data.amount,
+          totalInstallments: data.totalInstallments,
+          currentInstallment: data.currentInstallment || 1
+        });
+
         const installmentInfo = calculateInstallmentInfo(
           data.amount,
           data.totalInstallments,
           data.currentInstallment || 1
         );
+        
+        console.log('✅ installmentInfo criado:', installmentInfo);
         
         transaction = {
           ...transaction,
@@ -125,6 +133,13 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
           installmentInfo,
           tags: [...(transaction.tags || []), 'parcelado', 'cartão-credito'],
         };
+
+        console.log('✅ Transação final com installmentInfo:', {
+          id: transaction.id,
+          description: transaction.description,
+          isInstallment: transaction.isInstallment,
+          installmentInfo: transaction.installmentInfo
+        });
       }
       
       onSave(transaction);

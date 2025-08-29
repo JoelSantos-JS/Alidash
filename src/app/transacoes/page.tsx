@@ -183,8 +183,42 @@ export default function TransacoesPage() {
             if (transactionsResponse.ok) {
               const transactionsResult = await transactionsResponse.json();
               supabaseTransactions = transactionsResult.transactions.map((transaction: any) => {
-                console.log('🔄 Convertendo transação:', transaction);
-                return {
+                console.log('🔄 Convertendo transação:', {
+                  id: transaction.id,
+                  description: transaction.description,
+                  isInstallment: transaction.isInstallment,
+                  installmentInfo: transaction.installmentInfo,
+                  hasInstallmentFields: 'isInstallment' in transaction && 'installmentInfo' in transaction
+                });
+                
+                // Tratar installmentInfo com segurança
+                let installmentInfo = null;
+                
+                if (transaction.installmentInfo !== null && transaction.installmentInfo !== undefined) {
+                  try {
+                    // Se já é um objeto, usar diretamente
+                    if (typeof transaction.installmentInfo === 'object' && transaction.installmentInfo !== null) {
+                      installmentInfo = transaction.installmentInfo;
+                    } 
+                    // Se é string, fazer parse JSON
+                    else if (typeof transaction.installmentInfo === 'string' && transaction.installmentInfo.trim() !== '') {
+                      installmentInfo = JSON.parse(transaction.installmentInfo);
+                    }
+                    // Se é qualquer outro tipo, usar como está
+                    else {
+                      installmentInfo = transaction.installmentInfo;
+                    }
+                  } catch (parseError) {
+                    console.error('❌ Erro ao processar installmentInfo no frontend:', {
+                      error: parseError instanceof Error ? parseError.message : parseError,
+                      raw_data: transaction.installmentInfo,
+                      type: typeof transaction.installmentInfo
+                    });
+                    installmentInfo = null;
+                  }
+                }
+                
+                const convertedTransaction = {
                   id: transaction.id,
                   date: new Date(transaction.date),
                   description: transaction.description,
@@ -192,18 +226,84 @@ export default function TransacoesPage() {
                   type: transaction.type,
                   category: transaction.category,
                   subcategory: transaction.subcategory,
-                  paymentMethod: transaction.payment_method,
+                  paymentMethod: transaction.paymentMethod,
                   status: transaction.status,
                   notes: transaction.notes,
                   tags: transaction.tags,
-                  productId: transaction.product_id,
-                  isInstallment: transaction.is_installment || false,
-                  installmentInfo: transaction.installment_info ? JSON.parse(transaction.installment_info) : null
+                  productId: transaction.productId,
+                  isInstallment: transaction.isInstallment || false,
+                  installmentInfo: installmentInfo
                 };
+
+                // Log específico para verificar se a conversão está correta
+                if (convertedTransaction.isInstallment && convertedTransaction.installmentInfo) {
+                  console.log('✅ Transação parcelada convertida corretamente:', {
+                    id: convertedTransaction.id,
+                    description: convertedTransaction.description,
+                    isInstallment: convertedTransaction.isInstallment,
+                    installmentInfo: convertedTransaction.installmentInfo,
+                    hasInstallmentInfo: !!convertedTransaction.installmentInfo,
+                    installmentInfoType: typeof convertedTransaction.installmentInfo
+                  });
+                } else if (convertedTransaction.isInstallment && !convertedTransaction.installmentInfo) {
+                  console.log('❌ PROBLEMA: Transação marcada como parcelada mas sem installmentInfo:', {
+                    id: convertedTransaction.id,
+                    description: convertedTransaction.description,
+                    isInstallment: convertedTransaction.isInstallment,
+                    installmentInfo: convertedTransaction.installmentInfo,
+                    original_installment_info: transaction.installmentInfo
+                  });
+                }
+                
+                console.log('✅ Transação convertida:', {
+                  id: convertedTransaction.id,
+                  description: convertedTransaction.description,
+                  isInstallment: convertedTransaction.isInstallment,
+                  installmentInfo: convertedTransaction.installmentInfo,
+                  isInstallmentTransaction: convertedTransaction.isInstallment && convertedTransaction.installmentInfo
+                });
+                
+                return convertedTransaction;
               });
+              
+              // Verificar transações parceladas
+              const installmentTransactions = supabaseTransactions.filter(t => t.isInstallment && t.installmentInfo);
+              console.log('📊 Análise das transações:', {
+                total: supabaseTransactions.length,
+                parceladas: installmentTransactions.length,
+                naoParceladas: supabaseTransactions.length - installmentTransactions.length
+              });
+              
+              if (installmentTransactions.length > 0) {
+                console.log('🎉 Transações parceladas encontradas:', installmentTransactions.map(t => ({
+                  id: t.id,
+                  description: t.description,
+                  amount: t.amount,
+                  installmentInfo: t.installmentInfo
+                })));
+              } else {
+                console.log('❌ Nenhuma transação parcelada encontrada!');
+                console.log('Verificando todas as transações:');
+                supabaseTransactions.forEach((t, index) => {
+                  console.log(`  ${index + 1}. ${t.description}: isInstallment=${t.isInstallment}, installmentInfo=${t.installmentInfo ? 'presente' : 'ausente'}`);
+                });
+              }
               console.log('📊 Transações do Supabase:', supabaseTransactions.length);
             } else {
-              console.error('❌ Erro ao buscar transações:', await transactionsResponse.text());
+              const errorText = await transactionsResponse.text();
+              console.error('❌ Erro ao buscar transações:', {
+                status: transactionsResponse.status,
+                statusText: transactionsResponse.statusText,
+                error: errorText
+              });
+              
+              // Tentar fazer parse do erro para mostrar detalhes
+              try {
+                const errorJson = JSON.parse(errorText);
+                console.error('❌ Detalhes do erro:', errorJson);
+              } catch (parseError) {
+                console.error('❌ Erro não é JSON válido:', errorText);
+              }
             }
           } else {
             console.log('⚠️ Usuário não encontrado no Supabase, usando apenas Firebase');
@@ -345,7 +445,10 @@ export default function TransacoesPage() {
   }
 
   if (!user) {
-    router.push('/login');
+    // Usar useEffect para navegação em vez de chamar durante render
+    useEffect(() => {
+      router.push('/login');
+    }, [router]);
     return null;
   }
 

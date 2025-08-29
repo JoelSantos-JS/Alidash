@@ -30,7 +30,27 @@ export function InstallmentManager({
   const [activeTab, setActiveTab] = useState("all");
 
   // Filtrar transações parceladas
+  console.log('🔍 InstallmentManager - Transações recebidas:', {
+    total: transactions.length,
+    transactions: transactions.map(t => ({
+      id: t.id,
+      description: t.description,
+      isInstallment: t.isInstallment,
+      installmentInfo: t.installmentInfo
+    }))
+  });
+
   const installmentTransactions = transactions.filter(isInstallmentTransaction);
+  
+  console.log('🔍 InstallmentManager - Transações parceladas filtradas:', {
+    total: installmentTransactions.length,
+    installmentTransactions: installmentTransactions.map(t => ({
+      id: t.id,
+      description: t.description,
+      isInstallment: t.isInstallment,
+      installmentInfo: t.installmentInfo
+    }))
+  });
   
   // Separar por status
   const pendingInstallments = installmentTransactions.filter(t => t.status === 'pending');

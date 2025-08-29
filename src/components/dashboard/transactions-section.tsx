@@ -95,10 +95,31 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
     };
 
     // 1. Adicionar transações independentes (incluindo parceladas) - PRIORIDADE
+    console.log('🔍 TransactionsSection - Processando transações:', {
+      total: transactions.length,
+      transactions: transactions.map(t => ({
+        id: t.id,
+        description: t.description,
+        isInstallment: t.isInstallment,
+        installmentInfo: t.installmentInfo ? 'presente' : 'ausente'
+      }))
+    });
+
     transactions.forEach((originalTransaction: TransactionType) => {
       if (new Date(originalTransaction.date) >= periodStart) {
         let description = originalTransaction.description;
+        
+        // Log específico para transações parceladas
         if (originalTransaction.isInstallment && originalTransaction.installmentInfo) {
+          console.log('🎯 Transação parcelada encontrada:', {
+            id: originalTransaction.id,
+            description: originalTransaction.description,
+            isInstallment: originalTransaction.isInstallment,
+            installmentInfo: originalTransaction.installmentInfo,
+            currentInstallment: originalTransaction.installmentInfo.currentInstallment,
+            totalInstallments: originalTransaction.installmentInfo.totalInstallments
+          });
+          
           description = `${originalTransaction.description} (${originalTransaction.installmentInfo.currentInstallment}/${originalTransaction.installmentInfo.totalInstallments})`;
         }
 

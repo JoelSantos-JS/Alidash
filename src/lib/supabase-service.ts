@@ -46,6 +46,8 @@ export const supabaseAdmin = createClient(
   supabaseServiceKey || supabaseAnonKey // Fallback para anon key se service key não estiver disponível
 )
 
+console.log('✅ Clientes Supabase criados com sucesso');
+
 /**
  * Supabase Service Layer - Replace Firebase operations
  */
@@ -53,7 +55,9 @@ export class SupabaseService {
   private client: typeof supabase
 
   constructor(useAdmin = false) {
+    console.log('🔧 Criando SupabaseService:', { useAdmin });
     this.client = useAdmin ? supabaseAdmin : supabase
+    console.log('✅ SupabaseService criado com sucesso');
   }
 
   // =====================================
@@ -272,28 +276,56 @@ export class SupabaseService {
   // =====================================
 
   async createTransaction(userId: string, transactionData: Omit<Transaction, 'id'>) {
+    console.log('📝 createTransaction - Dados recebidos:', {
+      userId,
+      description: transactionData.description,
+      amount: transactionData.amount,
+      isInstallment: transactionData.isInstallment,
+      installmentInfo: transactionData.installmentInfo
+    });
+
+    // Preparar dados para inserção
+    const insertData = {
+      user_id: userId,
+      date: transactionData.date.toISOString(),
+      description: transactionData.description,
+      amount: transactionData.amount,
+      type: transactionData.type,
+      category: transactionData.category,
+      subcategory: transactionData.subcategory,
+      payment_method: transactionData.paymentMethod,
+      status: transactionData.status,
+      notes: transactionData.notes,
+      tags: transactionData.tags,
+      // Campos para compras parceladas
+      is_installment: transactionData.isInstallment || false,
+      installment_info: transactionData.installmentInfo ? JSON.stringify(transactionData.installmentInfo) : null
+    };
+
+    console.log('📝 createTransaction - Dados para inserção:', {
+      is_installment: insertData.is_installment,
+      installment_info: insertData.installment_info,
+      installment_info_parsed: insertData.installment_info ? JSON.parse(insertData.installment_info) : null
+    });
+
     const { data, error } = await this.client
       .from('transactions')
-      .insert({
-        user_id: userId,
-        date: transactionData.date.toISOString(),
-        description: transactionData.description,
-        amount: transactionData.amount,
-        type: transactionData.type,
-        category: transactionData.category,
-        subcategory: transactionData.subcategory,
-        payment_method: transactionData.paymentMethod,
-        status: transactionData.status,
-        notes: transactionData.notes,
-        tags: transactionData.tags,
-        // Campos para compras parceladas
-        is_installment: transactionData.isInstallment || false,
-        installment_info: transactionData.installmentInfo ? JSON.stringify(transactionData.installmentInfo) : null
-      } as any)
+      .insert(insertData as any)
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('❌ Erro ao criar transação:', error);
+      throw error;
+    }
+
+    console.log('✅ createTransaction - Transação criada:', {
+      id: data.id,
+      description: data.description,
+      is_installment: data.is_installment,
+      installment_info: data.installment_info
+    });
+
     return this.convertTransactionFromSupabase(data)
   }
 
@@ -312,11 +344,48 @@ export class SupabaseService {
     startDate?: Date
     endDate?: Date
   }) {
+    console.log('🔍 [DEBUG] Starting getTransactions with userId:', userId);
+    
+    // Explicitly select all fields including JSONB fields
     let query = this.client
       .from('transactions')
-      .select('*')
+      .select(`
+        id,
+        user_id,
+        date,
+        description,
+        amount,
+        type,
+        category,
+        subcategory,
+        payment_method,
+        status,
+        notes,
+        tags,
+        product_id,
+        is_installment,
+        installment_info,
+        created_at,
+        updated_at
+      `)
       .eq('user_id', userId)
 
+    // 🚨 TEMPORARY DEBUG: Try different query approaches
+    console.log('🔍 [DEBUG] Testing RLS bypass - querying without user filter first...');
+    
+    // Test query without user filter to see if RLS is blocking
+    const { data: testData, error: testError } = await this.client
+      .from('transactions')
+      .select('id, description, is_installment, installment_info')
+      .eq('id', '51e7f92a-59f1-437b-a3af-3c25fdf32c29');
+    
+    console.log('🔍 [DEBUG] Test query result (no user filter):', {
+      data: testData,
+      error: testError,
+      installment_info: testData?.[0]?.installment_info
+    });
+    
+    // Now continue with normal filtered query
     if (filters?.type) {
       query = query.eq('type', filters.type)
     }
@@ -330,9 +399,30 @@ export class SupabaseService {
       query = query.lte('date', filters.endDate.toISOString())
     }
 
+    console.log('🔍 [DEBUG] Executing main query with filters...');
     const { data, error } = await query.order('date', { ascending: false })
 
-    if (error) throw error
+    if (error) {
+      console.error('❌ [DEBUG] Query error:', error);
+      throw error;
+    }
+    
+    // Log detalhado dos dados brutos antes da conversão
+    console.log('🔍 Dados brutos do Supabase antes da conversão:');
+    if (data && data.length > 0) {
+      data.forEach((transaction: any, index: number) => {
+        console.log(`Transação ${index + 1} (bruta):`, {
+          id: transaction.id,
+          description: transaction.description,
+          is_installment: transaction.is_installment,
+          installment_info: transaction.installment_info,
+          installment_info_type: typeof transaction.installment_info,
+          has_installment_fields: 'is_installment' in transaction && 'installment_info' in transaction,
+          all_fields: Object.keys(transaction)
+        });
+      });
+    }
+    
     return data.map(transaction => this.convertTransactionFromSupabase(transaction))
   }
 
@@ -741,22 +831,90 @@ export class SupabaseService {
   }
 
   private convertTransactionFromSupabase(data: any): Transaction {
-    return {
+    console.log('🔄 convertTransactionFromSupabase - Dados brutos:', {
+      id: data.id,
+      description: data.description,
+      is_installment: data.is_installment,
+      installment_info: data.installment_info,
+      installment_info_type: typeof data.installment_info,
+      installment_info_is_null: data.installment_info === null,
+      installment_info_is_undefined: data.installment_info === undefined,
+      has_installment_fields: 'is_installment' in data && 'installment_info' in data
+    });
+
+    // Tratar campos de parcelamento com segurança
+    let installmentInfo = null;
+    
+    // Log detalhado para debug
+    console.log('🔍 Processando installment_info:', {
+      raw_value: data.installment_info,
+      type: typeof data.installment_info,
+      is_null: data.installment_info === null,
+      is_undefined: data.installment_info === undefined,
+      is_string: typeof data.installment_info === 'string',
+      is_object: typeof data.installment_info === 'object' && data.installment_info !== null
+    });
+
+    // Processar installment_info com múltiplas estratégias
+    if (data.installment_info !== null && data.installment_info !== undefined) {
+      try {
+        // Estratégia 1: Se já é um objeto (JSONB nativo), usar diretamente
+        if (typeof data.installment_info === 'object' && data.installment_info !== null) {
+          installmentInfo = data.installment_info;
+          console.log('✅ installment_info processado como objeto JSONB:', installmentInfo);
+        } 
+        // Estratégia 2: Se é string, fazer parse JSON
+        else if (typeof data.installment_info === 'string' && data.installment_info.trim() !== '') {
+          installmentInfo = JSON.parse(data.installment_info);
+          console.log('✅ installment_info parseado de string JSON:', installmentInfo);
+        }
+        // Estratégia 3: Tentar converter de qualquer outro tipo
+        else {
+          console.warn('⚠️ Tipo inesperado para installment_info, tentando conversão:', {
+            type: typeof data.installment_info,
+            value: data.installment_info
+          });
+          installmentInfo = data.installment_info;
+        }
+      } catch (error) {
+        console.error('❌ Erro ao processar installment_info:', {
+          error: error instanceof Error ? error.message : error,
+          raw_data: data.installment_info,
+          type: typeof data.installment_info
+        });
+        installmentInfo = null;
+      }
+    } else {
+      console.log('⚠️ installment_info é null ou undefined - isso pode indicar problema de RLS ou query');
+    }
+
+    const convertedTransaction = {
       id: data.id,
       date: new Date(data.date),
       description: data.description,
-      amount: data.amount,
+      amount: parseFloat(data.amount) || 0,
       type: data.type,
       category: data.category,
       subcategory: data.subcategory,
       paymentMethod: data.payment_method,
       status: data.status,
       notes: data.notes,
-      tags: data.tags,
+      tags: data.tags || [],
       // Campos para compras parceladas
-      isInstallment: data.is_installment || false,
-      installmentInfo: data.installment_info ? JSON.parse(data.installment_info) : undefined
-    }
+      isInstallment: Boolean(data.is_installment),
+      installmentInfo
+    };
+
+    console.log('✅ Transação convertida final:', {
+      id: convertedTransaction.id,
+      description: convertedTransaction.description,
+      isInstallment: convertedTransaction.isInstallment,
+      installmentInfo: convertedTransaction.installmentInfo,
+      installmentInfoExists: !!convertedTransaction.installmentInfo,
+      isInstallmentTransaction: convertedTransaction.isInstallment && !!convertedTransaction.installmentInfo
+    });
+
+    return convertedTransaction;
   }
 
   private convertGoalFromSupabase(data: any): Goal {

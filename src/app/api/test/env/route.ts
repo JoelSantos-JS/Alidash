@@ -1,28 +1,29 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Check if environment variables are loaded
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    console.log('🔧 Variáveis de ambiente no servidor:');
+    console.log('- NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? 'Definida' : 'Não definida');
+    console.log('- NEXT_PUBLIC_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'Definida' : 'Não definida');
+    console.log('- SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceRole ? 'Definida' : 'Não definida');
 
     return NextResponse.json({
-      status: 'success',
-      environment: {
-        NEXT_PUBLIC_SUPABASE_URL: supabaseUrl ? '✅ SET' : '❌ NOT SET',
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: supabaseAnonKey ? '✅ SET' : '❌ NOT SET',
-        SUPABASE_SERVICE_ROLE_KEY: supabaseServiceRole ? '✅ SET' : '❌ NOT SET',
-      },
-      urls: {
-        supabaseUrl: supabaseUrl || 'NOT SET'
-      },
-      message: 'Environment variables check completed'
-    })
+      success: true,
+      env: {
+        supabaseUrl: supabaseUrl ? 'Definida' : 'Não definida',
+        supabaseAnonKey: supabaseAnonKey ? 'Definida' : 'Não definida',
+        supabaseServiceRole: supabaseServiceRole ? 'Definida' : 'Não definida'
+      }
+    });
   } catch (error) {
-    return NextResponse.json({
-      status: 'error',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    console.error('❌ Erro ao verificar variáveis de ambiente:', error);
+    return NextResponse.json(
+      { error: 'Erro ao verificar variáveis de ambiente' },
+      { status: 500 }
+    );
   }
 }

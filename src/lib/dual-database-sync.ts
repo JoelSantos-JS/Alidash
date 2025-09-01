@@ -469,8 +469,29 @@ export class DualDatabaseSync {
         const currentData = docSnap.exists() ? docSnap.data() : {}
         const currentProducts = currentData.products || []
         
+        // Calcular campos financeiros se não estiverem presentes
+        const totalCost = productData.totalCost || (productData.purchasePrice + productData.shippingCost + productData.importTaxes + productData.packagingCost + productData.marketingCost + productData.otherCosts)
+        const expectedProfit = productData.expectedProfit || (productData.sellingPrice - totalCost)
+        const profitMargin = productData.profitMargin || (productData.sellingPrice > 0 ? (expectedProfit / productData.sellingPrice) * 100 : 0)
+        const roi = productData.roi || (totalCost > 0 ? (expectedProfit / totalCost) * 100 : 0)
+        const actualProfit = productData.actualProfit || (expectedProfit * productData.quantitySold)
+        
+        console.log('💰 Calculando campos financeiros para Firebase:', {
+          name: productData.name,
+          totalCost,
+          expectedProfit,
+          profitMargin,
+          roi,
+          actualProfit
+        })
+        
         const newProduct = {
           ...productData,
+          totalCost,
+          expectedProfit,
+          profitMargin,
+          roi,
+          actualProfit,
           id: new Date().getTime().toString(),
           createdAt: new Date(),
           updatedAt: new Date()

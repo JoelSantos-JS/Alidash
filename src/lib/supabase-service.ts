@@ -117,6 +117,22 @@ export class SupabaseService {
   // =====================================
 
   async createProduct(userId: string, productData: Omit<Product, 'id' | 'sales'>) {
+    // Calcular campos financeiros se não estiverem presentes
+    const totalCost = productData.totalCost || (productData.purchasePrice + productData.shippingCost + productData.importTaxes + productData.packagingCost + productData.marketingCost + productData.otherCosts)
+    const expectedProfit = productData.expectedProfit || (productData.sellingPrice - totalCost)
+    const profitMargin = productData.profitMargin || (productData.sellingPrice > 0 ? (expectedProfit / productData.sellingPrice) * 100 : 0)
+    const roi = productData.roi || (totalCost > 0 ? (expectedProfit / totalCost) * 100 : 0)
+    const actualProfit = productData.actualProfit || (expectedProfit * productData.quantitySold)
+    
+    console.log('💰 Calculando campos financeiros para produto:', {
+      name: productData.name,
+      totalCost,
+      expectedProfit,
+      profitMargin,
+      roi,
+      actualProfit
+    })
+    
     // Convert Date objects to ISO strings
     const supabaseProductData = {
       user_id: userId,
@@ -135,13 +151,16 @@ export class SupabaseService {
       packaging_cost: productData.packagingCost,
       marketing_cost: productData.marketingCost,
       other_costs: productData.otherCosts,
+      total_cost: totalCost,
       selling_price: productData.sellingPrice,
+      expected_profit: expectedProfit,
+      profit_margin: profitMargin,
       quantity: productData.quantity,
       quantity_sold: productData.quantitySold,
       status: productData.status,
       purchase_date: productData.purchaseDate instanceof Date ? productData.purchaseDate.toISOString() : new Date(productData.purchaseDate).toISOString(),
-      roi: productData.roi,
-      actual_profit: productData.actualProfit,
+      roi: roi,
+      actual_profit: actualProfit,
       days_to_sell: productData.daysToSell
     }
 
@@ -788,6 +807,26 @@ export class SupabaseService {
   // =====================================
 
   private convertProductFromSupabase(data: any): Product {
+    // Calcular campos financeiros se estiverem zerados ou ausentes
+    const totalCost = data.total_cost || 0
+    const sellingPrice = data.selling_price || 0
+    const expectedProfit = data.expected_profit || (sellingPrice - totalCost)
+    const profitMargin = data.profit_margin || (sellingPrice > 0 ? (expectedProfit / sellingPrice) * 100 : 0)
+    const roi = data.roi || (totalCost > 0 ? (expectedProfit / totalCost) * 100 : 0)
+    const actualProfit = data.actual_profit || (expectedProfit * (data.quantity_sold || 0))
+    
+    console.log('🔄 Convertendo produto do Supabase:', {
+      id: data.id,
+      name: data.name,
+      total_cost: totalCost,
+      selling_price: sellingPrice,
+      quantity: data.quantity,
+      quantity_sold: data.quantity_sold,
+      roi: roi,
+      profit_margin: profitMargin,
+      actual_profit: actualProfit
+    })
+    
     return {
       id: data.id,
       name: data.name,
@@ -805,17 +844,17 @@ export class SupabaseService {
       packagingCost: data.packaging_cost,
       marketingCost: data.marketing_cost,
       otherCosts: data.other_costs,
-      totalCost: data.total_cost,
-      sellingPrice: data.selling_price,
-      expectedProfit: data.expected_profit,
-      profitMargin: data.profit_margin,
+      totalCost: totalCost,
+      sellingPrice: sellingPrice,
+      expectedProfit: expectedProfit,
+      profitMargin: profitMargin,
       sales: data.sales ? data.sales.map((sale: any) => this.convertSaleFromSupabase(sale)) : [],
       quantity: data.quantity,
       quantitySold: data.quantity_sold,
       status: data.status,
       purchaseDate: new Date(data.purchase_date),
-      roi: data.roi,
-      actualProfit: data.actual_profit,
+      roi: roi,
+      actualProfit: actualProfit,
       daysToSell: data.days_to_sell
     }
   }

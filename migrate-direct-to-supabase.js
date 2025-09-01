@@ -38,7 +38,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const EMAIL = 'joeltere9@gmail.com';
 const PASSWORD = '88127197';
 const FIREBASE_UID = '1sAltLnRMgO3ZCYnh4zn9iFck0B3';
-const SUPABASE_USER_ID = 'f06c3c27-5862-4332-96f2-d0f1e62bf9cc';
+const SUPABASE_USER_ID = 'a8a4b3fb-a614-4690-9f5d-fd4dda9c3b53';
 
 async function migrateDirectToSupabase() {
   console.log('🚀 Iniciando migração direta para Supabase...\n');

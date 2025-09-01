@@ -944,6 +944,16 @@ export default function Home() {
               variant="ghost" 
               className="w-full justify-start gap-2 sm:gap-3" 
               size="lg"
+              onClick={() => router.push('/produtos')}
+            >
+              <Package className="h-4 w-4" />
+              <span className="text-sm sm:text-base">Produtos</span>
+            </Button>
+            
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start gap-2 sm:gap-3" 
+              size="lg"
               onClick={() => router.push('/relatorios')}
             >
               <BarChart3 className="h-4 w-4" />

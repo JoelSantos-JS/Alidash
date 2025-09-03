@@ -134,7 +134,9 @@ export default function TransacoesPage() {
 
     const fetchData = async () => {
       try {
-        console.log('🔄 Carregando dados de produtos e transações:', user.uid);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Carregando dados de produtos e transações:', user.uid);
+        }
         
         // Carregar produtos do Firebase (mantendo compatibilidade)
         const docRef = doc(db, "user-data", user.uid);
@@ -145,9 +147,11 @@ export default function TransacoesPage() {
 
         if (docSnap.exists()) {
           const userData = docSnap.data();
-          console.log('📦 Dados encontrados no Firebase:', {
-            products: userData.products?.length || 0
-          });
+          if (process.env.NODE_ENV === 'development') {
+            console.log('📦 Dados encontrados no Firebase:', {
+              products: userData.products?.length || 0
+            });
+          }
           
           if (userData.products && userData.products.length > 0) {
             const data = userData.products;
@@ -166,7 +170,9 @@ export default function TransacoesPage() {
 
         // Carregar transações do Supabase (PRINCIPAL)
         try {
-          console.log('🔍 Tentando buscar transações do Supabase...');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 Tentando buscar transações do Supabase...');
+          }
           
           // Primeiro, buscar o usuário no Supabase usando API route
           const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
@@ -175,7 +181,9 @@ export default function TransacoesPage() {
             const userResult = await userResponse.json();
             const supabaseUser = userResult.user;
             
-            console.log('✅ Usuário encontrado no Supabase:', supabaseUser.id);
+            if (process.env.NODE_ENV === 'development') {
+              console.log('✅ Usuário encontrado no Supabase:', supabaseUser.id);
+            }
             
             // Agora buscar as transações usando API route
             const transactionsResponse = await fetch(`/api/transactions/get?user_id=${supabaseUser.id}`);
@@ -183,13 +191,15 @@ export default function TransacoesPage() {
             if (transactionsResponse.ok) {
               const transactionsResult = await transactionsResponse.json();
               supabaseTransactions = transactionsResult.transactions.map((transaction: any) => {
-                console.log('🔄 Convertendo transação:', {
-                  id: transaction.id,
-                  description: transaction.description,
-                  isInstallment: transaction.isInstallment,
-                  installmentInfo: transaction.installmentInfo,
-                  hasInstallmentFields: 'isInstallment' in transaction && 'installmentInfo' in transaction
-                });
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('🔄 Convertendo transação:', {
+                    id: transaction.id,
+                    description: transaction.description,
+                    isInstallment: transaction.isInstallment,
+                    installmentInfo: transaction.installmentInfo,
+                    hasInstallmentFields: 'isInstallment' in transaction && 'installmentInfo' in transaction
+                  });
+                }
                 
                 // Tratar installmentInfo com segurança
                 let installmentInfo = null;
@@ -237,58 +247,72 @@ export default function TransacoesPage() {
 
                 // Log específico para verificar se a conversão está correta
                 if (convertedTransaction.isInstallment && convertedTransaction.installmentInfo) {
-                  console.log('✅ Transação parcelada convertida corretamente:', {
-                    id: convertedTransaction.id,
-                    description: convertedTransaction.description,
-                    isInstallment: convertedTransaction.isInstallment,
-                    installmentInfo: convertedTransaction.installmentInfo,
-                    hasInstallmentInfo: !!convertedTransaction.installmentInfo,
-                    installmentInfoType: typeof convertedTransaction.installmentInfo
-                  });
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log('✅ Transação parcelada convertida corretamente:', {
+                      id: convertedTransaction.id,
+                      description: convertedTransaction.description,
+                      isInstallment: convertedTransaction.isInstallment,
+                      installmentInfo: convertedTransaction.installmentInfo,
+                      hasInstallmentInfo: !!convertedTransaction.installmentInfo,
+                      installmentInfoType: typeof convertedTransaction.installmentInfo
+                    });
+                  }
                 } else if (convertedTransaction.isInstallment && !convertedTransaction.installmentInfo) {
-                  console.log('❌ PROBLEMA: Transação marcada como parcelada mas sem installmentInfo:', {
-                    id: convertedTransaction.id,
-                    description: convertedTransaction.description,
-                    isInstallment: convertedTransaction.isInstallment,
-                    installmentInfo: convertedTransaction.installmentInfo,
-                    original_installment_info: transaction.installmentInfo
-                  });
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log('❌ PROBLEMA: Transação marcada como parcelada mas sem installmentInfo:', {
+                      id: convertedTransaction.id,
+                      description: convertedTransaction.description,
+                      isInstallment: convertedTransaction.isInstallment,
+                      installmentInfo: convertedTransaction.installmentInfo,
+                      original_installment_info: transaction.installmentInfo
+                    });
+                  }
                 }
                 
-                console.log('✅ Transação convertida:', {
-                  id: convertedTransaction.id,
-                  description: convertedTransaction.description,
-                  isInstallment: convertedTransaction.isInstallment,
-                  installmentInfo: convertedTransaction.installmentInfo,
-                  isInstallmentTransaction: convertedTransaction.isInstallment && convertedTransaction.installmentInfo
-                });
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('✅ Transação convertida:', {
+                    id: convertedTransaction.id,
+                    description: convertedTransaction.description,
+                    isInstallment: convertedTransaction.isInstallment,
+                    installmentInfo: convertedTransaction.installmentInfo,
+                    isInstallmentTransaction: convertedTransaction.isInstallment && convertedTransaction.installmentInfo
+                  });
+                }
                 
                 return convertedTransaction;
               });
               
               // Verificar transações parceladas
               const installmentTransactions = supabaseTransactions.filter(t => t.isInstallment && t.installmentInfo);
-              console.log('📊 Análise das transações:', {
-                total: supabaseTransactions.length,
-                parceladas: installmentTransactions.length,
-                naoParceladas: supabaseTransactions.length - installmentTransactions.length
-              });
-              
-              if (installmentTransactions.length > 0) {
-                console.log('🎉 Transações parceladas encontradas:', installmentTransactions.map(t => ({
-                  id: t.id,
-                  description: t.description,
-                  amount: t.amount,
-                  installmentInfo: t.installmentInfo
-                })));
-              } else {
-                console.log('❌ Nenhuma transação parcelada encontrada!');
-                console.log('Verificando todas as transações:');
-                supabaseTransactions.forEach((t, index) => {
-                  console.log(`  ${index + 1}. ${t.description}: isInstallment=${t.isInstallment}, installmentInfo=${t.installmentInfo ? 'presente' : 'ausente'}`);
+              if (process.env.NODE_ENV === 'development') {
+                console.log('📊 Análise das transações:', {
+                  total: supabaseTransactions.length,
+                  parceladas: installmentTransactions.length,
+                  naoParceladas: supabaseTransactions.length - installmentTransactions.length
                 });
               }
-              console.log('📊 Transações do Supabase:', supabaseTransactions.length);
+              
+              if (installmentTransactions.length > 0) {
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('🎉 Transações parceladas encontradas:', installmentTransactions.map(t => ({
+                    id: t.id,
+                    description: t.description,
+                    amount: t.amount,
+                    installmentInfo: t.installmentInfo
+                  })));
+                }
+              } else {
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('❌ Nenhuma transação parcelada encontrada!');
+                  console.log('Verificando todas as transações:');
+                  supabaseTransactions.forEach((t, index) => {
+                    console.log(`  ${index + 1}. ${t.description}: isInstallment=${t.isInstallment}, installmentInfo=${t.installmentInfo ? 'presente' : 'ausente'}`);
+                  });
+                }
+              }
+              if (process.env.NODE_ENV === 'development') {
+                console.log('📊 Transações do Supabase:', supabaseTransactions.length);
+              }
             } else {
               const errorText = await transactionsResponse.text();
               console.error('❌ Erro ao buscar transações:', {
@@ -306,32 +330,44 @@ export default function TransacoesPage() {
               }
             }
           } else {
-            console.log('⚠️ Usuário não encontrado no Supabase, usando apenas Firebase');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('⚠️ Usuário não encontrado no Supabase, usando apenas Firebase');
+            }
           }
         } catch (error) {
           console.error('❌ Erro ao buscar transações do Supabase:', error);
-          console.log('📥 Continuando apenas com dados do Firebase');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('📥 Continuando apenas com dados do Firebase');
+          }
         }
 
         let finalProducts = firebaseProducts;
         if (finalProducts.length === 0) {
-          console.log('📥 Nenhum produto encontrado, usando dados de exemplo');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('📥 Nenhum produto encontrado, usando dados de exemplo');
+          }
           finalProducts = initialProducts;
         } else {
-          console.log('✅ Usando produtos reais do banco de dados');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ Usando produtos reais do banco de dados');
+          }
         }
 
         setProducts(finalProducts);
         setTransactions(supabaseTransactions);
-        console.log('📊 Dados carregados:', {
-          produtos: finalProducts.length,
-          transacoes: supabaseTransactions.length,
-          fonte_transacoes: 'Supabase'
-        });
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📊 Dados carregados:', {
+            produtos: finalProducts.length,
+            transacoes: supabaseTransactions.length,
+            fonte_transacoes: 'Supabase'
+          });
+        }
 
       } catch (error) {
         console.error('❌ Erro ao carregar dados:', error);
-        console.log('📥 Usando dados de exemplo devido ao erro');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📥 Usando dados de exemplo devido ao erro');
+        }
         setProducts(initialProducts);
         setTransactions([]);
       }
@@ -389,7 +425,9 @@ export default function TransacoesPage() {
           
           if (createResponse.ok) {
             const result = await createResponse.json();
-            console.log('✅ Transação criada no Supabase:', result.transaction.id);
+            if (process.env.NODE_ENV === 'development') {
+              console.log('✅ Transação criada no Supabase:', result.transaction.id);
+            }
             
             toast({
               title: "Transação Adicionada!",

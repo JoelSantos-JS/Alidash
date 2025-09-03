@@ -136,7 +136,9 @@ export default function ReceitasPage() {
 
     const fetchData = async () => {
       try {
-        console.log('🔄 Carregando dados de produtos e receitas:', user.uid);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Carregando dados de produtos e receitas:', user.uid);
+        }
         
         // Carregar produtos do Firebase (mantendo compatibilidade)
         const docRef = doc(db, "user-data", user.uid);
@@ -147,10 +149,12 @@ export default function ReceitasPage() {
 
         if (docSnap.exists()) {
           const userData = docSnap.data();
-          console.log('📦 Dados encontrados no Firebase:', {
-            products: userData.products?.length || 0,
-            revenues: userData.revenues?.length || 0
-          });
+          if (process.env.NODE_ENV === 'development') {
+            console.log('📦 Dados encontrados no Firebase:', {
+              products: userData.products?.length || 0,
+              revenues: userData.revenues?.length || 0
+            });
+          }
           
           if (userData.products && userData.products.length > 0) {
             const data = userData.products;
@@ -178,7 +182,9 @@ export default function ReceitasPage() {
         // Carregar receitas do Supabase
         let supabaseRevenues: Revenue[] = [];
         try {
-          console.log('🔍 Tentando buscar receitas do Supabase...');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 Tentando buscar receitas do Supabase...');
+          }
           
           // Primeiro, buscar o usuário no Supabase usando API route
           const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
@@ -187,7 +193,9 @@ export default function ReceitasPage() {
             const userResult = await userResponse.json();
             const supabaseUser = userResult.user;
             
-            console.log('✅ Usuário encontrado no Supabase:', supabaseUser.id);
+            if (process.env.NODE_ENV === 'development') {
+              console.log('✅ Usuário encontrado no Supabase:', supabaseUser.id);
+            }
             setSupabaseUserId(supabaseUser.id);
             
             // Agora buscar as receitas usando API route
@@ -196,10 +204,14 @@ export default function ReceitasPage() {
             if (revenuesResponse.ok) {
               const revenuesResult = await revenuesResponse.json();
               supabaseRevenues = revenuesResult.revenues.map((revenue: any) => {
-                console.log('🔄 Convertendo receita:', revenue);
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('🔄 Convertendo receita:', revenue);
+                }
                 const date = new Date(revenue.date);
                 const time = date.toTimeString().slice(0, 5);
-                console.log('🕐 Hora extraída:', time, 'de', revenue.date);
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('🕐 Hora extraída:', time, 'de', revenue.date);
+                }
                 return {
                   id: revenue.id,
                   date: date,
@@ -212,16 +224,22 @@ export default function ReceitasPage() {
                   productId: revenue.product_id
                 };
               });
-              console.log('📊 Receitas do Supabase:', supabaseRevenues.length);
+              if (process.env.NODE_ENV === 'development') {
+                console.log('📊 Receitas do Supabase:', supabaseRevenues.length);
+              }
             } else {
               console.error('❌ Erro ao buscar receitas:', await revenuesResponse.text());
             }
           } else {
-            console.log('⚠️ Usuário não encontrado no Supabase, usando apenas Firebase');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('⚠️ Usuário não encontrado no Supabase, usando apenas Firebase');
+            }
           }
         } catch (error) {
           console.error('❌ Erro ao buscar receitas do Supabase:', error);
-          console.log('📥 Continuando apenas com dados do Firebase');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('📥 Continuando apenas com dados do Firebase');
+          }
         }
 
         // Combinar receitas do Firebase e Supabase (priorizando Supabase)
@@ -234,41 +252,53 @@ export default function ReceitasPage() {
 
         let finalProducts = firebaseProducts;
         if (finalProducts.length === 0) {
-          console.log('📥 Nenhum produto encontrado, usando dados de exemplo');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('📥 Nenhum produto encontrado, usando dados de exemplo');
+          }
           finalProducts = initialProducts;
         } else {
-          console.log('✅ Usando produtos reais do banco de dados');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ Usando produtos reais do banco de dados');
+          }
         }
 
         setProducts(finalProducts);
         setRevenues(uniqueRevenues);
-        console.log('📊 Dados carregados:', {
-          produtos: finalProducts.length,
-          receitas: uniqueRevenues.length,
-          supabaseRevenues: supabaseRevenues.length,
-          firebaseRevenues: firebaseRevenues.length
-        });
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📊 Dados carregados:', {
+            produtos: finalProducts.length,
+            receitas: uniqueRevenues.length,
+            supabaseRevenues: supabaseRevenues.length,
+            firebaseRevenues: firebaseRevenues.length
+          });
+        }
         
         // Debug detalhado das receitas
-        console.log('🔍 Debug das receitas do Supabase:', supabaseRevenues);
-        console.log('🔍 Debug das receitas do Firebase:', firebaseRevenues);
-        console.log('🔍 Debug das receitas finais:', uniqueRevenues);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 Debug das receitas do Supabase:', supabaseRevenues);
+          console.log('🔍 Debug das receitas do Firebase:', firebaseRevenues);
+          console.log('🔍 Debug das receitas finais:', uniqueRevenues);
+        }
         
         // Debug detalhado de cada receita
         uniqueRevenues.forEach((revenue, index) => {
-          console.log(`📊 Receita ${index + 1}:`, {
-            id: revenue.id,
-            description: revenue.description,
-            amount: revenue.amount,
-            category: revenue.category,
-            source: revenue.source,
-            date: revenue.date
-          });
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`📊 Receita ${index + 1}:`, {
+              id: revenue.id,
+              description: revenue.description,
+              amount: revenue.amount,
+              category: revenue.category,
+              source: revenue.source,
+              date: revenue.date
+            });
+          }
         });
 
       } catch (error) {
         console.error('❌ Erro ao carregar dados:', error);
-        console.log('📥 Usando dados de exemplo devido ao erro');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📥 Usando dados de exemplo devido ao erro');
+        }
         setProducts(initialProducts);
       }
       setIsLoading(false);

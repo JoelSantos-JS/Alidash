@@ -20,11 +20,14 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-console.log('🔧 Configuração Supabase:', {
-  url: supabaseUrl ? 'Definida' : 'Não definida',
-  anonKey: supabaseAnonKey ? 'Definida' : 'Não definida',
-  serviceKey: supabaseServiceKey ? 'Definida' : 'Não definida'
-})
+// Só mostrar logs em desenvolvimento
+if (process.env.NODE_ENV === 'development') {
+  console.log('🔧 Configuração Supabase:', {
+    url: supabaseUrl ? 'Definida' : 'Não definida',
+    anonKey: supabaseAnonKey ? 'Definida' : 'Não definida',
+    serviceKey: supabaseServiceKey ? 'Definida' : 'Não definida'
+  })
+}
 
 if (!supabaseUrl) {
   throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
@@ -46,7 +49,9 @@ export const supabaseAdmin = createClient(
   supabaseServiceKey || supabaseAnonKey // Fallback para anon key se service key não estiver disponível
 )
 
-console.log('✅ Clientes Supabase criados com sucesso');
+if (process.env.NODE_ENV === 'development') {
+  console.log('✅ Clientes Supabase criados com sucesso');
+}
 
 /**
  * Supabase Service Layer - Replace Firebase operations
@@ -55,9 +60,13 @@ export class SupabaseService {
   private client: typeof supabase
 
   constructor(useAdmin = false) {
-    console.log('🔧 Criando SupabaseService:', { useAdmin });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔧 Criando SupabaseService:', { useAdmin });
+    }
     this.client = useAdmin ? supabaseAdmin : supabase
-    console.log('✅ SupabaseService criado com sucesso');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ SupabaseService criado com sucesso');
+    }
   }
 
   // =====================================
@@ -71,13 +80,31 @@ export class SupabaseService {
     avatar_url?: string | null
     account_type?: string
   }) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('👤 Criando usuário no Supabase com dados:', JSON.stringify(userData, null, 2))
+    }
+    
     const { data, error } = await this.client
       .from('users')
       .insert(userData as any)
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('❌ Erro ao criar usuário no Supabase:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        userData
+      })
+      throw error
+    }
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ Usuário criado no Supabase:', data)
+    }
+    
     return data
   }
 
@@ -123,15 +150,6 @@ export class SupabaseService {
     const profitMargin = productData.profitMargin || (productData.sellingPrice > 0 ? (expectedProfit / productData.sellingPrice) * 100 : 0)
     const roi = productData.roi || (totalCost > 0 ? (expectedProfit / totalCost) * 100 : 0)
     const actualProfit = productData.actualProfit || (expectedProfit * productData.quantitySold)
-    
-    console.log('💰 Calculando campos financeiros para produto:', {
-      name: productData.name,
-      totalCost,
-      expectedProfit,
-      profitMargin,
-      roi,
-      actualProfit
-    })
     
     // Convert Date objects to ISO strings
     const supabaseProductData = {
@@ -295,14 +313,6 @@ export class SupabaseService {
   // =====================================
 
   async createTransaction(userId: string, transactionData: Omit<Transaction, 'id'>) {
-    console.log('📝 createTransaction - Dados recebidos:', {
-      userId,
-      description: transactionData.description,
-      amount: transactionData.amount,
-      isInstallment: transactionData.isInstallment,
-      installmentInfo: transactionData.installmentInfo
-    });
-
     // Preparar dados para inserção
     const insertData = {
       user_id: userId,
@@ -321,12 +331,6 @@ export class SupabaseService {
       installment_info: transactionData.installmentInfo ? JSON.stringify(transactionData.installmentInfo) : null
     };
 
-    console.log('📝 createTransaction - Dados para inserção:', {
-      is_installment: insertData.is_installment,
-      installment_info: insertData.installment_info,
-      installment_info_parsed: insertData.installment_info ? JSON.parse(insertData.installment_info) : null
-    });
-
     const { data, error } = await this.client
       .from('transactions')
       .insert(insertData as any)
@@ -337,13 +341,6 @@ export class SupabaseService {
       console.error('❌ Erro ao criar transação:', error);
       throw error;
     }
-
-    console.log('✅ createTransaction - Transação criada:', {
-      id: data.id,
-      description: data.description,
-      is_installment: data.is_installment,
-      installment_info: data.installment_info
-    });
 
     return this.convertTransactionFromSupabase(data)
   }
@@ -363,8 +360,6 @@ export class SupabaseService {
     startDate?: Date
     endDate?: Date
   }) {
-    console.log('🔍 [DEBUG] Starting getTransactions with userId:', userId);
-    
     // Explicitly select all fields including JSONB fields
     let query = this.client
       .from('transactions')
@@ -389,21 +384,6 @@ export class SupabaseService {
       `)
       .eq('user_id', userId)
 
-    // 🚨 TEMPORARY DEBUG: Try different query approaches
-    console.log('🔍 [DEBUG] Testing RLS bypass - querying without user filter first...');
-    
-    // Test query without user filter to see if RLS is blocking
-    const { data: testData, error: testError } = await this.client
-      .from('transactions')
-      .select('id, description, is_installment, installment_info')
-      .eq('id', '51e7f92a-59f1-437b-a3af-3c25fdf32c29');
-    
-    console.log('🔍 [DEBUG] Test query result (no user filter):', {
-      data: testData,
-      error: testError,
-      installment_info: testData?.[0]?.installment_info
-    });
-    
     // Now continue with normal filtered query
     if (filters?.type) {
       query = query.eq('type', filters.type)
@@ -418,28 +398,11 @@ export class SupabaseService {
       query = query.lte('date', filters.endDate.toISOString())
     }
 
-    console.log('🔍 [DEBUG] Executing main query with filters...');
     const { data, error } = await query.order('date', { ascending: false })
 
     if (error) {
       console.error('❌ [DEBUG] Query error:', error);
       throw error;
-    }
-    
-    // Log detalhado dos dados brutos antes da conversão
-    console.log('🔍 Dados brutos do Supabase antes da conversão:');
-    if (data && data.length > 0) {
-      data.forEach((transaction: any, index: number) => {
-        console.log(`Transação ${index + 1} (bruta):`, {
-          id: transaction.id,
-          description: transaction.description,
-          is_installment: transaction.is_installment,
-          installment_info: transaction.installment_info,
-          installment_info_type: typeof transaction.installment_info,
-          has_installment_fields: 'is_installment' in transaction && 'installment_info' in transaction,
-          all_fields: Object.keys(transaction)
-        });
-      });
     }
     
     return data.map(transaction => this.convertTransactionFromSupabase(transaction))
@@ -450,31 +413,74 @@ export class SupabaseService {
   // =====================================
 
   async createGoal(userId: string, goalData: Omit<Goal, 'id' | 'milestones' | 'reminders'>) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🎯 createGoal chamado com:', { userId, goalData: { name: goalData.name, category: goalData.category } })
+    }
+    
+    // Função auxiliar para converter data
+    const ensureDate = (date: any): string => {
+      if (!date) return new Date().toISOString()
+      if (date instanceof Date) return date.toISOString()
+      if (typeof date === 'string') return new Date(date).toISOString()
+      return new Date().toISOString()
+    }
+
+    const insertData = {
+      user_id: userId,
+      name: goalData.name,
+      description: goalData.description,
+      category: goalData.category,
+      type: goalData.type,
+      target_value: goalData.targetValue,
+      current_value: goalData.currentValue,
+      unit: goalData.unit,
+      deadline: ensureDate(goalData.deadline),
+      created_date: ensureDate(goalData.createdDate),
+      priority: goalData.priority,
+      status: goalData.status,
+      notes: goalData.notes,
+      tags: goalData.tags || [],
+      linked_product_ids: goalData.linkedEntities?.products || [],
+      linked_dream_ids: goalData.linkedEntities?.dreams || [],
+      linked_transaction_ids: goalData.linkedEntities?.transactions || []
+    }
+
+
+
     const { data, error } = await this.client
       .from('goals')
-      .insert({
-        user_id: userId,
-        name: goalData.name,
-        description: goalData.description,
-        category: goalData.category,
-        type: goalData.type,
-        target_value: goalData.targetValue,
-        current_value: goalData.currentValue,
-        unit: goalData.unit,
-        deadline: goalData.deadline.toISOString(),
-        created_date: goalData.createdDate.toISOString(),
-        priority: goalData.priority,
-        status: goalData.status,
-        notes: goalData.notes,
-        tags: goalData.tags,
-        linked_product_ids: goalData.linkedEntities?.products,
-        linked_dream_ids: goalData.linkedEntities?.dreams,
-        linked_transaction_ids: goalData.linkedEntities?.transactions
-      } as any)
+      .insert(insertData as any)
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      // Forçar extração das propriedades do erro para evitar serialização vazia
+      const errorDetails = {
+        code: error?.code || 'NO_CODE',
+        message: error?.message || 'NO_MESSAGE', 
+        details: error?.details || 'NO_DETAILS',
+        hint: error?.hint || 'NO_HINT',
+        name: error?.name || 'NO_NAME',
+        stack: error?.stack || 'NO_STACK',
+        fullError: String(error),
+        insertData
+      }
+      
+      console.error('❌ Erro detalhado ao criar meta:')
+      console.error('📋 Code:', errorDetails.code)
+      console.error('💬 Message:', errorDetails.message)
+      console.error('🔍 Details:', errorDetails.details)
+      console.error('💡 Hint:', errorDetails.hint)
+      console.error('📝 Full Error:', errorDetails.fullError)
+      console.error('📊 Insert Data:', errorDetails.insertData)
+      
+      throw error
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ Meta criada com sucesso:', data)
+    }
+
     return this.convertGoalFromSupabase(data)
   }
 
@@ -493,20 +499,64 @@ export class SupabaseService {
     return data.map(goal => this.convertGoalFromSupabase(goal))
   }
 
+  async updateGoal(id: string, updates: Partial<Goal>) {
+    // Função auxiliar para converter data
+    const ensureDate = (date: any): string => {
+      if (!date) return new Date().toISOString()
+      if (date instanceof Date) return date.toISOString()
+      if (typeof date === 'string') return new Date(date).toISOString()
+      return new Date().toISOString()
+    }
+
+    const updateData: any = {}
+    
+    if (updates.name !== undefined) updateData.name = updates.name
+    if (updates.description !== undefined) updateData.description = updates.description
+    if (updates.category !== undefined) updateData.category = updates.category
+    if (updates.type !== undefined) updateData.type = updates.type
+    if (updates.targetValue !== undefined) updateData.target_value = updates.targetValue
+    if (updates.currentValue !== undefined) updateData.current_value = updates.currentValue
+    if (updates.unit !== undefined) updateData.unit = updates.unit
+    if (updates.deadline !== undefined) updateData.deadline = ensureDate(updates.deadline)
+    if (updates.priority !== undefined) updateData.priority = updates.priority
+    if (updates.status !== undefined) updateData.status = updates.status
+    if (updates.notes !== undefined) updateData.notes = updates.notes
+    if (updates.tags !== undefined) updateData.tags = updates.tags
+    if (updates.linkedEntities?.products !== undefined) updateData.linked_product_ids = updates.linkedEntities.products
+    if (updates.linkedEntities?.dreams !== undefined) updateData.linked_dream_ids = updates.linkedEntities.dreams
+    if (updates.linkedEntities?.transactions !== undefined) updateData.linked_transaction_ids = updates.linkedEntities.transactions
+    
+    updateData.updated_at = new Date().toISOString()
+
+    const { data, error } = await this.client
+      .from('goals')
+      .update(updateData)
+      .eq('id', id)
+      .select(`
+        *,
+        goal_milestones (*),
+        goal_reminders (*)
+      `)
+      .single()
+
+    if (error) throw error
+    return this.convertGoalFromSupabase(data)
+  }
+
+  async deleteGoal(id: string) {
+    const { error } = await this.client
+      .from('goals')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+  }
+
   // =====================================
   // REVENUE OPERATIONS
   // =====================================
 
   async createRevenue(userId: string, revenueData: Omit<Revenue, 'id'>) {
-    console.log('💰 Criando receita no Supabase:', {
-      userId,
-      revenueData: {
-        description: revenueData.description,
-        amount: revenueData.amount,
-        category: revenueData.category,
-        source: revenueData.source
-      }
-    })
     
     const insertData = {
       user_id: userId,
@@ -519,8 +569,6 @@ export class SupabaseService {
       product_id: revenueData.productId
     }
     
-    console.log('📝 Dados para inserção:', insertData)
-    
     const { data, error } = await this.client
       .from('revenues')
       .insert(insertData as any)
@@ -532,7 +580,6 @@ export class SupabaseService {
       throw error
     }
     
-    console.log('✅ Receita criada com sucesso:', data)
     return this.convertRevenueFromSupabase(data)
   }
 
@@ -602,14 +649,6 @@ export class SupabaseService {
   // =====================================
 
   async createExpense(userId: string, expenseData: Omit<Expense, 'id'>) {
-    console.log('💸 Criando despesa no Supabase:', {
-      userId,
-      expenseData: {
-        description: expenseData.description,
-        amount: expenseData.amount,
-        category: expenseData.category
-      }
-    })
     
     const insertData = {
       user_id: userId,
@@ -623,8 +662,6 @@ export class SupabaseService {
       product_id: expenseData.productId
     }
     
-    console.log('📝 Dados para inserção:', insertData)
-    
     const { data, error } = await this.client
       .from('expenses')
       .insert(insertData as any)
@@ -636,7 +673,6 @@ export class SupabaseService {
       throw error
     }
     
-    console.log('✅ Despesa criada com sucesso:', data)
     return this.convertExpenseFromSupabase(data)
   }
 
@@ -815,18 +851,6 @@ export class SupabaseService {
     const roi = data.roi || (totalCost > 0 ? (expectedProfit / totalCost) * 100 : 0)
     const actualProfit = data.actual_profit || (expectedProfit * (data.quantity_sold || 0))
     
-    console.log('🔄 Convertendo produto do Supabase:', {
-      id: data.id,
-      name: data.name,
-      total_cost: totalCost,
-      selling_price: sellingPrice,
-      quantity: data.quantity,
-      quantity_sold: data.quantity_sold,
-      roi: roi,
-      profit_margin: profitMargin,
-      actual_profit: actualProfit
-    })
-    
     return {
       id: data.id,
       name: data.name,
@@ -870,42 +894,19 @@ export class SupabaseService {
   }
 
   private convertTransactionFromSupabase(data: any): Transaction {
-    console.log('🔄 convertTransactionFromSupabase - Dados brutos:', {
-      id: data.id,
-      description: data.description,
-      is_installment: data.is_installment,
-      installment_info: data.installment_info,
-      installment_info_type: typeof data.installment_info,
-      installment_info_is_null: data.installment_info === null,
-      installment_info_is_undefined: data.installment_info === undefined,
-      has_installment_fields: 'is_installment' in data && 'installment_info' in data
-    });
-
     // Tratar campos de parcelamento com segurança
     let installmentInfo = null;
     
-    // Log detalhado para debug
-    console.log('🔍 Processando installment_info:', {
-      raw_value: data.installment_info,
-      type: typeof data.installment_info,
-      is_null: data.installment_info === null,
-      is_undefined: data.installment_info === undefined,
-      is_string: typeof data.installment_info === 'string',
-      is_object: typeof data.installment_info === 'object' && data.installment_info !== null
-    });
-
     // Processar installment_info com múltiplas estratégias
     if (data.installment_info !== null && data.installment_info !== undefined) {
       try {
         // Estratégia 1: Se já é um objeto (JSONB nativo), usar diretamente
         if (typeof data.installment_info === 'object' && data.installment_info !== null) {
           installmentInfo = data.installment_info;
-          console.log('✅ installment_info processado como objeto JSONB:', installmentInfo);
         } 
         // Estratégia 2: Se é string, fazer parse JSON
         else if (typeof data.installment_info === 'string' && data.installment_info.trim() !== '') {
           installmentInfo = JSON.parse(data.installment_info);
-          console.log('✅ installment_info parseado de string JSON:', installmentInfo);
         }
         // Estratégia 3: Tentar converter de qualquer outro tipo
         else {
@@ -943,15 +944,6 @@ export class SupabaseService {
       isInstallment: Boolean(data.is_installment),
       installmentInfo
     };
-
-    console.log('✅ Transação convertida final:', {
-      id: convertedTransaction.id,
-      description: convertedTransaction.description,
-      isInstallment: convertedTransaction.isInstallment,
-      installmentInfo: convertedTransaction.installmentInfo,
-      installmentInfoExists: !!convertedTransaction.installmentInfo,
-      isInstallmentTransaction: convertedTransaction.isInstallment && !!convertedTransaction.installmentInfo
-    });
 
     return convertedTransaction;
   }

@@ -78,7 +78,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Sincronizar usuário com Supabase quando fizer login
       if (user) {
         try {
-          console.log('🔄 Sincronizando usuário com Supabase:', user.email);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔄 Sincronizando usuário com Supabase:', user.email);
+          }
           
           // Usar API route para sincronizar usuário
           const response = await fetch('/api/auth/sync-user', {
@@ -96,12 +98,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
           if (response.ok) {
             const result = await response.json();
-            console.log('🎉 Usuário sincronizado com Supabase:', {
-              id: result.user.id,
-              email: result.user.email,
-              firebase_uid: result.user.firebase_uid,
-              action: result.action
-            });
+            if (process.env.NODE_ENV === 'development') {
+              console.log('🎉 Usuário sincronizado com Supabase:', {
+                id: result.user.id,
+                email: result.user.email,
+                firebase_uid: result.user.firebase_uid,
+                action: result.action
+              });
+            }
           } else {
             console.error('❌ Erro na sincronização com Supabase:', await response.text());
           }
@@ -148,9 +152,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logoutWithBackup = async () => {
     if (user) {
       try {
-        console.log('🔄 Fazendo backup antes do logout...');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Fazendo backup antes do logout...');
+        }
         await backupUserData(user);
-        console.log('✅ Backup automático concluído');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Backup automático concluído');
+        }
       } catch (error) {
         console.error('❌ Erro no backup automático:', error);
       }

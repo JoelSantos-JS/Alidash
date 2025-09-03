@@ -208,8 +208,20 @@ const initialProducts: Product[] = [
 export default function Home() {
   const { user, loading: authLoading, isPro, openUpgradeModal, logoutWithBackup, accountType, setAccountType } = useAuth();
   
-  // Hook de sincronização dual
-  const dualSync = useDualSync(user?.uid || '', 'BEST_EFFORT');
+  // Debug logs para verificar estado da autenticação
+  console.log('🔍 Estado da autenticação:', {
+    user: !!user,
+    userUid: user?.uid,
+    userEmail: user?.email,
+    authLoading,
+    accountType
+  });
+  
+  // Hook de sincronização dual - só criar quando user existir
+  const dualSync = useMemo(() => {
+    if (!user?.uid) return null;
+    return useDualSync(user.uid, 'BEST_EFFORT');
+  }, [user?.uid]);
   
   // Memoize expensive calculations
   const memoizedAccountType = useMemo(() => accountType, [accountType]);
@@ -252,88 +264,174 @@ export default function Home() {
   const [monthlyBudget, setMonthlyBudget] = useState(400);
   const [dreams, setDreams] = useState<any[]>([]);
   const [bets, setBets] = useState<any[]>([]);
+  const [revenues, setRevenues] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [sales, setSales] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
-    if (authLoading || !user) return;
+    console.log('🔍 useEffect executado - authLoading:', authLoading, 'user:', !!user);
+    if (authLoading || !user) {
+      console.log('⏳ Aguardando autenticação...');
+      return;
+    }
 
     const fetchData = async () => {
         try {
-            console.log('🔄 Carregando dados reais do usuário:', user.uid);
-            
-            // 1. Primeiro, tentar carregar do Firebase (dados principais)
-            const docRef = doc(db, "user-data", user.uid);
-            const docSnap = await getDoc(docRef);
+            console.log('🔄 Carregando APENAS dados do Supabase para usuário:', user.uid);
 
-            let firebaseProducts: Product[] = [];
-            let firebaseDreams: any[] = [];
-            let firebaseBets: any[] = [];
-            let firebaseBudget = 400;
-
-            if (docSnap.exists()) {
-                const userData = docSnap.data();
-                console.log('📦 Dados encontrados no Firebase:', {
-                    products: userData.products?.length || 0,
-                    dreams: userData.dreams?.length || 0,
-                    bets: userData.bets?.length || 0,
-                    budget: userData.monthlyBudget
-                });
-                
-                // Carregar produtos do Firebase
-                if (userData.products && userData.products.length > 0) {
-                    const data = userData.products;
-                    firebaseProducts = data.map((p: any) => ({
-                        ...p,
-                        purchaseDate: p.purchaseDate?.toDate ? p.purchaseDate.toDate() : new Date(p.purchaseDate),
-                        sales: p.sales ? p.sales.map((s: any) => ({
-                            ...s, 
-                            date: s.date?.toDate ? s.date.toDate() : 
-                                  typeof s.date === 'string' ? new Date(s.date) : 
-                                  new Date(s.date)
-                        })) : [],
-                    }));
-                }
-                
-                firebaseDreams = userData.dreams || [];
-                firebaseBets = userData.bets || [];
-                firebaseBudget = userData.monthlyBudget || 400;
-            }
-
-            // 2. Tentar carregar backup do Supabase (dados de backup)
+            // 2. Carregar dados do Supabase via API
+            let supabaseProducts: Product[] = [];
             try {
-                const backupResponse = await fetch(`/api/backup/save?userId=${user.uid}`);
-                if (backupResponse.ok) {
-                    const backupData = await backupResponse.json();
-                    console.log('📦 Dados de backup encontrados no Supabase:', backupData);
-                    
-                    // Se não há produtos no Firebase mas há no backup, usar o backup
-                    if (firebaseProducts.length === 0 && backupData.itemCounts?.products > 0) {
-                        console.log('🔄 Usando produtos do backup do Supabase');
-                        // Aqui você pode implementar a restauração do backup se necessário
+                console.log('🔄 Carregando produtos via API...');
+                const response = await fetch(`/api/products/get?user_id=${user.uid}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    supabaseProducts = data.products || [];
+                    console.log('📦 Produtos encontrados via API:', supabaseProducts.length);
+                    if (supabaseProducts.length > 0) {
+                        console.log('📋 Primeiro produto:', supabaseProducts[0]);
                     }
+                } else {
+                    console.log('⚠️ Erro na resposta da API:', response.status);
                 }
-            } catch (backupError) {
-                console.log('⚠️ Erro ao verificar backup do Supabase:', backupError);
+            } catch (apiError) {
+                console.log('⚠️ Erro ao carregar dados via API:', apiError);
+                console.error('Stack trace:', apiError);
             }
 
-            // 3. Decidir quais dados usar
-            let finalProducts = firebaseProducts;
-            let finalBudget = firebaseBudget;
+            // 2.1. Buscar usuário Supabase para usar nas APIs
+            let supabaseUserId: string | null = null;
+            try {
+                console.log('🔍 Buscando usuário Supabase...');
+                const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
+                
+                if (userResponse.ok) {
+                    const userResult = await userResponse.json();
+                    supabaseUserId = userResult.user.id;
+                    console.log('✅ Usuário Supabase encontrado:', supabaseUserId);
+                } else {
+                    console.log('⚠️ Erro ao buscar usuário Supabase:', userResponse.status);
+                }
+            } catch (userError) {
+                console.log('⚠️ Erro ao buscar usuário Supabase:', userError);
+            }
 
-            if (finalProducts.length === 0) {
-                console.log('📥 Nenhum produto encontrado, usando dados de exemplo');
-                finalProducts = initialProducts;
+            // 2.2. Carregar receitas do Supabase via API
+            let supabaseRevenues: any[] = [];
+            if (supabaseUserId) {
+                try {
+                    console.log('🔄 Carregando receitas via API...');
+                    const revenuesResponse = await fetch(`/api/revenues/get?user_id=${supabaseUserId}`);
+                    if (revenuesResponse.ok) {
+                        const revenuesData = await revenuesResponse.json();
+                        supabaseRevenues = revenuesData.revenues || [];
+                        console.log('💰 Receitas encontradas via API:', supabaseRevenues.length);
+                    } else {
+                        console.log('⚠️ Erro na resposta da API de receitas:', revenuesResponse.status);
+                    }
+                } catch (revenuesError) {
+                    console.log('⚠️ Erro ao carregar receitas via API:', revenuesError);
+                }
+            }
+
+            // 2.3. Carregar despesas do Supabase via API
+            let supabaseExpenses: any[] = [];
+            if (supabaseUserId) {
+                try {
+                    console.log('🔄 Carregando despesas via API...');
+                    const expensesResponse = await fetch(`/api/expenses/get?user_id=${supabaseUserId}`);
+                    if (expensesResponse.ok) {
+                        const expensesData = await expensesResponse.json();
+                        supabaseExpenses = expensesData.expenses || [];
+                        console.log('💸 Despesas encontradas via API:', supabaseExpenses.length);
+                    } else {
+                        console.log('⚠️ Erro na resposta da API de despesas:', expensesResponse.status);
+                    }
+                } catch (expensesError) {
+                    console.log('⚠️ Erro ao carregar despesas via API:', expensesError);
+                }
+            }
+
+            // 2.4. Carregar vendas do Supabase via API
+            let supabaseSales: any[] = [];
+            if (supabaseUserId) {
+                try {
+                    console.log('🔄 Carregando vendas via API...');
+                    const salesResponse = await fetch(`/api/sales/get?user_id=${user.uid}`);
+                    if (salesResponse.ok) {
+                        const salesData = await salesResponse.json();
+                        supabaseSales = salesData.sales || [];
+                        console.log('🛒 Vendas encontradas via API:', supabaseSales.length);
+                    } else {
+                        console.log('⚠️ Erro na resposta da API de vendas:', salesResponse.status);
+                    }
+                } catch (salesError) {
+                    console.log('⚠️ Erro ao carregar vendas via API:', salesError);
+                }
+            }
+
+            // 2.5. Carregar transações do Supabase via API
+            let supabaseTransactions: any[] = [];
+            if (supabaseUserId) {
+                try {
+                    console.log('🔄 Carregando transações via API...');
+                    const transactionsResponse = await fetch(`/api/transactions/get?user_id=${supabaseUserId}`);
+                    if (transactionsResponse.ok) {
+                        const transactionsData = await transactionsResponse.json();
+                        supabaseTransactions = transactionsData.transactions || [];
+                        console.log('💳 Transações encontradas via API:', supabaseTransactions.length);
+                    } else {
+                        console.log('⚠️ Erro na resposta da API de transações:', transactionsResponse.status);
+                    }
+                } catch (transactionsError) {
+                    console.log('⚠️ Erro ao carregar transações via API:', transactionsError);
+                }
+            }
+
+            // 3. Carregar orçamento do Supabase via API
+            let finalBudget = 400; // Valor padrão
+            if (supabaseUserId) {
+                try {
+                    console.log('🔄 Carregando orçamento via API...');
+                    const budgetResponse = await fetch(`/api/budget/get?user_id=${user.uid}`);
+                    if (budgetResponse.ok) {
+                        const budgetData = await budgetResponse.json();
+                        if (budgetData.success && budgetData.budget) {
+                            finalBudget = budgetData.budget.monthly_budget || 400;
+                            console.log('💰 Orçamento carregado do Supabase:', finalBudget);
+                        }
+                    } else {
+                        console.log('⚠️ Erro na resposta da API de orçamento:', budgetResponse.status);
+                    }
+                } catch (budgetError) {
+                    console.log('⚠️ Erro ao carregar orçamento via API:', budgetError);
+                }
+            }
+
+            // 4. Usar APENAS dados do Supabase
+            let finalProducts: Product[] = [];
+
+            if (supabaseProducts.length > 0) {
+                console.log('✅ Usando produtos reais do Supabase:', supabaseProducts.length);
+                finalProducts = supabaseProducts;
             } else {
-                console.log('✅ Usando produtos reais do banco de dados');
+                console.log('📥 Nenhum produto encontrado no Supabase, usando dados de exemplo');
+                finalProducts = initialProducts;
             }
 
             // 4. Aplicar os dados
             setProducts(finalProducts);
             setMonthlyBudget(finalBudget);
+            setRevenues(supabaseRevenues);
+            setExpenses(supabaseExpenses);
+            setSales(supabaseSales);
+            setTransactions(supabaseTransactions);
             
-            // Dados de exemplo para sonhos e apostas se não houver dados reais
-            const exampleDreams = firebaseDreams.length > 0 ? firebaseDreams : [
+            // Dados de exemplo para sonhos e apostas (sem Firebase)
+            const exampleDreams = [
               {
                 id: "1",
                 name: "Viagem para Europa",
@@ -343,7 +441,7 @@ export default function Home() {
               }
             ];
             
-            const exampleBets = firebaseBets.length > 0 ? firebaseBets : [
+            const exampleBets = [
               {
                 id: "1",
                 stake: 90,
@@ -365,11 +463,13 @@ export default function Home() {
             setDreams(exampleDreams);
             setBets(exampleBets);
             
-            console.log('📊 Dashboard carregado com:', {
+            console.log('📊 Dashboard carregado APENAS com dados do Supabase:', {
                 produtos: finalProducts.length,
-                orcamento: finalBudget,
-                sonhos: firebaseDreams.length,
-                apostas: firebaseBets.length
+                receitas: supabaseRevenues.length,
+                despesas: supabaseExpenses.length,
+                vendas: supabaseSales.length,
+                transacoes: supabaseTransactions.length,
+                orcamento: finalBudget
             });
 
         } catch (error) {
@@ -383,37 +483,27 @@ export default function Home() {
 
   }, [user, authLoading]);
 
-  useEffect(() => {
-    if(isLoading || authLoading || !user) return;
+  // Função para salvar dados manualmente quando necessário
+  const saveDataToFirebase = async (productsToSave: Product[]) => {
+    if (!user) return;
     
-    const saveData = async () => {
-        try {
-            // Limpar dados undefined antes de salvar
-            const cleanProducts = products.map(product => cleanUndefinedValues(product));
-            
-            console.log('💾 Salvando produtos com sincronização dual:', cleanProducts.length, 'produtos');
-            console.log('📊 Produtos com vendas:', cleanProducts.filter(p => p.sales && p.sales.length > 0).map(p => ({ name: p.name, salesCount: p.sales.length })));
-            
-            // Usar sincronização dual para salvar produtos
-            // Como não temos um método direto para salvar arrays, vamos usar o Firebase como fallback
-            // e implementar sincronização individual para novos produtos
-            const docRef = doc(db, "user-data", user.uid);
-            await setDoc(docRef, { products: cleanProducts }, { merge: true });
-            
-            console.log('✅ Produtos salvos com sucesso (Firebase + preparado para Supabase)');
-        } catch (error) {
-            console.error("Failed to save products", error);
-            toast({
-                variant: 'destructive',
-                title: "Erro ao Salvar Dados",
-                description: "Não foi possível salvar os produtos na nuvem. Suas alterações podem ser perdidas.",
-            })
-        }
+    try {
+      const cleanProducts = productsToSave.map(product => cleanUndefinedValues(product));
+      console.log('💾 Salvando produtos no Firebase:', cleanProducts.length, 'produtos');
+      
+      const docRef = doc(db, "user-data", user.uid);
+      await setDoc(docRef, { products: cleanProducts }, { merge: true });
+      
+      console.log('✅ Produtos salvos com sucesso no Firebase');
+    } catch (error) {
+      console.error("Failed to save products", error);
+      toast({
+        variant: 'destructive',
+        title: "Erro ao Salvar Dados",
+        description: "Não foi possível salvar os produtos na nuvem. Suas alterações podem ser perdidas.",
+      });
     }
-    
-    saveData();
-    
-  }, [products, isLoading, user, authLoading, toast]);
+  };
 
   const filteredProducts = useMemo(() => {
     if (!searchTerm) return products;
@@ -445,7 +535,7 @@ export default function Home() {
     }, 0);
     const pendingBets = bets.filter(b => b.status === 'pending').length;
 
-    // Calcular receitas e despesas do período
+    // Calcular receitas e despesas do período usando dados reais do Supabase
     const now = new Date();
     const getPeriodStart = () => {
       switch (periodFilter) {
@@ -461,23 +551,16 @@ export default function Home() {
     };
 
     const periodStart = getPeriodStart();
-    const periodSales = products.flatMap(p => 
-      p.sales?.filter(s => new Date(s.date) >= periodStart) || []
-    );
     
-    const periodRevenue = periodSales.reduce((acc, sale) => {
-      const product = products.find(p => p.id === sale.productId);
-      return acc + (product?.sellingPrice || 0) * sale.quantity;
-    }, 0);
+    // Usar dados reais de receitas do Supabase
+    const periodRevenue = revenues
+      .filter(r => new Date(r.date) >= periodStart)
+      .reduce((acc, revenue) => acc + (revenue.amount || 0), 0);
 
-    // Calcular despesas do período (investimentos feitos no período)
-    const periodExpenses = products.reduce((acc, product) => {
-      const purchaseDate = new Date(product.purchaseDate);
-      if (purchaseDate >= periodStart) {
-        return acc + (product.totalCost * product.quantity);
-      }
-      return acc;
-    }, 0);
+    // Usar dados reais de despesas do Supabase
+    const periodExpenses = expenses
+      .filter(e => new Date(e.date) >= periodStart)
+      .reduce((acc, expense) => acc + (expense.amount || 0), 0);
 
     // Se não há dados no período atual, usar dados dos últimos 30 dias
     let finalPeriodRevenue = periodRevenue;
@@ -485,22 +568,14 @@ export default function Home() {
     
     if (periodRevenue === 0 && periodExpenses === 0) {
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      const recentSales = products.flatMap(p => 
-        p.sales?.filter(s => new Date(s.date) >= thirtyDaysAgo) || []
-      );
       
-      finalPeriodRevenue = recentSales.reduce((acc, sale) => {
-        const product = products.find(p => p.id === sale.productId);
-        return acc + (product?.sellingPrice || 0) * sale.quantity;
-      }, 0);
+      finalPeriodRevenue = revenues
+        .filter(r => new Date(r.date) >= thirtyDaysAgo)
+        .reduce((acc, revenue) => acc + (revenue.amount || 0), 0);
 
-      finalPeriodExpenses = products.reduce((acc, product) => {
-        const purchaseDate = new Date(product.purchaseDate);
-        if (purchaseDate >= thirtyDaysAgo) {
-          return acc + (product.totalCost * product.quantity);
-        }
-        return acc;
-      }, 0);
+      finalPeriodExpenses = expenses
+        .filter(e => new Date(e.date) >= thirtyDaysAgo)
+        .reduce((acc, expense) => acc + (expense.amount || 0), 0);
     }
 
     const periodBalance = finalPeriodRevenue - finalPeriodExpenses;
@@ -544,7 +619,7 @@ export default function Home() {
         totalBetsProfit,
         pendingBets
     }
-  }, [products, dreams, bets, periodFilter]);
+  }, [products, dreams, bets, revenues, expenses, periodFilter]);
 
   const handleSearch = (query: string) => {
     setSearchTerm(query);
@@ -564,17 +639,27 @@ export default function Home() {
       const updatedProducts = products.map(p => p.id === productToEdit.id ? { ...p, ...sanitizedProductData, id: p.id } : p)
       setProducts(updatedProducts);
       
+      // Salvar no Firebase
+      await saveDataToFirebase(updatedProducts);
+      
       // Usar sincronização dual para atualizar
-      try {
-        const result = await dualSync.updateProduct(productToEdit.id, sanitizedProductData);
-        console.log(`Produto atualizado - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`);
-        
-        toast({
-          title: "Produto Atualizado!",
-          description: `${productData.name} - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
-        });
-      } catch (error) {
-        console.error('Erro na sincronização dual:', error);
+      if (dualSync) {
+        try {
+          const result = await dualSync.updateProduct(productToEdit.id, sanitizedProductData);
+          console.log(`Produto atualizado - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`);
+          
+          toast({
+            title: "Produto Atualizado!",
+            description: `${productData.name} - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
+          });
+        } catch (error) {
+          console.error('Erro na sincronização dual:', error);
+          toast({
+            title: "Produto Atualizado!",
+            description: `O produto "${productData.name}" foi atualizado localmente.`,
+          });
+        }
+      } else {
         toast({
           title: "Produto Atualizado!",
           description: `O produto "${productData.name}" foi atualizado localmente.`,
@@ -587,22 +672,33 @@ export default function Home() {
         id: new Date().getTime().toString(),
         sales: [],
       }
-      setProducts(prev => [newProduct, ...prev]);
+      const updatedProducts = [newProduct, ...products];
+      setProducts(updatedProducts);
+      
+      // Salvar no Firebase
+      await saveDataToFirebase(updatedProducts);
       
       // Usar sincronização dual para criar
-      try {
-        const result = await dualSync.createProduct(newProduct);
-        console.log(`Produto criado - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`);
-        
-        toast({
-          title: "Produto Adicionado!",
-          description: `${productData.name} - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
+      if (dualSync) {
+        try {
+          const result = await dualSync.createProduct(newProduct);
+          console.log(`Produto criado - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`);
+          
+          toast({
+            title: "Produto Adicionado!",
+            description: `${productData.name} - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
         });
-        
-        // Notificar N8N sobre o novo produto
-        await notifyProductCreated(newProduct);
-      } catch (error) {
-        console.error('Erro na sincronização dual:', error);
+          
+          // Notificar N8N sobre o novo produto
+          await notifyProductCreated(newProduct);
+        } catch (error) {
+          console.error('Erro na sincronização dual:', error);
+          toast({
+            title: "Produto Adicionado!",
+            description: `O produto "${productData.name}" foi adicionado localmente.`,
+          });
+        }
+      } else {
         toast({
           title: "Produto Adicionado!",
           description: `O produto "${productData.name}" foi adicionado localmente.`,
@@ -619,22 +715,34 @@ export default function Home() {
     if (!product) return;
 
     // Remover do estado local
-    setProducts(products.filter(p => p.id !== productId));
+    const updatedProducts = products.filter(p => p.id !== productId);
+    setProducts(updatedProducts);
     setProductToDelete(null);
     setSelectedProduct(null);
     
+    // Salvar no Firebase
+    await saveDataToFirebase(updatedProducts);
+    
     // Usar sincronização dual para deletar
-    try {
-      const result = await dualSync.deleteProduct(productId);
-      console.log(`Produto deletado - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`);
-      
-      toast({
-        variant: 'destructive',
-        title: "Produto Excluído!",
-        description: `${product.name} - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
-      });
-    } catch (error) {
-      console.error('Erro na sincronização dual:', error);
+    if (dualSync) {
+      try {
+        const result = await dualSync.deleteProduct(productId);
+        console.log(`Produto deletado - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`);
+        
+        toast({
+          variant: 'destructive',
+          title: "Produto Excluído!",
+          description: `${product.name} - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
+        });
+      } catch (error) {
+        console.error('Erro na sincronização dual:', error);
+        toast({
+          variant: 'destructive',
+          title: "Produto Excluído!",
+          description: `O produto "${product.name}" foi excluído localmente.`,
+        });
+      }
+    } else {
       toast({
         variant: 'destructive',
         title: "Produto Excluído!",
@@ -643,7 +751,7 @@ export default function Home() {
     }
   }
   
-  const handleRegisterSale = (product: Product, saleData: Omit<Sale, 'id' | 'date'>) => {
+  const handleRegisterSale = async (product: Product, saleData: Omit<Sale, 'id' | 'date'>) => {
     console.log('🔄 Registrando venda:', { product: product.name, saleData });
     
     // Limpar dados undefined da venda
@@ -687,6 +795,10 @@ export default function Home() {
     console.log('📊 Produtos atualizados:', updatedProducts.find(p => p.id === product.id));
     
     setProducts(updatedProducts);
+    
+    // Salvar no Firebase
+    await saveDataToFirebase(updatedProducts);
+    
     setIsSaleFormOpen(false);
     setSelectedProduct(null);
      toast({
@@ -695,24 +807,11 @@ export default function Home() {
     });
   }
 
-  // Funções para o histórico de vendas
+  // Funções para o histórico de vendas - usando dados reais do Supabase
   const allSales = useMemo(() => {
-    const sales: ExtendedSale[] = [];
-    products.forEach((product) => {
-      if (product.sales && product.sales.length > 0) {
-        console.log(`📦 Produto ${product.name} tem ${product.sales.length} vendas:`, product.sales);
-        product.sales.forEach((sale: Sale) => {
-          sales.push({
-            ...sale,
-            productName: product.name,
-            productId: product.id
-          });
-        });
-      }
-    });
-    console.log('🛒 Total de vendas encontradas:', sales.length);
+    console.log('🛒 Vendas reais do Supabase:', sales.length);
     return sales.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [products]);
+  }, [sales]);
 
   const filteredSales = useMemo(() => {
     let filtered = [...allSales];
@@ -764,8 +863,7 @@ export default function Home() {
 
   const salesStats = useMemo(() => {
     const totalRevenue = filteredSales.reduce((total, sale) => {
-      const product = products.find(p => p.id === sale.productId);
-      return total + (product?.sellingPrice || 0) * sale.quantity;
+      return total + (sale.totalAmount || 0);
     }, 0);
 
     const totalItems = filteredSales.reduce((total, sale) => total + sale.quantity, 0);
@@ -1312,8 +1410,16 @@ export default function Home() {
                         </p>
                       </div>
                     </div>
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 self-start sm:self-auto">
-                      Saldo Positivo
+                    <Badge 
+                      variant="secondary" 
+                      className={cn(
+                        "self-start sm:self-auto",
+                        summaryStats.periodBalance >= 0 
+                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                          : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                      )}
+                    >
+                      {summaryStats.periodBalance >= 0 ? 'Saldo Positivo' : 'Saldo Negativo'}
                     </Badge>
                   </div>
                 </CardContent>
@@ -1368,7 +1474,7 @@ export default function Home() {
                       {summaryStats.periodRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </div>
                     <div className="text-xs sm:text-sm text-muted-foreground">
-                      0.0%
+                      {summaryStats.periodRevenue > 0 ? '+' : ''}0.0%
                     </div>
                   </CardContent>
                 </Card>
@@ -1383,7 +1489,7 @@ export default function Home() {
                       {summaryStats.periodExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </div>
                     <div className="text-xs sm:text-sm text-muted-foreground">
-                      Pendente: R$ 0,00
+                      {summaryStats.periodExpenses > 0 ? 'Processado' : 'Sem movimentação'}
                     </div>
                   </CardContent>
                 </Card>
@@ -1397,8 +1503,11 @@ export default function Home() {
                     <div className="text-lg sm:text-xl md:text-2xl font-bold mb-1 sm:mb-2">
                       {summaryStats.periodBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </div>
-                    <div className="text-xs sm:text-sm text-green-600">
-                      6.2%
+                    <div className={cn(
+                      "text-xs sm:text-sm",
+                      summaryStats.periodBalance >= 0 ? "text-green-600" : "text-red-600"
+                    )}>
+                      {summaryStats.periodBalance >= 0 ? '+' : ''}{summaryStats.periodRevenue > 0 ? ((summaryStats.periodBalance / summaryStats.periodRevenue) * 100).toFixed(1) : '0.0'}%
                     </div>
                   </CardContent>
                 </Card>
@@ -1416,13 +1525,29 @@ export default function Home() {
                 onBudgetChange={async (newBudget) => {
                   setMonthlyBudget(newBudget);
                   
-                  // Salvar no Firestore
+                  // Salvar no Supabase via API
                   if (user) {
                     try {
-                      const docRef = doc(db, "user-data", user.uid);
-                      await setDoc(docRef, { monthlyBudget: newBudget }, { merge: true });
+                      console.log('💰 Salvando orçamento no Supabase:', newBudget);
+                      const response = await fetch('/api/budget/update', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                          user_id: user.uid,
+                          monthly_budget: newBudget
+                        })
+                      });
+                      
+                      if (response.ok) {
+                        const result = await response.json();
+                        console.log('✅ Orçamento salvo no Supabase:', result);
+                      } else {
+                        console.error('❌ Erro ao salvar orçamento:', response.status);
+                      }
                     } catch (error) {
-                      console.error('Erro ao salvar orçamento:', error);
+                      console.error('❌ Erro ao salvar orçamento no Supabase:', error);
                     }
                   }
                   
@@ -1448,6 +1573,8 @@ export default function Home() {
                 periodExpenses={summaryStats.periodExpenses}
                 periodBalance={summaryStats.periodBalance}
                 products={products}
+                revenues={revenues}
+                expenses={expenses}
               />
             </>
           )}
@@ -1683,9 +1810,9 @@ export default function Home() {
                         </TableHeader>
                         <TableBody>
                           {filteredSales.map((sale) => {
-                            const product = products.find(p => p.id === sale.productId);
-                            const unitPrice = product?.sellingPrice || 0;
-                            const totalPrice = unitPrice * sale.quantity;
+                            // Usar valores reais da venda do Supabase
+                            const unitPrice = sale.unitPrice || 0;
+                            const totalPrice = sale.totalAmount || 0;
                             
                             return (
                               <TableRow key={`${sale.productId}-${sale.date}-${sale.quantity}`}>
@@ -1732,6 +1859,7 @@ export default function Home() {
               <RevenueSection 
                 products={products}
                 periodFilter={periodFilter}
+                revenues={revenues}
               />
             </TabsContent>
             
@@ -1739,6 +1867,7 @@ export default function Home() {
               <ExpensesSection 
                 products={products}
                 periodFilter={periodFilter}
+                expenses={expenses}
               />
             </TabsContent>
             
@@ -1746,6 +1875,7 @@ export default function Home() {
               <TransactionsSection 
                 products={products}
                 periodFilter={periodFilter}
+                transactions={transactions}
               />
             </TabsContent>
           </Tabs>

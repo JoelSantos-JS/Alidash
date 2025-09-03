@@ -11,6 +11,8 @@ interface CashFlowSectionProps {
   periodExpenses?: number;
   periodBalance?: number;
   products?: any[];
+  revenues?: any[];
+  expenses?: any[];
 }
 
 export function CashFlowSection({ 
@@ -18,66 +20,53 @@ export function CashFlowSection({
   periodRevenue = 0, 
   periodExpenses = 0, 
   periodBalance = 0,
-  products = []
+  products = [],
+  revenues = [],
+  expenses = []
 }: CashFlowSectionProps) {
   
-  // Gerar dados reais baseados apenas nos produtos do usuário
+  // Gerar dados reais baseados nos dados do Supabase
   const cashFlowData = useMemo(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
     
-    // Gerar dados apenas para o mês atual baseado nos produtos reais
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     const monthlyData = [];
     
-    // Calcular dados do mês atual
-    const monthDate = new Date(currentYear, currentMonth, 1);
-    const monthEnd = new Date(currentYear, currentMonth + 1, 0);
-    
-    let currentMonthRevenue = 0;
-    let currentMonthExpenses = 0;
-    
-    products.forEach(product => {
-      // Receitas das vendas do mês atual
-      if (product.sales) {
-        product.sales.forEach((sale: any) => {
-          const saleDate = new Date(sale.date);
-          if (saleDate >= monthDate && saleDate <= monthEnd) {
-            currentMonthRevenue += (product.sellingPrice || 0) * sale.quantity;
-          }
-        });
-      }
-      
-      // Despesas das compras do mês atual
-      const purchaseDate = new Date(product.purchaseDate);
-      if (purchaseDate >= monthDate && purchaseDate <= monthEnd) {
-        currentMonthExpenses += (product.totalCost || 0) * product.quantity;
-      }
-    });
-    
-    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    
-    // Criar array com dados apenas do mês atual
+    // Processar dados por mês
     for (let month = 0; month < 12; month++) {
-      if (month === currentMonth) {
-        // Mês atual com dados reais
-        monthlyData.push({
-          month: monthNames[month],
-          revenue: currentMonthRevenue,
-          expenses: currentMonthExpenses
-        });
-      } else {
-        // Outros meses com zero (sem dados)
-        monthlyData.push({
-          month: monthNames[month],
-          revenue: 0,
-          expenses: 0
-        });
-      }
+      const monthDate = new Date(currentYear, month, 1);
+      const monthEnd = new Date(currentYear, month + 1, 0);
+      
+      let monthRevenue = 0;
+      let monthExpenses = 0;
+      
+      // Calcular receitas do mês
+      revenues.forEach((revenue: any) => {
+        const revenueDate = new Date(revenue.date);
+        if (revenueDate >= monthDate && revenueDate <= monthEnd) {
+          monthRevenue += revenue.amount || 0;
+        }
+      });
+      
+      // Calcular despesas do mês
+      expenses.forEach((expense: any) => {
+        const expenseDate = new Date(expense.date);
+        if (expenseDate >= monthDate && expenseDate <= monthEnd) {
+          monthExpenses += expense.amount || 0;
+        }
+      });
+      
+      monthlyData.push({
+        month: monthNames[month],
+        revenue: monthRevenue,
+        expenses: monthExpenses
+      });
     }
     
     return monthlyData;
-  }, [products, periodRevenue, periodExpenses]);
+  }, [revenues, expenses, periodRevenue, periodExpenses]);
 
   const maxValue = useMemo(() => {
     const max = Math.max(...cashFlowData.map(d => Math.max(d.revenue, d.expenses)));
@@ -221,4 +210,4 @@ export function CashFlowSection({
       </CardContent>
     </Card>
   );
-} 
+}

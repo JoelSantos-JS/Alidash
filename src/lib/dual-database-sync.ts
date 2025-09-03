@@ -74,7 +74,9 @@ export class DualDatabaseSync {
         
         firebaseId = newRevenue.id
         result.firebaseSuccess = true
-        console.log('✅ Receita criada no Firebase:', firebaseId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Receita criada no Firebase:', firebaseId)
+        }
       } catch (error) {
         result.errors.push(`Firebase: ${error}`)
         if (this.options.prioritizeFirebase) {
@@ -88,7 +90,9 @@ export class DualDatabaseSync {
         let supabaseUser = await supabaseAdminService.getUserByFirebaseUid(this.userId)
         
         if (!supabaseUser) {
-          console.log('👤 Usuário não encontrado no Supabase durante criação de receita')
+          if (process.env.NODE_ENV === 'development') {
+            console.log('👤 Usuário não encontrado no Supabase durante criação de receita')
+          }
           // Se não encontrar, usar o Firebase UID diretamente (fallback)
           const supabaseRevenue = await supabaseAdminService.createRevenue(this.userId, revenueData)
           supabaseId = supabaseRevenue.id
@@ -98,7 +102,9 @@ export class DualDatabaseSync {
         }
         
         result.supabaseSuccess = true
-        console.log('✅ Receita criada no Supabase:', supabaseId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Receita criada no Supabase:', supabaseId)
+        }
       } catch (error) {
         result.errors.push(`Supabase: ${error}`)
         console.error('Erro detalhado do Supabase:', error)
@@ -151,7 +157,9 @@ export class DualDatabaseSync {
           }, { merge: true })
         }
         result.firebaseSuccess = true
-        console.log('✅ Receita atualizada no Firebase:', revenueId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Receita atualizada no Firebase:', revenueId)
+        }
       } catch (error) {
         result.errors.push(`Firebase: ${error}`)
       }
@@ -160,7 +168,9 @@ export class DualDatabaseSync {
       try {
         await supabaseAdminService.updateRevenue(revenueId, updates)
         result.supabaseSuccess = true
-        console.log('✅ Receita atualizada no Supabase:', revenueId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Receita atualizada no Supabase:', revenueId)
+        }
       } catch (error) {
         result.errors.push(`Supabase: ${error}`)
       }
@@ -198,7 +208,9 @@ export class DualDatabaseSync {
           }, { merge: true })
         }
         result.firebaseSuccess = true
-        console.log('✅ Receita removida do Firebase:', revenueId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Receita removida do Firebase:', revenueId)
+        }
       } catch (error) {
         result.errors.push(`Firebase: ${error}`)
       }
@@ -207,7 +219,9 @@ export class DualDatabaseSync {
       try {
         await supabaseAdminService.deleteRevenue(revenueId)
         result.supabaseSuccess = true
-        console.log('✅ Receita removida do Supabase:', revenueId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Receita removida do Supabase:', revenueId)
+        }
       } catch (error) {
         result.errors.push(`Supabase: ${error}`)
       }
@@ -258,7 +272,9 @@ export class DualDatabaseSync {
         
         firebaseId = newExpense.id
         result.firebaseSuccess = true
-        console.log('✅ Despesa criada no Firebase:', firebaseId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Despesa criada no Firebase:', firebaseId)
+        }
       } catch (error) {
         result.errors.push(`Firebase: ${error}`)
         if (this.options.prioritizeFirebase) {
@@ -272,7 +288,9 @@ export class DualDatabaseSync {
         let supabaseUser = await supabaseAdminService.getUserByFirebaseUid(this.userId)
         
         if (!supabaseUser) {
-          console.log('👤 Usuário não encontrado no Supabase durante criação de despesa')
+          if (process.env.NODE_ENV === 'development') {
+            console.log('👤 Usuário não encontrado no Supabase durante criação de despesa')
+          }
           // Se não encontrar, usar o Firebase UID diretamente (fallback)
           const supabaseExpense = await supabaseAdminService.createExpense(this.userId, expenseData)
           supabaseId = supabaseExpense.id
@@ -282,7 +300,9 @@ export class DualDatabaseSync {
         }
         
         result.supabaseSuccess = true
-        console.log('✅ Despesa criada no Supabase:', supabaseId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Despesa criada no Supabase:', supabaseId)
+        }
       } catch (error) {
         result.errors.push(`Supabase: ${error}`)
         console.error('Erro detalhado do Supabase:', error)
@@ -335,7 +355,9 @@ export class DualDatabaseSync {
           }, { merge: true })
         }
         result.firebaseSuccess = true
-        console.log('✅ Despesa atualizada no Firebase:', expenseId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Despesa atualizada no Firebase:', expenseId)
+        }
       } catch (error) {
         result.errors.push(`Firebase: ${error}`)
       }
@@ -344,7 +366,9 @@ export class DualDatabaseSync {
       try {
         await supabaseAdminService.updateExpense(expenseId, updates)
         result.supabaseSuccess = true
-        console.log('✅ Despesa atualizada no Supabase:', expenseId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Despesa atualizada no Supabase:', expenseId)
+        }
       } catch (error) {
         result.errors.push(`Supabase: ${error}`)
       }
@@ -382,7 +406,9 @@ export class DualDatabaseSync {
           }, { merge: true })
         }
         result.firebaseSuccess = true
-        console.log('✅ Despesa removida do Firebase:', expenseId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Despesa removida do Firebase:', expenseId)
+        }
       } catch (error) {
         result.errors.push(`Firebase: ${error}`)
       }
@@ -391,7 +417,9 @@ export class DualDatabaseSync {
       try {
         await supabaseAdminService.deleteExpense(expenseId)
         result.supabaseSuccess = true
-        console.log('✅ Despesa removida do Supabase:', expenseId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Despesa removida do Supabase:', expenseId)
+        }
       } catch (error) {
         result.errors.push(`Supabase: ${error}`)
       }
@@ -419,7 +447,9 @@ export class DualDatabaseSync {
         if (docSnap.exists()) {
           const userData = docSnap.data()
           const products = userData.products || []
-          console.log(`✅ ${products.length} produtos encontrados no Firebase`)
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`✅ ${products.length} produtos encontrados no Firebase`)
+          }
           return products.map((product: any) => ({
             ...product,
             purchaseDate: product.purchaseDate?.toDate?.() || new Date(product.purchaseDate) || new Date(),
@@ -430,15 +460,21 @@ export class DualDatabaseSync {
           }))
         }
         
-        console.log('✅ Nenhum produto encontrado no Firebase')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Nenhum produto encontrado no Firebase')
+        }
       } catch (error) {
-        console.log('⚠️ Erro ao buscar produtos do Firebase, tentando Supabase:', error)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('⚠️ Erro ao buscar produtos do Firebase, tentando Supabase:', error)
+        }
       }
 
       // Fallback para Supabase
       try {
         const supabaseProducts = await supabaseService.getProducts(this.userId)
-        console.log(`✅ ${supabaseProducts.length} produtos encontrados no Supabase (fallback)`)
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`✅ ${supabaseProducts.length} produtos encontrados no Supabase (fallback)`)
+        }
         return supabaseProducts
       } catch (error) {
         console.error('❌ Erro ao buscar produtos do Supabase:', error)
@@ -476,14 +512,16 @@ export class DualDatabaseSync {
         const roi = productData.roi || (totalCost > 0 ? (expectedProfit / totalCost) * 100 : 0)
         const actualProfit = productData.actualProfit || (expectedProfit * productData.quantitySold)
         
-        console.log('💰 Calculando campos financeiros para Firebase:', {
-          name: productData.name,
-          totalCost,
-          expectedProfit,
-          profitMargin,
-          roi,
-          actualProfit
-        })
+        if (process.env.NODE_ENV === 'development') {
+          console.log('💰 Calculando campos financeiros para Firebase:', {
+            name: productData.name,
+            totalCost,
+            expectedProfit,
+            profitMargin,
+            roi,
+            actualProfit
+          })
+        }
         
         const newProduct = {
           ...productData,
@@ -504,7 +542,9 @@ export class DualDatabaseSync {
         
         firebaseId = newProduct.id
         result.firebaseSuccess = true
-        console.log('✅ Produto criado no Firebase:', firebaseId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Produto criado no Firebase:', firebaseId)
+        }
       } catch (error) {
         result.errors.push(`Firebase: ${error}`)
         if (this.options.prioritizeFirebase) {
@@ -517,7 +557,9 @@ export class DualDatabaseSync {
         const supabaseProduct = await supabaseService.createProduct(this.userId, productData)
         supabaseId = supabaseProduct.id
         result.supabaseSuccess = true
-        console.log('✅ Produto criado no Supabase:', supabaseId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Produto criado no Supabase:', supabaseId)
+        }
       } catch (error) {
         result.errors.push(`Supabase: ${error}`)
         if (this.options.prioritizeSupabase) {
@@ -560,7 +602,9 @@ export class DualDatabaseSync {
           updatedAt: new Date()
         })
         result.firebaseSuccess = true
-        console.log('✅ Produto atualizado no Firebase')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Produto atualizado no Firebase')
+        }
       } catch (error) {
         result.errors.push(`Firebase: ${error}`)
       }
@@ -569,7 +613,9 @@ export class DualDatabaseSync {
       try {
         await supabaseService.updateProduct(productId, updates)
         result.supabaseSuccess = true
-        console.log('✅ Produto atualizado no Supabase')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Produto atualizado no Supabase')
+        }
       } catch (error) {
         result.errors.push(`Supabase: ${error}`)
       }
@@ -597,7 +643,9 @@ export class DualDatabaseSync {
         const firebaseRef = doc(firebaseDb, 'user-data', this.userId, 'products', productId)
         await deleteDoc(firebaseRef)
         result.firebaseSuccess = true
-        console.log('✅ Produto deletado do Firebase')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Produto deletado do Firebase')
+        }
       } catch (error) {
         result.errors.push(`Firebase: ${error}`)
       }
@@ -606,7 +654,9 @@ export class DualDatabaseSync {
       try {
         await supabaseService.deleteProduct(productId)
         result.supabaseSuccess = true
-        console.log('✅ Produto deletado do Supabase')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Produto deletado do Supabase')
+        }
       } catch (error) {
         result.errors.push(`Supabase: ${error}`)
       }
@@ -651,7 +701,9 @@ export class DualDatabaseSync {
         const firebaseDoc = await addDoc(firebaseRef, transactionWithId)
         firebaseId = firebaseDoc.id
         result.firebaseSuccess = true
-        console.log('✅ Transação criada no Firebase:', firebaseId, 'com ID interno:', transactionId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Transação criada no Firebase:', firebaseId, 'com ID interno:', transactionId)
+        }
       } catch (error) {
         result.errors.push(`Firebase: ${error}`)
         console.error('❌ Erro ao criar transação no Firebase:', error)
@@ -662,7 +714,9 @@ export class DualDatabaseSync {
         const supabaseTransaction = await supabaseService.createTransaction(this.userId, transactionData)
         supabaseId = supabaseTransaction.id
         result.supabaseSuccess = true
-        console.log('✅ Transação criada no Supabase:', supabaseId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Transação criada no Supabase:', supabaseId)
+        }
       } catch (error) {
         result.errors.push(`Supabase: ${error}`)
         console.error('❌ Erro ao criar transação no Supabase:', error)
@@ -711,7 +765,9 @@ export class DualDatabaseSync {
         })
         firebaseId = firebaseDoc.id
         result.firebaseSuccess = true
-        console.log('✅ Sonho criado no Firebase:', firebaseId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Sonho criado no Firebase:', firebaseId)
+        }
       } catch (error) {
         result.errors.push(`Firebase: ${error}`)
       }
@@ -721,7 +777,9 @@ export class DualDatabaseSync {
         const supabaseDream = await supabaseService.createDream(this.userId, dreamData)
         supabaseId = supabaseDream.id
         result.supabaseSuccess = true
-        console.log('✅ Sonho criado no Supabase:', supabaseId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Sonho criado no Supabase:', supabaseId)
+        }
       } catch (error) {
         result.errors.push(`Supabase: ${error}`)
       }
@@ -769,7 +827,9 @@ export class DualDatabaseSync {
         })
         firebaseId = firebaseDoc.id
         result.firebaseSuccess = true
-        console.log('✅ Aposta criada no Firebase:', firebaseId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Aposta criada no Firebase:', firebaseId)
+        }
       } catch (error) {
         result.errors.push(`Firebase: ${error}`)
       }
@@ -779,7 +839,9 @@ export class DualDatabaseSync {
         const supabaseBet = await supabaseService.createBet(this.userId, betData)
         supabaseId = supabaseBet.id
         result.supabaseSuccess = true
-        console.log('✅ Aposta criada no Supabase:', supabaseId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Aposta criada no Supabase:', supabaseId)
+        }
       } catch (error) {
         result.errors.push(`Supabase: ${error}`)
       }
@@ -802,6 +864,254 @@ export class DualDatabaseSync {
   }
 
   // =====================================
+  // METAS (GOALS)
+  // =====================================
+
+  async createGoal(goalData: Omit<Goal, 'id' | 'milestones' | 'reminders'>): Promise<DualSyncResult> {
+    const result: DualSyncResult = {
+      success: false,
+      firebaseSuccess: false,
+      supabaseSuccess: false,
+      errors: []
+    }
+
+    let firebaseId: string | null = null
+    let supabaseId: string | null = null
+
+    try {
+      // Verificar se estamos no browser ou servidor
+      const isBrowser = typeof window !== 'undefined'
+      
+      if (isBrowser) {
+        // No browser, fazer sincronização dual via Firebase + API
+        
+        // 1. Criar no Firebase primeiro
+        try {
+          // Filtrar campos undefined para Firebase
+          const firebaseData = {
+            name: goalData.name,
+            description: goalData.description,
+            category: goalData.category,
+            type: goalData.type,
+            targetValue: goalData.targetValue,
+            currentValue: goalData.currentValue,
+            unit: goalData.unit,
+            deadline: goalData.deadline,
+            priority: goalData.priority,
+            status: goalData.status,
+            notes: goalData.notes || '',
+            tags: goalData.tags || [],
+            createdAt: new Date(),
+            updatedAt: new Date()
+          }
+          
+          const firebaseRef = collection(firebaseDb, 'user-data', this.userId, 'goals')
+          const firebaseDoc = await addDoc(firebaseRef, firebaseData)
+          firebaseId = firebaseDoc.id
+          result.firebaseSuccess = true
+        } catch (error) {
+          result.errors.push(`Firebase: ${error}`)
+        }
+
+        // 2. Criar no Supabase via API
+        try {
+          const response = await fetch('/api/goals', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              firebase_uid: this.userId,
+              goalData
+            })
+          })
+          
+          const responseData = await response.json()
+          
+          if (!response.ok) {
+            throw new Error(responseData.error || 'Erro na API')
+          }
+          
+          supabaseId = responseData.goal?.id
+          result.supabaseSuccess = true
+          
+        } catch (error) {
+          result.errors.push(`API: ${error}`)
+        }
+        
+      } else {
+        // No servidor, usar acesso direto aos dois bancos
+        
+        // 1. Criar no Firebase
+        try {
+          // Filtrar campos undefined para Firebase
+          const firebaseData = {
+            name: goalData.name,
+            description: goalData.description,
+            category: goalData.category,
+            type: goalData.type,
+            targetValue: goalData.targetValue,
+            currentValue: goalData.currentValue,
+            unit: goalData.unit,
+            deadline: goalData.deadline,
+            priority: goalData.priority,
+            status: goalData.status,
+            notes: goalData.notes || '',
+            tags: goalData.tags || [],
+            createdAt: new Date(),
+            updatedAt: new Date()
+          }
+          
+          const firebaseRef = collection(firebaseDb, 'user-data', this.userId, 'goals')
+          const firebaseDoc = await addDoc(firebaseRef, firebaseData)
+          firebaseId = firebaseDoc.id
+          result.firebaseSuccess = true
+        } catch (error) {
+          result.errors.push(`Firebase: ${error}`)
+        }
+
+        // 2. Criar no Supabase
+        try {
+          let supabaseUser = await supabaseService.getUserByFirebaseUid(this.userId)
+          
+          if (!supabaseUser) {
+            throw new Error(`Usuário não encontrado no Supabase para firebase_uid: ${this.userId}`)
+          }
+          
+          const supabaseGoal = await supabaseService.createGoal(supabaseUser.id, goalData)
+          supabaseId = supabaseGoal.id
+          result.supabaseSuccess = true
+          
+        } catch (error) {
+          result.errors.push(`Supabase: ${error}`)
+        }
+      }
+
+      result.success = result.firebaseSuccess || result.supabaseSuccess
+
+      // Rollback se necessário
+      if (!result.success || (this.options.rollbackOnFailure && (!result.firebaseSuccess || !result.supabaseSuccess))) {
+        await this.rollbackGoalCreation(firebaseId, supabaseId)
+        result.success = false
+      }
+
+      return result
+
+    } catch (error) {
+      result.errors.push(`Erro geral: ${error}`)
+      await this.rollbackGoalCreation(firebaseId, supabaseId)
+      return result
+    }
+  }
+
+  async updateGoal(goalId: string, updates: Partial<Goal>): Promise<DualSyncResult> {
+    const result: DualSyncResult = {
+      success: false,
+      firebaseSuccess: false,
+      supabaseSuccess: false,
+      errors: []
+    }
+
+    try {
+      // Verificar se estamos no browser ou servidor
+      const isBrowser = typeof window !== 'undefined'
+      
+      if (isBrowser) {
+        // No browser, usar API route
+        try {
+          const response = await fetch('/api/goals', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              goalId,
+              updates
+            })
+          })
+          
+          const responseData = await response.json()
+          
+          if (!response.ok) {
+            throw new Error(responseData.error || 'Erro na API')
+          }
+          
+          result.supabaseSuccess = true
+          result.success = true
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ Meta atualizada via API:', goalId)
+          }
+          
+          return result
+          
+        } catch (error) {
+          result.errors.push(`API: ${error}`)
+          if (process.env.NODE_ENV === 'development') {
+            console.error('❌ Erro ao atualizar meta via API:', error)
+          }
+          return result
+        }
+      } else {
+        // No servidor, usar acesso direto
+        try {
+          await supabaseService.updateGoal(goalId, updates)
+          
+          result.supabaseSuccess = true
+          result.success = true
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ Meta atualizada no Supabase (servidor):', goalId)
+          }
+          
+          return result
+          
+        } catch (error) {
+          result.errors.push(`Supabase: ${error}`)
+          if (process.env.NODE_ENV === 'development') {
+            console.error('❌ Erro ao atualizar meta no Supabase:', error)
+          }
+          return result
+        }
+      }
+
+    } catch (error) {
+      result.errors.push(`Erro geral: ${error}`)
+      return result
+    }
+  }
+
+  async deleteGoal(goalId: string): Promise<DualSyncResult> {
+    const result: DualSyncResult = {
+      success: false,
+      firebaseSuccess: false,
+      supabaseSuccess: false,
+      errors: []
+    }
+
+    try {
+      // Usar apenas Supabase como banco principal para metas
+      await supabaseService.deleteGoal(goalId)
+      
+      result.supabaseSuccess = true
+      result.success = true
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Meta removida do Supabase (banco principal):', goalId)
+      }
+      
+      return result
+
+    } catch (error) {
+      result.errors.push(`Supabase: ${error}`)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Erro ao remover meta do Supabase:', error)
+      }
+      return result
+    }
+  }
+
+  // =====================================
   // MÉTODOS DE ROLLBACK
   // =====================================
 
@@ -810,7 +1120,9 @@ export class DualDatabaseSync {
       try {
         const firebaseRef = doc(firebaseDb, 'user-data', this.userId, 'products', firebaseId)
         await deleteDoc(firebaseRef)
-        console.log('🔄 Rollback: Produto removido do Firebase')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Rollback: Produto removido do Firebase')
+        }
       } catch (error) {
         console.error('❌ Erro no rollback Firebase:', error)
       }
@@ -819,7 +1131,9 @@ export class DualDatabaseSync {
     if (supabaseId) {
       try {
         await supabaseService.deleteProduct(supabaseId)
-        console.log('🔄 Rollback: Produto removido do Supabase')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Rollback: Produto removido do Supabase')
+        }
       } catch (error) {
         console.error('❌ Erro no rollback Supabase:', error)
       }
@@ -831,7 +1145,9 @@ export class DualDatabaseSync {
       try {
         const firebaseRef = doc(firebaseDb, 'user-data', this.userId, 'transactions', firebaseId)
         await deleteDoc(firebaseRef)
-        console.log('🔄 Rollback: Transação removida do Firebase')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Rollback: Transação removida do Firebase')
+        }
       } catch (error) {
         console.error('❌ Erro no rollback Firebase:', error)
       }
@@ -840,7 +1156,9 @@ export class DualDatabaseSync {
     if (supabaseId) {
       try {
         await supabaseService.deleteTransaction(supabaseId)
-        console.log('🔄 Rollback: Transação removida do Supabase')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Rollback: Transação removida do Supabase')
+        }
       } catch (error) {
         console.error('❌ Erro no rollback Supabase:', error)
       }
@@ -852,7 +1170,9 @@ export class DualDatabaseSync {
       try {
         const firebaseRef = doc(firebaseDb, 'user-data', this.userId, 'dreams', firebaseId)
         await deleteDoc(firebaseRef)
-        console.log('🔄 Rollback: Sonho removido do Firebase')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Rollback: Sonho removido do Firebase')
+        }
       } catch (error) {
         console.error('❌ Erro no rollback Firebase:', error)
       }
@@ -861,7 +1181,9 @@ export class DualDatabaseSync {
     if (supabaseId) {
       try {
         await supabaseService.deleteDream(supabaseId)
-        console.log('🔄 Rollback: Sonho removido do Supabase')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Rollback: Sonho removido do Supabase')
+        }
       } catch (error) {
         console.error('❌ Erro no rollback Supabase:', error)
       }
@@ -873,7 +1195,9 @@ export class DualDatabaseSync {
       try {
         const firebaseRef = doc(firebaseDb, 'user-data', this.userId, 'bets', firebaseId)
         await deleteDoc(firebaseRef)
-        console.log('🔄 Rollback: Aposta removida do Firebase')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Rollback: Aposta removida do Firebase')
+        }
       } catch (error) {
         console.error('❌ Erro no rollback Firebase:', error)
       }
@@ -882,7 +1206,44 @@ export class DualDatabaseSync {
     if (supabaseId) {
       try {
         await supabaseService.deleteBet(supabaseId)
-        console.log('🔄 Rollback: Aposta removida do Supabase')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Rollback: Aposta removida do Supabase')
+        }
+      } catch (error) {
+        console.error('❌ Erro no rollback Supabase:', error)
+      }
+    }
+  }
+
+  private async rollbackGoalCreation(firebaseId: string | null, supabaseId: string | null) {
+    if (firebaseId) {
+      try {
+        const firebaseRef = doc(firebaseDb, 'user-data', this.userId)
+        const docSnap = await getDoc(firebaseRef)
+        if (docSnap.exists()) {
+          const currentData = docSnap.data()
+          const currentGoals = currentData.goals || []
+          const filteredGoals = currentGoals.filter((g: any) => g.id !== firebaseId)
+          
+          await setDoc(firebaseRef, {
+            ...currentData,
+            goals: filteredGoals
+          }, { merge: true })
+        }
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Rollback: Meta removida do Firebase')
+        }
+      } catch (error) {
+        console.error('❌ Erro no rollback Firebase:', error)
+      }
+    }
+
+    if (supabaseId) {
+      try {
+        await supabaseAdminService.deleteGoal(supabaseId)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Rollback: Meta removida do Supabase')
+        }
       } catch (error) {
         console.error('❌ Erro no rollback Supabase:', error)
       }
@@ -904,7 +1265,9 @@ export class DualDatabaseSync {
             revenues: filteredRevenues
           }, { merge: true })
         }
-        console.log('🔄 Rollback: Receita removida do Firebase')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Rollback: Receita removida do Firebase')
+        }
       } catch (error) {
         console.error('❌ Erro no rollback Firebase:', error)
       }
@@ -913,7 +1276,9 @@ export class DualDatabaseSync {
     if (supabaseId) {
       try {
         await supabaseAdminService.deleteRevenue(supabaseId)
-        console.log('🔄 Rollback: Receita removida do Supabase')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Rollback: Receita removida do Supabase')
+        }
       } catch (error) {
         console.error('❌ Erro no rollback Supabase:', error)
       }
@@ -935,7 +1300,9 @@ export class DualDatabaseSync {
             expenses: filteredExpenses
           }, { merge: true })
         }
-        console.log('🔄 Rollback: Despesa removida do Firebase')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Rollback: Despesa removida do Firebase')
+        }
       } catch (error) {
         console.error('❌ Erro no rollback Firebase:', error)
       }
@@ -944,7 +1311,9 @@ export class DualDatabaseSync {
     if (supabaseId) {
       try {
         await supabaseAdminService.deleteExpense(supabaseId)
-        console.log('🔄 Rollback: Despesa removida do Supabase')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Rollback: Despesa removida do Supabase')
+        }
       } catch (error) {
         console.error('❌ Erro no rollback Supabase:', error)
       }
@@ -1007,6 +1376,9 @@ export function useDualSync(userId: string, preset: keyof typeof DualSyncPresets
     createTransaction: (data: Omit<Transaction, 'id'>) => dualSync.createTransaction(data),
     createDream: (data: Omit<Dream, 'id'>) => dualSync.createDream(data),
     createBet: (data: Omit<Bet, 'id'>) => dualSync.createBet(data),
+    createGoal: (data: Omit<Goal, 'id' | 'milestones' | 'reminders'>) => dualSync.createGoal(data),
+    updateGoal: (id: string, data: Partial<Goal>) => dualSync.updateGoal(id, data),
+    deleteGoal: (id: string) => dualSync.deleteGoal(id),
     createRevenue: (data: Omit<Revenue, 'id'>) => dualSync.createRevenue(data),
     updateRevenue: (id: string, data: Partial<Revenue>) => dualSync.updateRevenue(id, data),
     deleteRevenue: (id: string) => dualSync.deleteRevenue(id),

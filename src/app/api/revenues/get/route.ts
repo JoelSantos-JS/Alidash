@@ -9,29 +9,30 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('user_id');
+    const firebaseUid = searchParams.get('user_id');
 
-    if (!userId) {
+    if (!firebaseUid) {
       return NextResponse.json(
-        { error: 'User ID é obrigatório' },
+        { error: 'user_id (firebase_uid) é obrigatório' },
         { status: 400 }
       );
     }
 
-    console.log('🔍 Buscando receitas para usuário:', userId);
+    console.log('🔍 Buscando receitas para Firebase UID:', firebaseUid);
 
-    const { data: revenues, error } = await supabase
+    // Buscar receitas do usuário
+    const { data: revenues, error: revenuesError } = await supabase
       .from('revenues')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', firebaseUid)
       .order('date', { ascending: false });
 
-    if (error) {
-      console.error('❌ Erro ao buscar receitas:', error);
-      return NextResponse.json(
-        { error: 'Erro ao buscar receitas' },
-        { status: 500 }
-      );
+    if (revenuesError) {
+      console.error('❌ Erro ao buscar receitas:', revenuesError);
+      return NextResponse.json({ 
+        error: 'Erro ao buscar receitas',
+        details: revenuesError.message 
+      }, { status: 500 });
     }
 
     console.log(`✅ ${revenues?.length || 0} receitas encontradas`);
@@ -62,4 +63,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

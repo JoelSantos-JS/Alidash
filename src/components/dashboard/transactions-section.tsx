@@ -95,15 +95,17 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
     };
 
     // 1. Adicionar transações independentes (incluindo parceladas) - PRIORIDADE
-    console.log('🔍 TransactionsSection - Processando transações:', {
-      total: transactions.length,
-      transactions: transactions.map(t => ({
-        id: t.id,
-        description: t.description,
-        isInstallment: t.isInstallment,
-        installmentInfo: t.installmentInfo ? 'presente' : 'ausente'
-      }))
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 TransactionsSection - Processando transações:', {
+        total: transactions.length,
+        transactions: transactions.map(t => ({
+          id: t.id,
+          description: t.description,
+          isInstallment: t.isInstallment,
+          installmentInfo: t.installmentInfo ? 'presente' : 'ausente'
+        }))
+      });
+    }
 
     transactions.forEach((originalTransaction: TransactionType) => {
       if (new Date(originalTransaction.date) >= periodStart) {
@@ -111,14 +113,16 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
         
         // Log específico para transações parceladas
         if (originalTransaction.isInstallment && originalTransaction.installmentInfo) {
-          console.log('🎯 Transação parcelada encontrada:', {
-            id: originalTransaction.id,
-            description: originalTransaction.description,
-            isInstallment: originalTransaction.isInstallment,
-            installmentInfo: originalTransaction.installmentInfo,
-            currentInstallment: originalTransaction.installmentInfo.currentInstallment,
-            totalInstallments: originalTransaction.installmentInfo.totalInstallments
-          });
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🎯 Transação parcelada encontrada:', {
+              id: originalTransaction.id,
+              description: originalTransaction.description,
+              isInstallment: originalTransaction.isInstallment,
+              installmentInfo: originalTransaction.installmentInfo,
+              currentInstallment: originalTransaction.installmentInfo.currentInstallment,
+              totalInstallments: originalTransaction.installmentInfo.totalInstallments
+            });
+          }
           
           description = `${originalTransaction.description} (${originalTransaction.installmentInfo.currentInstallment}/${originalTransaction.installmentInfo.totalInstallments})`;
         }
@@ -143,12 +147,14 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
           processedTransactions.push(displayTransaction);
           transactionKeyMap.set(transactionKey, displayTransaction);
         } else {
-          console.log('🚫 Transação duplicada detectada e ignorada:', {
-            description: description,
-            amount: originalTransaction.amount,
-            date: originalTransaction.date,
-            existingKey: transactionKey
-          });
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🚫 Transação duplicada detectada e ignorada:', {
+              description: description,
+              amount: originalTransaction.amount,
+              date: originalTransaction.date,
+              existingKey: transactionKey
+            });
+          }
         }
       }
     });
@@ -186,12 +192,14 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
               processedTransactions.push(displayTransaction);
               transactionKeyMap.set(transactionKey, displayTransaction);
             } else {
-              console.log('🚫 Venda duplicada detectada e ignorada:', {
-                description: saleTransaction.description,
-                amount: saleTransaction.amount,
-                date: sale.date,
-                existingKey: transactionKey
-              });
+              if (process.env.NODE_ENV === 'development') {
+                console.log('🚫 Venda duplicada detectada e ignorada:', {
+                  description: saleTransaction.description,
+                  amount: saleTransaction.amount,
+                  date: sale.date,
+                  existingKey: transactionKey
+                });
+              }
             }
           });
       }
@@ -228,12 +236,14 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
           processedTransactions.push(displayTransaction);
           transactionKeyMap.set(transactionKey, displayTransaction);
         } else {
-          console.log('🚫 Compra duplicada detectada e ignorada:', {
-            description: purchaseTransaction.description,
-            amount: purchaseTransaction.amount,
-            date: product.purchaseDate,
-            existingKey: transactionKey
-          });
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🚫 Compra duplicada detectada e ignorada:', {
+              description: purchaseTransaction.description,
+              amount: purchaseTransaction.amount,
+              date: product.purchaseDate,
+              existingKey: transactionKey
+            });
+          }
         }
       });
 
@@ -266,12 +276,14 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
     // Obter categorias únicas para filtro
     const categories = Array.from(new Set(processedTransactions.map(t => t.category))).sort();
 
-    console.log('📊 Processamento de transações concluído:', {
-      totalProcessed: processedTransactions.length,
-      uniqueKeys: transactionKeyMap.size,
-      periodStart: periodStart.toISOString(),
-      sortOrder
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📊 Processamento de transações concluído:', {
+        totalProcessed: processedTransactions.length,
+        uniqueKeys: transactionKeyMap.size,
+        periodStart: periodStart.toISOString(),
+        sortOrder
+      });
+    }
 
     return {
       transactions: processedTransactions,

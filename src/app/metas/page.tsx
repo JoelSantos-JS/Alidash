@@ -200,8 +200,8 @@ export default function MetasPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false)
   
-  // Hook de sincronização dual
-  const dualSync = useDualSync(user?.uid || '', 'BEST_EFFORT')
+  // Hook de sincronização dual com prioridade no Supabase
+  const dualSync = useDualSync(user?.uid || '', 'SUPABASE_PRIORITY')
   
   // Filters
   const [periodFilter, setPeriodFilter] = useState<"week" | "month" | "quarter" | "year">("month")
@@ -353,7 +353,6 @@ export default function MetasPage() {
   const handleSaveGoal = async (goalData: Omit<Goal, 'id' | 'createdDate' | 'milestones' | 'reminders' | 'linkedEntities'>) => {
     try {
       let updatedGoals: Goal[]
-      let goalToSync: Goal | null = null
       
       if (editingGoal) {
         // Update existing goal
@@ -361,7 +360,34 @@ export default function MetasPage() {
         updatedGoals = goals.map(goal => 
           goal.id === editingGoal.id ? updatedGoal : goal
         )
-        goalToSync = updatedGoal
+        
+        // Usar sincronização dual para atualizar
+        try {
+          const result = await dualSync.updateGoal(editingGoal.id, goalData)
+          
+          if (result.success) {
+            setGoals(updatedGoals)
+            console.log(`✅ Meta atualizada - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
+            
+            toast({
+              title: "Meta atualizada",
+              description: `${goalData.name} - Supabase: ${result.supabaseSuccess ? '✅' : '❌'} | Firebase: ${result.firebaseSuccess ? '✅' : '❌'}`,
+            })
+          } else {
+            toast({
+              title: "Erro ao atualizar meta",
+              description: `Falha na sincronização: ${result.errors.join(', ')}`,
+              variant: "destructive",
+            })
+          }
+        } catch (error) {
+          console.error('Erro na sincronização dual:', error)
+          toast({
+            title: "Erro ao atualizar meta",
+            description: "Não foi possível atualizar a meta. Tente novamente.",
+            variant: "destructive",
+          })
+        }
       } else {
         // Create new goal
         const newGoal: Goal = {
@@ -372,76 +398,40 @@ export default function MetasPage() {
           reminders: [],
           linkedEntities: {}
         }
-        updatedGoals = [...goals, newGoal]
-        goalToSync = newGoal
-      }
-      
-      setGoals(updatedGoals)
-      
-      // Usar sincronização dual
-      if (user && goalToSync) {
-        if (editingGoal) {
-          // Atualizar meta existente
-          try {
-            // Como não temos updateGoal no dual sync ainda, usamos o estado local + Firebase
-            const docRef = doc(db, "user-data", user.uid)
-            const docSnap = await getDoc(docRef)
-            const existingData = docSnap.exists() ? docSnap.data() : {}
-            
-            const updatedData = {
-              ...existingData,
-              goals: updatedGoals.map(goal => ({
-                ...goal,
-                deadline: goal.deadline,
-                createdDate: goal.createdDate
-              }))
-            }
-            
-            await setDoc(docRef, updatedData, { merge: true })
-            console.log('✅ Meta atualizada (Firebase + preparado para Supabase)')
-            
-            toast({
-              title: "Meta atualizada",
-              description: `${goalData.name} - Atualizada (dual sync em desenvolvimento)`,
-            })
-          } catch (error) {
-            console.error('Erro na sincronização dual:', error)
-            toast({
-              title: "Meta atualizada",
-              description: `A meta "${goalData.name}" foi atualizada localmente.`,
-            })
+        
+        // Usar sincronização dual para criar
+        try {
+          const goalDataWithCreatedDate = {
+            ...goalData,
+            createdDate: new Date(),
+            linkedEntities: {}
           }
-        } else {
-          // Criar nova meta
-          try {
-            // Como não temos createGoal no dual sync ainda, simulamos
-            const docRef = doc(db, "user-data", user.uid)
-            const docSnap = await getDoc(docRef)
-            const existingData = docSnap.exists() ? docSnap.data() : {}
-            
-            const updatedData = {
-              ...existingData,
-              goals: updatedGoals.map(goal => ({
-                ...goal,
-                deadline: goal.deadline,
-                createdDate: goal.createdDate
-              }))
-            }
-            
-            await setDoc(docRef, updatedData, { merge: true })
-            console.log('✅ Meta criada (Firebase + preparado para Supabase)')
+          
+          const result = await dualSync.createGoal(goalDataWithCreatedDate)
+          
+          if (result.success) {
+            updatedGoals = [...goals, newGoal]
+            setGoals(updatedGoals)
+            console.log(`✅ Meta criada - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
             
             toast({
               title: "Meta criada",
-              description: `${goalData.name} - Criada (dual sync em desenvolvimento)`,
+              description: `${goalData.name} foi criada com sucesso!`,
             })
-          } catch (error) {
-            console.error('Erro na sincronização dual:', error)
+          } else {
             toast({
-              title: "Meta criada",
-              description: `A meta "${goalData.name}" foi criada localmente.`,
+              title: "Erro ao criar meta",
+              description: `Falha na sincronização: ${result.errors.join(', ')}`,
+              variant: "destructive",
             })
           }
+        } catch (error) {
+          console.error('Erro na sincronização dual:', error)
+          toast({
+            title: "Erro ao criar meta",
+            description: "Não foi possível criar a meta. Tente novamente.",
+            variant: "destructive",
+          })
         }
       }
       
@@ -466,40 +456,24 @@ export default function MetasPage() {
   const handleDeleteGoal = async (goal: Goal) => {
     if (confirm(`Tem certeza que deseja excluir a meta "${goal.name}"?`)) {
       try {
-        const updatedGoals = goals.filter(g => g.id !== goal.id)
-        setGoals(updatedGoals)
-        
         // Usar sincronização dual para deletar
-        if (user) {
-          try {
-            // Como não temos deleteGoal no dual sync ainda, usamos Firebase + preparação
-            const docRef = doc(db, "user-data", user.uid)
-            const docSnap = await getDoc(docRef)
-            const existingData = docSnap.exists() ? docSnap.data() : {}
-            
-            const updatedData = {
-              ...existingData,
-              goals: updatedGoals.map(goal => ({
-                ...goal,
-                deadline: goal.deadline,
-                createdDate: goal.createdDate
-              }))
-            }
-            
-            await setDoc(docRef, updatedData, { merge: true })
-            console.log('✅ Meta deletada (Firebase + preparado para Supabase)')
-            
-            toast({
-              title: "Meta excluída",
-              description: `${goal.name} - Removida (dual sync em desenvolvimento)`,
-            })
-          } catch (error) {
-            console.error('Erro na sincronização dual:', error)
-            toast({
-              title: "Meta excluída",
-              description: `A meta "${goal.name}" foi removida localmente.`,
-            })
-          }
+        const result = await dualSync.deleteGoal(goal.id)
+        
+        if (result.success) {
+          const updatedGoals = goals.filter(g => g.id !== goal.id)
+          setGoals(updatedGoals)
+          console.log(`✅ Meta deletada - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
+          
+          toast({
+            title: "Meta excluída",
+            description: `${goal.name} - Supabase: ${result.supabaseSuccess ? '✅' : '❌'} | Firebase: ${result.firebaseSuccess ? '✅' : '❌'}`,
+          })
+        } else {
+          toast({
+            title: "Erro ao excluir meta",
+            description: `Falha na sincronização: ${result.errors.join(', ')}`,
+            variant: "destructive"
+          })
         }
       } catch (error) {
         console.error('Erro ao excluir meta:', error)
@@ -513,48 +487,30 @@ export default function MetasPage() {
   }
 
   // Função para atualizar progresso de uma meta
-  const handleUpdateProgress = async (goalId: string, newCurrentValue: number) => {
+  const handleUpdateProgress = async (goal: Goal, newCurrentValue: number) => {
     try {
-      const updatedGoals = goals.map(goal => 
-        goal.id === goalId 
-          ? { ...goal, currentValue: newCurrentValue }
-          : goal
-      )
-      setGoals(updatedGoals)
-      
       // Usar sincronização dual para atualizar progresso
-      if (user) {
-        try {
-          const docRef = doc(db, "user-data", user.uid)
-          const docSnap = await getDoc(docRef)
-          const existingData = docSnap.exists() ? docSnap.data() : {}
-          
-          const updatedData = {
-            ...existingData,
-            goals: updatedGoals.map(goal => ({
-              ...goal,
-              deadline: goal.deadline,
-              createdDate: goal.createdDate
-            }))
-          }
-          
-          await setDoc(docRef, updatedData, { merge: true })
-          console.log('✅ Progresso da meta atualizado (Firebase + preparado para Supabase)')
-          
-          const updatedGoal = updatedGoals.find(g => g.id === goalId)
-          if (updatedGoal) {
-            toast({
-              title: "Progresso atualizado",
-              description: `${updatedGoal.name} - Progresso: ${((newCurrentValue / updatedGoal.targetValue) * 100).toFixed(1)}%`,
-            })
-          }
-        } catch (error) {
-          console.error('Erro na sincronização dual:', error)
-          toast({
-            title: "Progresso atualizado",
-            description: "Progresso atualizado localmente.",
-          })
-        }
+      const result = await dualSync.updateGoal(goal.id, { currentValue: newCurrentValue })
+      
+      if (result.success) {
+        const updatedGoals = goals.map(g => 
+          g.id === goal.id 
+            ? { ...g, currentValue: newCurrentValue }
+            : g
+        )
+        setGoals(updatedGoals)
+        console.log(`✅ Progresso atualizado - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
+        
+        toast({
+          title: "Progresso atualizado",
+          description: `${goal.name} - Progresso: ${((newCurrentValue / goal.targetValue) * 100).toFixed(1)}%`,
+        })
+      } else {
+        toast({
+          title: "Erro ao atualizar progresso",
+          description: `Falha na sincronização: ${result.errors.join(', ')}`,
+          variant: "destructive"
+        })
       }
     } catch (error) {
       console.error('Erro ao atualizar progresso:', error)
@@ -567,48 +523,33 @@ export default function MetasPage() {
   }
 
   // Função para marcar meta como concluída
-  const handleCompleteGoal = async (goalId: string) => {
+  const handleCompleteGoal = async (goal: Goal) => {
     try {
-      const updatedGoals = goals.map(goal => 
-        goal.id === goalId 
-          ? { ...goal, status: 'completed' as const, currentValue: goal.targetValue }
-          : goal
-      )
-      setGoals(updatedGoals)
+      // Usar sincronização dual para marcar como concluída
+      const result = await dualSync.updateGoal(goal.id, { 
+        status: 'completed' as const, 
+        currentValue: goal.targetValue 
+      })
       
-      // Usar sincronização dual
-      if (user) {
-        try {
-          const docRef = doc(db, "user-data", user.uid)
-          const docSnap = await getDoc(docRef)
-          const existingData = docSnap.exists() ? docSnap.data() : {}
-          
-          const updatedData = {
-            ...existingData,
-            goals: updatedGoals.map(goal => ({
-              ...goal,
-              deadline: goal.deadline,
-              createdDate: goal.createdDate
-            }))
-          }
-          
-          await setDoc(docRef, updatedData, { merge: true })
-          console.log('✅ Meta concluída (Firebase + preparado para Supabase)')
-          
-          const completedGoal = updatedGoals.find(g => g.id === goalId)
-          if (completedGoal) {
-            toast({
-              title: "🎉 Meta concluída!",
-              description: `Parabéns! Você alcançou a meta "${completedGoal.name}".`,
-            })
-          }
-        } catch (error) {
-          console.error('Erro na sincronização dual:', error)
-          toast({
-            title: "Meta concluída",
-            description: "Meta marcada como concluída localmente.",
-          })
-        }
+      if (result.success) {
+        const updatedGoals = goals.map(g => 
+          g.id === goal.id 
+            ? { ...g, status: 'completed' as const, currentValue: g.targetValue }
+            : g
+        )
+        setGoals(updatedGoals)
+        console.log(`✅ Meta concluída - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
+        
+        toast({
+          title: "🎉 Meta concluída!",
+          description: `Parabéns! Você alcançou a meta "${goal.name}".`,
+        })
+      } else {
+        toast({
+          title: "Erro ao concluir meta",
+          description: `Falha na sincronização: ${result.errors.join(', ')}`,
+          variant: "destructive"
+        })
       }
     } catch (error) {
       console.error('Erro ao concluir meta:', error)
@@ -694,20 +635,14 @@ export default function MetasPage() {
                 <SheetContent side="left" className="w-80">
                   <GoalsSidebar
                     goals={goals}
-                    searchTerm={searchTerm}
-                    onSearchChange={setSearchTerm}
+                    periodFilter={periodFilter}
                     categoryFilter={categoryFilter}
+                    onPeriodFilterChange={setPeriodFilter}
                     onCategoryFilterChange={setCategoryFilter}
                     statusFilter={statusFilter}
                     onStatusFilterChange={setStatusFilter}
                     priorityFilter={priorityFilter}
                     onPriorityFilterChange={setPriorityFilter}
-                    viewMode={viewMode}
-                    onViewModeChange={setViewMode}
-                    sortBy={sortBy}
-                    onSortByChange={setSortBy}
-                    sortOrder={sortOrder}
-                    onSortOrderChange={setSortOrder}
                   />
                 </SheetContent>
               </Sheet>
@@ -716,20 +651,14 @@ export default function MetasPage() {
             <div className="hidden lg:block">
               <GoalsSidebar
                 goals={goals}
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
+                periodFilter={periodFilter}
                 categoryFilter={categoryFilter}
+                onPeriodFilterChange={setPeriodFilter}
                 onCategoryFilterChange={setCategoryFilter}
                 statusFilter={statusFilter}
                 onStatusFilterChange={setStatusFilter}
                 priorityFilter={priorityFilter}
                 onPriorityFilterChange={setPriorityFilter}
-                viewMode={viewMode}
-                onViewModeChange={setViewMode}
-                sortBy={sortBy}
-                onSortByChange={setSortBy}
-                sortOrder={sortOrder}
-                onSortOrderChange={setSortOrder}
               />
             </div>
           </div>
@@ -786,11 +715,10 @@ export default function MetasPage() {
                       <GoalCard
                         key={goal.id}
                         goal={goal}
-                        viewMode={viewMode}
                         onEdit={handleEditGoal}
                         onDelete={handleDeleteGoal}
                         onUpdateProgress={handleUpdateProgress}
-                        onComplete={handleCompleteGoal}
+                        onToggleStatus={handleCompleteGoal}
                       />
                     ))}
                   </div>
@@ -805,7 +733,7 @@ export default function MetasPage() {
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <GoalForm
-            goal={editingGoal}
+            goalToEdit={editingGoal}
             onSave={handleSaveGoal}
             onCancel={() => {
               setIsFormOpen(false)

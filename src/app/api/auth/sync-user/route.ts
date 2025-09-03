@@ -17,7 +17,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('🔄 Sincronizando usuário:', { firebase_uid, email });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔄 Sincronizando usuário:', { firebase_uid, email });
+    }
 
     // Verificar se o usuário já existe no Supabase
     let supabaseUser = await supabase
@@ -28,7 +30,9 @@ export async function POST(request: NextRequest) {
 
     if (supabaseUser.error && supabaseUser.error.code === 'PGRST116') {
       // Usuário não encontrado, criar novo
-      console.log('👤 Criando novo usuário no Supabase...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('👤 Criando novo usuário no Supabase...');
+      }
       
       const { data: newUser, error: createError } = await supabase
         .from('users')
@@ -46,7 +50,9 @@ export async function POST(request: NextRequest) {
         console.error('❌ Erro ao criar usuário:', createError);
         
         // Se falhar ao criar, tentar buscar pelo email
-        console.log('🔄 Tentando buscar usuário pelo email...');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Tentando buscar usuário pelo email...');
+        }
         const { data: usersByEmail, error: emailError } = await supabase
           .from('users')
           .select('*')
@@ -56,7 +62,9 @@ export async function POST(request: NextRequest) {
         if (!emailError && usersByEmail && usersByEmail.length > 0) {
           // Atualizar o usuário existente com o Firebase UID
           const existingUser = usersByEmail[0];
-          console.log('🔄 Atualizando usuário existente com Firebase UID...');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔄 Atualizando usuário existente com Firebase UID...');
+          }
           
           const { data: updatedUser, error: updateError } = await supabase
             .from('users')
@@ -72,7 +80,9 @@ export async function POST(request: NextRequest) {
               { status: 500 }
             );
           } else {
-            console.log('✅ Firebase UID atualizado com sucesso');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('✅ Firebase UID atualizado com sucesso');
+            }
             return NextResponse.json({
               success: true,
               user: updatedUser,
@@ -86,7 +96,9 @@ export async function POST(request: NextRequest) {
           );
         }
       } else {
-        console.log('✅ Usuário criado no Supabase:', newUser.id);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Usuário criado no Supabase:', newUser.id);
+        }
         return NextResponse.json({
           success: true,
           user: newUser,
@@ -100,7 +112,9 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     } else {
-      console.log('✅ Usuário já existe no Supabase:', supabaseUser.data.id);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Usuário já existe no Supabase:', supabaseUser.data.id);
+      }
       return NextResponse.json({
         success: true,
         user: supabaseUser.data,

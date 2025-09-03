@@ -13,6 +13,7 @@ import { TrackingView } from "@/components/product/tracking-view"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
+import { useIsMobile } from "@/hooks/use-mobile"
 import type { Product } from "@/types"
 import { db } from "@/lib/firebase"
 import { doc, getDoc } from "firebase/firestore"
@@ -25,12 +26,15 @@ import {
   Upload,
   RefreshCw,
   MoreHorizontal,
-  ArrowLeft
+  ArrowLeft,
+  Menu
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
 
 export default function ProdutosPage() {
   const { user, loading: authLoading } = useAuth()
+  const isMobile = useIsMobile()
   const [products, setProducts] = useState<Product[]>([])
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
   const [searchQuery, setSearchQuery] = useState("")
@@ -43,6 +47,7 @@ export default function ProdutosPage() {
   const [isDetailViewOpen, setIsDetailViewOpen] = useState(false)
   const [isTrackingViewOpen, setIsTrackingViewOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const { toast } = useToast()
 
   // Fetch products on component mount
@@ -266,7 +271,7 @@ export default function ProdutosPage() {
 
   return (
     <div className="flex h-screen bg-background">
-      {/* Sidebar */}
+      {/* Mobile Sidebar */}
       <ProductsSidebar
         products={products}
         searchQuery={searchQuery}
@@ -282,6 +287,28 @@ export default function ProdutosPage() {
         onExport={handleExport}
         onImport={handleImport}
         isLoading={isLoading}
+        isMobile={true}
+        isOpen={isSidebarOpen}
+        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+      />
+
+      {/* Desktop Sidebar */}
+      <ProductsSidebar
+        products={products}
+        searchQuery={searchQuery}
+        categoryFilter={categoryFilter}
+        statusFilter={statusFilter}
+        supplierFilter={supplierFilter}
+        onSearchChange={setSearchQuery}
+        onCategoryFilterChange={setCategoryFilter}
+        onStatusFilterChange={setStatusFilter}
+        onSupplierFilterChange={setSupplierFilter}
+        onAddProduct={handleAddProduct}
+        onRefresh={handleRefresh}
+        onExport={handleExport}
+        onImport={handleImport}
+        isLoading={isLoading}
+        isMobile={false}
       />
 
       {/* Main Content */}
@@ -291,6 +318,17 @@ export default function ProdutosPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-4">
               <div className="flex items-center gap-3">
+                {/* Mobile Sidebar Toggle */}
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="lg:hidden flex items-center gap-2 border-2 hover:border-primary"
+                >
+                  <Menu className="h-4 w-4" />
+                  <span className="text-xs">Menu</span>
+                </Button>
+                
                 <Button 
                   variant="ghost" 
                   size="sm"
@@ -300,7 +338,10 @@ export default function ProdutosPage() {
                   <ArrowLeft className="h-4 w-4" />
                   <span className="hidden sm:inline">Dashboard</span>
                 </Button>
-                <h1 className="text-xl sm:text-2xl font-bold">Produtos</h1>
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-primary" />
+                  <h1 className="text-xl sm:text-2xl font-bold">Produtos</h1>
+                </div>
               </div>
             </div>
             
@@ -327,6 +368,48 @@ export default function ProdutosPage() {
           </div>
         </div>
 
+        {/* Mobile Filters Indicator */}
+        {(searchQuery || categoryFilter !== "all" || statusFilter !== "all" || supplierFilter !== "all") && (
+          <div className="lg:hidden border-b bg-muted/30 p-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-medium text-muted-foreground">Filtros ativos:</span>
+              {searchQuery && (
+                <Badge variant="secondary" className="text-xs">
+                  Busca: "{searchQuery}"
+                </Badge>
+              )}
+              {categoryFilter !== "all" && (
+                <Badge variant="outline" className="text-xs">
+                  Categoria: {categoryFilter}
+                </Badge>
+              )}
+              {statusFilter !== "all" && (
+                <Badge variant="outline" className="text-xs">
+                  Status: {statusFilter}
+                </Badge>
+              )}
+              {supplierFilter !== "all" && (
+                <Badge variant="outline" className="text-xs">
+                  Fornecedor: {supplierFilter}
+                </Badge>
+              )}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => {
+                  setSearchQuery("")
+                  setCategoryFilter("all")
+                  setStatusFilter("all")
+                  setSupplierFilter("all")
+                }}
+                className="h-6 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+              >
+                Limpar
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Content */}
         <div className="flex-1 overflow-auto p-4 sm:p-6">
           {isLoading ? (
@@ -342,15 +425,39 @@ export default function ProdutosPage() {
               <h3 className="text-base sm:text-lg font-semibold mb-2">Nenhum produto encontrado</h3>
               <p className="text-sm sm:text-base text-muted-foreground mb-4 max-w-md">
                 {searchQuery || categoryFilter !== "all" || statusFilter !== "all" || supplierFilter !== "all"
-                  ? "Tente ajustar os filtros de busca."
+                  ? "Tente ajustar os filtros de busca ou limpar todos os filtros."
                   : "Comece adicionando seu primeiro produto."}
               </p>
-              {!searchQuery && categoryFilter === "all" && statusFilter === "all" && supplierFilter === "all" && (
-                <Button onClick={handleAddProduct} className="text-sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Primeiro Produto
+              <div className="flex flex-col sm:flex-row gap-2">
+                {!searchQuery && categoryFilter === "all" && statusFilter === "all" && supplierFilter === "all" ? (
+                  <Button onClick={handleAddProduct} className="text-sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar Primeiro Produto
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      setSearchQuery("")
+                      setCategoryFilter("all")
+                      setStatusFilter("all")
+                      setSupplierFilter("all")
+                    }}
+                    className="text-sm"
+                  >
+                    <Filter className="h-4 w-4 mr-2" />
+                    Limpar Filtros
+                  </Button>
+                )}
+                <Button 
+                  variant="ghost"
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="text-sm lg:hidden"
+                >
+                  <Menu className="h-4 w-4 mr-2" />
+                  Abrir Filtros
                 </Button>
-              )}
+              </div>
             </div>
           ) : (
             <div className="space-y-4 sm:space-y-6">
@@ -384,7 +491,7 @@ export default function ProdutosPage() {
               </div>
 
               {/* Products Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
                 {filteredProducts.map((product) => (
                   <ProductCard
                     key={product.id}

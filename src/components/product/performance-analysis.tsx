@@ -97,7 +97,7 @@ export function PerformanceAnalysis({ products, onClose }: PerformanceAnalysisPr
               {analysis.profitability.poor}
             </div>
             <p className="text-xs text-muted-foreground">
-              ROI < 25%
+              ROI &lt; 25%
             </p>
           </CardContent>
         </Card>
@@ -142,7 +142,7 @@ export function PerformanceAnalysis({ products, onClose }: PerformanceAnalysisPr
                 {analysis.marginAnalysis.low}
               </div>
               <div className="text-sm font-medium">Baixa Margem</div>
-              <div className="text-xs text-muted-foreground">< 40%</div>
+              <div className="text-xs text-muted-foreground">&lt; 40%</div>
             </div>
           </div>
         </CardContent>
@@ -249,7 +249,7 @@ export function PerformanceAnalysis({ products, onClose }: PerformanceAnalysisPr
               </div>
               
               <div className="flex items-center justify-between">
-                <span className="text-sm">Baixo (<25%)</span>
+                <span className="text-sm">Baixo (&lt;25%)</span>
                 <div className="flex items-center gap-2">
                   <Progress value={(analysis.profitability.poor / products.length) * 100} className="w-20 h-2" />
                   <span className="text-sm font-medium">{analysis.profitability.poor}</span>
@@ -290,7 +290,7 @@ export function PerformanceAnalysis({ products, onClose }: PerformanceAnalysisPr
               </div>
               
               <div className="flex items-center justify-between">
-                <span className="text-sm">Baixa (<40%)</span>
+                <span className="text-sm">Baixa (&lt;40%)</span>
                 <div className="flex items-center gap-2">
                   <Progress value={(analysis.marginAnalysis.low / products.length) * 100} className="w-20 h-2" />
                   <span className="text-sm font-medium">{analysis.marginAnalysis.low}</span>

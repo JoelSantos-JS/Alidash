@@ -9,25 +9,26 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('user_id');
+    const firebaseUid = searchParams.get('user_id');
 
-    if (!userId) {
+    if (!firebaseUid) {
       return NextResponse.json(
-        { error: 'User ID é obrigatório' },
+        { error: 'user_id (firebase_uid) é obrigatório' },
         { status: 400 }
       );
     }
 
-    console.log('🔍 Buscando despesas para usuário:', userId);
+    console.log('🔍 Buscando despesas para Firebase UID:', firebaseUid);
 
-    const { data: expenses, error } = await supabase
+    // Buscar despesas do usuário
+    const { data: expenses, error: expensesError } = await supabase
       .from('expenses')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', firebaseUid)
       .order('date', { ascending: false });
 
-    if (error) {
-      console.error('❌ Erro ao buscar despesas:', error);
+    if (expensesError) {
+      console.error('❌ Erro ao buscar despesas:', expensesError);
       return NextResponse.json(
         { error: 'Erro ao buscar despesas' },
         { status: 500 }
@@ -48,4 +49,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

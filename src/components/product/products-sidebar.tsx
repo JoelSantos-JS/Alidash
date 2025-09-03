@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Progress } from "@/components/ui/progress"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Package, 
   TrendingUp, 
@@ -47,7 +49,9 @@ import {
   MapPin,
   Globe,
   CreditCard,
-  Wallet
+  Wallet,
+  Menu,
+  X
 } from "lucide-react"
 import { exportProductsToCSV, exportProductsToJSON, downloadFile } from "@/lib/export-utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -74,6 +78,9 @@ type ProductsSidebarProps = {
   onImport?: () => void
   isLoading?: boolean
   className?: string
+  isMobile?: boolean
+  isOpen?: boolean
+  onToggle?: () => void
 }
 
 const STATUS_OPTIONS = [
@@ -108,7 +115,10 @@ export function ProductsSidebar({
   onExport,
   onImport,
   isLoading = false,
-  className
+  className,
+  isMobile = false,
+  isOpen = false,
+  onToggle
 }: ProductsSidebarProps) {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [roiFilter, setRoiFilter] = useState<string>("all")
@@ -119,6 +129,7 @@ export function ProductsSidebar({
   const [isQuickStatsOpen, setIsQuickStatsOpen] = useState(true)
   const [isReportOpen, setIsReportOpen] = useState(false)
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState("overview")
 
   // Calculate analytics data
   const analytics = useMemo(() => {
@@ -307,8 +318,202 @@ export function ProductsSidebar({
     console.log('Importação de produtos será implementada')
   }
 
-  return (
-    <div className={cn("w-80 bg-card border-r h-full flex flex-col", className)}>
+  // Mobile Sidebar Content
+  const mobileSidebarContent = (
+    <div className="h-full flex flex-col">
+      {/* Mobile Header */}
+      <div className="flex items-center justify-between p-4 border-b">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Package className="h-5 w-5 text-primary" />
+          Produtos
+        </h2>
+        <Button variant="ghost" size="sm" onClick={onToggle}>
+          <X className="h-5 w-5" />
+        </Button>
+      </div>
+
+      {/* Mobile Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+          <TabsTrigger value="filters">Filtros</TabsTrigger>
+          <TabsTrigger value="actions">Ações</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="flex-1 mt-4">
+          <ScrollArea className="h-full">
+            <div className="p-4 space-y-4">
+              {/* Quick Stats for Mobile */}
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                    <CardContent className="p-3">
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Total</p>
+                        <p className="text-lg font-bold text-blue-600">{analytics.totalProducts}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+                    <CardContent className="p-3">
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Lucro</p>
+                        <p className="text-lg font-bold text-green-600">
+                          {analytics.totalProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Profitability Score */}
+                <Card className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 border-green-200 dark:border-green-800">
+                  <CardContent className="p-4">
+                    <div className="text-center space-y-2">
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-sm font-medium">Score de Lucratividade</span>
+                        <Badge variant={analytics.profitabilityScore >= 70 ? "default" : analytics.profitabilityScore >= 40 ? "secondary" : "destructive"}>
+                          {analytics.profitabilityScore.toFixed(0)}%
+                        </Badge>
+                      </div>
+                      <Progress value={analytics.profitabilityScore} className="h-3" />
+                      <p className="text-xs text-muted-foreground">
+                        ROI médio: {analytics.avgROI.toFixed(1)}%
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Quick Actions */}
+                <div className="grid grid-cols-2 gap-2">
+                  <Button onClick={onAddProduct} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Adicionar
+                  </Button>
+                  <Button variant="outline" onClick={onRefresh} disabled={isLoading} className="gap-2">
+                    <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+                    Atualizar
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="filters" className="flex-1 mt-4">
+          <ScrollArea className="h-full">
+            <div className="p-4 space-y-4">
+              {/* Search */}
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar produtos..."
+                    value={searchQuery}
+                    onChange={(e) => onSearchChange(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              {/* Category Filter */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Categoria</Label>
+                <Select value={categoryFilter} onValueChange={onCategoryFilterChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas as categorias" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as Categorias</SelectItem>
+                    {analytics.categories.map(category => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Status Filter */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Status</Label>
+                <Select value={statusFilter} onValueChange={onStatusFilterChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos os status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map(option => {
+                      const IconComponent = option.icon
+                      return (
+                        <SelectItem key={option.value} value={option.value}>
+                          <div className="flex items-center gap-2">
+                            <IconComponent className={cn("h-4 w-4", option.color)} />
+                            {option.label}
+                          </div>
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Supplier Filter */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Fornecedor</Label>
+                <Select value={supplierFilter} onValueChange={onSupplierFilterChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos os fornecedores" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Fornecedores</SelectItem>
+                    {analytics.suppliers.map(supplier => (
+                      <SelectItem key={supplier} value={supplier}>
+                        {supplier}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="actions" className="flex-1 mt-4">
+          <ScrollArea className="h-full">
+            <div className="p-4 space-y-3">
+              <Button variant="outline" size="sm" onClick={handleExportCSV} className="justify-start gap-2 w-full">
+                <Download className="h-4 w-4" />
+                Exportar CSV
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportJSON} className="justify-start gap-2 w-full">
+                <Download className="h-4 w-4" />
+                Exportar JSON
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleImportProducts} className="justify-start gap-2 w-full">
+                <Upload className="h-4 w-4" />
+                Importar Produtos
+              </Button>
+            </div>
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
+
+      {/* Mobile Footer */}
+      <div className="p-4 border-t bg-muted/50">
+        <div className="text-center text-xs text-muted-foreground">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <span>Produtos filtrados</span>
+            <Badge variant="secondary">{filteredProducts.length} de {analytics.totalProducts}</Badge>
+          </div>
+          <div>Última atualização: {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+        </div>
+      </div>
+    </div>
+  )
+
+  // Desktop Sidebar Content
+  const desktopSidebarContent = (
+    <div className="w-80 bg-card border-r h-full flex flex-col">
       <ScrollArea className="flex-1">
         <div className="p-4 sm:p-6 space-y-6">
           
@@ -827,6 +1032,23 @@ export function ProductsSidebar({
           <span>{new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
       </div>
+    </div>
+  )
+
+  // Return responsive sidebar
+  if (isMobile) {
+    return (
+      <Sheet open={isOpen} onOpenChange={onToggle}>
+        <SheetContent side="left" className="w-[85vw] max-w-sm p-0">
+          {mobileSidebarContent}
+        </SheetContent>
+      </Sheet>
+    )
+  }
+
+  return (
+    <div className={cn("hidden lg:block", className)}>
+      {desktopSidebarContent}
     </div>
   )
 } 

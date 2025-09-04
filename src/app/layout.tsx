@@ -8,7 +8,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 const inter = Inter({ subsets: ["latin"], variable: "--font-body" });
 
 export const metadata: Metadata = {
-  title: "Zeromize",
+  title: "VoxCash",
   description: "Dashboard financeiro pessoal e empresarial.",
 };
 

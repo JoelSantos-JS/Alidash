@@ -964,7 +964,7 @@ export default function Home() {
           <div className="flex items-center justify-between p-4 sm:p-6 border-b">
             <div className="flex items-center gap-2">
               <Logo size="lg" />
-              <span className="text-lg sm:text-xl font-bold">Zeromize</span>
+              <span className="text-lg sm:text-xl font-bold">VoxCash</span>
             </div>
             <Button
               variant="ghost"

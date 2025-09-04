@@ -35,7 +35,7 @@ export function Header() {
         <div className="flex h-16 items-center justify-between">
             <Link href="/" className="flex items-center gap-2 cursor-pointer">
                 <Logo size="lg" />
-                <span className="text-xl font-bold">Zeromize</span>
+                <span className="text-xl font-bold">VoxCash</span>
             </Link>
             
             {/* Account Type Toggle */}

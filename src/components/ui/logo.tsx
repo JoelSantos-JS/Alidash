@@ -20,10 +20,10 @@ export function Logo({ className, size = "md" }: LogoProps) {
   }
 
   // Cores baseadas no tema
-  const birdColor = isDark ? "#ffffff" : "#1a1a1a"
-  const birdStroke = isDark ? "#e5e5e5" : "#000000"
-  const birdDetail = isDark ? "#f0f0f0" : "#2a2a2a"
-  const birdDetail2 = isDark ? "#d0d0d0" : "#333333"
+  const spiderColor = isDark ? "#ffffff" : "#1a1a1a"
+  const spiderStroke = isDark ? "#e5e5e5" : "#000000"
+  const spiderDetail = isDark ? "#f0f0f0" : "#2a2a2a"
+  const spiderAccent = isDark ? "#ff6b35" : "#e55a2b"
   const shadowColor = isDark ? "#ffffff20" : "#00000020"
 
   return (
@@ -38,130 +38,144 @@ export function Logo({ className, size = "md" }: LogoProps) {
         <ellipse
           cx="52"
           cy="85"
-          rx="20"
-          ry="5"
+          rx="18"
+          ry="4"
           fill={shadowColor}
         />
         
-        {/* Corpo principal do pássaro */}
+        {/* Abdômen da aranha */}
+        <ellipse
+          cx="50"
+          cy="65"
+          rx="18"
+          ry="12"
+          fill={spiderColor}
+          stroke={spiderStroke}
+          strokeWidth="2"
+        />
+        
+        {/* Cefalotórax (cabeça/tórax) */}
+        <ellipse
+          cx="50"
+          cy="40"
+          rx="12"
+          ry="10"
+          fill={spiderColor}
+          stroke={spiderStroke}
+          strokeWidth="2"
+        />
+        
+        {/* Olhos da aranha (8 olhos pequenos) */}
+        <circle cx="46" cy="35" r="1.5" fill={spiderAccent} />
+        <circle cx="54" cy="35" r="1.5" fill={spiderAccent} />
+        <circle cx="44" cy="38" r="1" fill={spiderDetail} />
+        <circle cx="56" cy="38" r="1" fill={spiderDetail} />
+        <circle cx="47" cy="32" r="0.8" fill={spiderDetail} />
+        <circle cx="53" cy="32" r="0.8" fill={spiderDetail} />
+        <circle cx="49" cy="30" r="0.6" fill={spiderDetail} />
+        <circle cx="51" cy="30" r="0.6" fill={spiderDetail} />
+        
+        {/* Quelíceras (mandíbulas) */}
+        <ellipse
+          cx="48"
+          cy="42"
+          rx="2"
+          ry="1"
+          fill={spiderAccent}
+        />
+        <ellipse
+          cx="52"
+          cy="42"
+          rx="2"
+          ry="1"
+          fill={spiderAccent}
+        />
+        
+        {/* Pernas esquerdas */}
+        {/* Perna 1 (frente esquerda) */}
+        <path
+          d="M 38 38 Q 25 35 20 45 Q 18 50 22 52"
+          stroke={spiderStroke}
+          strokeWidth="2.5"
+          fill="none"
+        />
+        {/* Perna 2 */}
+        <path
+          d="M 35 45 Q 18 42 12 55 Q 10 62 15 65"
+          stroke={spiderStroke}
+          strokeWidth="2.5"
+          fill="none"
+        />
+        {/* Perna 3 */}
+        <path
+          d="M 35 55 Q 18 58 12 70 Q 10 77 15 80"
+          stroke={spiderStroke}
+          strokeWidth="2.5"
+          fill="none"
+        />
+        {/* Perna 4 (traseira esquerda) */}
+        <path
+          d="M 40 65 Q 25 68 20 78 Q 18 85 22 87"
+          stroke={spiderStroke}
+          strokeWidth="2.5"
+          fill="none"
+        />
+        
+        {/* Pernas direitas */}
+        {/* Perna 1 (frente direita) */}
+        <path
+          d="M 62 38 Q 75 35 80 45 Q 82 50 78 52"
+          stroke={spiderStroke}
+          strokeWidth="2.5"
+          fill="none"
+        />
+        {/* Perna 2 */}
+        <path
+          d="M 65 45 Q 82 42 88 55 Q 90 62 85 65"
+          stroke={spiderStroke}
+          strokeWidth="2.5"
+          fill="none"
+        />
+        {/* Perna 3 */}
+        <path
+          d="M 65 55 Q 82 58 88 70 Q 90 77 85 80"
+          stroke={spiderStroke}
+          strokeWidth="2.5"
+          fill="none"
+        />
+        {/* Perna 4 (traseira direita) */}
+        <path
+          d="M 60 65 Q 75 68 80 78 Q 82 85 78 87"
+          stroke={spiderStroke}
+          strokeWidth="2.5"
+          fill="none"
+        />
+        
+        {/* Padrão no abdômen */}
         <ellipse
           cx="50"
           cy="60"
-          rx="25"
-          ry="20"
-          fill={birdColor}
-          stroke={birdStroke}
-          strokeWidth="2"
-        />
-        
-        {/* Cabeça */}
-        <circle
-          cx="50"
-          cy="35"
-          r="15"
-          fill={birdColor}
-          stroke={birdStroke}
-          strokeWidth="2"
-        />
-        
-        {/* Olhos expressivos */}
-        <circle cx="45" cy="32" r="4" fill={isDark ? "#1a1a1a" : "white"} stroke={birdStroke} strokeWidth="1" />
-        <circle cx="55" cy="32" r="4" fill={isDark ? "#1a1a1a" : "white"} stroke={birdStroke} strokeWidth="1" />
-        <circle cx="45" cy="32" r="1.5" fill={isDark ? "white" : "#000"} />
-        <circle cx="55" cy="32" r="1.5" fill={isDark ? "white" : "#000"} />
-        
-        {/* Brilho nos olhos */}
-        <circle cx="44" cy="31" r="0.8" fill={isDark ? "#333" : "white"} />
-        <circle cx="54" cy="31" r="0.8" fill={isDark ? "#333" : "white"} />
-        
-        {/* Bico laranja brilhante */}
-        <path
-          d="M 50 38 L 45 42 L 55 42 Z"
-          fill="#ff6b35"
-          stroke="#e55a2b"
-          strokeWidth="1"
+          rx="8"
+          ry="5"
+          fill={spiderDetail}
+          opacity="0.6"
         />
         <path
-          d="M 50 38 L 47 40 L 53 40 Z"
-          fill="#ff8c42"
+          d="M 45 65 L 50 58 L 55 65 L 50 70 Z"
+          fill={spiderAccent}
+          opacity="0.8"
         />
         
-        {/* Asas abertas em voo */}
-        <ellipse
-          cx="25"
-          cy="50"
-          rx="12"
-          ry="8"
-          fill={birdColor}
-          stroke={birdStroke}
-          strokeWidth="2"
-          transform="rotate(-15 25 50)"
-        />
-        <ellipse
-          cx="75"
-          cy="50"
-          rx="12"
-          ry="8"
-          fill={birdColor}
-          stroke={birdStroke}
-          strokeWidth="2"
-          transform="rotate(15 75 50)"
-        />
-        
-        {/* Detalhes das asas */}
-        <ellipse
-          cx="22"
-          cy="48"
-          rx="6"
-          ry="4"
-          fill={birdDetail}
-          transform="rotate(-15 22 48)"
-        />
-        <ellipse
-          cx="78"
-          cy="48"
-          rx="6"
-          ry="4"
-          fill={birdDetail}
-          transform="rotate(15 78 48)"
-        />
-        
-        {/* Cauda arredondada */}
-        <path
-          d="M 70 65 Q 85 60 80 75 Q 75 70 70 65"
-          fill={birdColor}
-          stroke={birdStroke}
-          strokeWidth="2"
-        />
-        
-        {/* Topete na cabeça */}
-        <ellipse
-          cx="50"
-          cy="25"
-          rx="3"
-          ry="2"
-          fill={birdDetail}
-        />
-        <ellipse
-          cx="50"
-          cy="23"
-          rx="2"
-          ry="1"
-          fill={birdDetail2}
-        />
-        
-        {/* Patas pequenas */}
-        <line x1="45" y1="80" x2="45" y2="85" stroke={birdStroke} strokeWidth="2" />
-        <line x1="55" y1="80" x2="55" y2="85" stroke={birdStroke} strokeWidth="2" />
-        <line x1="42" y1="85" x2="48" y2="85" stroke={birdStroke} strokeWidth="2" />
-        <line x1="52" y1="85" x2="58" y2="85" stroke={birdStroke} strokeWidth="2" />
-        
-        {/* Textura das penas (pontos sutis) */}
-        <circle cx="35" cy="55" r="0.5" fill={birdDetail2} />
-        <circle cx="65" cy="55" r="0.5" fill={birdDetail2} />
-        <circle cx="40" cy="65" r="0.5" fill={birdDetail2} />
-        <circle cx="60" cy="65" r="0.5" fill={birdDetail2} />
+        {/* Detalhes nas articulações das pernas */}
+        <circle cx="22" cy="52" r="1.5" fill={spiderAccent} />
+        <circle cx="78" cy="52" r="1.5" fill={spiderAccent} />
+        <circle cx="15" cy="65" r="1.5" fill={spiderAccent} />
+        <circle cx="85" cy="65" r="1.5" fill={spiderAccent} />
+        <circle cx="15" cy="80" r="1.5" fill={spiderAccent} />
+        <circle cx="85" cy="80" r="1.5" fill={spiderAccent} />
+        <circle cx="22" cy="87" r="1.5" fill={spiderAccent} />
+        <circle cx="78" cy="87" r="1.5" fill={spiderAccent} />
       </svg>
     </div>
   )
-} 
+}

@@ -85,43 +85,43 @@ export function DebtCard({ debt, onEdit, onDelete, onPayment, className }: DebtC
 
   return (
     <Card className={cn(
-      "transition-all duration-200 hover:shadow-md",
+      "transition-all duration-200 hover:shadow-md w-full",
       isOverdue && debt.status !== 'paid' && "border-red-200 dark:border-red-800",
       debt.status === 'paid' && "border-green-200 dark:border-green-800 opacity-75",
       className
     )}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              {debt.creditorName}
+      <CardHeader className="pb-3 px-4 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+          <div className="space-y-1 min-w-0 flex-1">
+            <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
+              <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <span className="truncate">{debt.creditorName}</span>
             </CardTitle>
-            <p className="text-sm text-muted-foreground">{debt.description}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">{debt.description}</p>
           </div>
-          <div className="flex gap-1">
-            <Badge className={getStatusColor(debt.status)}>
+          <div className="flex flex-wrap gap-1 sm:flex-col sm:items-end">
+            <Badge className={cn("text-xs", getStatusColor(debt.status))}>
               {statusLabels[debt.status]}
             </Badge>
-            <Badge className={getPriorityColor(debt.priority)}>
+            <Badge className={cn("text-xs", getPriorityColor(debt.priority))}>
               {priorityLabels[debt.priority]}
             </Badge>
           </div>
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 px-4 sm:px-6">
         {/* Valores */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Valor Original</p>
-            <p className="text-sm font-medium">
+            <p className="text-sm font-medium break-words">
               {debt.originalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           </div>
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Valor Atual</p>
-            <p className="text-sm font-medium">
+            <p className="text-sm font-medium break-words">
               {debt.currentAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           </div>
@@ -135,9 +135,9 @@ export function DebtCard({ debt, onEdit, onDelete, onPayment, className }: DebtC
               <span className="font-medium">{paymentProgress.toFixed(1)}%</span>
             </div>
             <Progress value={paymentProgress} className="h-2" />
-            <div className="flex justify-between text-xs">
-              <span className="text-green-600">Pago: {totalPaid.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-              <span className="text-red-600">Restante: {remainingAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+            <div className="flex flex-col xs:flex-row xs:justify-between gap-1 text-xs">
+              <span className="text-green-600 break-words">Pago: {totalPaid.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+              <span className="text-red-600 break-words">Restante: {remainingAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
             </div>
           </div>
         )}
@@ -150,105 +150,112 @@ export function DebtCard({ debt, onEdit, onDelete, onPayment, className }: DebtC
               <span className="font-medium">{debt.installments.paid}/{debt.installments.total}</span>
             </div>
             <Progress value={installmentProgress} className="h-2" />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground break-words">
               Valor da parcela: {debt.installments.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           </div>
         )}
 
         {/* Informações de Data e Categoria */}
-        <div className="grid grid-cols-2 gap-4 text-xs">
-          <div className="flex items-center gap-1">
-            <Calendar className="h-3 w-3 text-muted-foreground" />
-            <span className="text-muted-foreground">Vencimento:</span>
-          </div>
-          <div className={cn(
-            "font-medium",
-            isOverdue && debt.status !== 'paid' && "text-red-600",
-            daysUntilDue <= 7 && daysUntilDue > 0 && debt.status !== 'paid' && "text-yellow-600"
-          )}>
-            {format(debt.dueDate, 'dd/MM/yyyy', { locale: ptBR })}
-            {debt.status !== 'paid' && (
-              <span className="ml-1">
-                {isOverdue ? `(${Math.abs(daysUntilDue)} dias em atraso)` : `(${daysUntilDue} dias)`}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 text-xs">
-          <div className="flex items-center gap-1">
-            <CreditCard className="h-3 w-3 text-muted-foreground" />
-            <span className="text-muted-foreground">Categoria:</span>
-          </div>
-          <span className="font-medium">{categoryLabels[debt.category]}</span>
-        </div>
-
-        {debt.interestRate && (
-          <div className="grid grid-cols-2 gap-4 text-xs">
+        <div className="space-y-2">
+          <div className="flex flex-col xs:grid xs:grid-cols-2 gap-2 xs:gap-4 text-xs">
             <div className="flex items-center gap-1">
-              <DollarSign className="h-3 w-3 text-muted-foreground" />
-              <span className="text-muted-foreground">Taxa de Juros:</span>
+              <Calendar className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+              <span className="text-muted-foreground">Vencimento:</span>
             </div>
-            <span className="font-medium">{debt.interestRate}% a.m.</span>
+            <div className={cn(
+              "font-medium break-words",
+              isOverdue && debt.status !== 'paid' && "text-red-600",
+              daysUntilDue <= 7 && daysUntilDue > 0 && debt.status !== 'paid' && "text-yellow-600"
+            )}>
+              {format(debt.dueDate, 'dd/MM/yyyy', { locale: ptBR })}
+              {debt.status !== 'paid' && (
+                <span className="ml-1 block xs:inline">
+                  {isOverdue ? `(${Math.abs(daysUntilDue)} dias em atraso)` : `(${daysUntilDue} dias)`}
+                </span>
+              )}
+            </div>
           </div>
-        )}
+
+          <div className="flex flex-col xs:grid xs:grid-cols-2 gap-2 xs:gap-4 text-xs">
+            <div className="flex items-center gap-1">
+              <CreditCard className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+              <span className="text-muted-foreground">Categoria:</span>
+            </div>
+            <span className="font-medium break-words">{categoryLabels[debt.category]}</span>
+          </div>
+
+          {debt.interestRate && (
+            <div className="flex flex-col xs:grid xs:grid-cols-2 gap-2 xs:gap-4 text-xs">
+              <div className="flex items-center gap-1">
+                <DollarSign className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                <span className="text-muted-foreground">Taxa de Juros:</span>
+              </div>
+              <span className="font-medium">{debt.interestRate}% a.m.</span>
+            </div>
+          )}
+        </div>
 
         {/* Alertas */}
         {isOverdue && debt.status !== 'paid' && (
           <div className="flex items-center gap-2 p-2 bg-red-50 dark:bg-red-950 rounded-md">
-            <AlertTriangle className="h-4 w-4 text-red-600" />
+            <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0" />
             <span className="text-xs text-red-600 font-medium">Dívida em atraso!</span>
           </div>
         )}
 
         {daysUntilDue <= 7 && daysUntilDue > 0 && debt.status !== 'paid' && (
           <div className="flex items-center gap-2 p-2 bg-yellow-50 dark:bg-yellow-950 rounded-md">
-            <Clock className="h-4 w-4 text-yellow-600" />
+            <Clock className="h-4 w-4 text-yellow-600 flex-shrink-0" />
             <span className="text-xs text-yellow-600 font-medium">Vence em {daysUntilDue} dias</span>
           </div>
         )}
 
         {debt.status === 'paid' && (
           <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-950 rounded-md">
-            <CheckCircle className="h-4 w-4 text-green-600" />
+            <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
             <span className="text-xs text-green-600 font-medium">Dívida quitada</span>
           </div>
         )}
 
         {/* Ações */}
-        <div className="flex gap-2 pt-2">
+        <div className="flex flex-col gap-3 pt-2">
           {debt.status !== 'paid' && debt.status !== 'cancelled' && onPayment && (
             <Button 
               size="sm" 
-              variant="default" 
               onClick={() => onPayment(debt)}
-              className="flex-1"
+              className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold text-sm h-10 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border-0"
             >
-              <Receipt className="h-3 w-3 mr-1" />
-              Pagar
+              <Receipt className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span>Marcar como Paga</span>
             </Button>
           )}
           
-          {onEdit && (
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={() => onEdit(debt)}
-            >
-              <Edit className="h-3 w-3" />
-            </Button>
-          )}
-          
-          {onDelete && (
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={() => onDelete(debt)}
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {onEdit && (
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={() => onEdit(debt)}
+                className="flex-1 text-xs h-9 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors duration-200"
+              >
+                <Edit className="h-3 w-3 mr-1 flex-shrink-0" />
+                <span>Editar</span>
+              </Button>
+            )}
+            
+            {onDelete && (
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={() => onDelete(debt)}
+                className="flex-1 text-xs h-9 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors duration-200"
+              >
+                <Trash2 className="h-3 w-3 mr-1 flex-shrink-0" />
+                <span>Excluir</span>
+              </Button>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

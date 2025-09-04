@@ -22,8 +22,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import type { Product } from "@/types";
-import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { supabaseService } from "@/lib/supabase-service";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -157,50 +156,29 @@ export default function ReportsPage() {
 
     const fetchData = async () => {
       try {
-        console.log('🔄 Carregando dados para relatórios:', user.uid);
+        console.log('🔄 Carregando dados para relatórios (Supabase):', user.uid);
+
+        // Buscar produtos reais do Supabase via API
+        const response = await fetch(`/api/products/get?user_id=${user.uid}`);
+        if (!response.ok) {
+          throw new Error('Erro ao carregar produtos via API');
+        }
         
-        const docRef = doc(db, "user-data", user.uid);
-        const docSnap = await getDoc(docRef);
+        const data = await response.json();
+        const supabaseProducts = data.products || [];
 
-        let firebaseProducts: Product[] = [];
-
-        if (docSnap.exists()) {
-          const userData = docSnap.data();
-          
-          if (userData.products && userData.products.length > 0) {
-            const data = userData.products;
-            firebaseProducts = data.map((p: any) => ({
-              ...p,
-              purchaseDate: p.purchaseDate?.toDate ? p.purchaseDate.toDate() : new Date(p.purchaseDate),
-              sales: p.sales ? p.sales.map((s: any) => ({
-                ...s, 
-                date: s.date?.toDate ? s.date.toDate() : 
-                      typeof s.date === 'string' ? new Date(s.date) : 
-                      new Date(s.date)
-              })) : [],
-            }));
-          }
-        }
-
-        let finalProducts = firebaseProducts;
-        if (finalProducts.length === 0) {
-          console.log('📥 Usando dados de exemplo para relatórios');
-          finalProducts = initialProducts;
-        }
-
-        setProducts(finalProducts);
-        console.log('📊 Relatórios carregados com:', finalProducts.length, 'produtos');
-
+        setProducts(supabaseProducts);
+        console.log('📊 Relatórios (Supabase) carregados com:', supabaseProducts.length, 'produtos');
       } catch (error) {
-        console.error('❌ Erro ao carregar dados para relatórios:', error);
-        setProducts(initialProducts);
+        console.error('❌ Erro ao carregar dados para relatórios (Supabase):', error);
         toast({
           variant: 'destructive',
           title: "Erro ao Carregar Dados",
-          description: "Usando dados de exemplo. Verifique sua conexão.",
+          description: "Não foi possível carregar os dados reais do Supabase.",
         });
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     fetchData();

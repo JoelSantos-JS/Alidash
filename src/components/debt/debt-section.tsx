@@ -115,16 +115,16 @@ export function DebtSection({ debts, className }: DebtSectionProps) {
   }
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("space-y-4 sm:space-y-6", className)}>
       {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 sm:px-6">
             <CardTitle className="text-sm font-medium">Total de Dívidas</CardTitle>
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{debtStats.totalDebts}</div>
+          <CardContent className="px-4 sm:px-6">
+            <div className="text-xl sm:text-2xl font-bold">{debtStats.totalDebts}</div>
             <p className="text-xs text-muted-foreground">
               {debtStats.activeDebts} ativas
             </p>
@@ -132,12 +132,12 @@ export function DebtSection({ debts, className }: DebtSectionProps) {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 sm:px-6">
             <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardContent className="px-4 sm:px-6">
+            <div className="text-lg sm:text-2xl font-bold break-words">
               {debtStats.totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -147,26 +147,26 @@ export function DebtSection({ debts, className }: DebtSectionProps) {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 sm:px-6">
             <CardTitle className="text-sm font-medium">Em Atraso</CardTitle>
             <AlertTriangle className="h-4 w-4 text-red-500" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{debtStats.overdueDebts}</div>
-            <p className="text-xs text-red-600">
+          <CardContent className="px-4 sm:px-6">
+            <div className="text-xl sm:text-2xl font-bold text-red-600">{debtStats.overdueDebts}</div>
+            <p className="text-xs text-red-600 break-words">
               {debtStats.overdueAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 sm:px-6">
             <CardTitle className="text-sm font-medium">Vencem em 7 dias</CardTitle>
             <Clock className="h-4 w-4 text-yellow-500" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{debtStats.dueSoonDebts}</div>
-            <p className="text-xs text-yellow-600">
+          <CardContent className="px-4 sm:px-6">
+            <div className="text-xl sm:text-2xl font-bold text-yellow-600">{debtStats.dueSoonDebts}</div>
+            <p className="text-xs text-yellow-600 break-words">
               {debtStats.dueSoonAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           </CardContent>

@@ -156,43 +156,33 @@ export default function DebtsPage() {
   // Hook de sincronização dual
   const dualSync = useDualSync(user?.uid || '', 'BEST_EFFORT');
 
-  // Carregar dados do Firebase
+  // Carregar dados do Supabase via API
   useEffect(() => {
     const loadDebts = async () => {
       if (!user?.uid) return;
       
       try {
-        const docRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(docRef);
+        console.log('🔄 Carregando dívidas via API para usuário:', user.uid);
         
-        if (docSnap.exists()) {
-          const userData = docSnap.data();
-          if (userData.debts && Array.isArray(userData.debts)) {
-            const loadedDebts = userData.debts.map((debt: any) => ({
-              ...debt,
-              dueDate: debt.dueDate?.toDate ? debt.dueDate.toDate() : new Date(debt.dueDate),
-              createdDate: debt.createdDate?.toDate ? debt.createdDate.toDate() : new Date(debt.createdDate),
-              payments: debt.payments?.map((payment: any) => ({
-                ...payment,
-                date: payment.date?.toDate ? payment.date.toDate() : new Date(payment.date)
-              })) || []
-            }));
-            setDebts(loadedDebts);
+        const response = await fetch(`/api/debts/get?user_id=${user.uid}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.debts) {
+            console.log('✅ Dívidas carregadas do Supabase:', data.debts.length);
+            setDebts(data.debts);
           } else {
-            // Se não há dados, usar dados de exemplo
+            console.log('📥 Nenhuma dívida encontrada no Supabase, usando dados de exemplo');
             setDebts(initialDebts);
-            await saveDebts(initialDebts);
           }
         } else {
-          // Primeiro acesso, usar dados de exemplo
+          console.log('⚠️ Erro na resposta da API de dívidas:', response.status);
           setDebts(initialDebts);
-          await saveDebts(initialDebts);
         }
       } catch (error) {
-        console.error("Erro ao carregar dívidas:", error);
+        console.error("❌ Erro ao carregar dívidas via API:", error);
         toast({
           title: "Erro",
-          description: "Não foi possível carregar as dívidas.",
+          description: "Não foi possível carregar as dívidas do Supabase.",
           variant: "destructive",
         });
         // Em caso de erro, usar dados de exemplo
@@ -375,31 +365,60 @@ export default function DebtsPage() {
 
   // Handlers
   const handleCreateDebt = async (debtData: Omit<Debt, 'id' | 'createdDate' | 'payments'>) => {
-    const newDebt: Debt = {
-      ...debtData,
-      id: Date.now().toString(),
-      createdDate: new Date(),
-      payments: []
-    };
-    
-    const updatedDebts = [...debts, newDebt];
-    setDebts(updatedDebts);
-    
-    // Usar sincronização dual para criar
-    try {
-      // Como não temos createDebt no dual sync ainda, usamos Firebase + preparação
-      await saveDebts(updatedDebts);
-      console.log('✅ Dívida criada (Firebase + preparado para Supabase)');
-      
+    if (!user?.uid) {
       toast({
-        title: "Dívida Criada!",
-        description: `${debtData.creditorName} - Criada (dual sync em desenvolvimento)`,
+        title: "Erro",
+        description: "Usuário não autenticado.",
+        variant: "destructive",
       });
+      return;
+    }
+
+    try {
+      console.log('🆕 Criando dívida via API...');
+      
+      const response = await fetch('/api/debts/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: user.uid,
+          debt: debtData
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        console.log('✅ Dívida criada com sucesso:', result.debt);
+        
+        // Adicionar a nova dívida ao estado local
+        const newDebt: Debt = {
+          ...result.debt,
+          payments: []
+        };
+        
+        setDebts(prevDebts => [...prevDebts, newDebt]);
+        
+        toast({
+          title: "Dívida Criada!",
+          description: `${debtData.creditorName} foi adicionada com sucesso.`,
+        });
+      } else {
+        console.error('❌ Erro na resposta da API:', result);
+        toast({
+          title: "Erro",
+          description: result.error || "Erro ao criar dívida.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
-      console.error('Erro na sincronização dual:', error);
+      console.error('❌ Erro ao criar dívida:', error);
       toast({
-        title: "Dívida Criada!",
-        description: `Dívida de ${debtData.creditorName} foi adicionada localmente.`,
+        title: "Erro",
+        description: "Erro ao conectar com o servidor.",
+        variant: "destructive",
       });
     }
     
@@ -407,31 +426,62 @@ export default function DebtsPage() {
   };
 
   const handleEditDebt = async (debtData: Omit<Debt, 'id' | 'createdDate' | 'payments'>) => {
-    if (!selectedDebt) return;
-    
-    const updatedDebts = debts.map(debt => 
-      debt.id === selectedDebt.id 
-        ? { ...debt, ...debtData }
-        : debt
-    );
-    
-    setDebts(updatedDebts);
-    
-    // Usar sincronização dual para atualizar
-    try {
-      // Como não temos updateDebt no dual sync ainda, usamos Firebase + preparação
-      await saveDebts(updatedDebts);
-      console.log('✅ Dívida atualizada (Firebase + preparado para Supabase)');
-      
+    if (!selectedDebt || !user?.uid) {
       toast({
-        title: "Dívida Atualizada!",
-        description: `${debtData.creditorName} - Atualizada (dual sync em desenvolvimento)`,
+        title: "Erro",
+        description: "Dívida não selecionada ou usuário não autenticado.",
+        variant: "destructive",
       });
+      return;
+    }
+
+    try {
+      console.log('📝 Atualizando dívida via API...');
+      
+      const response = await fetch('/api/debts/update', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: user.uid,
+          debt_id: selectedDebt.id,
+          debt: debtData
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        console.log('✅ Dívida atualizada com sucesso:', result.debt);
+        
+        // Atualizar a dívida no estado local
+        const updatedDebts = debts.map(debt => 
+          debt.id === selectedDebt.id 
+            ? { ...result.debt, payments: debt.payments || [] }
+            : debt
+        );
+        
+        setDebts(updatedDebts);
+        
+        toast({
+          title: "Dívida Atualizada!",
+          description: `${debtData.creditorName} foi atualizada com sucesso.`,
+        });
+      } else {
+        console.error('❌ Erro na resposta da API:', result);
+        toast({
+          title: "Erro",
+          description: result.error || "Erro ao atualizar dívida.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
-      console.error('Erro na sincronização dual:', error);
+      console.error('❌ Erro ao atualizar dívida:', error);
       toast({
-        title: "Dívida Atualizada!",
-        description: `Dívida de ${debtData.creditorName} foi atualizada localmente.`,
+        title: "Erro",
+        description: "Erro ao conectar com o servidor.",
+        variant: "destructive",
       });
     }
     
@@ -440,26 +490,49 @@ export default function DebtsPage() {
   };
 
   const handleDeleteDebt = async () => {
-    if (!debtToDelete) return;
-    
-    const updatedDebts = debts.filter(debt => debt.id !== debtToDelete.id);
-    setDebts(updatedDebts);
-    
-    // Usar sincronização dual para deletar
-    try {
-      // Como não temos deleteDebt no dual sync ainda, usamos Firebase + preparação
-      await saveDebts(updatedDebts);
-      console.log('✅ Dívida deletada (Firebase + preparado para Supabase)');
-      
+    if (!debtToDelete || !user?.uid) {
       toast({
-        title: "Dívida Removida!",
-        description: `${debtToDelete.creditorName} - Removida (dual sync em desenvolvimento)`,
+        title: "Erro",
+        description: "Dívida não selecionada ou usuário não autenticado.",
+        variant: "destructive",
       });
+      return;
+    }
+
+    try {
+      console.log('🗑️ Deletando dívida via API...');
+      
+      const response = await fetch(`/api/debts/delete?id=${debtToDelete.id}&user_id=${user.uid}`, {
+        method: 'DELETE'
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        console.log('✅ Dívida deletada com sucesso');
+        
+        // Remover a dívida do estado local
+        const updatedDebts = debts.filter(debt => debt.id !== debtToDelete.id);
+        setDebts(updatedDebts);
+        
+        toast({
+          title: "Dívida Removida!",
+          description: `${debtToDelete.creditorName} foi removida com sucesso.`,
+        });
+      } else {
+        console.error('❌ Erro na resposta da API:', result);
+        toast({
+          title: "Erro",
+          description: result.error || "Erro ao deletar dívida.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
-      console.error('Erro na sincronização dual:', error);
+      console.error('❌ Erro ao deletar dívida:', error);
       toast({
-        title: "Dívida Removida!",
-        description: `Dívida de ${debtToDelete.creditorName} foi removida localmente.`,
+        title: "Erro",
+        description: "Erro ao conectar com o servidor.",
+        variant: "destructive",
       });
     }
     
@@ -467,22 +540,97 @@ export default function DebtsPage() {
     setIsDeleteDialogOpen(false);
   };
 
-  const handlePayment = (debt: Debt) => {
-    // Aqui você pode implementar um modal de pagamento
-    // Por enquanto, vamos marcar como paga
-    const updatedDebts = debts.map(d => 
-      d.id === debt.id 
-        ? { ...d, status: 'paid' as const }
-        : d
-    );
-    
-    setDebts(updatedDebts);
-    saveDebts(updatedDebts);
-    
-    toast({
-      title: "Pagamento Registrado!",
-      description: `Dívida de ${debt.creditorName} foi marcada como paga.`,
-    });
+  const handlePayment = async (debt: Debt) => {
+    if (!user?.uid) {
+      toast({
+        title: "Erro",
+        description: "Usuário não autenticado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      console.log('💳 Marcando dívida como paga via API...');
+      
+      // Criar uma versão atualizada da dívida
+      const updatedDebtData = {
+        ...debt,
+        status: 'paid' as const,
+        payments: [
+          ...(debt.payments || []),
+          {
+            id: Date.now().toString(),
+            debtId: debt.id,
+            date: new Date(),
+            amount: debt.currentAmount,
+            paymentMethod: debt.paymentMethod || 'pix',
+            notes: 'Pagamento registrado via botão Pagar'
+          }
+        ]
+      };
+      
+      const response = await fetch('/api/debts/update', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: user.uid,
+          debt_id: debt.id,
+          debt: {
+            creditorName: updatedDebtData.creditorName,
+            description: updatedDebtData.description,
+            originalAmount: updatedDebtData.originalAmount,
+            currentAmount: updatedDebtData.currentAmount,
+            interestRate: updatedDebtData.interestRate,
+            dueDate: updatedDebtData.dueDate,
+            category: updatedDebtData.category,
+            priority: updatedDebtData.priority,
+            status: updatedDebtData.status,
+            paymentMethod: updatedDebtData.paymentMethod,
+            installments: updatedDebtData.installments,
+            payments: updatedDebtData.payments,
+            notes: updatedDebtData.notes,
+            tags: updatedDebtData.tags
+          }
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        console.log('✅ Dívida marcada como paga com sucesso');
+        
+        // Atualizar a dívida no estado local
+        const updatedDebts = debts.map(d => 
+          d.id === debt.id 
+            ? { ...result.debt, payments: updatedDebtData.payments }
+            : d
+        );
+        
+        setDebts(updatedDebts);
+        
+        toast({
+          title: "Pagamento Registrado!",
+          description: `Dívida de ${debt.creditorName} foi marcada como paga.`,
+        });
+      } else {
+        console.error('❌ Erro na resposta da API:', result);
+        toast({
+          title: "Erro",
+          description: result.error || "Erro ao registrar pagamento.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('❌ Erro ao registrar pagamento:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao conectar com o servidor.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (authLoading || isLoading) {
@@ -507,25 +655,25 @@ export default function DebtsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={() => router.push('/')}
-            className="gap-2"
+            className="gap-2 px-2 sm:px-3"
           >
             <ArrowLeft className="h-4 w-4" />
-            Voltar
+            <span className="hidden xs:inline">Voltar</span>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">Dívidas</h1>
-            <p className="text-muted-foreground">Gerencie suas dívidas e compromissos financeiros</p>
+            <h1 className="text-2xl sm:text-3xl font-bold">Dívidas</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">Gerencie suas dívidas e compromissos financeiros</p>
           </div>
         </div>
-        <Button onClick={() => setIsFormOpen(true)} className="gap-2">
+        <Button onClick={() => setIsFormOpen(true)} className="gap-2 w-full sm:w-auto">
           <PlusCircle className="h-4 w-4" />
           Nova Dívida
         </Button>
@@ -539,16 +687,16 @@ export default function DebtsPage() {
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
+        <TabsContent value="overview" className="space-y-4 sm:space-y-6">
           {/* Estatísticas Melhoradas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
             <Card className="border-l-4 border-l-blue-500">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 sm:px-6">
                 <CardTitle className="text-sm font-medium">Total de Dívidas</CardTitle>
                 <CreditCard className="h-4 w-4 text-blue-500" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalDebts}</div>
+              <CardContent className="px-4 sm:px-6">
+                <div className="text-xl sm:text-2xl font-bold">{stats.totalDebts}</div>
                 <p className="text-xs text-muted-foreground">
                   {stats.activeDebts} ativas
                 </p>
@@ -556,54 +704,54 @@ export default function DebtsPage() {
             </Card>
 
             <Card className="border-l-4 border-l-purple-500">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 sm:px-6">
                 <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
                 <DollarSign className="h-4 w-4 text-purple-500" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
+              <CardContent className="px-4 sm:px-6">
+                <div className="text-lg sm:text-2xl font-bold break-words">
                   {stats.totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground break-words">
                   {stats.averageAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} média
                 </p>
               </CardContent>
             </Card>
 
             <Card className="border-l-4 border-l-red-500">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 sm:px-6">
                 <CardTitle className="text-sm font-medium">Em Atraso</CardTitle>
                 <AlertTriangle className="h-4 w-4 text-red-500" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">{stats.overdueDebts}</div>
-                <p className="text-xs text-muted-foreground">
+              <CardContent className="px-4 sm:px-6">
+                <div className="text-xl sm:text-2xl font-bold text-red-600">{stats.overdueDebts}</div>
+                <p className="text-xs text-muted-foreground break-words">
                   {stats.overdueAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </p>
               </CardContent>
             </Card>
 
             <Card className="border-l-4 border-l-yellow-500">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 sm:px-6">
                 <CardTitle className="text-sm font-medium">Vencem em 7 dias</CardTitle>
                 <Clock className="h-4 w-4 text-yellow-500" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">{stats.dueSoonDebts}</div>
-                <p className="text-xs text-muted-foreground">
+              <CardContent className="px-4 sm:px-6">
+                <div className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.dueSoonDebts}</div>
+                <p className="text-xs text-muted-foreground break-words">
                   {stats.dueSoonAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </p>
               </CardContent>
             </Card>
 
             <Card className="border-l-4 border-l-green-500">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 sm:px-6">
                 <CardTitle className="text-sm font-medium">Pagas</CardTitle>
                 <CheckCircle className="h-4 w-4 text-green-500" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{stats.paidDebts}</div>
-                <p className="text-xs text-muted-foreground">
+              <CardContent className="px-4 sm:px-6">
+                <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.paidDebts}</div>
+                <p className="text-xs text-muted-foreground break-words">
                   {stats.paidAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </p>
               </CardContent>
@@ -774,13 +922,13 @@ export default function DebtsPage() {
 
       {/* Filtros Avançados */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
+        <CardHeader className="px-4 sm:px-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Filter className="h-4 w-4 sm:h-5 sm:w-5" />
             Filtros e Busca
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 sm:px-6">
           <div className="space-y-4">
             {/* Busca */}
             <div className="relative">
@@ -794,7 +942,7 @@ export default function DebtsPage() {
             </div>
             
             {/* Filtros em Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="Status" />
@@ -859,10 +1007,11 @@ export default function DebtsPage() {
                   setPriorityFilter('all');
                   setSortBy('dueDate');
                 }}
-                className="gap-2"
+                className="gap-2 col-span-1 sm:col-span-2 lg:col-span-1"
               >
                 <Filter className="h-4 w-4" />
-                Limpar Filtros
+                <span className="hidden sm:inline">Limpar Filtros</span>
+                <span className="sm:hidden">Limpar</span>
               </Button>
             </div>
 
@@ -908,7 +1057,7 @@ export default function DebtsPage() {
       {/* Lista de Dívidas */}
       <div className="space-y-4">
         {/* Resumo dos Resultados */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
               Mostrando {filteredDebts.length} de {debts.length} dívidas
@@ -924,7 +1073,7 @@ export default function DebtsPage() {
               variant="outline"
               size="sm"
               onClick={() => setIsFormOpen(true)}
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto"
             >
               <PlusCircle className="h-4 w-4" />
               Nova Dívida
@@ -933,7 +1082,7 @@ export default function DebtsPage() {
         </div>
 
         {filteredDebts.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
             {filteredDebts.map((debt) => (
               <DebtCard
                 key={debt.id}
@@ -952,10 +1101,10 @@ export default function DebtsPage() {
           </div>
         ) : (
           <Card>
-            <CardContent className="text-center py-16">
-              <CreditCard className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-xl font-medium mb-2">Nenhuma dívida encontrada</h3>
-              <p className="text-muted-foreground mb-4">
+            <CardContent className="text-center py-12 sm:py-16 px-4">
+              <CreditCard className="h-12 w-12 sm:h-16 sm:w-16 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg sm:text-xl font-medium mb-2">Nenhuma dívida encontrada</h3>
+              <p className="text-sm sm:text-base text-muted-foreground mb-4">
                 {searchTerm || statusFilter !== "all" || categoryFilter !== "all" || priorityFilter !== "all"
                   ? "Tente ajustar os filtros de busca."
                   : "Você não possui dívidas cadastradas."}
@@ -973,18 +1122,20 @@ export default function DebtsPage() {
 
       {/* Dialog do Formulário */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-full sm:max-w-3xl lg:max-w-5xl max-h-[95vh] overflow-hidden p-0 m-2 sm:m-6">
           <DialogTitle className="sr-only">
             {selectedDebt ? "Editar Dívida" : "Nova Dívida"}
           </DialogTitle>
-          <DebtForm
-            debt={selectedDebt || undefined}
-            onSubmit={selectedDebt ? handleEditDebt : handleCreateDebt}
-            onCancel={() => {
-              setIsFormOpen(false);
-              setSelectedDebt(null);
-            }}
-          />
+          <div className="max-h-[95vh] overflow-y-auto">
+            <DebtForm
+              debt={selectedDebt || undefined}
+              onSubmit={selectedDebt ? handleEditDebt : handleCreateDebt}
+              onCancel={() => {
+                setIsFormOpen(false);
+                setSelectedDebt(null);
+              }}
+            />
+          </div>
         </DialogContent>
       </Dialog>
 

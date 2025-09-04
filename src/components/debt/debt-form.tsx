@@ -1,6 +1,5 @@
 "use client";
-
-import { useState } from "react";
+import React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -33,9 +32,9 @@ import type { Debt } from "@/types";
 const debtFormSchema = z.object({
   creditorName: z.string().min(1, "Nome do credor é obrigatório"),
   description: z.string().min(1, "Descrição é obrigatória"),
-  originalAmount: z.number().min(0.01, "Valor deve ser maior que zero"),
-  currentAmount: z.number().min(0.01, "Valor deve ser maior que zero"),
-  interestRate: z.number().optional(),
+  originalAmount: z.coerce.number().min(0.01, "Valor deve ser maior que zero"),
+  currentAmount: z.coerce.number().min(0.01, "Valor deve ser maior que zero"),
+  interestRate: z.coerce.number().min(0, "Taxa de juros deve ser maior ou igual a zero").optional(),
   dueDate: z.date({
     required_error: "Data de vencimento é obrigatória",
   }),
@@ -44,11 +43,24 @@ const debtFormSchema = z.object({
   status: z.enum(["pending", "overdue", "paid", "negotiating", "cancelled"]),
   paymentMethod: z.enum(["pix", "credit_card", "debit_card", "bank_transfer", "cash"]).optional(),
   hasInstallments: z.boolean().default(false),
-  installmentTotal: z.number().optional(),
-  installmentPaid: z.number().optional(),
-  installmentAmount: z.number().optional(),
+  installmentTotal: z.coerce.number().min(1, "Total de parcelas deve ser maior que zero").optional(),
+  installmentPaid: z.coerce.number().min(0, "Parcelas pagas deve ser maior ou igual a zero").optional(),
+  installmentAmount: z.coerce.number().min(0.01, "Valor da parcela deve ser maior que zero").optional(),
   notes: z.string().optional(),
   tags: z.string().optional(),
+}).refine((data) => {
+  if (data.hasInstallments) {
+    if (!data.installmentTotal || data.installmentTotal <= 0) {
+      return false;
+    }
+    if (data.installmentPaid !== undefined && data.installmentPaid > data.installmentTotal) {
+      return false;
+    }
+  }
+  return true;
+}, {
+  message: "Para dívidas parceladas, informe o total de parcelas e verifique se as parcelas pagas não excedem o total",
+  path: ["installmentTotal"]
 });
 
 type DebtFormValues = z.infer<typeof debtFormSchema>;
@@ -93,8 +105,6 @@ const paymentMethodOptions = [
 ];
 
 export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps) {
-  const [hasInstallments, setHasInstallments] = useState(!!debt?.installments);
-
   const form = useForm<DebtFormValues>({
     resolver: zodResolver(debtFormSchema),
     defaultValues: {
@@ -102,7 +112,7 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
       description: debt?.description || "",
       originalAmount: debt?.originalAmount || 0,
       currentAmount: debt?.currentAmount || 0,
-      interestRate: debt?.interestRate || undefined,
+      interestRate: debt?.interestRate || 0,
       dueDate: debt?.dueDate || new Date(),
       category: debt?.category || "other",
       priority: debt?.priority || "medium",
@@ -123,13 +133,13 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
       description: values.description,
       originalAmount: values.originalAmount,
       currentAmount: values.currentAmount,
-      interestRate: values.interestRate,
+      interestRate: values.interestRate || undefined,
       dueDate: values.dueDate,
       category: values.category,
       priority: values.priority,
       status: values.status,
       paymentMethod: values.paymentMethod,
-      installments: hasInstallments && values.installmentTotal ? {
+      installments: values.hasInstallments && values.installmentTotal ? {
         total: values.installmentTotal,
         paid: values.installmentPaid || 0,
         amount: values.installmentAmount || 0,
@@ -142,24 +152,24 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>{debt ? "Editar Dívida" : "Nova Dívida"}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-            {/* Informações Básicas */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Informações Básicas</h3>
+    <div className="w-full max-w-4xl mx-auto">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-foreground">{debt ? "Editar Dívida" : "Nova Dívida"}</h2>
+      </div>
+      
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+          {/* Informações Básicas */}
+          <div className="bg-card rounded-lg border p-4 sm:p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Informações Básicas</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
                 <FormField
                   control={form.control}
                   name="creditorName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nome do Credor *</FormLabel>
+                      <FormLabel className="text-sm font-medium">Nome do Credor *</FormLabel>
                       <FormControl>
                         <Input placeholder="Ex: Banco do Brasil" {...field} />
                       </FormControl>
@@ -173,7 +183,7 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
                   name="category"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Categoria *</FormLabel>
+                      <FormLabel className="text-sm font-medium">Categoria *</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -199,11 +209,12 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Descrição *</FormLabel>
+                    <FormLabel className="text-sm font-medium">Descrição *</FormLabel>
                     <FormControl>
                       <Textarea 
                         placeholder="Descreva a dívida..." 
                         className="resize-none" 
+                        rows={3}
                         {...field} 
                       />
                     </FormControl>
@@ -211,28 +222,30 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
                   </FormItem>
                 )}
               />
-            </div>
+          </div>
 
-            <Separator />
-
-            {/* Valores */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Valores</h3>
+          {/* Valores */}
+          <div className="bg-card rounded-lg border p-4 sm:p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Valores</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
                 <FormField
                   control={form.control}
                   name="originalAmount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Valor Original *</FormLabel>
+                      <FormLabel className="text-sm font-medium">Valor Original *</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
                           step="0.01" 
+                          min="0.01"
                           placeholder="0,00" 
                           {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          onChange={(e) => {
+                            const value = parseFloat(e.target.value);
+                            field.onChange(isNaN(value) ? 0 : value);
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -245,17 +258,21 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
                   name="currentAmount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Valor Atual *</FormLabel>
+                      <FormLabel className="text-sm font-medium">Valor Atual *</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
                           step="0.01" 
+                          min="0.01"
                           placeholder="0,00" 
                           {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          onChange={(e) => {
+                            const value = parseFloat(e.target.value);
+                            field.onChange(isNaN(value) ? 0 : value);
+                          }}
                         />
                       </FormControl>
-                      <FormDescription>
+                      <FormDescription className="text-xs">
                         Valor com juros, multas, etc.
                       </FormDescription>
                       <FormMessage />
@@ -268,14 +285,18 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
                   name="interestRate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Taxa de Juros (% a.m.)</FormLabel>
+                      <FormLabel className="text-sm font-medium">Taxa de Juros (% a.m.)</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
                           step="0.01" 
+                          min="0"
                           placeholder="0,00" 
                           {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)}
+                          onChange={(e) => {
+                            const value = parseFloat(e.target.value);
+                            field.onChange(isNaN(value) ? 0 : value);
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -283,21 +304,19 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
                   )}
                 />
               </div>
-            </div>
+          </div>
 
-            <Separator />
-
-            {/* Configurações */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Configurações</h3>
+          {/* Configurações */}
+          <div className="bg-card rounded-lg border p-4 sm:p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Configurações</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
                 <FormField
                   control={form.control}
                   name="dueDate"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Data de Vencimento *</FormLabel>
+                      <FormLabel className="text-sm font-medium">Data de Vencimento *</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -337,7 +356,7 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
                   name="priority"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Prioridade *</FormLabel>
+                      <FormLabel className="text-sm font-medium">Prioridade *</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -362,7 +381,7 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
                   name="status"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Status *</FormLabel>
+                      <FormLabel className="text-sm font-medium">Status *</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -388,7 +407,7 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
                 name="paymentMethod"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Método de Pagamento</FormLabel>
+                    <FormLabel className="text-sm font-medium">Método de Pagamento</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
@@ -407,98 +426,129 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
                   </FormItem>
                 )}
               />
-            </div>
+          </div>
 
-            <Separator />
-
-            {/* Parcelamento */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="hasInstallments"
-                  checked={hasInstallments}
-                  onCheckedChange={setHasInstallments}
-                />
-                <Label htmlFor="hasInstallments">Esta dívida é parcelada</Label>
-              </div>
-
-              {hasInstallments && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="installmentTotal"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Total de Parcelas</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="12" 
-                            {...field}
-                            onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="installmentPaid"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Parcelas Pagas</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="0" 
-                            {...field}
-                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="installmentAmount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Valor da Parcela</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            placeholder="0,00" 
-                            {...field}
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+          {/* Parcelamento */}
+          <div className="bg-card rounded-lg border p-4 sm:p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Parcelamento</h3>
+            
+            <FormField
+              control={form.control}
+              name="hasInstallments"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel className="text-sm font-medium">
+                      Esta dívida é parcelada?
+                    </FormLabel>
+                  </div>
+                </FormItem>
               )}
-            </div>
+            />
 
-            <Separator />
+            {form.watch("hasInstallments") && (
+              <div className="space-y-4">
+                <div className="p-4 sm:p-5 bg-muted/50 rounded-lg border">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Para dívidas parceladas, preencha as informações abaixo:
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
+                    <FormField
+                      control={form.control}
+                      name="installmentTotal"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">Total de Parcelas *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              min="1"
+                              placeholder="12" 
+                              {...field}
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value);
+                                field.onChange(isNaN(value) ? undefined : value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-            {/* Observações */}
+                    <FormField
+                      control={form.control}
+                      name="installmentPaid"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">Parcelas Pagas</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              min="0"
+                              placeholder="0" 
+                              {...field}
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value);
+                                field.onChange(isNaN(value) ? 0 : value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="installmentAmount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">Valor da Parcela</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              step="0.01" 
+                              min="0.01"
+                              placeholder="0,00" 
+                              {...field}
+                              onChange={(e) => {
+                                const value = parseFloat(e.target.value);
+                                field.onChange(isNaN(value) ? undefined : value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Observações */}
+          <div className="bg-card rounded-lg border p-4 sm:p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Observações</h3>
             <div className="space-y-4">
               <FormField
                 control={form.control}
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Observações</FormLabel>
+                    <FormLabel className="text-sm font-medium">Observações</FormLabel>
                     <FormControl>
                       <Textarea 
                         placeholder="Observações adicionais..." 
                         className="resize-none" 
+                        rows={3}
                         {...field} 
                       />
                     </FormControl>
@@ -512,14 +562,14 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
                 name="tags"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tags</FormLabel>
+                    <FormLabel className="text-sm font-medium">Tags</FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="urgente, banco, cartão (separadas por vírgula)" 
                         {...field} 
                       />
                     </FormControl>
-                    <FormDescription>
+                    <FormDescription className="text-xs">
                       Separe as tags com vírgulas
                     </FormDescription>
                     <FormMessage />
@@ -528,18 +578,19 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
               />
             </div>
 
-            {/* Botões */}
-            <div className="flex gap-4 pt-4">
-              <Button type="submit" disabled={isLoading} className="flex-1">
-                {isLoading ? "Salvando..." : debt ? "Atualizar" : "Criar"} Dívida
-              </Button>
-              <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
-                Cancelar
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+          </div>
+
+          {/* Botões */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-6">
+            <Button type="submit" disabled={isLoading} className="flex-1 h-11">
+              {isLoading ? "Salvando..." : debt ? "Atualizar" : "Criar"} Dívida
+            </Button>
+            <Button type="button" variant="outline" onClick={onCancel} className="flex-1 h-11">
+              Cancelar
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
   );
 }

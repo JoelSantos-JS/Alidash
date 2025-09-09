@@ -209,29 +209,34 @@ export default function MetasPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
 
-  // Carregar dados reais do Firebase
+  // Carregar dados reais do Supabase
   useEffect(() => {
     if (authLoading || !user) return
 
     const fetchData = async () => {
       try {
-        console.log('🎯 Carregando dados para metas do usuário:', user.uid)
+        console.log('🎯 Carregando metas do Supabase para usuário:', user.uid)
         
-        // Carregar produtos do Firebase
+        // Carregar metas diretamente da API do Supabase
+        const response = await fetch(`/api/goals?user_id=${user.uid}`)
+        const data = await response.json()
+        
+        let userGoals: Goal[] = []
+        
+        if (data.success && data.goals) {
+          userGoals = data.goals
+          console.log('✅ Metas carregadas do Supabase:', userGoals.length)
+        } else {
+          console.log('⚠️ Nenhuma meta encontrada no Supabase')
+        }
+        
+        // Carregar produtos do Firebase para fallback
         const docRef = doc(db, "user-data", user.uid)
         const docSnap = await getDoc(docRef)
-
         let userProducts: Product[] = []
-        let userGoals: Goal[] = []
-
+        
         if (docSnap.exists()) {
           const userData = docSnap.data()
-          console.log('📦 Dados encontrados:', {
-            products: userData.products?.length || 0,
-            goals: userData.goals?.length || 0
-          })
-          
-          // Carregar produtos
           if (userData.products && userData.products.length > 0) {
             userProducts = userData.products.map((p: any) => ({
               ...p,
@@ -244,49 +249,14 @@ export default function MetasPage() {
               })) : [],
             }))
           }
-          
-          // Carregar metas existentes
-          if (userData.goals && userData.goals.length > 0) {
-            userGoals = userData.goals.map((g: any) => ({
-              ...g,
-              deadline: g.deadline?.toDate ? g.deadline.toDate() : new Date(g.deadline),
-              createdDate: g.createdDate?.toDate ? g.createdDate.toDate() : new Date(g.createdDate),
-              milestones: g.milestones ? g.milestones.map((m: any) => ({
-                ...m,
-                targetDate: m.targetDate?.toDate ? m.targetDate.toDate() : new Date(m.targetDate),
-                completedDate: m.completedDate?.toDate ? m.completedDate.toDate() : m.completedDate ? new Date(m.completedDate) : undefined
-              })) : []
-            }))
-          }
         }
-
+        
         setProducts(userProducts)
-        
-        // Se não há metas salvas, gerar baseadas nos produtos
-        if (userGoals.length === 0) {
-          console.log('🎯 Gerando metas baseadas nos produtos')
-          userGoals = generateGoalsFromProducts(userProducts)
-          
-          // Salvar metas geradas no Firebase
-          if (userGoals.length > 0) {
-            const updatedData = {
-              ...docSnap.exists() ? docSnap.data() : {},
-              goals: userGoals.map(goal => ({
-                ...goal,
-                deadline: goal.deadline,
-                createdDate: goal.createdDate
-              }))
-            }
-            await setDoc(docRef, updatedData, { merge: true })
-            console.log('💾 Metas salvas no Firebase')
-          }
-        }
-        
         setGoals(userGoals)
         
         toast({
           title: "Metas carregadas",
-          description: `${userGoals.length} meta${userGoals.length !== 1 ? 's' : ''} ${userGoals.length === 0 ? 'criada' : 'carregada'}${userGoals.length > 1 ? 's' : ''} com base nos seus produtos`,
+          description: `${userGoals.length} meta${userGoals.length !== 1 ? 's' : ''} carregada${userGoals.length !== 1 ? 's' : ''} do Supabase`,
           duration: 3000,
         })
         

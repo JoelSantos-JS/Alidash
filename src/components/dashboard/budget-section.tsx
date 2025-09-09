@@ -11,7 +11,8 @@ import {
   Edit3,
   Package,
   Save,
-  X
+  X,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -23,6 +24,7 @@ interface BudgetSectionProps {
   missingItems: number;
   className?: string;
   onBudgetChange?: (newBudget: number) => void;
+  isLoading?: boolean;
 }
 
 export function BudgetSection({ 
@@ -31,7 +33,8 @@ export function BudgetSection({
   totalItems, 
   missingItems,
   className,
-  onBudgetChange
+  onBudgetChange,
+  isLoading = false
 }: BudgetSectionProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [newBudget, setNewBudget] = useState(monthlyBudget.toString());
@@ -94,9 +97,13 @@ export function BudgetSection({
                       <X className="h-4 w-4 mr-2" />
                       Cancelar
                     </Button>
-                    <Button onClick={handleSaveBudget}>
-                      <Save className="h-4 w-4 mr-2" />
-                      Salvar
+                    <Button onClick={handleSaveBudget} disabled={isLoading}>
+                      {isLoading ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      {isLoading ? 'Salvando...' : 'Salvar'}
                     </Button>
                   </div>
                 </div>
@@ -211,4 +218,4 @@ export function BudgetSection({
       </Card>
     </div>
   );
-} 
+}

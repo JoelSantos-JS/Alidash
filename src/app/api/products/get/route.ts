@@ -11,32 +11,45 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const firebaseUid = searchParams.get('user_id')
+    const userId = searchParams.get('user_id')
 
-    if (!firebaseUid) {
+    if (!userId) {
       return NextResponse.json(
-        { error: 'user_id (firebase_uid) é obrigatório' },
+        { error: 'user_id é obrigatório' },
         { status: 400 }
       )
     }
 
-    console.log('🔍 Buscando produtos para Firebase UID:', firebaseUid)
+    console.log('🔍 Buscando produtos para usuário ID:', userId)
 
-    // Buscar usuário pelo firebase_uid
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('firebase_uid', firebaseUid)
-      .single()
-
-    if (userError || !user) {
-      console.log('❌ Usuário não encontrado:', userError)
-      return NextResponse.json({ 
-        success: true, 
-        products: [],
-        count: 0,
-        message: 'Usuário não encontrado no Supabase'
-      })
+    // Verificar se é um UUID (Supabase ID) ou Firebase UID
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)
+    
+    let user;
+    if (isUUID) {
+      // É um UUID do Supabase, buscar diretamente
+      console.log('📋 Usando UUID do Supabase diretamente:', userId)
+      user = { id: userId }
+    } else {
+      // É um Firebase UID, buscar usuário pelo firebase_uid
+      console.log('🔍 Buscando usuário pelo Firebase UID:', userId)
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('firebase_uid', userId)
+        .single()
+      
+      if (userError || !userData) {
+        console.log('❌ Usuário não encontrado:', userError)
+        return NextResponse.json({ 
+          success: true, 
+          products: [],
+          count: 0,
+          message: 'Usuário não encontrado no Supabase'
+        })
+      }
+      
+      user = userData
     }
 
     console.log('✅ Usuário encontrado:', user.id)

@@ -26,6 +26,8 @@ const nextConfig: NextConfig = {
       fs: false,
       net: false,
       tls: false,
+      child_process: false,
+      module: false,
     }
 
     // Ignorar módulos problemáticos no lado cliente
@@ -34,7 +36,16 @@ const nextConfig: NextConfig = {
         ...config.resolve.alias,
         '@opentelemetry/winston-transport': false,
         'handlebars': false,
+        'dotprompt': false,
+        '@genkit-ai/core': false,
+        'genkit': false,
       }
+
+      // Adicionar configuração para ignorar require.extensions
+      config.module = config.module || {}
+      config.module.unknownContextCritical = false
+      config.module.unknownContextRegExp = /^\.\/.*$/
+      config.module.unknownContextRequest = '.'
     }
 
     // Configurar externals para módulos Node.js
@@ -42,8 +53,16 @@ const nextConfig: NextConfig = {
     if (isServer) {
       config.externals.push({
         '@opentelemetry/winston-transport': 'commonjs @opentelemetry/winston-transport',
+        'handlebars': 'commonjs handlebars',
+        'dotprompt': 'commonjs dotprompt',
       })
     }
+
+    // Suprimir avisos específicos do webpack
+    config.ignoreWarnings = [
+      /require\.extensions is not supported by webpack/,
+      /Critical dependency: the request of a dependency is an expression/,
+    ]
 
     return config
   },

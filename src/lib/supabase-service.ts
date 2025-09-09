@@ -1062,6 +1062,77 @@ export class SupabaseService {
   // ANALYTICS OPERATIONS
   // =====================================
 
+  async getExpensesByCategory(userId: string, month?: number, year?: number) {
+    try {
+      console.log('🔍 Debug - Buscando gastos por categoria para usuário:', userId)
+      
+      const currentDate = new Date()
+      const targetMonth = month || currentDate.getMonth() + 1
+      const targetYear = year || currentDate.getFullYear()
+      
+      const startDate = new Date(targetYear, targetMonth - 1, 1)
+      const endDate = new Date(targetYear, targetMonth, 0, 23, 59, 59)
+
+      console.log('🔍 Debug - Período de busca:', { startDate, endDate })
+
+      const { data, error } = await this.client
+        .from('expenses')
+        .select('category, amount')
+        .eq('user_id', userId)
+        .gte('date', startDate.toISOString())
+        .lte('date', endDate.toISOString())
+
+      console.log('🔍 Debug - Resultado gastos por categoria:', { 
+        hasData: !!data, 
+        dataLength: data?.length || 0, 
+        hasError: !!error,
+        errorMessage: error?.message 
+      })
+
+      if (error) {
+        console.error('Erro ao buscar gastos por categoria:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
+        throw error
+      }
+
+      if (!data || data.length === 0) {
+        console.log('🔍 Debug - Nenhum gasto encontrado no período')
+        return []
+      }
+
+      // Agrupar por categoria
+      const categoryTotals: Record<string, number> = {}
+      data.forEach(expense => {
+        if (expense.category && expense.amount !== null) {
+          const category = expense.category
+          categoryTotals[category] = (categoryTotals[category] || 0) + Number(expense.amount)
+        }
+      })
+
+      console.log('🔍 Debug - Categorias agrupadas:', categoryTotals)
+
+      return Object.entries(categoryTotals).map(([category, amount]) => ({
+        category,
+        amount,
+        percentage: 0
+      }))
+      
+    } catch (error) {
+      console.error('Erro inesperado ao buscar gastos por categoria:', {
+        error,
+        userId,
+        month,
+        year,
+        stack: error instanceof Error ? error.stack : 'No stack trace'
+      })
+      throw error
+    }
+  }
+
   async getAnalytics(userId: string, startDate?: Date, endDate?: Date) {
     // Implement comprehensive analytics queries
     const products = await this.getProducts(userId)

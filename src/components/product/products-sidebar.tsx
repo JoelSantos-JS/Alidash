@@ -1035,7 +1035,7 @@ export function ProductsSidebar({
     </div>
   )
 
-  // Return responsive sidebar
+  // Render mobile sidebar when isMobile is true
   if (isMobile) {
     return (
       <Sheet open={isOpen} onOpenChange={onToggle}>
@@ -1046,9 +1046,10 @@ export function ProductsSidebar({
     )
   }
 
+  // Render desktop sidebar
   return (
     <div className={cn("hidden lg:block", className)}>
       {desktopSidebarContent}
     </div>
   )
-} 
+}

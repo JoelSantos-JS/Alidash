@@ -2,6 +2,65 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdminService } from '@/lib/supabase-service'
 import type { Goal } from '@/types'
 
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('user_id')
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'User ID é obrigatório' },
+        { status: 400 }
+      )
+    }
+
+    console.log('🔍 Buscando metas para usuário:', userId)
+
+    // Verificar se é UUID do Supabase ou Firebase UID
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)
+    
+    let goals: Goal[]
+    
+    if (isUUID) {
+      // Buscar diretamente por UUID do Supabase
+      goals = await supabaseAdminService.getGoals(userId)
+      console.log('✅ Metas encontradas (UUID direto):', goals.length)
+    } else {
+      // Buscar usuário pelo Firebase UID primeiro
+      const user = await supabaseAdminService.getUserByFirebaseUid(userId)
+      
+      if (!user) {
+        console.log('❌ Usuário não encontrado para Firebase UID:', userId)
+        return NextResponse.json(
+          { error: `Usuário não encontrado para firebase_uid: ${userId}` },
+          { status: 404 }
+        )
+      }
+      
+      console.log('✅ Usuário encontrado:', user.email)
+      goals = await supabaseAdminService.getGoals(user.id)
+      console.log('✅ Metas encontradas:', goals.length)
+    }
+
+    return NextResponse.json({
+      success: true,
+      goals,
+      count: goals.length
+    })
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar metas:', error)
+    
+    return NextResponse.json(
+      { 
+        error: 'Erro interno do servidor',
+        details: error instanceof Error ? error.message : String(error)
+      },
+      { status: 500 }
+    )
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()

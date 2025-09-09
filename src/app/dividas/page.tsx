@@ -141,6 +141,26 @@ export default function DebtsPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   
+  // Helper function to get Supabase user ID
+  const getSupabaseUserId = async () => {
+    if (!user) return null;
+    
+    try {
+      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
+      
+      if (!userResponse.ok) {
+        console.log('⚠️ Usuário não encontrado no Supabase');
+        return null;
+      }
+      
+      const userResult = await userResponse.json();
+      return userResult.user.id;
+    } catch (error) {
+      console.error('❌ Erro ao buscar usuário no Supabase:', error);
+      return null;
+    }
+  };
+  
   const [debts, setDebts] = useState<Debt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -164,7 +184,14 @@ export default function DebtsPage() {
       try {
         console.log('🔄 Carregando dívidas via API para usuário:', user.uid);
         
-        const response = await fetch(`/api/debts/get?user_id=${user.uid}`);
+        const supabaseUserId = await getSupabaseUserId();
+        if (!supabaseUserId) {
+          console.log('⚠️ Não foi possível obter o ID do usuário no Supabase');
+          setDebts(initialDebts);
+          return;
+        }
+        
+        const response = await fetch(`/api/debts/get?user_id=${supabaseUserId}`);
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.debts) {
@@ -377,13 +404,23 @@ export default function DebtsPage() {
     try {
       console.log('🆕 Criando dívida via API...');
       
+      const supabaseUserId = await getSupabaseUserId();
+      if (!supabaseUserId) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível identificar o usuário.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       const response = await fetch('/api/debts/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: user.uid,
+          user_id: supabaseUserId,
           debt: debtData
         })
       });
@@ -438,13 +475,23 @@ export default function DebtsPage() {
     try {
       console.log('📝 Atualizando dívida via API...');
       
+      const supabaseUserId = await getSupabaseUserId();
+      if (!supabaseUserId) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível identificar o usuário.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       const response = await fetch('/api/debts/update', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: user.uid,
+          user_id: supabaseUserId,
           debt_id: selectedDebt.id,
           debt: debtData
         })
@@ -502,7 +549,17 @@ export default function DebtsPage() {
     try {
       console.log('🗑️ Deletando dívida via API...');
       
-      const response = await fetch(`/api/debts/delete?id=${debtToDelete.id}&user_id=${user.uid}`, {
+      const supabaseUserId = await getSupabaseUserId();
+      if (!supabaseUserId) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível identificar o usuário.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const response = await fetch(`/api/debts/delete?id=${debtToDelete.id}&user_id=${supabaseUserId}`, {
         method: 'DELETE'
       });
 
@@ -570,13 +627,23 @@ export default function DebtsPage() {
         ]
       };
       
+      const supabaseUserId = await getSupabaseUserId();
+      if (!supabaseUserId) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível identificar o usuário.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       const response = await fetch('/api/debts/update', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: user.uid,
+          user_id: supabaseUserId,
           debt_id: debt.id,
           debt: {
             creditorName: updatedDebtData.creditorName,

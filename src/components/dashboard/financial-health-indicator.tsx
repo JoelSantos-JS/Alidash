@@ -7,9 +7,10 @@ import { useMemo } from "react";
 interface FinancialHealthIndicatorProps {
   expenseRatio: number;
   className?: string;
+  isPersonal?: boolean;
 }
 
-export function FinancialHealthIndicator({ expenseRatio, className }: FinancialHealthIndicatorProps) {
+export function FinancialHealthIndicator({ expenseRatio, className, isPersonal = false }: FinancialHealthIndicatorProps) {
   const health = useMemo(() => {
     if (expenseRatio <= 40) {
       return {
@@ -18,9 +19,9 @@ export function FinancialHealthIndicator({ expenseRatio, className }: FinancialH
         bgColor: "bg-green-100",
         borderColor: "border-green-200",
         icon: Leaf,
-        description: "Suas despesas estão bem controladas",
-        tip: "Continue mantendo esse controle financeiro!",
-        recommendation: "Considere investir o excedente."
+        description: isPersonal ? "Seus gastos pessoais estão bem controlados" : "Suas despesas estão bem controladas",
+        tip: isPersonal ? "Continue mantendo esse controle das finanças pessoais!" : "Continue mantendo esse controle financeiro!",
+        recommendation: isPersonal ? "Considere aumentar sua reserva de emergência." : "Considere investir o excedente."
       };
     } else if (expenseRatio <= 60) {
       return {
@@ -29,9 +30,9 @@ export function FinancialHealthIndicator({ expenseRatio, className }: FinancialH
         bgColor: "bg-blue-100",
         borderColor: "border-blue-200",
         icon: TrendingUp,
-        description: "Continue monitorando suas despesas",
+        description: isPersonal ? "Continue monitorando seus gastos pessoais" : "Continue monitorando suas despesas",
         tip: "Você está no caminho certo!",
-        recommendation: "Identifique oportunidades de redução de custos."
+        recommendation: isPersonal ? "Identifique oportunidades de redução de gastos pessoais." : "Identifique oportunidades de redução de custos."
       };
     } else if (expenseRatio <= 80) {
       return {
@@ -40,9 +41,9 @@ export function FinancialHealthIndicator({ expenseRatio, className }: FinancialH
         bgColor: "bg-yellow-100",
         borderColor: "border-yellow-200",
         icon: AlertCircle,
-        description: "Considere reduzir despesas",
-        tip: "Atenção: suas despesas estão altas!",
-        recommendation: "Revise gastos desnecessários e otimize processos."
+        description: isPersonal ? "Considere reduzir gastos pessoais" : "Considere reduzir despesas",
+        tip: isPersonal ? "Atenção: seus gastos pessoais estão altos!" : "Atenção: suas despesas estão altas!",
+        recommendation: isPersonal ? "Revise gastos desnecessários e corte supérfluos." : "Revise gastos desnecessários e otimize processos."
       };
     } else {
       return {
@@ -52,8 +53,8 @@ export function FinancialHealthIndicator({ expenseRatio, className }: FinancialH
         borderColor: "border-red-200",
         icon: AlertTriangle,
         description: "Ação imediata necessária",
-        tip: "URGENTE: Suas despesas estão muito altas!",
-        recommendation: "Reduza custos imediatamente e reavalie estratégias."
+        tip: isPersonal ? "URGENTE: Seus gastos pessoais estão muito altos!" : "URGENTE: Suas despesas estão muito altas!",
+        recommendation: isPersonal ? "Reduza gastos imediatamente e reavalie seu orçamento pessoal." : "Reduza custos imediatamente e reavalie estratégias."
       };
     }
   }, [expenseRatio]);
@@ -69,7 +70,7 @@ export function FinancialHealthIndicator({ expenseRatio, className }: FinancialH
               <Icon className={cn("h-5 w-5", health.color)} />
             </div>
             <div>
-              <h3 className="font-semibold text-sm">Saúde Financeira</h3>
+              <h3 className="font-semibold text-sm">{isPersonal ? 'Saúde Financeira Pessoal' : 'Saúde Financeira'}</h3>
               <p className="text-xs text-muted-foreground">{health.description}</p>
             </div>
           </div>
@@ -80,7 +81,7 @@ export function FinancialHealthIndicator({ expenseRatio, className }: FinancialH
         
         <div className="mb-3">
           <div className="flex items-center justify-between text-sm mb-1">
-            <span className="text-muted-foreground">Despesas/Receitas</span>
+            <span className="text-muted-foreground">{isPersonal ? 'Gastos/Ganhos' : 'Despesas/Receitas'}</span>
             <span className="font-medium">{expenseRatio.toFixed(1)}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
@@ -127,4 +128,4 @@ export function FinancialHealthIndicator({ expenseRatio, className }: FinancialH
       </CardContent>
     </Card>
   );
-} 
+}

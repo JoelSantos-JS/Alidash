@@ -49,7 +49,7 @@ const initialProducts: Product[] = [
     category: "Eletrônicos",
     supplier: "AliExpress",
     aliexpressLink: "https://example.com",
-    imageUrl: "https://via.placeholder.com/300x200?text=Smartphone",
+    imageUrl: "/placeholder-product.svg",
     description: "Smartphone de última geração",
     purchasePrice: 800,
     shippingCost: 50,
@@ -83,7 +83,7 @@ const initialProducts: Product[] = [
     category: "Acessórios",
     supplier: "AliExpress",
     aliexpressLink: "https://example.com",
-    imageUrl: "https://via.placeholder.com/300x200?text=Fone",
+    imageUrl: "/placeholder-product.svg",
     description: "Fone sem fio de alta qualidade",
     purchasePrice: 120,
     shippingCost: 15,
@@ -109,7 +109,7 @@ const initialProducts: Product[] = [
     category: "Eletrônicos",
     supplier: "AliExpress",
     aliexpressLink: "https://example.com",
-    imageUrl: "https://via.placeholder.com/300x200?text=Relogio",
+    imageUrl: "/placeholder-product.svg",
     description: "Relógio inteligente com monitor cardíaco",
     purchasePrice: 200,
     shippingCost: 25,
@@ -159,7 +159,18 @@ export default function ReportsPage() {
         console.log('🔄 Carregando dados para relatórios (Supabase):', user.uid);
 
         // Buscar produtos reais do Supabase via API
-        const response = await fetch(`/api/products/get?user_id=${user.uid}`);
+        // Primeiro buscar o usuário no Supabase
+        const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
+        
+        if (!userResponse.ok) {
+          console.log('⚠️ Usuário não encontrado no Supabase');
+          return;
+        }
+        
+        const userResult = await userResponse.json();
+        const supabaseUser = userResult.user;
+        
+        const response = await fetch(`/api/products/get?user_id=${supabaseUser.id}`);
         if (!response.ok) {
           throw new Error('Erro ao carregar produtos via API');
         }

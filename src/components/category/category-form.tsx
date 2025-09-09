@@ -39,7 +39,7 @@ import {
 
 const categoryFormSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(50, "Nome deve ter no máximo 50 caracteres"),
-  type: z.enum(["income", "expense"], {
+  type: z.enum(["transaction", "product"], {
     required_error: "Tipo é obrigatório",
   }),
   description: z.string().max(200, "Descrição deve ter no máximo 200 caracteres").optional(),
@@ -53,7 +53,7 @@ type CategoryFormData = z.infer<typeof categoryFormSchema>;
 interface Category {
   id: string;
   name: string;
-  type: 'income' | 'expense';
+  type: 'transaction' | 'product';
   color: string;
   icon: string;
   description?: string;
@@ -126,7 +126,7 @@ export function CategoryForm({ category, onSubmit, onCancel, isLoading = false }
     resolver: zodResolver(categoryFormSchema),
     defaultValues: {
       name: category?.name || "",
-      type: category?.type || "expense",
+      type: category?.type || "transaction",
       description: category?.description || "",
       budget: category?.budget || undefined,
       color: category?.color || "#3B82F6",
@@ -194,22 +194,22 @@ export function CategoryForm({ category, onSubmit, onCancel, isLoading = false }
                   <Label htmlFor="type">Tipo *</Label>
                   <Select
                     value={watchType}
-                    onValueChange={(value: "income" | "expense") => setValue("type", value)}
+                    onValueChange={(value: "transaction" | "product") => setValue("type", value)}
                   >
                     <SelectTrigger className={errors.type ? "border-red-500" : ""}>
                       <SelectValue placeholder="Selecione o tipo" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="income">
+                      <SelectItem value="transaction">
                         <div className="flex items-center gap-2">
                           <div className="w-3 h-3 bg-green-500 rounded-full" />
-                          Receita
+                          Transação
                         </div>
                       </SelectItem>
-                      <SelectItem value="expense">
+                      <SelectItem value="product">
                         <div className="flex items-center gap-2">
                           <div className="w-3 h-3 bg-red-500 rounded-full" />
-                          Despesa
+                          Produto
                         </div>
                       </SelectItem>
                     </SelectContent>
@@ -234,7 +234,7 @@ export function CategoryForm({ category, onSubmit, onCancel, isLoading = false }
                 )}
               </div>
 
-              {watchType === "expense" && (
+              {watchType === "product" && (
                 <div className="space-y-2">
                   <Label htmlFor="budget">Orçamento Mensal (R$)</Label>
                   <Input
@@ -356,10 +356,10 @@ export function CategoryForm({ category, onSubmit, onCancel, isLoading = false }
                         {watch("description") || "Descrição da categoria"}
                       </div>
                       <div className="flex items-center gap-2 mt-2">
-                        <Badge variant={watchType === 'income' ? 'default' : 'secondary'}>
-                          {watchType === 'income' ? 'Receita' : 'Despesa'}
+                        <Badge variant={watchType === 'transaction' ? 'default' : 'secondary'}>
+                          {watchType === 'transaction' ? 'Transação' : 'Produto'}
                         </Badge>
-                        {watchType === "expense" && watch("budget") && (
+                        {watchType === "product" && watch("budget") && (
                           <Badge variant="outline">
                             Orçamento: {watch("budget")?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </Badge>
@@ -396,4 +396,4 @@ export function CategoryForm({ category, onSubmit, onCancel, isLoading = false }
       </div>
     </form>
   );
-} 
+}

@@ -271,7 +271,7 @@ export default function ProdutosPage() {
 
   return (
     <div className="flex h-screen bg-background">
-      {/* Mobile Sidebar */}
+      {/* Sidebar */}
       <ProductsSidebar
         products={products}
         searchQuery={searchQuery}
@@ -287,28 +287,9 @@ export default function ProdutosPage() {
         onExport={handleExport}
         onImport={handleImport}
         isLoading={isLoading}
-        isMobile={true}
+        isMobile={isMobile}
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-      />
-
-      {/* Desktop Sidebar */}
-      <ProductsSidebar
-        products={products}
-        searchQuery={searchQuery}
-        categoryFilter={categoryFilter}
-        statusFilter={statusFilter}
-        supplierFilter={supplierFilter}
-        onSearchChange={setSearchQuery}
-        onCategoryFilterChange={setCategoryFilter}
-        onStatusFilterChange={setStatusFilter}
-        onSupplierFilterChange={setSupplierFilter}
-        onAddProduct={handleAddProduct}
-        onRefresh={handleRefresh}
-        onExport={handleExport}
-        onImport={handleImport}
-        isLoading={isLoading}
-        isMobile={false}
       />
 
       {/* Main Content */}
@@ -574,4 +555,4 @@ export default function ProdutosPage() {
       </Dialog>
     </div>
   )
-} 
+}

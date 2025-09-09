@@ -978,7 +978,7 @@ export class DualDatabaseSync {
             throw new Error(`Usuário não encontrado no Supabase para firebase_uid: ${this.userId}`)
           }
           
-          const supabaseGoal = await supabaseService.createGoal(supabaseUser.id, goalData)
+          const supabaseGoal = await supabaseAdminService.createGoal(supabaseUser.id, goalData)
           supabaseId = supabaseGoal.id
           result.supabaseSuccess = true
           
@@ -1055,7 +1055,7 @@ export class DualDatabaseSync {
       } else {
         // No servidor, usar acesso direto
         try {
-          await supabaseService.updateGoal(goalId, updates)
+          await supabaseAdminService.updateGoal(goalId, updates)
           
           result.supabaseSuccess = true
           result.success = true
@@ -1091,7 +1091,7 @@ export class DualDatabaseSync {
 
     try {
       // Usar apenas Supabase como banco principal para metas
-      await supabaseService.deleteGoal(goalId)
+      await supabaseAdminService.deleteGoal(goalId)
       
       result.supabaseSuccess = true
       result.success = true
@@ -1103,7 +1103,7 @@ export class DualDatabaseSync {
       return result
 
     } catch (error) {
-      result.errors.push(`Supabase: ${error}`)
+      result.errors.push(`Supabase: ${error instanceof Error ? error.message : String(error)}`)
       if (process.env.NODE_ENV === 'development') {
         console.error('❌ Erro ao remover meta do Supabase:', error)
       }

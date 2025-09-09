@@ -77,42 +77,85 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Sincronizar usuário com Supabase quando fizer login
       if (user) {
-        try {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('🔄 Sincronizando usuário com Supabase:', user.email);
-          }
-          
-          // Usar API route para sincronizar usuário
-          const response = await fetch('/api/auth/sync-user', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              firebase_uid: user.uid,
-              email: user.email,
-              name: user.displayName,
-              avatar_url: user.photoURL
-            })
-          });
-
-          if (response.ok) {
-            const result = await response.json();
+        // Usar setTimeout para evitar problemas de timing durante renderização
+        setTimeout(async () => {
+          try {
             if (process.env.NODE_ENV === 'development') {
-              console.log('🎉 Usuário sincronizado com Supabase:', {
-                id: result.user.id,
-                email: result.user.email,
-                firebase_uid: result.user.firebase_uid,
-                action: result.action
-              });
+              console.log('🔄 Sincronizando usuário com Supabase:', user.email);
             }
-          } else {
-            console.error('❌ Erro na sincronização com Supabase:', await response.text());
+            
+            // Usar API route para sincronizar usuário com timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+            
+            const response = await fetch('/api/auth/sync-user', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                firebase_uid: user.uid,
+                email: user.email,
+                name: user.displayName,
+                avatar_url: user.photoURL
+              }),
+              signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+              const result = await response.json();
+              if (process.env.NODE_ENV === 'development') {
+                console.log('🎉 Usuário sincronizado com Supabase:', {
+                  id: result.user.id,
+                  email: result.user.email,
+                  firebase_uid: result.user.firebase_uid,
+                  action: result.action
+                });
+              }
+            } else {
+              let errorData;
+              try {
+                const responseText = await response.text();
+                errorData = responseText ? JSON.parse(responseText) : { message: 'No error details' };
+              } catch {
+                errorData = { message: 'Error parsing response' };
+              }
+              
+              if (process.env.NODE_ENV === 'development') {
+                console.error('❌ Erro na sincronização com Supabase (HTTP):', {
+                  status: response?.status || 'Unknown status',
+                  statusText: response?.statusText || 'Unknown status text',
+                  url: response?.url || 'Unknown URL',
+                  error: errorData || { message: 'No error data available' },
+                  timestamp: new Date().toISOString(),
+                  responseType: typeof response
+                });
+              }
+            }
+            
+          } catch (error: any) {
+            // Ignorar erros de abort (timeout)
+            if (error.name === 'AbortError') {
+              if (process.env.NODE_ENV === 'development') {
+                console.warn('⚠️ Sincronização com Supabase cancelada por timeout');
+              }
+            } else {
+              if (process.env.NODE_ENV === 'development') {
+                console.error('❌ Erro na sincronização com Supabase:', {
+                  message: error?.message || 'Erro desconhecido',
+                  details: error ? error.toString() : 'Sem detalhes disponíveis',
+                  hint: 'Verifique se o servidor está rodando e as variáveis de ambiente estão configuradas',
+                  code: error?.code || 'UNKNOWN',
+                  errorType: typeof error,
+                  errorName: error?.name || 'UnknownError',
+                  stack: error?.stack || 'No stack trace available'
+                });
+              }
+            }
           }
-          
-        } catch (error) {
-          console.error('❌ Erro na sincronização com Supabase:', error);
-        }
+        }, 100); // Delay de 100ms para evitar problemas de timing
 
         // Verificar status da assinatura Pro
         const userDocRef = doc(db, "users", user.uid);
@@ -160,7 +203,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.log('✅ Backup automático concluído');
         }
       } catch (error) {
-        console.error('❌ Erro no backup automático:', error);
+        console.error('❌ Erro no backup automático:', {
+          message: error instanceof Error ? error.message : 'Erro desconhecido',
+          details: error ? String(error) : 'Sem detalhes disponíveis',
+          errorType: typeof error,
+          stack: error instanceof Error ? error.stack : 'No stack trace'
+        });
       }
     }
     await auth.signOut();

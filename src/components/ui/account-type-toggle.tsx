@@ -1,102 +1,139 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { User, Building, Home, Briefcase } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Building, User } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+
+export type AccountType = 'personal' | 'business';
 
 interface AccountTypeToggleProps {
-  value: 'personal' | 'business'
-  onValueChange: (value: 'personal' | 'business') => void
-  className?: string
+  currentType: AccountType;
+  onTypeChange: (type: AccountType) => void;
+  className?: string;
+  disabled?: boolean;
 }
 
-export function AccountTypeToggle({ value, onValueChange, className }: AccountTypeToggleProps) {
+export function AccountTypeToggle({ 
+  currentType, 
+  onTypeChange, 
+  className,
+  disabled = false 
+}: AccountTypeToggleProps) {
+  const { toast } = useToast();
+
+  const handleToggle = () => {
+    if (disabled) return;
+    
+    const newType: AccountType = currentType === 'personal' ? 'business' : 'personal';
+    onTypeChange(newType);
+    
+    toast({
+      title: `Modo ${newType === 'personal' ? 'Pessoal' : 'Empresarial'} ativado`,
+      description: `Dashboard alterado para visualização ${newType === 'personal' ? 'pessoal' : 'empresarial'}`,
+      duration: 2000,
+    });
+  };
+
   return (
-    <div className={cn(
-      "flex items-center bg-muted/50 dark:bg-muted/30 rounded-xl p-1 border border-border/50 shadow-sm hover:shadow-md transition-all duration-300 backdrop-blur-sm",
-      className
-    )}>
-      <button
-        onClick={() => onValueChange('personal')}
+    <div className={cn("flex items-center gap-2", className)}>
+      {/* Desktop Toggle */}
+      <div className="hidden sm:flex items-center gap-2 bg-muted rounded-lg p-1">
+        <Button
+          variant={currentType === 'personal' ? 'default' : 'ghost'}
+          size="sm"
+          className="gap-2"
+          onClick={() => !disabled && onTypeChange('personal')}
+          disabled={disabled}
+        >
+          <User className="h-4 w-4" />
+          <span>Pessoal</span>
+        </Button>
+        <Button
+          variant={currentType === 'business' ? 'default' : 'ghost'}
+          size="sm"
+          className="gap-2"
+          onClick={() => !disabled && onTypeChange('business')}
+          disabled={disabled}
+        >
+          <Building className="h-4 w-4" />
+          <span>Empresarial</span>
+        </Button>
+      </div>
+
+      {/* Mobile Floating Toggle */}
+      <div className="fixed bottom-4 right-4 z-30 sm:hidden">
+        <Button
+          size="lg"
+          className={cn(
+            "h-14 w-14 rounded-full shadow-xl border-2 border-white/20 transition-all duration-300 hover:scale-110 active:scale-95 relative overflow-hidden",
+            currentType === 'personal'
+              ? "bg-gradient-to-r from-purple-500 via-purple-600 to-blue-600 shadow-purple-500/25"
+              : "bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 shadow-blue-500/25"
+          )}
+          onClick={handleToggle}
+          disabled={disabled}
+        >
+          {/* Glow effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-full" />
+          
+          {/* Icon */}
+          <div className="relative z-10 text-white">
+            {currentType === 'personal' ? (
+              <User className="h-6 w-6" />
+            ) : (
+              <Building className="h-6 w-6" />
+            )}
+          </div>
+        </Button>
+      </div>
+
+      {/* Current Type Badge */}
+      <Badge 
+        variant="secondary" 
         className={cn(
-          "flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-300 h-9 sm:h-10 relative overflow-hidden group",
-          value === 'personal'
-            ? "bg-gradient-to-r from-purple-500 via-purple-600 to-blue-600 text-white shadow-lg shadow-purple-500/25 transform scale-105"
-            : "text-muted-foreground hover:text-foreground hover:bg-background/80 hover:scale-105 active:scale-95"
+          "hidden sm:flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
+          currentType === 'personal' 
+            ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+            : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
         )}
       >
-        {/* Background glow effect for active state */}
-        {value === 'personal' && (
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-blue-400/20 animate-pulse" />
+        {currentType === 'personal' ? (
+          <>
+            <User className="h-3 w-3" />
+            <span>Pessoal</span>
+          </>
+        ) : (
+          <>
+            <Building className="h-3 w-3" />
+            <span>Empresarial</span>
+          </>
         )}
-        
-        {/* Icon with better styling */}
-        <div className={cn(
-          "relative z-10 flex items-center justify-center",
-          value === 'personal' 
-            ? "text-white" 
-            : "text-muted-foreground group-hover:text-foreground"
-        )}>
-          <User className="h-4 w-4 sm:h-5 sm:w-5" />
-        </div>
-        
-        {/* Text with better visibility */}
-        <span className={cn(
-          "relative z-10 font-semibold",
-          value === 'personal' 
-            ? "text-white" 
-            : "text-muted-foreground group-hover:text-foreground"
-        )}>
-          <span className="hidden sm:inline">Pessoal</span>
-          <span className="sm:hidden">P</span>
-        </span>
-        
-        {/* Hover effect */}
-        {value !== 'personal' && (
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
-        )}
-      </button>
-      
-      <button
-        onClick={() => onValueChange('business')}
-        className={cn(
-          "flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-300 h-9 sm:h-10 relative overflow-hidden group",
-          value === 'business'
-            ? "bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/25 transform scale-105"
-            : "text-muted-foreground hover:text-foreground hover:bg-background/80 hover:scale-105 active:scale-95"
-        )}
-      >
-        {/* Background glow effect for active state */}
-        {value === 'business' && (
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-400/20 animate-pulse" />
-        )}
-        
-        {/* Icon with better styling */}
-        <div className={cn(
-          "relative z-10 flex items-center justify-center",
-          value === 'business' 
-            ? "text-white" 
-            : "text-muted-foreground group-hover:text-foreground"
-        )}>
-          <Building className="h-4 w-4 sm:h-5 sm:w-5" />
-        </div>
-        
-        {/* Text with better visibility */}
-        <span className={cn(
-          "relative z-10 font-semibold",
-          value === 'business' 
-            ? "text-white" 
-            : "text-muted-foreground group-hover:text-foreground"
-        )}>
-          <span className="hidden sm:inline">Empresarial</span>
-          <span className="sm:hidden">E</span>
-        </span>
-        
-        {/* Hover effect */}
-        {value !== 'business' && (
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
-        )}
-      </button>
+      </Badge>
     </div>
-  )
-} 
+  );
+}
+
+// Hook personalizado para gerenciar o tipo de conta
+export function useAccountType(initialType: AccountType = 'business') {
+  const [accountType, setAccountType] = useState<AccountType>(initialType);
+
+  const toggleAccountType = () => {
+    setAccountType(prev => prev === 'personal' ? 'business' : 'personal');
+  };
+
+  const setAccountTypeWithCallback = (type: AccountType, callback?: (type: AccountType) => void) => {
+    setAccountType(type);
+    if (callback) callback(type);
+  };
+
+  return {
+    accountType,
+    setAccountType: setAccountTypeWithCallback,
+    toggleAccountType,
+    isPersonal: accountType === 'personal',
+    isBusiness: accountType === 'business'
+  };
+}

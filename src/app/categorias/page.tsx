@@ -266,53 +266,85 @@ export default function CategoriesPage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  // Carregar dados do Firebase
+  // Carregar categorias do Supabase
   useEffect(() => {
     if (authLoading || !user) return;
 
-    const fetchData = async () => {
+    const fetchCategories = async () => {
       try {
-        const docRef = doc(db, "user-data", user.uid);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists() && docSnap.data().categories) {
-          const data = docSnap.data().categories;
-          const firebaseCategories = data.map((c: any) => ({
-            ...c,
-            createdDate: c.createdDate?.toDate ? c.createdDate.toDate() : new Date(c.createdDate),
+        console.log('🔍 Carregando categorias do Supabase para usuário:', user.uid);
+        
+        // Carregar categorias diretamente da API do Supabase
+        const response = await fetch('/api/categories');
+        const data = await response.json();
+        
+        if (data.success && data.categories) {
+          const supabaseCategories = data.categories.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            description: c.description || '',
+            type: c.type,
+            color: c.color,
+            icon: c.icon,
+            budget: c.budget || 0,
+            spent: c.spent || 0,
+            transactions: c.transactions || 0,
+            isDefault: c.is_default,
+            createdDate: new Date(c.created_at)
           }));
-          setCategories(firebaseCategories);
+          setCategories(supabaseCategories);
+          console.log('✅ Categorias carregadas do Supabase:', supabaseCategories.length);
         } else {
-          // Usar categorias padrão se não há dados
-          setCategories(defaultCategories);
+          console.log('⚠️ Nenhuma categoria encontrada no Supabase');
+          setCategories([]);
         }
-        setIsLoading(false);
       } catch (error) {
-        console.error("Erro ao carregar categorias:", error);
-        setCategories(defaultCategories);
+        console.error("❌ Erro ao carregar categorias:", error);
+        setCategories([]);
+      } finally {
         setIsLoading(false);
       }
     };
 
-    fetchData();
+    fetchCategories();
   }, [user, authLoading]);
 
-  // Salvar dados no Firebase
-  const saveCategories = async (categoriesToSave: Category[]) => {
-    if (!user) return;
-    
-    try {
-      const docRef = doc(db, "user-data", user.uid);
-      await setDoc(docRef, { categories: categoriesToSave }, { merge: true });
-    } catch (error) {
-      console.error("Erro ao salvar categorias:", error);
-      toast({
-        variant: 'destructive',
-        title: "Erro ao Salvar",
-        description: "Não foi possível salvar as categorias.",
-      });
-    }
-  };
+  // Salvar categoria no Supabase
+   const saveCategory = async (category: Category, isUpdate: boolean = false) => {
+     if (!user) return;
+     
+     try {
+       const method = isUpdate ? 'PUT' : 'POST';
+       
+       const requestBody = isUpdate 
+         ? { categoryId: category.id, updates: category }
+         : { firebase_uid: user.uid, categoryData: category };
+       
+       const response = await fetch('/api/categories', {
+         method,
+         headers: {
+           'Content-Type': 'application/json',
+         },
+         body: JSON.stringify(requestBody),
+       });
+       
+       const data = await response.json();
+       
+       if (!data.success) {
+         throw new Error(data.error || 'Erro ao salvar categoria');
+       }
+       
+       return data.category;
+     } catch (error) {
+       console.error("Erro ao salvar categoria:", error);
+       toast({
+         variant: 'destructive',
+         title: "Erro ao Salvar",
+         description: "Não foi possível salvar a categoria.",
+       });
+       throw error;
+     }
+   };
 
   // Filtrar e ordenar categorias
   const filteredCategories = useMemo(() => {
@@ -389,9 +421,16 @@ export default function CategoriesPage() {
         spent: 0
       };
       
-      const updatedCategories = [...categories, newCategory];
-      setCategories(updatedCategories);
-      await saveCategories(updatedCategories);
+      const savedCategory = await saveCategory(newCategory, false);
+      
+      if (savedCategory) {
+        const updatedCategories = [...categories, {
+          ...newCategory,
+          id: savedCategory.id
+        }];
+        setCategories(updatedCategories);
+      }
+      
       setIsFormOpen(false);
       
       toast({
@@ -414,14 +453,20 @@ export default function CategoriesPage() {
     
     setIsFormLoading(true);
     try {
+      const updatedCategory = {
+        ...selectedCategory,
+        ...categoryData
+      };
+      
+      await saveCategory(updatedCategory, true);
+      
       const updatedCategories = categories.map(category => 
         category.id === selectedCategory.id 
-          ? { ...category, ...categoryData }
+          ? updatedCategory
           : category
       );
       
       setCategories(updatedCategories);
-      await saveCategories(updatedCategories);
       setSelectedCategory(null);
       setIsFormOpen(false);
       
@@ -455,16 +500,34 @@ export default function CategoriesPage() {
       return;
     }
     
-    const updatedCategories = categories.filter(category => category.id !== categoryToDelete.id);
-    setCategories(updatedCategories);
-    await saveCategories(updatedCategories);
-    setCategoryToDelete(null);
-    setIsDeleteDialogOpen(false);
-    
-    toast({
-      title: "Categoria Removida!",
-      description: `Categoria "${categoryToDelete.name}" foi removida.`,
-    });
+    try {
+       const response = await fetch(`/api/categories?categoryId=${categoryToDelete.id}`, {
+         method: 'DELETE',
+       });
+       
+       const data = await response.json();
+       
+       if (!data.success) {
+         throw new Error(data.error || 'Erro ao deletar categoria');
+       }
+      
+      const updatedCategories = categories.filter(category => category.id !== categoryToDelete.id);
+      setCategories(updatedCategories);
+      setCategoryToDelete(null);
+      setIsDeleteDialogOpen(false);
+      
+      toast({
+        title: "Categoria Removida!",
+        description: `Categoria "${categoryToDelete.name}" foi removida.`,
+      });
+    } catch (error) {
+      console.error("Erro ao deletar categoria:", error);
+      toast({
+        variant: 'destructive',
+        title: "Erro ao Deletar",
+        description: "Não foi possível deletar a categoria.",
+      });
+    }
   };
 
   if (authLoading || isLoading) {
@@ -1029,4 +1092,4 @@ export default function CategoriesPage() {
       </AlertDialog>
     </div>
   );
-} 
+}

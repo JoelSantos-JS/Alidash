@@ -782,7 +782,7 @@ export default function Home() {
                 variant="ghost" 
                 className="w-full justify-start gap-2 sm:gap-3" 
                 size="lg"
-                onClick={() => router.push('/transacoes')}
+                onClick={() => router.push(isPersonal ? '/pessoal/transacoes' : '/transacoes')}
               >
                 <BarChart3 className="h-4 w-4" />
                 <span className="text-sm sm:text-base">Transações</span>
@@ -792,7 +792,7 @@ export default function Home() {
                 variant="ghost" 
                 className="w-full justify-start gap-2 sm:gap-3" 
                 size="lg"
-                onClick={() => router.push('/dividas')}
+                onClick={() => router.push(isPersonal ? '/pessoal/dividas' : '/dividas')}
               >
                 <FileText className="h-4 w-4" />
                 <span className="text-sm sm:text-base">Dívidas</span>
@@ -802,7 +802,7 @@ export default function Home() {
                 variant="ghost" 
                 className="w-full justify-start gap-2 sm:gap-3" 
                 size="lg"
-                onClick={() => router.push('/categorias')}
+                onClick={() => router.push(isPersonal ? '/pessoal/categorias' : '/categorias')}
               >
                 <Tag className="h-4 w-4" />
                 <span className="text-sm sm:text-base">Categorias</span>
@@ -825,7 +825,7 @@ export default function Home() {
                 variant="ghost" 
                 className="w-full justify-start gap-2 sm:gap-3" 
                 size="lg"
-                onClick={() => router.push('/relatorios')}
+                onClick={() => router.push(isPersonal ? '/pessoal/relatorios' : '/relatorios')}
               >
                 <BarChart3 className="h-4 w-4" />
                 <span className="text-sm sm:text-base">Relatórios</span>
@@ -835,7 +835,7 @@ export default function Home() {
                 variant="ghost" 
                 className="w-full justify-start gap-2 sm:gap-3" 
                 size="lg"
-                onClick={() => router.push('/metas')}
+                onClick={() => router.push(isPersonal ? '/pessoal/metas' : '/metas')}
               >
                 <TargetIcon className="h-4 w-4" />
                 <span className="text-sm sm:text-base">Metas</span>
@@ -845,7 +845,7 @@ export default function Home() {
                 variant="ghost" 
                 className="w-full justify-start gap-2 sm:gap-3" 
                 size="lg"
-                onClick={() => router.push('/agenda')}
+                onClick={() => router.push(isPersonal ? '/pessoal/agenda' : '/agenda')}
               >
                 <CalendarIcon className="h-4 w-4" />
                 <span className="text-sm sm:text-base">Agenda</span>

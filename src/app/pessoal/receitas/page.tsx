@@ -26,6 +26,7 @@ import {
   ArrowLeft
 } from "lucide-react";
 import Link from "next/link";
+import PersonalIncomeForm from "@/components/forms/personal-income-form";
 
 interface PersonalIncome {
   id: string;
@@ -314,23 +315,21 @@ export default function PersonalIncomesPage() {
         </CardContent>
       </Card>
 
-      {/* TODO: Adicionar formulário de receita pessoal */}
+      {/* Formulário de receita pessoal */}
       {isFormOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Nova Receita Pessoal</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">
-                Formulário de receita pessoal será implementado em breve.
-              </p>
-              <Button onClick={() => setIsFormOpen(false)} className="w-full">
-                Fechar
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+        <PersonalIncomeForm 
+          isOpen={isFormOpen}
+          onClose={() => {
+            setIsFormOpen(false);
+            setEditingIncome(null);
+          }}
+          onSuccess={() => {
+            loadIncomes();
+            setIsFormOpen(false);
+            setEditingIncome(null);
+          }}
+          editingIncome={editingIncome}
+        />
       )}
     </div>
   );

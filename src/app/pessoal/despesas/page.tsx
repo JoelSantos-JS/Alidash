@@ -31,6 +31,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import Link from "next/link";
+import PersonalExpenseForm from "@/components/forms/personal-expense-form";
 
 interface PersonalExpense {
   id: string;
@@ -373,23 +374,21 @@ export default function PersonalExpensesPage() {
         </CardContent>
       </Card>
 
-      {/* TODO: Adicionar formulário de despesa pessoal */}
+      {/* Formulário de despesa pessoal */}
       {isFormOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Nova Despesa Pessoal</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">
-                Formulário de despesa pessoal será implementado em breve.
-              </p>
-              <Button onClick={() => setIsFormOpen(false)} className="w-full">
-                Fechar
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+        <PersonalExpenseForm 
+          isOpen={isFormOpen}
+          onClose={() => {
+            setIsFormOpen(false);
+            setEditingExpense(null);
+          }}
+          onSuccess={() => {
+            loadExpenses();
+            setIsFormOpen(false);
+            setEditingExpense(null);
+          }}
+          editingExpense={editingExpense}
+        />
       )}
     </div>
   );

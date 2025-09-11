@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import PersonalTransactionForm from "@/components/forms/personal-transaction-form";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface PersonalTransaction {
   id: string;
@@ -58,6 +60,11 @@ export default function PersonalTransactionsPage() {
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<PersonalTransaction | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState<PersonalTransaction | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -142,6 +149,67 @@ export default function PersonalTransactionsPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleViewTransaction = (transaction: PersonalTransaction) => {
+    setSelectedTransaction(transaction);
+    setIsViewModalOpen(true);
+  };
+
+  const handleEditTransaction = (transaction: PersonalTransaction) => {
+    setSelectedTransaction(transaction);
+    setIsEditModalOpen(true);
+  };
+
+  const handleDeleteTransaction = (transaction: PersonalTransaction) => {
+    setTransactionToDelete(transaction);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteTransaction = async () => {
+    if (!transactionToDelete || !user) return;
+    
+    try {
+      // Buscar usuário Supabase
+      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      if (!userResponse.ok) {
+        throw new Error('Usuário não encontrado');
+      }
+      
+      const userResult = await userResponse.json();
+      const supabaseUserId = userResult.user.id;
+      
+      // Determinar o tipo e ID real da transação
+      const [type, realId] = transactionToDelete.id.split('_');
+      const endpoint = type === 'income' ? '/api/personal/incomes' : '/api/personal/expenses';
+      
+      // Deletar via API
+      const response = await fetch(`${endpoint}?id=${realId}&user_id=${supabaseUserId}`, {
+        method: 'DELETE'
+      });
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao deletar transação');
+      }
+      
+      toast({
+        title: "Transação Deletada!",
+        description: `Transação "${transactionToDelete.description}" foi removida com sucesso.`,
+      });
+      
+      setIsDeleteDialogOpen(false);
+      setTransactionToDelete(null);
+      // Recarregar dados
+      loadTransactions();
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: "Erro ao Deletar",
+        description: error instanceof Error ? error.message : "Não foi possível deletar a transação.",
+      });
     }
   };
 
@@ -418,13 +486,28 @@ export default function PersonalTransactionsPage() {
                         </div>
                       </div>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleViewTransaction(transaction)}
+                          title="Visualizar detalhes"
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleEditTransaction(transaction)}
+                          title="Editar transação"
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleDeleteTransaction(transaction)}
+                          title="Excluir transação"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -448,6 +531,127 @@ export default function PersonalTransactionsPage() {
           }}
         />
       )}
+
+      {/* Modal de Visualização */}
+      <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Detalhes da Transação</DialogTitle>
+          </DialogHeader>
+          {selectedTransaction && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Descrição</label>
+                  <p className="font-medium">{selectedTransaction.description}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Valor</label>
+                  <p className={`font-bold text-lg ${
+                    selectedTransaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {selectedTransaction.type === 'income' ? '+' : '-'}
+                    {selectedTransaction.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Data</label>
+                  <p>{new Date(selectedTransaction.date).toLocaleDateString('pt-BR')}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Tipo</label>
+                  <Badge variant={selectedTransaction.type === 'income' ? 'default' : 'destructive'}>
+                    {TRANSACTION_TYPES[selectedTransaction.type].label}
+                  </Badge>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Categoria</label>
+                  <p>{selectedTransaction.category}</p>
+                </div>
+                {selectedTransaction.source && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Fonte</label>
+                    <p>{selectedTransaction.source}</p>
+                  </div>
+                )}
+                {selectedTransaction.payment_method && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Método de Pagamento</label>
+                    <p>{selectedTransaction.payment_method}</p>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Recorrente</label>
+                  <p>{selectedTransaction.is_recurring ? 'Sim' : 'Não'}</p>
+                </div>
+                {selectedTransaction.is_essential !== undefined && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Essencial</label>
+                    <p>{selectedTransaction.is_essential ? 'Sim' : 'Não'}</p>
+                  </div>
+                )}
+              </div>
+              {selectedTransaction.notes && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Observações</label>
+                  <p className="mt-1 p-3 bg-muted rounded-lg">{selectedTransaction.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Edição */}
+      {isEditModalOpen && selectedTransaction && (
+        <PersonalTransactionForm 
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setSelectedTransaction(null);
+          }}
+          onSuccess={() => {
+            loadTransactions();
+            setIsEditModalOpen(false);
+            setSelectedTransaction(null);
+          }}
+          transactionToEdit={{
+            id: selectedTransaction.id.split('_')[1], // ID real sem prefixo
+            type: selectedTransaction.type,
+            description: selectedTransaction.description,
+            amount: selectedTransaction.amount,
+            date: selectedTransaction.date,
+            category: selectedTransaction.category,
+            source: selectedTransaction.source,
+            payment_method: selectedTransaction.payment_method,
+            is_essential: selectedTransaction.is_essential,
+            is_recurring: selectedTransaction.is_recurring,
+            notes: selectedTransaction.notes
+          }}
+        />
+      )}
+
+      {/* Dialog de Confirmação de Exclusão */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a transação "{transactionToDelete?.description}"?
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteTransaction}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

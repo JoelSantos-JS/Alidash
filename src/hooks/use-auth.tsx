@@ -115,42 +115,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 });
               }
             } else {
-              let errorData;
+              let errorData = { message: 'Unknown error' };
               try {
                 const responseText = await response.text();
-                errorData = responseText ? JSON.parse(responseText) : { message: 'No error details' };
-              } catch {
-                errorData = { message: 'Error parsing response' };
+                if (responseText) {
+                  try {
+                    errorData = JSON.parse(responseText);
+                  } catch (parseError) {
+                    errorData = { message: 'Error parsing response', raw: responseText };
+                  }
+                } else {
+                  errorData = { message: 'Empty response body' };
+                }
+              } catch (textError) {
+                errorData = { message: 'Error reading response text', error: textError.message };
               }
               
               if (process.env.NODE_ENV === 'development') {
-                console.error('❌ Erro na sincronização com Supabase (HTTP):', {
-                  status: response?.status || 'Unknown status',
-                  statusText: response?.statusText || 'Unknown status text',
-                  url: response?.url || 'Unknown URL',
-                  error: errorData || { message: 'No error data available' },
-                  timestamp: new Date().toISOString(),
-                  responseType: typeof response
+                console.warn('⚠️ Sincronização com Supabase falhou:', {
+                  status: response?.status || 'Unknown',
+                  statusText: response?.statusText || 'Unknown',
+                  url: response?.url || '/api/auth/sync-user',
+                  errorDetails: errorData,
+                  timestamp: new Date().toISOString()
                 });
               }
             }
             
           } catch (error: any) {
             // Ignorar erros de abort (timeout)
-            if (error.name === 'AbortError') {
+            if (error?.name === 'AbortError') {
               if (process.env.NODE_ENV === 'development') {
                 console.warn('⚠️ Sincronização com Supabase cancelada por timeout');
               }
             } else {
               if (process.env.NODE_ENV === 'development') {
-                console.error('❌ Erro na sincronização com Supabase:', {
+                console.warn('⚠️ Erro na sincronização com Supabase:', {
                   message: error?.message || 'Erro desconhecido',
-                  details: error ? error.toString() : 'Sem detalhes disponíveis',
-                  hint: 'Verifique se o servidor está rodando e as variáveis de ambiente estão configuradas',
+                  name: error?.name || 'UnknownError',
                   code: error?.code || 'UNKNOWN',
-                  errorType: typeof error,
-                  errorName: error?.name || 'UnknownError',
-                  stack: error?.stack || 'No stack trace available'
+                  hint: 'Verifique se o servidor está rodando e as variáveis de ambiente estão configuradas'
                 });
               }
             }

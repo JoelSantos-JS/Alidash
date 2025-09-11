@@ -98,55 +98,53 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
   }, [user, periodFilter]);
 
   const loadPersonalData = async () => {
+    if (!user?.uid) return;
+    
     try {
       setLoading(true);
       
       // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
       if (!userResponse.ok) {
-        console.log('⚠️ Usuário não encontrado no Supabase, criando dados de exemplo...');
-        await createSampleData();
+        console.log('⚠️ Usuário não encontrado no Supabase');
         return;
       }
       
       const userResult = await userResponse.json();
       const supabaseUserId = userResult.user.id;
       
-      // Carregar dados pessoais em paralelo
-      const [summaryResult, goalsResult, expensesResult, incomesResult] = await Promise.allSettled([
-        fetch(`/api/personal/summary?user_id=${supabaseUserId}&month=${currentMonth}&year=${currentYear}`)
-          .then(res => res.ok ? res.json() : { summary: null }),
-        fetch(`/api/personal/goals?user_id=${supabaseUserId}`)
-          .then(res => res.ok ? res.json() : { goals: [] }),
-        fetch(`/api/personal/expenses?user_id=${supabaseUserId}&limit=5`)
-          .then(res => res.ok ? res.json() : { expenses: [] }),
-        fetch(`/api/personal/incomes?user_id=${supabaseUserId}&limit=5`)
-          .then(res => res.ok ? res.json() : { incomes: [] })
-      ]);
-      
-      // Processar resultados
-      if (summaryResult.status === 'fulfilled' && summaryResult.value.summary) {
-        setPersonalSummary(summaryResult.value.summary);
-      } else {
-        // Se não há dados, criar dados de exemplo
-        await createSampleData();
+      // Carregar resumo pessoal
+      const summaryResponse = await fetch(`/api/personal/summary?user_id=${supabaseUserId}&month=9&year=2025`);
+      if (summaryResponse.ok) {
+        const summaryData = await summaryResponse.json();
+        if (summaryData.summary) {
+          setPersonalSummary(summaryData.summary);
+        }
       }
       
-      if (goalsResult.status === 'fulfilled' && goalsResult.value.goals) {
-        setGoals(goalsResult.value.goals);
+      // Carregar metas
+      const goalsResponse = await fetch(`/api/personal/goals?user_id=${supabaseUserId}`);
+      if (goalsResponse.ok) {
+        const goalsData = await goalsResponse.json();
+        setGoals(goalsData.goals || []);
       }
       
-      if (expensesResult.status === 'fulfilled' && expensesResult.value.expenses) {
-        setRecentExpenses(expensesResult.value.expenses);
+      // Carregar despesas recentes
+      const expensesResponse = await fetch(`/api/personal/expenses/recent?user_id=${supabaseUserId}&limit=5`);
+      if (expensesResponse.ok) {
+        const expensesData = await expensesResponse.json();
+        setRecentExpenses(expensesData.expenses || []);
       }
       
-      if (incomesResult.status === 'fulfilled' && incomesResult.value.incomes) {
-        setRecentIncomes(incomesResult.value.incomes);
+      // Carregar receitas recentes
+      const incomesResponse = await fetch(`/api/personal/incomes/recent?user_id=${supabaseUserId}&limit=4`);
+      if (incomesResponse.ok) {
+        const incomesData = await incomesResponse.json();
+        setRecentIncomes(incomesData.incomes || []);
       }
       
     } catch (error) {
       console.error('❌ Erro ao carregar dados pessoais:', error);
-      await createSampleData();
     } finally {
       setLoading(false);
     }
@@ -478,19 +476,19 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
         </CardHeader>
         <CardContent>
           <div className="grid gap-6 md:grid-cols-3">
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
+            <div className="text-center p-4 bg-muted/30 border rounded-lg">
               <div className="text-2xl font-bold text-purple-600 mb-1">
                 {(personalSummary.totalIncome * 0.6).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
               <p className="text-sm text-muted-foreground">Orçamento Mensal</p>
             </div>
-            <div className="text-center p-4 bg-red-50 rounded-lg">
+            <div className="text-center p-4 bg-muted/30 border rounded-lg">
               <div className="text-2xl font-bold text-red-600 mb-1">
                 {personalSummary.totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
               <p className="text-sm text-muted-foreground">Gastos Realizados</p>
             </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
+            <div className="text-center p-4 bg-muted/30 border rounded-lg">
               <div className="text-2xl font-bold text-green-600 mb-1">
                 {((personalSummary.totalIncome * 0.6) - personalSummary.totalExpenses).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>

@@ -53,6 +53,53 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// DELETE - Deletar despesa pessoal
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    const userId = searchParams.get('user_id');
+
+    console.log('🗑️ Deletando despesa pessoal:', { id, userId });
+
+    if (!id || !userId) {
+      return NextResponse.json(
+        { success: false, error: 'id e user_id são obrigatórios' },
+        { status: 400 }
+      );
+    }
+
+    // Deletar do banco de dados
+    const { error } = await supabase
+      .from('personal_expenses')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('❌ Erro ao deletar despesa do banco:', error);
+      return NextResponse.json(
+        { success: false, error: `Erro ao deletar despesa: ${error.message}` },
+        { status: 500 }
+      );
+    }
+
+    console.log('✅ Despesa pessoal deletada do banco:', id);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Despesa pessoal deletada com sucesso'
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao deletar despesa pessoal:', error);
+    return NextResponse.json(
+      { success: false, error: 'Erro interno do servidor' },
+      { status: 500 }
+    );
+  }
+}
+
 // POST - Criar novo gasto pessoal
 export async function POST(request: NextRequest) {
   try {

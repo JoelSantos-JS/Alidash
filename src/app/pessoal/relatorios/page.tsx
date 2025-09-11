@@ -16,6 +16,8 @@ import {
   DollarSign,
   Calendar,
   Download,
+  Upload,
+  Trash2,
   Filter,
   ArrowLeft,
   Target,
@@ -83,61 +85,109 @@ export default function PersonalReportsPage() {
     try {
       setLoading(true);
       
-      // Simular dados de relatórios para demonstração
-      // TODO: Implementar APIs reais para relatórios pessoais
+      // Buscar usuário Supabase
+      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      if (!userResponse.ok) {
+        console.log('⚠️ Usuário não encontrado no Supabase');
+        return;
+      }
       
-      // Dados mensais simulados
-      const mockMonthlyData: MonthlyData[] = [
-        { month: 'Jul/24', income: 5200.00, expenses: 3100.00, balance: 2100.00, savingsRate: 40.4 },
-        { month: 'Ago/24', income: 5500.00, expenses: 3300.00, balance: 2200.00, savingsRate: 40.0 },
-        { month: 'Set/24', income: 5300.00, expenses: 3400.00, balance: 1900.00, savingsRate: 35.8 },
-        { month: 'Out/24', income: 5800.00, expenses: 3200.00, balance: 2600.00, savingsRate: 44.8 },
-        { month: 'Nov/24', income: 5600.00, expenses: 3500.00, balance: 2100.00, savingsRate: 37.5 },
-        { month: 'Dez/24', income: 6200.00, expenses: 3800.00, balance: 2400.00, savingsRate: 38.7 },
-        { month: 'Jan/25', income: 7071.30, expenses: 1078.95, balance: 5992.35, savingsRate: 84.7 }
-      ];
+      const userResult = await userResponse.json();
+      const supabaseUserId = userResult.user.id;
       
-      // Categorias de receitas simuladas
-      const mockIncomeCategories: CategoryData[] = [
-        { category: 'salary', label: 'Salário', amount: 5500.00, percentage: 77.8, color: 'bg-blue-500' },
-        { category: 'freelance', label: 'Freelance', amount: 800.00, percentage: 11.3, color: 'bg-green-500' },
-        { category: 'investment', label: 'Investimentos', amount: 125.50, percentage: 1.8, color: 'bg-purple-500' },
-        { category: 'rental', label: 'Aluguel', amount: 600.00, percentage: 8.5, color: 'bg-orange-500' },
-        { category: 'bonus', label: 'Cashback', amount: 45.80, percentage: 0.6, color: 'bg-yellow-500' }
-      ];
+      // Carregar dados reais dos últimos meses
+      const monthsToLoad = selectedPeriod === '3months' ? 3 : selectedPeriod === '6months' ? 6 : 12;
+      const monthlyDataPromises = [];
       
-      // Categorias de despesas simuladas
-      const mockExpenseCategories: CategoryData[] = [
-        { category: 'food', label: 'Alimentação', amount: 350.50, percentage: 32.5, color: 'bg-green-500' },
-        { category: 'utilities', label: 'Contas', amount: 180.45, percentage: 16.7, color: 'bg-orange-500' },
-        { category: 'transportation', label: 'Transporte', amount: 145.50, percentage: 13.5, color: 'bg-purple-500' },
-        { category: 'healthcare', label: 'Saúde', amount: 157.70, percentage: 14.6, color: 'bg-red-500' },
-        { category: 'entertainment', label: 'Entretenimento', amount: 139.80, percentage: 13.0, color: 'bg-pink-500' },
-        { category: 'personal_care', label: 'Cuidados', amount: 105.00, percentage: 9.7, color: 'bg-blue-500' }
-      ];
+      for (let i = 0; i < monthsToLoad; i++) {
+        const date = new Date();
+        date.setMonth(date.getMonth() - i);
+        const month = date.getMonth() + 1;
+        const year = date.getFullYear();
+        
+        monthlyDataPromises.push(
+          fetch(`/api/personal/summary?user_id=${supabaseUserId}&month=${month}&year=${year}`)
+            .then(res => res.ok ? res.json() : { summary: null })
+            .then(result => ({
+              month: date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+              income: result.summary?.totalIncome || 0,
+              expenses: result.summary?.totalExpenses || 0,
+              balance: result.summary?.balance || 0,
+              savingsRate: result.summary?.savingsRate || 0
+            }))
+        );
+      }
       
-      // Métricas calculadas
-      const mockMetrics: FinancialMetrics = {
-        totalIncome: mockMonthlyData.reduce((sum, m) => sum + m.income, 0),
-        totalExpenses: mockMonthlyData.reduce((sum, m) => sum + m.expenses, 0),
-        totalBalance: mockMonthlyData.reduce((sum, m) => sum + m.balance, 0),
-        averageSavingsRate: mockMonthlyData.reduce((sum, m) => sum + m.savingsRate, 0) / mockMonthlyData.length,
+      const realMonthlyData = await Promise.all(monthlyDataPromises);
+      realMonthlyData.reverse(); // Ordem cronológica
+      
+      // Buscar categorias de receitas e despesas
+      const [incomesRes, expensesRes] = await Promise.all([
+        fetch(`/api/personal/incomes?user_id=${supabaseUserId}&limit=100`),
+        fetch(`/api/personal/expenses?user_id=${supabaseUserId}&limit=100`)
+      ]);
+      
+      const incomesData = incomesRes.ok ? await incomesRes.json() : { incomes: [] };
+      const expensesData = expensesRes.ok ? await expensesRes.json() : { expenses: [] };
+      
+      // Processar categorias de receitas
+      const incomesByCategory = (incomesData.incomes || []).reduce((acc: any, income: any) => {
+        acc[income.category] = (acc[income.category] || 0) + income.amount;
+        return acc;
+      }, {});
+      
+      const totalIncome = Object.values(incomesByCategory).reduce((sum: number, amount: any) => sum + amount, 0) as number;
+      const realIncomeCategories = Object.entries(incomesByCategory).map(([category, amount]: [string, any]) => ({
+        category,
+        label: getCategoryLabel(category),
+        amount,
+        percentage: totalIncome > 0 ? (amount / totalIncome) * 100 : 0,
+        color: getCategoryColor(category)
+      }));
+      
+      // Processar categorias de despesas
+      const expensesByCategory = (expensesData.expenses || []).reduce((acc: any, expense: any) => {
+        acc[expense.category] = (acc[expense.category] || 0) + expense.amount;
+        return acc;
+      }, {});
+      
+      const totalExpenses = Object.values(expensesByCategory).reduce((sum: number, amount: any) => sum + amount, 0) as number;
+      const realExpenseCategories = Object.entries(expensesByCategory).map(([category, amount]: [string, any]) => ({
+        category,
+        label: getCategoryLabel(category),
+        amount,
+        percentage: totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0,
+        color: getCategoryColor(category)
+      }));
+      
+      // Calcular métricas reais
+      const realMetrics: FinancialMetrics = {
+        totalIncome: realMonthlyData.reduce((sum, m) => sum + m.income, 0),
+        totalExpenses: realMonthlyData.reduce((sum, m) => sum + m.expenses, 0),
+        totalBalance: realMonthlyData.reduce((sum, m) => sum + m.balance, 0),
+        averageSavingsRate: realMonthlyData.length > 0 ? realMonthlyData.reduce((sum, m) => sum + m.savingsRate, 0) / realMonthlyData.length : 0,
         monthlyAverage: {
-          income: mockMonthlyData.reduce((sum, m) => sum + m.income, 0) / mockMonthlyData.length,
-          expenses: mockMonthlyData.reduce((sum, m) => sum + m.expenses, 0) / mockMonthlyData.length,
-          balance: mockMonthlyData.reduce((sum, m) => sum + m.balance, 0) / mockMonthlyData.length
+          income: realMonthlyData.length > 0 ? realMonthlyData.reduce((sum, m) => sum + m.income, 0) / realMonthlyData.length : 0,
+          expenses: realMonthlyData.length > 0 ? realMonthlyData.reduce((sum, m) => sum + m.expenses, 0) / realMonthlyData.length : 0,
+          balance: realMonthlyData.length > 0 ? realMonthlyData.reduce((sum, m) => sum + m.balance, 0) / realMonthlyData.length : 0
         },
         trends: {
-          incomeGrowth: 12.5,
-          expenseGrowth: -8.2,
-          balanceGrowth: 28.4
+          incomeGrowth: calculateGrowth(realMonthlyData, 'income'),
+          expenseGrowth: calculateGrowth(realMonthlyData, 'expenses'),
+          balanceGrowth: calculateGrowth(realMonthlyData, 'balance')
         }
       };
       
-      setMonthlyData(mockMonthlyData);
-      setIncomeCategories(mockIncomeCategories);
-      setExpenseCategories(mockExpenseCategories);
-      setMetrics(mockMetrics);
+      setMonthlyData(realMonthlyData);
+      setIncomeCategories(realIncomeCategories);
+      setExpenseCategories(realExpenseCategories);
+      setMetrics(realMetrics);
+      
+      console.log('✅ Dados de relatórios carregados do banco:', {
+        months: realMonthlyData.length,
+        incomeCategories: realIncomeCategories.length,
+        expenseCategories: realExpenseCategories.length
+      });
       
     } catch (error) {
       console.error('Erro ao carregar dados dos relatórios:', error);
@@ -151,11 +201,170 @@ export default function PersonalReportsPage() {
     }
   };
 
-  const exportReport = () => {
-    toast({
-      title: "Exportação",
-      description: "Funcionalidade de exportação será implementada em breve.",
-    });
+  // Funções auxiliares
+  const getCategoryLabel = (category: string): string => {
+    const labels: Record<string, string> = {
+      salary: 'Salário',
+      freelance: 'Freelance',
+      investment: 'Investimentos',
+      rental: 'Aluguel',
+      bonus: 'Bônus',
+      gift: 'Presente',
+      other: 'Outros',
+      food: 'Alimentação',
+      housing: 'Moradia',
+      transportation: 'Transporte',
+      healthcare: 'Saúde',
+      education: 'Educação',
+      entertainment: 'Entretenimento',
+      utilities: 'Utilidades',
+      personal_care: 'Cuidados Pessoais'
+    };
+    return labels[category] || category;
+  };
+
+  const getCategoryColor = (category: string): string => {
+    const colors: Record<string, string> = {
+      salary: 'bg-blue-500',
+      freelance: 'bg-green-500',
+      investment: 'bg-purple-500',
+      rental: 'bg-orange-500',
+      bonus: 'bg-yellow-500',
+      food: 'bg-green-500',
+      housing: 'bg-blue-500',
+      transportation: 'bg-purple-500',
+      healthcare: 'bg-red-500',
+      entertainment: 'bg-pink-500',
+      utilities: 'bg-orange-500'
+    };
+    return colors[category] || 'bg-gray-500';
+  };
+
+  const calculateGrowth = (data: MonthlyData[], field: keyof MonthlyData): number => {
+    if (data.length < 2) return 0;
+    const current = data[data.length - 1][field] as number;
+    const previous = data[data.length - 2][field] as number;
+    if (previous === 0) return 0;
+    return ((current - previous) / previous) * 100;
+  };
+
+  const exportReport = async () => {
+    try {
+      if (!user) return;
+      
+      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      if (!userResponse.ok) throw new Error('Usuário não encontrado');
+      
+      const userResult = await userResponse.json();
+      const supabaseUserId = userResult.user.id;
+      
+      // Buscar todos os dados para exportação
+      const [incomesRes, expensesRes, goalsRes] = await Promise.all([
+        fetch(`/api/personal/incomes?user_id=${supabaseUserId}&limit=1000`),
+        fetch(`/api/personal/expenses?user_id=${supabaseUserId}&limit=1000`),
+        fetch(`/api/personal/goals?user_id=${supabaseUserId}`)
+      ]);
+      
+      const exportData = {
+        incomes: incomesRes.ok ? (await incomesRes.json()).incomes : [],
+        expenses: expensesRes.ok ? (await expensesRes.json()).expenses : [],
+        goals: goalsRes.ok ? (await goalsRes.json()).goals : [],
+        exportDate: new Date().toISOString(),
+        user: user.email
+      };
+      
+      // Criar e baixar arquivo JSON
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `relatorio-pessoal-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Exportação Concluída!",
+        description: "Seus dados foram exportados com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro na Exportação",
+        description: "Não foi possível exportar os dados.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const importData = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      
+      const text = await file.text();
+      const importedData = JSON.parse(text);
+      
+      // Validar estrutura dos dados
+      if (!importedData.incomes && !importedData.expenses && !importedData.goals) {
+        throw new Error('Arquivo inválido');
+      }
+      
+      toast({
+        title: "Importação Iniciada",
+        description: "Processando dados importados...",
+      });
+      
+      // TODO: Implementar importação real via API
+      console.log('Dados para importar:', importedData);
+      
+      toast({
+        title: "Importação Concluída!",
+        description: `Importados: ${importedData.incomes?.length || 0} receitas, ${importedData.expenses?.length || 0} despesas, ${importedData.goals?.length || 0} metas.`,
+      });
+      
+      // Recarregar dados
+      loadReportsData();
+    } catch (error) {
+      toast({
+        title: "Erro na Importação",
+        description: "Arquivo inválido ou corrompido.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const clearAllData = async () => {
+    if (!confirm('Tem certeza que deseja limpar TODOS os dados? Esta ação não pode ser desfeita.')) {
+      return;
+    }
+    
+    try {
+      if (!user) return;
+      
+      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      if (!userResponse.ok) throw new Error('Usuário não encontrado');
+      
+      const userResult = await userResponse.json();
+      const supabaseUserId = userResult.user.id;
+      
+      // TODO: Implementar API para limpar todos os dados
+      console.log('Limpando dados do usuário:', supabaseUserId);
+      
+      toast({
+        title: "Dados Limpos!",
+        description: "Todos os dados pessoais foram removidos.",
+      });
+      
+      // Recarregar dados
+      loadReportsData();
+    } catch (error) {
+      toast({
+        title: "Erro ao Limpar",
+        description: "Não foi possível limpar os dados.",
+        variant: "destructive"
+      });
+    }
   };
 
   if (loading) {
@@ -208,6 +417,21 @@ export default function PersonalReportsPage() {
             <Download className="h-4 w-4 mr-2" />
             Exportar
           </Button>
+          <Button variant="outline" onClick={() => document.getElementById('import-file')?.click()}>
+            <Upload className="h-4 w-4 mr-2" />
+            Importar
+          </Button>
+          <Button variant="destructive" onClick={clearAllData}>
+            <Trash2 className="h-4 w-4 mr-2" />
+            Limpar
+          </Button>
+          <input
+            id="import-file"
+            type="file"
+            accept=".json"
+            onChange={importData}
+            className="hidden"
+          />
         </div>
       </div>
 

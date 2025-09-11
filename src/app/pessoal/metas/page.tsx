@@ -35,6 +35,8 @@ import {
   Eye
 } from "lucide-react";
 import Link from "next/link";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface PersonalGoal {
   id: string;
@@ -52,17 +54,17 @@ interface PersonalGoal {
 }
 
 const GOAL_CATEGORIES = {
-  emergency_fund: { label: 'Reserva de Emergência', icon: PiggyBank, color: 'bg-red-100 text-red-600' },
-  house: { label: 'Casa Própria', icon: Home, color: 'bg-blue-100 text-blue-600' },
-  car: { label: 'Veículo', icon: Car, color: 'bg-green-100 text-green-600' },
-  education: { label: 'Educação', icon: GraduationCap, color: 'bg-purple-100 text-purple-600' },
-  health: { label: 'Saúde', icon: Heart, color: 'bg-pink-100 text-pink-600' },
-  travel: { label: 'Viagem', icon: Plane, color: 'bg-orange-100 text-orange-600' },
-  investment: { label: 'Investimento', icon: TrendingUp, color: 'bg-indigo-100 text-indigo-600' },
-  retirement: { label: 'Aposentadoria', icon: Building, color: 'bg-gray-100 text-gray-600' },
-  debt_payoff: { label: 'Quitação de Dívidas', icon: CreditCard, color: 'bg-yellow-100 text-yellow-600' },
-  gift: { label: 'Presente/Evento', icon: Gift, color: 'bg-teal-100 text-teal-600' },
-  other: { label: 'Outros', icon: Target, color: 'bg-slate-100 text-slate-600' }
+  emergency_fund: { label: 'Reserva de Emergência', icon: PiggyBank, color: 'bg-muted/30 text-red-600' },
+  house: { label: 'Casa Própria', icon: Home, color: 'bg-muted/30 text-blue-600' },
+  car: { label: 'Veículo', icon: Car, color: 'bg-muted/30 text-green-600' },
+  education: { label: 'Educação', icon: GraduationCap, color: 'bg-muted/30 text-purple-600' },
+  health: { label: 'Saúde', icon: Heart, color: 'bg-muted/30 text-pink-600' },
+  travel: { label: 'Viagem', icon: Plane, color: 'bg-muted/30 text-orange-600' },
+  investment: { label: 'Investimento', icon: TrendingUp, color: 'bg-muted/30 text-indigo-600' },
+  retirement: { label: 'Aposentadoria', icon: Building, color: 'bg-muted/30 text-muted-foreground' },
+  debt_payoff: { label: 'Quitação de Dívidas', icon: CreditCard, color: 'bg-muted/30 text-yellow-600' },
+  gift: { label: 'Presente/Evento', icon: Gift, color: 'bg-muted/30 text-teal-600' },
+  other: { label: 'Outros', icon: Target, color: 'bg-muted/30 text-muted-foreground' }
 };
 
 const GOAL_STATUS = {
@@ -87,6 +89,11 @@ export default function PersonalGoalsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<PersonalGoal | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [goalToDelete, setGoalToDelete] = useState<PersonalGoal | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -107,82 +114,33 @@ export default function PersonalGoalsPage() {
       const userResult = await userResponse.json();
       const supabaseUserId = userResult.user.id;
       
-      // Buscar metas pessoais (usando dados de teste por enquanto)
-      // TODO: Implementar API real para metas pessoais
-      const mockGoals: PersonalGoal[] = [
-        {
-          id: '1',
-          title: 'Reserva de Emergência',
-          description: 'Reserva para 6 meses de gastos essenciais',
-          target_amount: 18000.00,
-          current_amount: 12500.00,
-          category: 'emergency_fund',
-          priority: 'high',
-          target_date: '2025-06-30',
-          status: 'active',
-          monthly_contribution: 1000.00,
-          notes: 'Prioridade máxima para segurança financeira',
-          created_at: '2024-01-15T10:00:00Z'
-        },
-        {
-          id: '2',
-          title: 'Entrada do Apartamento',
-          description: 'Juntar entrada para financiamento imobiliário',
-          target_amount: 50000.00,
-          current_amount: 28000.00,
-          category: 'house',
-          priority: 'high',
-          target_date: '2025-12-31',
-          status: 'active',
-          monthly_contribution: 2200.00,
-          notes: 'Apartamento de 2 quartos na zona sul',
-          created_at: '2024-03-01T10:00:00Z'
-        },
-        {
-          id: '3',
-          title: 'Carro Novo',
-          description: 'Troca do carro atual por um modelo mais novo',
-          target_amount: 35000.00,
-          current_amount: 15000.00,
-          category: 'car',
-          priority: 'medium',
-          target_date: '2025-08-15',
-          status: 'active',
-          monthly_contribution: 800.00,
-          notes: 'SUV compacto, preferencialmente híbrido',
-          created_at: '2024-05-10T10:00:00Z'
-        },
-        {
-          id: '4',
-          title: 'Curso de MBA',
-          description: 'MBA em Gestão Financeira',
-          target_amount: 25000.00,
-          current_amount: 8500.00,
-          category: 'education',
-          priority: 'medium',
-          target_date: '2026-03-01',
-          status: 'active',
-          monthly_contribution: 600.00,
-          notes: 'Universidade renomada, modalidade executiva',
-          created_at: '2024-07-20T10:00:00Z'
-        },
-        {
-          id: '5',
-          title: 'Viagem para Europa',
-          description: 'Lua de mel na Europa - 15 dias',
-          target_amount: 15000.00,
-          current_amount: 15000.00,
-          category: 'travel',
-          priority: 'low',
-          target_date: '2024-12-20',
-          status: 'completed',
-          monthly_contribution: 0,
-          notes: 'Meta concluída! Viagem realizada em dezembro/2024',
-          created_at: '2024-01-01T10:00:00Z'
-        }
-      ];
+      // Buscar metas pessoais da API real
+      const goalsResponse = await fetch(`/api/personal/goals?user_id=${supabaseUserId}`);
+      if (!goalsResponse.ok) {
+        throw new Error('Erro ao buscar metas pessoais');
+      }
       
-      setGoals(mockGoals);
+      const goalsResult = await goalsResponse.json();
+      const apiGoals = goalsResult.goals || [];
+      
+      // Converter formato da API para o formato esperado pelo componente
+      const formattedGoals: PersonalGoal[] = apiGoals.map((goal: any) => ({
+        id: goal.id,
+        title: goal.name,
+        description: goal.description,
+        target_amount: goal.target_amount,
+        current_amount: goal.current_amount || 0,
+        category: goal.type, // API usa 'type', componente espera 'category'
+        priority: goal.priority || 'medium',
+        target_date: goal.deadline,
+        status: goal.status || 'active',
+        monthly_contribution: goal.monthly_contribution,
+        notes: goal.notes,
+        created_at: goal.created_at
+      }));
+      
+      console.log('✅ Metas carregadas da API:', formattedGoals.length);
+      setGoals(formattedGoals);
       
     } catch (error) {
       console.error('Erro ao carregar metas:', error);
@@ -193,6 +151,63 @@ export default function PersonalGoalsPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleViewGoal = (goal: PersonalGoal) => {
+    setSelectedGoal(goal);
+    setIsViewModalOpen(true);
+  };
+
+  const handleEditGoal = (goal: PersonalGoal) => {
+    setSelectedGoal(goal);
+    setIsEditModalOpen(true);
+  };
+
+  const handleDeleteGoal = (goal: PersonalGoal) => {
+    setGoalToDelete(goal);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteGoal = async () => {
+    if (!goalToDelete || !user) return;
+    
+    try {
+      // Buscar usuário Supabase para obter o ID
+      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      if (!userResponse.ok) {
+        throw new Error('Usuário não encontrado');
+      }
+      
+      const userResult = await userResponse.json();
+      const supabaseUserId = userResult.user.id;
+      
+      // Deletar via API real
+      const deleteResponse = await fetch(`/api/personal/goals?id=${goalToDelete.id}&user_id=${supabaseUserId}`, {
+        method: 'DELETE'
+      });
+      
+      if (!deleteResponse.ok) {
+        const errorResult = await deleteResponse.json();
+        throw new Error(errorResult.error || 'Erro ao deletar meta');
+      }
+      
+      // Remove do estado local
+      setGoals(prev => prev.filter(g => g.id !== goalToDelete.id));
+      
+      toast({
+        title: "Meta Deletada!",
+        description: `Meta "${goalToDelete.title}" foi removida com sucesso.`,
+      });
+      
+      setIsDeleteDialogOpen(false);
+      setGoalToDelete(null);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: "Erro ao Deletar",
+        description: error instanceof Error ? error.message : "Não foi possível deletar a meta.",
+      });
     }
   };
 
@@ -421,7 +436,7 @@ export default function PersonalGoalsPage() {
                 
                 return (
                   <div key={goal.id} className={`p-4 border rounded-lg hover:bg-muted/50 transition-colors ${
-                    overdue ? 'border-red-200 bg-red-50/50' : ''
+                    overdue ? 'border-destructive bg-destructive/5' : 'bg-muted/20'
                   }`}>
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
@@ -470,13 +485,28 @@ export default function PersonalGoalsPage() {
                           </div>
                         </div>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleViewGoal(goal)}
+                            title="Visualizar detalhes"
+                          >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleEditGoal(goal)}
+                            title="Editar meta"
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleDeleteGoal(goal)}
+                            title="Excluir meta"
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -556,6 +586,124 @@ export default function PersonalGoalsPage() {
           </Card>
         </div>
       )}
+
+      {/* Modal de Visualização */}
+      <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Detalhes da Meta</DialogTitle>
+          </DialogHeader>
+          {selectedGoal && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Título</label>
+                  <p className="font-medium">{selectedGoal.title}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Categoria</label>
+                  <p>{getCategoryInfo(selectedGoal.category).label}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Valor Atual</label>
+                  <p className="font-bold text-lg text-blue-600">
+                    {selectedGoal.current_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Valor Meta</label>
+                  <p className="font-bold text-lg text-green-600">
+                    {selectedGoal.target_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Data Meta</label>
+                  <p>{new Date(selectedGoal.target_date).toLocaleDateString('pt-BR')}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Status</label>
+                  <Badge variant={getStatusInfo(selectedGoal.status).variant}>
+                    {getStatusInfo(selectedGoal.status).label}
+                  </Badge>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Prioridade</label>
+                  <Badge variant={getPriorityInfo(selectedGoal.priority).variant}>
+                    {getPriorityInfo(selectedGoal.priority).label}
+                  </Badge>
+                </div>
+                {selectedGoal.monthly_contribution && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Contribuição Mensal</label>
+                    <p>{selectedGoal.monthly_contribution.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                  </div>
+                )}
+              </div>
+              {selectedGoal.description && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Descrição</label>
+                  <p className="mt-1 p-3 bg-muted rounded-lg">{selectedGoal.description}</p>
+                </div>
+              )}
+              {selectedGoal.notes && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Observações</label>
+                  <p className="mt-1 p-3 bg-muted rounded-lg">{selectedGoal.notes}</p>
+                </div>
+              )}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Progresso</label>
+                <div className="mt-2">
+                  <div className="flex justify-between text-sm mb-2">
+                    <span>Progresso atual</span>
+                    <span className="font-medium">{calculateProgress(selectedGoal).toFixed(1)}%</span>
+                  </div>
+                  <Progress value={calculateProgress(selectedGoal)} className="h-3" />
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Edição */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Meta</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-muted-foreground">
+              Funcionalidade de edição será implementada em breve.
+            </p>
+            <Button onClick={() => setIsEditModalOpen(false)} className="w-full">
+              Fechar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Confirmação de Exclusão */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a meta "{goalToDelete?.title}"?
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteGoal}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

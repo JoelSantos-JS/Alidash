@@ -75,18 +75,80 @@ export default function PersonalDashboard() {
       const userResult = await userResponse.json();
       const supabaseUserId = userResult.user.id;
       
-      // Carregar dados pessoais em paralelo
-      const [summaryResult, goalsResult] = await Promise.allSettled([
-        fetch(`/api/personal/summary?user_id=${supabaseUserId}&month=${currentMonth}&year=${currentYear}`)
-          .then(res => res.ok ? res.json() : { summary: null }),
+      // Carregar dados pessoais - buscar últimos 6 meses para incluir todos os dados
+      const monthsToCheck = 6;
+      const summaryPromises = [];
+      
+      for (let i = 0; i < monthsToCheck; i++) {
+        const date = new Date();
+        date.setMonth(date.getMonth() - i);
+        const month = date.getMonth() + 1;
+        const year = date.getFullYear();
+        
+        const apiUrl = `/api/personal/summary?user_id=${supabaseUserId}&month=${month}&year=${year}`;
+        console.log(`🔍 Buscando dados para ${month}/${year}:`, apiUrl);
+        
+        summaryPromises.push(
+          fetch(apiUrl)
+            .then(res => {
+              console.log(`📊 Resposta ${month}/${year}:`, res.status, res.ok);
+              return res.ok ? res.json() : { summary: null };
+            })
+            .then(data => {
+              console.log(`📈 Dados ${month}/${year}:`, data);
+              return data;
+            })
+            .catch(error => {
+              console.error(`❌ Erro ${month}/${year}:`, error);
+              return { summary: null };
+            })
+        );
+      }
+      
+      const [goalsResult, ...summaryResults] = await Promise.allSettled([
         fetch(`/api/personal/goals?user_id=${supabaseUserId}`)
-          .then(res => res.ok ? res.json() : { goals: [] })
+          .then(res => res.ok ? res.json() : { goals: [] }),
+        ...summaryPromises
       ]);
       
-      // Processar resultados
-      if (summaryResult.status === 'fulfilled' && summaryResult.value.summary) {
-        setSummary(summaryResult.value.summary);
-      }
+      // Processar dados reais das APIs
+      let combinedSummary = {
+        totalIncome: 0,
+        totalExpenses: 0,
+        balance: 0,
+        savingsRate: 0,
+        essentialExpenses: 0,
+        nonEssentialExpenses: 0
+      };
+      
+      // Combinar dados de todos os meses
+      summaryResults.forEach((result, index) => {
+        if (result.status === 'fulfilled' && result.value.summary) {
+          const monthSummary = result.value.summary;
+          combinedSummary.totalIncome += monthSummary.totalIncome || 0;
+          combinedSummary.totalExpenses += monthSummary.totalExpenses || 0;
+          combinedSummary.essentialExpenses += monthSummary.essentialExpenses || 0;
+          combinedSummary.nonEssentialExpenses += monthSummary.nonEssentialExpenses || 0;
+        }
+      });
+      
+      // Calcular saldo e taxa de poupança
+      combinedSummary.balance = combinedSummary.totalIncome - combinedSummary.totalExpenses;
+      combinedSummary.savingsRate = combinedSummary.totalIncome > 0 
+        ? (combinedSummary.balance / combinedSummary.totalIncome) * 100 
+        : 0;
+      
+      console.log('💰 Dados reais processados:', combinedSummary);
+      setSummary(combinedSummary);
+      
+      // Log dos resultados das APIs para debug
+      summaryResults.forEach((result, index) => {
+        if (result.status === 'fulfilled' && result.value.summary) {
+          console.log(`📊 API resultado ${index}:`, result.value.summary);
+        } else {
+          console.log(`❌ API falhou ${index}:`, result.reason || 'Erro desconhecido');
+        }
+      });
       
       if (goalsResult.status === 'fulfilled' && goalsResult.value.goals) {
         setGoals(goalsResult.value.goals);

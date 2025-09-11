@@ -60,6 +60,53 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// DELETE - Deletar meta pessoal
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    const userId = searchParams.get('user_id');
+
+    console.log('🗑️ Deletando meta pessoal:', { id, userId });
+
+    if (!id || !userId) {
+      return NextResponse.json(
+        { success: false, error: 'id e user_id são obrigatórios' },
+        { status: 400 }
+      );
+    }
+
+    // Deletar do banco de dados
+    const { error } = await supabase
+      .from('personal_goals')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('❌ Erro ao deletar meta do banco:', error);
+      return NextResponse.json(
+        { success: false, error: `Erro ao deletar meta: ${error.message}` },
+        { status: 500 }
+      );
+    }
+
+    console.log('✅ Meta pessoal deletada do banco:', id);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Meta pessoal deletada com sucesso'
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao deletar meta pessoal:', error);
+    return NextResponse.json(
+      { success: false, error: 'Erro interno do servidor' },
+      { status: 500 }
+    );
+  }
+}
+
 // POST - Criar nova meta pessoal
 export async function POST(request: NextRequest) {
   try {

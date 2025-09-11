@@ -48,6 +48,53 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// DELETE - Deletar receita pessoal
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    const userId = searchParams.get('user_id');
+
+    console.log('🗑️ Deletando receita pessoal:', { id, userId });
+
+    if (!id || !userId) {
+      return NextResponse.json(
+        { success: false, error: 'id e user_id são obrigatórios' },
+        { status: 400 }
+      );
+    }
+
+    // Deletar do banco de dados
+    const { error } = await supabase
+      .from('personal_incomes')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('❌ Erro ao deletar receita do banco:', error);
+      return NextResponse.json(
+        { success: false, error: `Erro ao deletar receita: ${error.message}` },
+        { status: 500 }
+      );
+    }
+
+    console.log('✅ Receita pessoal deletada do banco:', id);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Receita pessoal deletada com sucesso'
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao deletar receita pessoal:', error);
+    return NextResponse.json(
+      { success: false, error: 'Erro interno do servidor' },
+      { status: 500 }
+    );
+  }
+}
+
 // POST - Criar nova receita pessoal
 export async function POST(request: NextRequest) {
   try {

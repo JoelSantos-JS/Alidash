@@ -34,6 +34,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import Link from "next/link";
+import { PersonalEventForm } from "@/components/forms/personal-event-form";
 
 interface PersonalEvent {
   id: string;
@@ -84,6 +85,7 @@ export default function PersonalAgendaPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'list'>('list');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<PersonalEvent | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -209,6 +211,46 @@ export default function PersonalAgendaPage() {
     }
   };
 
+  const handleCreateEvent = () => {
+    setSelectedEvent(null);
+    setIsFormOpen(true);
+  };
+
+  const handleEditEvent = (event: PersonalEvent) => {
+    setSelectedEvent(event);
+    setIsFormOpen(true);
+  };
+
+  const handleDeleteEvent = (eventId: string) => {
+    if (confirm('Tem certeza que deseja excluir este evento?')) {
+      setEvents(prev => prev.filter(event => event.id !== eventId));
+      toast({
+        title: "Evento excluído",
+        description: "O evento foi removido da sua agenda.",
+      });
+    }
+  };
+
+  const handleSubmitEvent = (eventData: PersonalEvent) => {
+    if (selectedEvent) {
+      // Editar evento existente
+      setEvents(prev => prev.map(event => 
+        event.id === selectedEvent.id ? { ...eventData, id: selectedEvent.id } : event
+      ));
+    } else {
+      // Criar novo evento
+      setEvents(prev => [...prev, { ...eventData, created_at: new Date().toISOString() }]);
+    }
+    
+    setIsFormOpen(false);
+    setSelectedEvent(null);
+  };
+
+  const handleCancelForm = () => {
+    setIsFormOpen(false);
+    setSelectedEvent(null);
+  };
+
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (event.description && event.description.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -276,160 +318,175 @@ export default function PersonalAgendaPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar ao Dashboard
+      <header className="bg-card border-b px-3 md:px-6 py-3 md:py-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2 md:gap-4">
+            <Link href="/">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Voltar ao Dashboard</span>
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-lg md:text-2xl font-bold text-foreground flex items-center gap-2">
+                <Calendar className="h-5 w-5 md:h-6 md:w-6 text-blue-500" />
+                Agenda Pessoal
+              </h1>
+              <p className="text-xs md:text-sm text-muted-foreground">
+                <span className="hidden sm:inline">Organize seus compromissos e lembretes financeiros</span>
+                <span className="sm:hidden">Seus compromissos</span>
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex border rounded-md">
+              <Button 
+                variant={viewMode === 'list' ? 'default' : 'ghost'} 
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="flex-1 sm:flex-none"
+              >
+                Lista
+              </Button>
+              <Button 
+                variant={viewMode === 'week' ? 'default' : 'ghost'} 
+                size="sm"
+                onClick={() => setViewMode('week')}
+                className="flex-1 sm:flex-none"
+              >
+                <span className="hidden xs:inline">Semana</span>
+                <span className="xs:hidden">Sem</span>
+              </Button>
+              <Button 
+                variant={viewMode === 'month' ? 'default' : 'ghost'} 
+                size="sm"
+                onClick={() => setViewMode('month')}
+                className="flex-1 sm:flex-none"
+              >
+                Mês
+              </Button>
+            </div>
+            <Button onClick={handleCreateEvent} className="w-full sm:w-auto">
+              <Plus className="h-4 w-4 mr-2" />
+              <span className="hidden xs:inline">Novo Evento</span>
+              <span className="xs:hidden">Novo</span>
             </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Agenda Pessoal</h1>
-            <p className="text-muted-foreground">Organize seus compromissos e lembretes financeiros</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <div className="flex border rounded-md">
-            <Button 
-              variant={viewMode === 'list' ? 'default' : 'ghost'} 
-              size="sm"
-              onClick={() => setViewMode('list')}
-            >
-              Lista
-            </Button>
-            <Button 
-              variant={viewMode === 'week' ? 'default' : 'ghost'} 
-              size="sm"
-              onClick={() => setViewMode('week')}
-            >
-              Semana
-            </Button>
-            <Button 
-              variant={viewMode === 'month' ? 'default' : 'ghost'} 
-              size="sm"
-              onClick={() => setViewMode('month')}
-            >
-              Mês
-            </Button>
-          </div>
-          <Button onClick={() => setIsFormOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Evento
-          </Button>
+      </header>
+
+      <div className="container mx-auto px-3 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6">
+
+        {/* Cards de Resumo */}
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Próximos Eventos</CardTitle>
+              <Calendar className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">
+                {upcomingEvents.length}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Eventos pendentes
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Eventos Atrasados</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600">
+                {overdueEvents.length}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {overdueEvents.length === 0 ? 'Nenhum atraso' : 'Requer atenção'}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Valor Total Pendente</CardTitle>
+              <DollarSign className="h-4 w-4 text-orange-600" />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-orange-600 break-words">
+                {totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Compromissos financeiros
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Eventos Concluídos</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">
+                {completedEvents.length}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Este período
+              </p>
+            </CardContent>
+          </Card>
         </div>
-      </div>
 
-      {/* Cards de Resumo */}
-      <div className="grid gap-4 md:grid-cols-4">
+        {/* Filtros */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Próximos Eventos</CardTitle>
-            <Calendar className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {upcomingEvents.length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Eventos pendentes
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Eventos Atrasados</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {overdueEvents.length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {overdueEvents.length === 0 ? 'Nenhum atraso' : 'Requer atenção'}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Valor Total Pendente</CardTitle>
-            <DollarSign className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
-              {totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Compromissos financeiros
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Eventos Concluídos</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {completedEvents.length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Este período
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filtros */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Buscar eventos..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    placeholder="Buscar eventos..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 text-sm"
+                  />
               </div>
             </div>
-            <div className="sm:w-48">
-              <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-              >
-                <option value="">Todos os tipos</option>
-                {Object.entries(EVENT_TYPES).map(([key, type]) => (
-                  <option key={key} value={key}>{type.label}</option>
-                ))}
-              </select>
+              <div className="w-full sm:w-48">
+                <select
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="">Todos os tipos</option>
+                  {Object.entries(EVENT_TYPES).map(([key, type]) => (
+                    <option key={key} value={key}>{type.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="w-full sm:w-40">
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="">Todos os status</option>
+                  {Object.entries(EVENT_STATUS).map(([key, status]) => (
+                    <option key={key} value={key}>{status.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div className="sm:w-40">
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-              >
-                <option value="">Todos os status</option>
-                {Object.entries(EVENT_STATUS).map(([key, status]) => (
-                  <option key={key} value={key}>{status.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Lista de Eventos */}
-      <div className="grid gap-6 md:grid-cols-1">
+        {/* Lista de Eventos */}
+        <div className="space-y-4 sm:space-y-6">
         {/* Eventos de Hoje */}
         {filteredEvents.filter(event => isToday(event.date)).length > 0 && (
           <Card>
@@ -485,11 +542,14 @@ export default function PersonalAgendaPage() {
                           </div>
                         </div>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" title="Visualizar evento">
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" onClick={() => handleEditEvent(event)} title="Editar evento">
                             <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteEvent(event.id)} title="Excluir evento">
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
@@ -517,7 +577,7 @@ export default function PersonalAgendaPage() {
                     ? 'Nenhum evento encontrado com os filtros aplicados.' 
                     : 'Nenhum evento próximo agendado.'}
                 </p>
-                <Button onClick={() => setIsFormOpen(true)}>
+                <Button onClick={handleCreateEvent}>
                   <Plus className="h-4 w-4 mr-2" />
                   Agendar Evento
                 </Button>
@@ -588,15 +648,15 @@ export default function PersonalAgendaPage() {
                           </div>
                         </div>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <Button variant="ghost" size="sm" title="Visualizar evento">
+                             <Eye className="h-4 w-4" />
+                           </Button>
+                           <Button variant="ghost" size="sm" onClick={() => handleEditEvent(event)} title="Editar evento">
+                             <Edit className="h-4 w-4" />
+                           </Button>
+                           <Button variant="ghost" size="sm" onClick={() => handleDeleteEvent(event.id)} title="Excluir evento">
+                             <Trash2 className="h-4 w-4" />
+                           </Button>
                         </div>
                       </div>
                     );
@@ -665,24 +725,14 @@ export default function PersonalAgendaPage() {
         )}
       </div>
 
-      {/* TODO: Adicionar formulário de evento pessoal */}
-      {isFormOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Novo Evento Pessoal</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">
-                Formulário de evento pessoal será implementado em breve.
-              </p>
-              <Button onClick={() => setIsFormOpen(false)} className="w-full">
-                Fechar
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* Formulário de Evento Pessoal */}
+       <PersonalEventForm
+         event={selectedEvent}
+         onSubmit={handleSubmitEvent}
+         onCancel={handleCancelForm}
+         isOpen={isFormOpen}
+       />
+      </div>
     </div>
   );
 }

@@ -388,154 +388,166 @@ export default function PersonalReportsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar ao Dashboard
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Relatórios Pessoais</h1>
-            <p className="text-muted-foreground">Análises e insights das suas finanças pessoais</p>
+      <header className="bg-card border-b px-3 md:px-6 py-3 md:py-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2 md:gap-4">
+            <Link href="/">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Voltar ao Dashboard</span>
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-lg md:text-2xl font-bold text-foreground flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 md:h-6 md:w-6 text-purple-500" />
+                Relatórios Pessoais
+              </h1>
+              <p className="text-xs md:text-sm text-muted-foreground">
+                <span className="hidden sm:inline">Análises e insights das suas finanças pessoais</span>
+                <span className="sm:hidden">Análises financeiras</span>
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <select
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value)}
+              className="px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+              <option value="3months">Últimos 3 meses</option>
+              <option value="6months">Últimos 6 meses</option>
+              <option value="12months">Último ano</option>
+            </select>
+            <div className="flex gap-2">
+              <Button onClick={exportReport} size="sm" className="flex-1 sm:flex-none">
+                <Download className="h-4 w-4" />
+                <span className="hidden xs:inline ml-2">Exportar</span>
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => document.getElementById('import-file')?.click()} className="flex-1 sm:flex-none">
+                <Upload className="h-4 w-4" />
+                <span className="hidden xs:inline ml-2">Importar</span>
+              </Button>
+              <Button variant="destructive" size="sm" onClick={clearAllData} className="flex-1 sm:flex-none">
+                <Trash2 className="h-4 w-4" />
+                <span className="hidden xs:inline ml-2">Limpar</span>
+              </Button>
+            </div>
+            <input
+              id="import-file"
+              type="file"
+              accept=".json"
+              onChange={importData}
+              className="hidden"
+            />
           </div>
         </div>
-        <div className="flex gap-2">
-          <select
-            value={selectedPeriod}
-            onChange={(e) => setSelectedPeriod(e.target.value)}
-            className="px-3 py-2 border border-input bg-background rounded-md text-sm"
-          >
-            <option value="3months">Últimos 3 meses</option>
-            <option value="6months">Últimos 6 meses</option>
-            <option value="12months">Último ano</option>
-          </select>
-          <Button onClick={exportReport}>
-            <Download className="h-4 w-4 mr-2" />
-            Exportar
-          </Button>
-          <Button variant="outline" onClick={() => document.getElementById('import-file')?.click()}>
-            <Upload className="h-4 w-4 mr-2" />
-            Importar
-          </Button>
-          <Button variant="destructive" onClick={clearAllData}>
-            <Trash2 className="h-4 w-4 mr-2" />
-            Limpar
-          </Button>
-          <input
-            id="import-file"
-            type="file"
-            accept=".json"
-            onChange={importData}
-            className="hidden"
-          />
-        </div>
-      </div>
+      </header>
 
-      {/* Métricas Principais */}
-      {metrics && (
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {metrics.totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-              </div>
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
+      <div className="container mx-auto px-3 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6">
+
+        {/* Métricas Principais */}
+        {metrics && (
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium">Receita Total</CardTitle>
+                <TrendingUp className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent className="p-3 sm:p-6">
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 break-words">
+                  {metrics.totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                 <TrendingUp className="h-3 w-3 text-green-600" />
                 +{metrics.trends.incomeGrowth}% vs período anterior
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Gastos Total</CardTitle>
-              <TrendingDown className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {metrics.totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-              </div>
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <TrendingDown className="h-3 w-3 text-green-600" />
-                {metrics.trends.expenseGrowth}% vs período anterior
-              </p>
-            </CardContent>
-          </Card>
+            <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium">Gastos Total</CardTitle>
+                <TrendingDown className="h-4 w-4 text-red-600" />
+              </CardHeader>
+              <CardContent className="p-3 sm:p-6">
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 break-words">
+                  {metrics.totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                  <TrendingDown className="h-3 w-3 text-green-600" />
+                  {metrics.trends.expenseGrowth}% vs período anterior
+                </p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Economia Total</CardTitle>
-              <PiggyBank className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">
-                {metrics.totalBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-              </div>
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <TrendingUp className="h-3 w-3 text-green-600" />
-                +{metrics.trends.balanceGrowth}% vs período anterior
-              </p>
-            </CardContent>
-          </Card>
+            <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium">Economia Total</CardTitle>
+                <PiggyBank className="h-4 w-4 text-purple-600" />
+              </CardHeader>
+              <CardContent className="p-3 sm:p-6">
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-600 break-words">
+                  {metrics.totalBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                  <TrendingUp className="h-3 w-3 text-green-600" />
+                  +{metrics.trends.balanceGrowth}% vs período anterior
+                </p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Taxa de Poupança</CardTitle>
-              <Target className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                {metrics.averageSavingsRate.toFixed(1)}%
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Média do período
-              </p>
-            </CardContent>
-          </Card>
+            <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium">Taxa de Poupança</CardTitle>
+                <Target className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent className="p-3 sm:p-6">
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">
+                  {metrics.averageSavingsRate.toFixed(1)}%
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Média do período
+                </p>
+              </CardContent>
+            </Card>
         </div>
       )}
 
-      {/* Gráficos e Análises */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Evolução Mensal */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Evolução Mensal
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {monthlyData.map((month, index) => (
-                <div key={month.month} className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">{month.month}</span>
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="text-green-600">
-                        +{month.income.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </span>
-                      <span className="text-red-600">
-                        -{month.expenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </span>
-                      <span className={`font-medium ${month.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {month.balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </span>
+        {/* Gráficos e Análises */}
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+          {/* Evolução Mensal */}
+          <Card>
+            <CardHeader className="p-3 sm:p-6">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
+                Evolução Mensal
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className="space-y-3 sm:space-y-4">
+                {monthlyData.map((month, index) => (
+                  <div key={month.month} className="space-y-2">
+                    <div className="flex flex-col xs:flex-row xs:justify-between xs:items-center gap-2">
+                      <span className="text-sm font-medium">{month.month}</span>
+                      <div className="flex flex-col xs:flex-row xs:items-center gap-2 xs:gap-4 text-xs sm:text-sm">
+                        <span className="text-green-600">
+                          +{month.income.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                        <span className="text-red-600">
+                          -{month.expenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                        <span className={`font-medium ${month.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {month.balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-1 h-2">
-                    <div 
-                      className="bg-green-500 rounded-l" 
-                      style={{ width: `${(month.income / Math.max(...monthlyData.map(m => m.income))) * 100}%` }}
-                    />
+                    <div className="flex gap-1 h-2">
+                      <div 
+                        className="bg-green-500 rounded-l" 
+                        style={{ width: `${(month.income / Math.max(...monthlyData.map(m => m.income))) * 100}%` }}
+                      />
                     <div 
                       className="bg-red-500 rounded-r" 
                       style={{ width: `${(month.expenses / Math.max(...monthlyData.map(m => m.income))) * 100}%` }}
@@ -745,6 +757,7 @@ export default function PersonalReportsPage() {
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   );
 }

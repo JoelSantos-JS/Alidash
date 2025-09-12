@@ -277,248 +277,264 @@ export default function PersonalTransactionsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar ao Dashboard
+      <header className="bg-card border-b px-3 md:px-6 py-3 md:py-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2 md:gap-4">
+            <Link href="/">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Voltar ao Dashboard</span>
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-lg md:text-2xl font-bold text-foreground flex items-center gap-2">
+                <CreditCard className="h-5 w-5 md:h-6 md:w-6 text-blue-500" />
+                Transações Pessoais
+              </h1>
+              <p className="text-xs md:text-sm text-muted-foreground">
+                <span className="hidden sm:inline">Histórico completo de receitas e despesas pessoais</span>
+                <span className="sm:hidden">Histórico de receitas e despesas</span>
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="hidden sm:flex">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar
             </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Transações Pessoais</h1>
-            <p className="text-muted-foreground">Histórico completo de receitas e despesas pessoais</p>
+            <Button onClick={() => setIsFormOpen(true)} className="flex-1 sm:flex-none">
+              <Plus className="h-4 w-4 mr-2" />
+              <span className="hidden xs:inline">Nova Transação</span>
+              <span className="xs:hidden">Nova</span>
+            </Button>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Exportar
-          </Button>
-          <Button onClick={() => setIsFormOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Transação
-          </Button>
+      </header>
+
+      <div className="container mx-auto px-3 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6">
+
+        {/* Cards de Resumo */}
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Total de Receitas</CardTitle>
+              <TrendingUp className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 break-words">
+                {totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {filteredTransactions.filter(t => t.type === 'income').length} receita(s)
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Total de Despesas</CardTitle>
+              <TrendingDown className="h-4 w-4 text-red-600" />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 break-words">
+                {totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {filteredTransactions.filter(t => t.type === 'expense').length} despesa(s)
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Saldo Líquido</CardTitle>
+              <DollarSign className={`h-4 w-4 ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className={`text-lg sm:text-xl lg:text-2xl font-bold break-words ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {balance >= 0 ? 'Saldo positivo' : 'Saldo negativo'}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Total de Transações</CardTitle>
+              <CreditCard className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">
+                {transactionCount}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Movimentações registradas
+              </p>
+            </CardContent>
+          </Card>
         </div>
-      </div>
 
-      {/* Cards de Resumo */}
-      <div className="grid gap-4 md:grid-cols-4">
+        {/* Filtros */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Receitas</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {filteredTransactions.filter(t => t.type === 'income').length} receita(s)
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Despesas</CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {filteredTransactions.filter(t => t.type === 'expense').length} despesa(s)
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Saldo Líquido</CardTitle>
-            <DollarSign className={`h-4 w-4 ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {balance >= 0 ? 'Saldo positivo' : 'Saldo negativo'}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Transações</CardTitle>
-            <CreditCard className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {transactionCount}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Movimentações registradas
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filtros */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Buscar por descrição ou fonte..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    placeholder="Buscar por descrição ou fonte..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="w-full sm:w-40">
+                <select
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="">Todos os tipos</option>
+                  <option value="income">Receitas</option>
+                  <option value="expense">Despesas</option>
+                </select>
+              </div>
+              <div className="w-full sm:w-40">
+                <select
+                  value={selectedPeriod}
+                  onChange={(e) => setSelectedPeriod(e.target.value)}
+                  className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="all">Todos os períodos</option>
+                  <option value="today">Hoje</option>
+                  <option value="week">Última semana</option>
+                  <option value="month">Este mês</option>
+                  <option value="year">Este ano</option>
+                </select>
               </div>
             </div>
-            <div className="sm:w-40">
-              <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-              >
-                <option value="">Todos os tipos</option>
-                <option value="income">Receitas</option>
-                <option value="expense">Despesas</option>
-              </select>
-            </div>
-            <div className="sm:w-40">
-              <select
-                value={selectedPeriod}
-                onChange={(e) => setSelectedPeriod(e.target.value)}
-                className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-              >
-                <option value="all">Todos os períodos</option>
-                <option value="today">Hoje</option>
-                <option value="week">Última semana</option>
-                <option value="month">Este mês</option>
-                <option value="year">Este ano</option>
-              </select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Lista de Transações */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Histórico de Transações</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filteredTransactions.length === 0 ? (
-            <div className="text-center py-8">
-              <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-4">
-                {searchTerm || selectedType || selectedPeriod !== 'all' 
-                  ? 'Nenhuma transação encontrada com os filtros aplicados.' 
-                  : 'Nenhuma transação pessoal registrada ainda.'}
-              </p>
-              <Button onClick={() => setIsFormOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Primeira Transação
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredTransactions.map((transaction) => {
-                const typeInfo = TRANSACTION_TYPES[transaction.type];
-                const IconComponent = typeInfo.icon;
-                
-                return (
-                  <div key={transaction.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className={`p-2 rounded-lg ${typeInfo.bgColor}`}>
-                        <IconComponent className={`h-4 w-4 ${typeInfo.color}`} />
+        {/* Lista de Transações */}
+        <Card>
+          <CardHeader className="p-3 sm:p-6">
+            <CardTitle className="text-lg sm:text-xl">Histórico de Transações</CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 sm:p-6">
+            {filteredTransactions.length === 0 ? (
+              <div className="text-center py-6 sm:py-8">
+                <CreditCard className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-muted-foreground mb-3 sm:mb-4" />
+                <p className="text-sm sm:text-base text-muted-foreground mb-3 sm:mb-4 px-4">
+                  {searchTerm || selectedType || selectedPeriod !== 'all' 
+                    ? 'Nenhuma transação encontrada com os filtros aplicados.' 
+                    : 'Nenhuma transação pessoal registrada ainda.'}
+                </p>
+                <Button onClick={() => setIsFormOpen(true)} className="w-full sm:w-auto">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar Primeira Transação
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3 sm:space-y-4">
+                {filteredTransactions.map((transaction) => {
+                  const typeInfo = TRANSACTION_TYPES[transaction.type];
+                  const IconComponent = typeInfo.icon;
+                  
+                  return (
+                    <div key={transaction.id} className="flex flex-col sm:flex-row sm:items-center p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition-colors gap-3 sm:gap-4">
+                      <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1">
+                        <div className={`p-2 rounded-lg ${typeInfo.bgColor} flex-shrink-0`}>
+                          <IconComponent className={`h-4 w-4 ${typeInfo.color}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2 mb-2">
+                            <h3 className="font-medium text-sm sm:text-base truncate">{transaction.description}</h3>
+                            <div className="flex flex-wrap gap-1">
+                              <Badge variant={transaction.type === 'income' ? 'default' : 'destructive'} className="text-xs">
+                                {typeInfo.label}
+                              </Badge>
+                              {transaction.is_recurring && (
+                                <Badge variant="outline" className="text-xs">
+                                  Recorrente
+                                </Badge>
+                              )}
+                              {transaction.is_essential !== undefined && (
+                                <Badge variant={transaction.is_essential ? 'destructive' : 'secondary'} className="text-xs">
+                                  {transaction.is_essential ? 'Essencial' : 'Opcional'}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex flex-col xs:flex-row xs:items-center gap-2 xs:gap-4 text-xs sm:text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {new Date(transaction.date).toLocaleDateString('pt-BR')}
+                            </span>
+                            <Badge variant="secondary" className="text-xs w-fit">
+                              {transaction.category}
+                            </Badge>
+                            {transaction.source && (
+                              <span className="truncate">Fonte: {transaction.source}</span>
+                            )}
+                            {transaction.payment_method && (
+                              <span className="truncate">Pagamento: {transaction.payment_method}</span>
+                            )}
+                          </div>
+                          {transaction.notes && (
+                            <p className="text-xs sm:text-sm text-muted-foreground mt-2 line-clamp-2">{transaction.notes}</p>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium">{transaction.description}</h3>
-                          <Badge variant={transaction.type === 'income' ? 'default' : 'destructive'} className="text-xs">
-                            {typeInfo.label}
-                          </Badge>
-                          {transaction.is_recurring && (
-                            <Badge variant="outline" className="text-xs">
-                              Recorrente
-                            </Badge>
-                          )}
-                          {transaction.is_essential !== undefined && (
-                            <Badge variant={transaction.is_essential ? 'destructive' : 'secondary'} className="text-xs">
-                              {transaction.is_essential ? 'Essencial' : 'Opcional'}
-                            </Badge>
-                          )}
+                      <div className="flex items-center justify-between sm:justify-end gap-2">
+                        <div className="text-right">
+                          <div className={`text-base sm:text-lg font-bold break-words ${typeInfo.color}`}>
+                            {transaction.type === 'income' ? '+' : '-'}
+                            {transaction.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {new Date(transaction.date).toLocaleDateString('pt-BR')}
-                          </span>
-                          <Badge variant="secondary" className="text-xs">
-                            {transaction.category}
-                          </Badge>
-                          {transaction.source && (
-                            <span>Fonte: {transaction.source}</span>
-                          )}
-                          {transaction.payment_method && (
-                            <span>Pagamento: {transaction.payment_method}</span>
-                          )}
+                        <div className="flex gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleViewTransaction(transaction)}
+                            title="Visualizar detalhes"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleEditTransaction(transaction)}
+                            title="Editar transação"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleDeleteTransaction(transaction)}
+                            title="Excluir transação"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </Button>
                         </div>
-                        {transaction.notes && (
-                          <p className="text-sm text-muted-foreground mt-1">{transaction.notes}</p>
-                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-right">
-                        <div className={`text-lg font-bold ${typeInfo.color}`}>
-                          {transaction.type === 'income' ? '+' : '-'}
-                          {transaction.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleViewTransaction(transaction)}
-                          title="Visualizar detalhes"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleEditTransaction(transaction)}
-                          title="Editar transação"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleDeleteTransaction(transaction)}
-                          title="Excluir transação"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
       {/* Formulário de transação pessoal */}
       {isFormOpen && (
@@ -631,27 +647,28 @@ export default function PersonalTransactionsPage() {
         />
       )}
 
-      {/* Dialog de Confirmação de Exclusão */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir a transação "{transactionToDelete?.description}"?
-              Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDeleteTransaction}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        {/* Dialog de Confirmação de Exclusão */}
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir a transação "{transactionToDelete?.description}"?
+                Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmDeleteTransaction}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </div>
   );
 }

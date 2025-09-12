@@ -277,266 +277,284 @@ export default function PersonalGoalsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar ao Dashboard
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Metas Pessoais</h1>
-            <p className="text-muted-foreground">Defina e acompanhe seus objetivos financeiros</p>
+      <header className="bg-card border-b px-3 md:px-6 py-3 md:py-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2 md:gap-4">
+            <Link href="/">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Voltar ao Dashboard</span>
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-lg md:text-2xl font-bold text-foreground flex items-center gap-2">
+                <Target className="h-5 w-5 md:h-6 md:w-6 text-blue-500" />
+                Metas Pessoais
+              </h1>
+              <p className="text-xs md:text-sm text-muted-foreground">
+                <span className="hidden sm:inline">Defina e acompanhe seus objetivos financeiros</span>
+                <span className="sm:hidden">Seus objetivos financeiros</span>
+              </p>
+            </div>
           </div>
+          <Button onClick={() => setIsFormOpen(true)} className="w-full md:w-auto">
+            <Plus className="h-4 w-4 mr-2" />
+            <span className="hidden xs:inline">Nova Meta</span>
+            <span className="xs:hidden">Nova</span>
+          </Button>
         </div>
-        <Button onClick={() => setIsFormOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Meta
-        </Button>
-      </div>
+      </header>
 
-      {/* Cards de Resumo */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="container mx-auto px-3 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6">
+
+        {/* Cards de Resumo */}
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Valor Total das Metas</CardTitle>
+              <Target className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 break-words">
+                {totalTargetAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {filteredGoals.length} meta(s) registrada(s)
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Valor Acumulado</CardTitle>
+              <PiggyBank className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 break-words">
+                {totalCurrentAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {((totalCurrentAmount / totalTargetAmount) * 100 || 0).toFixed(1)}% do total
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Contribuição Mensal</CardTitle>
+              <Calendar className="h-4 w-4 text-purple-600" />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-600 break-words">
+                {totalMonthlyContribution.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {activeGoals} meta(s) ativa(s)
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Metas Concluídas</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">
+                {completedGoals}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {((completedGoals / filteredGoals.length) * 100 || 0).toFixed(1)}% de sucesso
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filtros */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Valor Total das Metas</CardTitle>
-            <Target className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {totalTargetAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {filteredGoals.length} meta(s) registrada(s)
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Valor Acumulado</CardTitle>
-            <PiggyBank className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {totalCurrentAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {((totalCurrentAmount / totalTargetAmount) * 100 || 0).toFixed(1)}% do total
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Contribuição Mensal</CardTitle>
-            <Calendar className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
-              {totalMonthlyContribution.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {activeGoals} meta(s) ativa(s)
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Metas Concluídas</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {completedGoals}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {((completedGoals / filteredGoals.length) * 100 || 0).toFixed(1)}% de sucesso
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filtros */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Buscar por título ou descrição..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    placeholder="Buscar por título ou descrição..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="w-full sm:w-48">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="">Todas as categorias</option>
+                  {Object.entries(GOAL_CATEGORIES).map(([key, category]) => (
+                    <option key={key} value={key}>{category.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="w-full sm:w-40">
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="">Todos os status</option>
+                  {Object.entries(GOAL_STATUS).map(([key, status]) => (
+                    <option key={key} value={key}>{status.label}</option>
+                  ))}
+                </select>
               </div>
             </div>
-            <div className="sm:w-48">
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-              >
-                <option value="">Todas as categorias</option>
-                {Object.entries(GOAL_CATEGORIES).map(([key, category]) => (
-                  <option key={key} value={key}>{category.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="sm:w-40">
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-              >
-                <option value="">Todos os status</option>
-                {Object.entries(GOAL_STATUS).map(([key, status]) => (
-                  <option key={key} value={key}>{status.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Lista de Metas */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Suas Metas Financeiras</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filteredGoals.length === 0 ? (
-            <div className="text-center py-8">
-              <Target className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-4">
-                {searchTerm || selectedCategory || selectedStatus 
-                  ? 'Nenhuma meta encontrada com os filtros aplicados.' 
-                  : 'Nenhuma meta pessoal cadastrada ainda.'}
-              </p>
-              <Button onClick={() => setIsFormOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Criar Primeira Meta
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredGoals.map((goal) => {
-                const categoryInfo = getCategoryInfo(goal.category);
-                const statusInfo = getStatusInfo(goal.status);
-                const priorityInfo = getPriorityInfo(goal.priority);
-                const IconComponent = categoryInfo.icon;
-                const progress = calculateProgress(goal);
-                const monthsToTarget = calculateMonthsToTarget(goal);
-                const overdue = isOverdue(goal.target_date) && goal.status === 'active';
-                
-                return (
-                  <div key={goal.id} className={`p-4 border rounded-lg hover:bg-muted/50 transition-colors ${
-                    overdue ? 'border-destructive bg-destructive/5' : 'bg-muted/20'
-                  }`}>
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${categoryInfo.color}`}>
-                          <IconComponent className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-medium">{goal.title}</h3>
-                            <Badge variant={statusInfo.variant}>
-                              {statusInfo.label}
-                            </Badge>
-                            <Badge variant={priorityInfo.variant} className="text-xs">
-                              {priorityInfo.label}
-                            </Badge>
-                            {overdue && (
-                              <Badge variant="destructive" className="text-xs">
-                                Atrasada
+        {/* Lista de Metas */}
+        <Card>
+          <CardHeader className="p-3 sm:p-6">
+            <CardTitle className="text-lg sm:text-xl">Suas Metas Financeiras</CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 sm:p-6">
+            {filteredGoals.length === 0 ? (
+              <div className="text-center py-6 sm:py-8">
+                <Target className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-muted-foreground mb-3 sm:mb-4" />
+                <p className="text-sm sm:text-base text-muted-foreground mb-3 sm:mb-4 px-4">
+                  {searchTerm || selectedCategory || selectedStatus 
+                    ? 'Nenhuma meta encontrada com os filtros aplicados.' 
+                    : 'Nenhuma meta pessoal cadastrada ainda.'}
+                </p>
+                <Button onClick={() => setIsFormOpen(true)} className="w-full sm:w-auto">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Primeira Meta
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3 sm:space-y-4">
+                {filteredGoals.map((goal) => {
+                  const categoryInfo = getCategoryInfo(goal.category);
+                  const statusInfo = getStatusInfo(goal.status);
+                  const priorityInfo = getPriorityInfo(goal.priority);
+                  const IconComponent = categoryInfo.icon;
+                  const progress = calculateProgress(goal);
+                  const monthsToTarget = calculateMonthsToTarget(goal);
+                  const overdue = isOverdue(goal.target_date) && goal.status === 'active';
+                  
+                  return (
+                    <div key={goal.id} className={`p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition-colors ${
+                      overdue ? 'border-destructive bg-destructive/5' : 'bg-muted/20'
+                    }`}>
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                        <div className="flex items-start gap-3 flex-1">
+                          <div className={`p-2 rounded-lg ${categoryInfo.color} flex-shrink-0`}>
+                            <IconComponent className="h-4 w-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2 mb-1">
+                              <h3 className="font-medium text-sm sm:text-base truncate">{goal.title}</h3>
+                              <div className="flex flex-wrap gap-1">
+                                <Badge variant={statusInfo.variant} className="text-xs">
+                                  {statusInfo.label}
+                                </Badge>
+                                <Badge variant={priorityInfo.variant} className="text-xs">
+                                  {priorityInfo.label}
+                                </Badge>
+                                {overdue && (
+                                  <Badge variant="destructive" className="text-xs">
+                                    Atrasada
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            {goal.description && (
+                              <p className="text-xs sm:text-sm text-muted-foreground mb-2 line-clamp-2">{goal.description}</p>
+                            )}
+                            <div className="flex flex-col xs:flex-row xs:items-center gap-2 xs:gap-4 text-xs sm:text-sm text-muted-foreground">
+                              <Badge variant="secondary" className="text-xs w-fit">
+                                {categoryInfo.label}
                               </Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground">{goal.description}</p>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                            <Badge variant="secondary" className="text-xs">
-                              {categoryInfo.label}
-                            </Badge>
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              Meta: {new Date(goal.target_date).toLocaleDateString('pt-BR')}
-                            </span>
-                            {goal.monthly_contribution && goal.monthly_contribution > 0 && (
-                              <span>
-                                Mensal: {goal.monthly_contribution.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                Meta: {new Date(goal.target_date).toLocaleDateString('pt-BR')}
                               </span>
-                            )}
+                              {goal.monthly_contribution && goal.monthly_contribution > 0 && (
+                                <span className="truncate">
+                                  Mensal: {goal.monthly_contribution.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-blue-600">
-                            {goal.current_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        <div className="flex flex-col xs:flex-row xs:items-center gap-3">
+                          <div className="text-left xs:text-right">
+                            <div className="text-base sm:text-lg font-bold text-blue-600 break-words">
+                              {goal.current_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </div>
+                            <div className="text-xs sm:text-sm text-muted-foreground break-words">
+                              de {goal.target_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </div>
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            de {goal.target_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          <div className="flex gap-1 justify-end">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleViewGoal(goal)}
+                              title="Visualizar detalhes"
+                              className="h-8 w-8 p-0"
+                            >
+                              <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleEditGoal(goal)}
+                              title="Editar meta"
+                              className="h-8 w-8 p-0"
+                            >
+                              <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleDeleteGoal(goal)}
+                              title="Excluir meta"
+                              className="h-8 w-8 p-0"
+                            >
+                              <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleViewGoal(goal)}
-                            title="Visualizar detalhes"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleEditGoal(goal)}
-                            title="Editar meta"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleDeleteGoal(goal)}
-                            title="Excluir meta"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Barra de Progresso */}
-                    <div className="space-y-2 mb-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Progresso da meta</span>
-                        <span className="font-medium">{progress.toFixed(1)}%</span>
-                      </div>
-                      <Progress value={progress} className="h-3" />
-                    </div>
-                    
-                    {/* Informações Adicionais */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-3 border-t">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Faltam</p>
-                        <p className="font-medium text-red-600">
-                          {(goal.target_amount - goal.current_amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </p>
                       </div>
                       
-                      {monthsToTarget !== null && (
-                        <div>
-                          <p className="text-xs text-muted-foreground">Tempo Estimado</p>
-                          <p className="font-medium">
-                            {monthsToTarget === 0 ? 'Concluída!' : `${monthsToTarget} mês(es)`}
+                      {/* Barra de Progresso */}
+                      <div className="space-y-2 mb-3">
+                        <div className="flex justify-between text-xs sm:text-sm">
+                          <span className="text-muted-foreground">Progresso da meta</span>
+                          <span className="font-medium">{progress.toFixed(1)}%</span>
+                        </div>
+                        <Progress value={progress} className="h-2 sm:h-3" />
+                      </div>
+                      
+                      {/* Informações Adicionais */}
+                      <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 pt-3 border-t">
+                        <div className="bg-card p-2 sm:p-3 rounded-lg border">
+                          <p className="text-xs text-muted-foreground">Faltam</p>
+                          <p className="font-medium text-red-600 text-sm sm:text-base break-words">
+                            {(goal.target_amount - goal.current_amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </p>
+                        </div>
+                        
+                        {monthsToTarget !== null && (
+                          <div className="bg-card p-2 sm:p-3 rounded-lg border">
+                            <p className="text-xs text-muted-foreground">Tempo Estimado</p>
+                            <p className="font-medium text-sm sm:text-base">
+                              {monthsToTarget === 0 ? 'Concluída!' : `${monthsToTarget} mês(es)`}
+                            </p>
                         </div>
                       )}
                       
@@ -704,6 +722,7 @@ export default function PersonalGoalsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </div>
     </div>
   );
 }

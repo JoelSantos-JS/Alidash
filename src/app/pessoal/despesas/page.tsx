@@ -168,228 +168,242 @@ export default function PersonalExpensesPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar ao Dashboard
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Despesas Pessoais</h1>
-            <p className="text-muted-foreground">Controle seus gastos pessoais</p>
+      <header className="bg-card border-b px-3 md:px-6 py-3 md:py-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2 md:gap-4">
+            <Link href="/">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Voltar ao Dashboard</span>
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-lg md:text-2xl font-bold text-foreground flex items-center gap-2">
+                <TrendingDown className="h-5 w-5 md:h-6 md:w-6 text-red-500" />
+                Despesas Pessoais
+              </h1>
+              <p className="text-xs md:text-sm text-muted-foreground">
+                <span className="hidden sm:inline">Controle seus gastos pessoais</span>
+                <span className="sm:hidden">Seus gastos pessoais</span>
+              </p>
+            </div>
           </div>
+          <Button onClick={() => setIsFormOpen(true)} className="w-full md:w-auto">
+            <Plus className="h-4 w-4 mr-2" />
+            <span className="hidden xs:inline">Nova Despesa</span>
+            <span className="xs:hidden">Nova</span>
+          </Button>
         </div>
-        <Button onClick={() => setIsFormOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Despesa
-        </Button>
-      </div>
+      </header>
 
-      {/* Cards de Resumo */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="container mx-auto px-3 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6">
+
+        {/* Cards de Resumo */}
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Total de Gastos</CardTitle>
+              <TrendingDown className="h-4 w-4 text-red-600" />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 break-words">
+                {totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {filteredExpenses.length} despesa(s) registrada(s)
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Gastos Essenciais</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-orange-600" />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-orange-600 break-words">
+                {essentialExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {((essentialExpenses / totalExpenses) * 100 || 0).toFixed(1)}% do total
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Gastos Opcionais</CardTitle>
+              <Gamepad2 className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 break-words">
+                {optionalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {((optionalExpenses / totalExpenses) * 100 || 0).toFixed(1)}% do total
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Gastos Recorrentes</CardTitle>
+              <PiggyBank className="h-4 w-4 text-purple-600" />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-600 break-words">
+                {recurringExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Gastos mensais fixos
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filtros */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Gastos</CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {filteredExpenses.length} despesa(s) registrada(s)
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Gastos Essenciais</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
-              {essentialExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {((essentialExpenses / totalExpenses) * 100 || 0).toFixed(1)}% do total
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Gastos Opcionais</CardTitle>
-            <Gamepad2 className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {optionalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {((optionalExpenses / totalExpenses) * 100 || 0).toFixed(1)}% do total
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Gastos Recorrentes</CardTitle>
-            <PiggyBank className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
-              {recurringExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Gastos mensais fixos
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filtros */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Buscar por descrição ou estabelecimento..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    placeholder="Buscar por descrição ou estabelecimento..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="w-full sm:w-48">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="">Todas as categorias</option>
+                  {Object.entries(EXPENSE_CATEGORIES).map(([key, category]) => (
+                    <option key={key} value={key}>{category.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="w-full sm:w-40">
+                <select
+                  value={filterEssential}
+                  onChange={(e) => setFilterEssential(e.target.value)}
+                  className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="">Todos os tipos</option>
+                  <option value="essential">Essenciais</option>
+                  <option value="optional">Opcionais</option>
+                </select>
               </div>
             </div>
-            <div className="sm:w-48">
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-              >
-                <option value="">Todas as categorias</option>
-                {Object.entries(EXPENSE_CATEGORIES).map(([key, category]) => (
-                  <option key={key} value={key}>{category.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="sm:w-40">
-              <select
-                value={filterEssential}
-                onChange={(e) => setFilterEssential(e.target.value)}
-                className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-              >
-                <option value="">Todos os tipos</option>
-                <option value="essential">Essenciais</option>
-                <option value="optional">Opcionais</option>
-              </select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Lista de Despesas */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Histórico de Despesas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filteredExpenses.length === 0 ? (
-            <div className="text-center py-8">
-              <TrendingDown className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-4">
-                {searchTerm || selectedCategory || filterEssential ? 'Nenhuma despesa encontrada com os filtros aplicados.' : 'Nenhuma despesa pessoal cadastrada ainda.'}
-              </p>
-              <Button onClick={() => setIsFormOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Primeira Despesa
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredExpenses.map((expense) => {
-                const categoryInfo = getCategoryInfo(expense.category);
-                const paymentInfo = getPaymentMethodInfo(expense.payment_method);
-                const IconComponent = categoryInfo.icon;
-                const PaymentIcon = paymentInfo.icon;
-                
-                return (
-                  <div key={expense.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className={`p-2 rounded-lg ${categoryInfo.color}`}>
-                        <IconComponent className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium">{expense.description}</h3>
-                          <Badge variant={expense.is_essential ? 'destructive' : 'secondary'} className="text-xs">
-                            {expense.is_essential ? 'Essencial' : 'Opcional'}
-                          </Badge>
-                          {expense.is_recurring && (
-                            <Badge variant="outline" className="text-xs">
-                              Recorrente
+        {/* Lista de Despesas */}
+        <Card>
+          <CardHeader className="p-3 sm:p-6">
+            <CardTitle className="text-lg sm:text-xl">Histórico de Despesas</CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 sm:p-6">
+            {filteredExpenses.length === 0 ? (
+              <div className="text-center py-6 sm:py-8">
+                <TrendingDown className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-muted-foreground mb-3 sm:mb-4" />
+                <p className="text-sm sm:text-base text-muted-foreground mb-3 sm:mb-4 px-4">
+                  {searchTerm || selectedCategory || filterEssential ? 'Nenhuma despesa encontrada com os filtros aplicados.' : 'Nenhuma despesa pessoal cadastrada ainda.'}
+                </p>
+                <Button onClick={() => setIsFormOpen(true)} className="w-full sm:w-auto">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar Primeira Despesa
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3 sm:space-y-4">
+                {filteredExpenses.map((expense) => {
+                  const categoryInfo = getCategoryInfo(expense.category);
+                  const paymentInfo = getPaymentMethodInfo(expense.payment_method);
+                  const IconComponent = categoryInfo.icon;
+                  const PaymentIcon = paymentInfo.icon;
+                  
+                  return (
+                    <div key={expense.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition-colors gap-3 sm:gap-4">
+                      <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1">
+                        <div className={`p-2 rounded-lg ${categoryInfo.color} flex-shrink-0`}>
+                          <IconComponent className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2 mb-2">
+                            <h3 className="font-medium text-sm sm:text-base truncate">{expense.description}</h3>
+                            <div className="flex flex-wrap gap-1">
+                              <Badge variant={expense.is_essential ? 'destructive' : 'secondary'} className="text-xs">
+                                {expense.is_essential ? 'Essencial' : 'Opcional'}
+                              </Badge>
+                              {expense.is_recurring && (
+                                <Badge variant="outline" className="text-xs">
+                                  Recorrente
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex flex-col xs:flex-row xs:items-center gap-2 xs:gap-4 text-xs sm:text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {new Date(expense.date).toLocaleDateString('pt-BR')}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <PaymentIcon className="h-3 w-3" />
+                              {paymentInfo.label}
+                            </span>
+                            <Badge variant="secondary" className="text-xs w-fit">
+                              {categoryInfo.label}
                             </Badge>
+                            {expense.location && (
+                              <span className="truncate">{expense.location}</span>
+                            )}
+                          </div>
+                          {expense.merchant && (
+                            <p className="text-xs sm:text-sm text-muted-foreground mt-2 line-clamp-1">Estabelecimento: {expense.merchant}</p>
+                          )}
+                          {expense.notes && (
+                            <p className="text-xs sm:text-sm text-muted-foreground mt-2 line-clamp-2">{expense.notes}</p>
                           )}
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {new Date(expense.date).toLocaleDateString('pt-BR')}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <PaymentIcon className="h-3 w-3" />
-                            {paymentInfo.label}
-                          </span>
-                          <Badge variant="secondary" className="text-xs">
-                            {categoryInfo.label}
-                          </Badge>
-                          {expense.location && (
-                            <span>{expense.location}</span>
-                          )}
+                      </div>
+                      <div className="text-right sm:text-right flex-shrink-0">
+                        <div className="text-base sm:text-lg font-bold text-red-600 break-words">
+                          -{expense.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </div>
-                        {expense.merchant && (
-                          <p className="text-sm text-muted-foreground mt-1">Estabelecimento: {expense.merchant}</p>
-                        )}
-                        {expense.notes && (
-                          <p className="text-sm text-muted-foreground mt-1">{expense.notes}</p>
-                        )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-red-600">
-                        -{expense.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-      {/* Formulário de despesa pessoal */}
-      {isFormOpen && (
-        <PersonalExpenseForm 
-          isOpen={isFormOpen}
-          onClose={() => {
-            setIsFormOpen(false);
-            setEditingExpense(null);
-          }}
-          onSuccess={() => {
-            loadExpenses();
-            setIsFormOpen(false);
-            setEditingExpense(null);
-          }}
-          editingExpense={editingExpense}
-        />
-      )}
+        {/* Formulário de despesa pessoal */}
+        {isFormOpen && (
+          <PersonalExpenseForm 
+            isOpen={isFormOpen}
+            onClose={() => {
+              setIsFormOpen(false);
+              setEditingExpense(null);
+            }}
+            onSuccess={() => {
+              loadExpenses();
+              setIsFormOpen(false);
+              setEditingExpense(null);
+            }}
+            editingExpense={editingExpense}
+          />
+        )}
+      </div>
     </div>
   );
 }

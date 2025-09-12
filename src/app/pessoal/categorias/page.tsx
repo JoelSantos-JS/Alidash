@@ -448,245 +448,261 @@ export default function PersonalCategoriesPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar ao Dashboard
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Categorias Pessoais</h1>
-            <p className="text-muted-foreground">Análise de gastos e ganhos por categoria</p>
-          </div>
-        </div>
-        <Button onClick={() => setIsFormOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Categoria
-        </Button>
-      </div>
-
-      {/* Cards de Resumo */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Receitas</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Todas as categorias
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Despesas</CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Todas as categorias
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Saldo Total</CardTitle>
-            <DollarSign className={`h-4 w-4 ${totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {totalBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {totalBalance >= 0 ? 'Saldo positivo' : 'Saldo negativo'}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Categorias Ativas</CardTitle>
-            <Tag className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {activeCategories}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Com movimentação
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filtros */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Buscar categoria..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <div className="sm:w-48">
-              <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-              >
-                <option value="">Todos os tipos</option>
-                <option value="income">Receitas</option>
-                <option value="expense">Despesas</option>
-              </select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Lista de Categorias */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Análise por Categoria</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filteredCategories.length === 0 ? (
-            <div className="text-center py-8">
-              <Tag className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-4">
-                {searchTerm || selectedType 
-                  ? 'Nenhuma categoria encontrada com os filtros aplicados.' 
-                  : 'Nenhuma movimentação encontrada nas categorias.'}
+      <header className="bg-card border-b px-3 md:px-6 py-3 md:py-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2 md:gap-4">
+            <Link href="/">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Voltar ao Dashboard</span>
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-lg md:text-2xl font-bold text-foreground flex items-center gap-2">
+                <Tag className="h-5 w-5 md:h-6 md:w-6 text-blue-500" />
+                Categorias Pessoais
+              </h1>
+              <p className="text-xs md:text-sm text-muted-foreground">
+                <span className="hidden sm:inline">Análise de gastos e ganhos por categoria</span>
+                <span className="sm:hidden">Análise por categoria</span>
               </p>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredCategories.map((category) => {
-                const IconComponent = ICON_MAP[category.icon] || Tag;
-                const hasIncome = category.totalIncome > 0;
-                const hasExpense = category.totalExpenses > 0;
-                
-                return (
-                  <div key={category.category} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div 
-                          className="p-2 rounded-lg flex items-center justify-center"
-                          style={{ backgroundColor: `${category.color}20` }}
-                        >
-                          <IconComponent 
-                            className="h-4 w-4" 
-                            style={{ color: category.color }}
-                          />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-medium">{category.label}</h3>
-                            {hasIncome && (
-                              <Badge variant="secondary" className="text-xs bg-green-100 text-green-600">
-                                Receita
-                              </Badge>
-                            )}
-                            {hasExpense && (
-                              <Badge variant="secondary" className="text-xs bg-red-100 text-red-600">
-                                Despesa
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {category.transactionCount} transação(ões) • {category.percentage.toFixed(1)}% do total
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleShowChart(category)}
-                          title="Ver gráfico detalhado"
-                        >
-                          <BarChart3 className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleEditCategory(category)}
-                          title="Editar categoria"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleDeleteCategory(category)}
-                          title="Excluir categoria"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    {/* Valores por tipo */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-                      {hasIncome && (
-                        <div className="text-center p-3 bg-muted/30 border rounded-lg">
-                          <div className="text-lg font-bold text-green-600">
-                            +{category.totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </div>
-                          <p className="text-xs text-muted-foreground">Receitas</p>
-                        </div>
-                      )}
-                      
-                      {hasExpense && (
-                        <div className="text-center p-3 bg-muted/30 border rounded-lg">
-                          <div className="text-lg font-bold text-red-600">
-                            -{category.totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </div>
-                          <p className="text-xs text-muted-foreground">Despesas</p>
-                        </div>
-                      )}
-                      
-                      <div className="text-center p-3 bg-muted/30 border rounded-lg">
-                        <div className={`text-lg font-bold ${category.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {category.balance >= 0 ? '+' : ''}{category.balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </div>
-                        <p className="text-xs text-muted-foreground">Saldo</p>
-                      </div>
-                    </div>
-                    
-                    {/* Barra de Progresso */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Participação no total</span>
-                        <span className="font-medium">{category.percentage.toFixed(1)}%</span>
-                      </div>
-                      <Progress value={category.percentage} className="h-2" />
-                    </div>
-                  </div>
-                );
-              })}
+          </div>
+          <Button onClick={() => setIsFormOpen(true)} className="w-full md:w-auto">
+            <Plus className="h-4 w-4 mr-2" />
+            <span className="hidden xs:inline">Nova Categoria</span>
+            <span className="xs:hidden">Nova</span>
+          </Button>
+        </div>
+      </header>
+
+      <div className="container mx-auto px-3 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6">
+
+        {/* Cards de Resumo */}
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Total de Receitas</CardTitle>
+              <TrendingUp className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 break-words">
+                {totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Todas as categorias
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Total de Despesas</CardTitle>
+              <TrendingDown className="h-4 w-4 text-red-600" />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 break-words">
+                {totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Todas as categorias
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Saldo Total</CardTitle>
+              <DollarSign className={`h-4 w-4 ${totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className={`text-lg sm:text-xl lg:text-2xl font-bold break-words ${totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {totalBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {totalBalance >= 0 ? 'Saldo positivo' : 'Saldo negativo'}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Categorias Ativas</CardTitle>
+              <Tag className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">
+                {activeCategories}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Com movimentação
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filtros */}
+        <Card>
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    placeholder="Buscar categoria..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="w-full sm:w-48">
+                <select
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="">Todos os tipos</option>
+                  <option value="income">Receitas</option>
+                  <option value="expense">Despesas</option>
+                </select>
+              </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        {/* Lista de Categorias */}
+        <Card>
+          <CardHeader className="p-3 sm:p-6">
+            <CardTitle className="text-lg sm:text-xl">Análise por Categoria</CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 sm:p-6">
+            {filteredCategories.length === 0 ? (
+              <div className="text-center py-6 sm:py-8">
+                <Tag className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-muted-foreground mb-3 sm:mb-4" />
+                <p className="text-sm sm:text-base text-muted-foreground mb-3 sm:mb-4 px-4">
+                  {searchTerm || selectedType 
+                    ? 'Nenhuma categoria encontrada com os filtros aplicados.' 
+                    : 'Nenhuma movimentação encontrada nas categorias.'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 sm:space-y-4">
+                {filteredCategories.map((category) => {
+                  const IconComponent = ICON_MAP[category.icon] || Tag;
+                  const hasIncome = category.totalIncome > 0;
+                  const hasExpense = category.totalExpenses > 0;
+                  
+                  return (
+                    <div key={category.category} className="p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div 
+                            className="p-2 rounded-lg flex items-center justify-center flex-shrink-0"
+                            style={{ backgroundColor: `${category.color}20` }}
+                          >
+                            <IconComponent 
+                              className="h-4 w-4" 
+                              style={{ color: category.color }}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2 mb-1">
+                              <h3 className="font-medium text-sm sm:text-base truncate">{category.label}</h3>
+                              <div className="flex flex-wrap gap-1">
+                                {hasIncome && (
+                                  <Badge variant="secondary" className="text-xs bg-green-100 text-green-600">
+                                    Receita
+                                  </Badge>
+                                )}
+                                {hasExpense && (
+                                  <Badge variant="secondary" className="text-xs bg-red-100 text-red-600">
+                                    Despesa
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-xs sm:text-sm text-muted-foreground">
+                              {category.transactionCount} transação(ões) • {category.percentage.toFixed(1)}% do total
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 sm:gap-2 justify-end">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleShowChart(category)}
+                            title="Ver gráfico detalhado"
+                            className="h-8 w-8 p-0"
+                          >
+                            <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleEditCategory(category)}
+                            title="Editar categoria"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleDeleteCategory(category)}
+                            title="Excluir categoria"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {/* Valores por tipo */}
+                      <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 mb-3">
+                        {hasIncome && (
+                          <div className="text-center p-2 sm:p-3 bg-card border rounded-lg">
+                            <div className="text-sm sm:text-lg font-bold text-green-600 break-words">
+                              +{category.totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </div>
+                            <p className="text-xs text-muted-foreground">Receitas</p>
+                          </div>
+                        )}
+                        
+                        {hasExpense && (
+                          <div className="text-center p-2 sm:p-3 bg-card border rounded-lg">
+                            <div className="text-sm sm:text-lg font-bold text-red-600 break-words">
+                              -{category.totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </div>
+                            <p className="text-xs text-muted-foreground">Despesas</p>
+                          </div>
+                        )}
+                        
+                        <div className="text-center p-2 sm:p-3 bg-card border rounded-lg">
+                          <div className={`text-sm sm:text-lg font-bold break-words ${category.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {category.balance >= 0 ? '+' : ''}{category.balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </div>
+                          <p className="text-xs text-muted-foreground">Saldo</p>
+                        </div>
+                      </div>
+                      
+                      {/* Barra de Progresso */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-xs sm:text-sm">
+                          <span className="text-muted-foreground">Participação no total</span>
+                          <span className="font-medium">{category.percentage.toFixed(1)}%</span>
+                        </div>
+                        <Progress value={category.percentage} className="h-2" />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
       {/* Modal de Nova Categoria Pessoal */}
       {isFormOpen && (
@@ -1018,6 +1034,7 @@ export default function PersonalCategoriesPage() {
            </Card>
          </div>
        )}
+      </div>
     </div>
   );
 }

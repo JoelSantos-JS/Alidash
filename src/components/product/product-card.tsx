@@ -27,6 +27,11 @@ const statusMap = {
 export function ProductCard({ product, onSelect }: ProductCardProps) {
   const statusInfo = statusMap[product.status];
 
+  // Buscar imagem principal ou usar imageUrl como fallback
+  const mainImage = product.images?.find(img => img.type === 'main')?.url || 
+                   product.images?.[0]?.url || 
+                   product.imageUrl;
+
   return (
     <Card
       className="flex flex-col h-full overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer"
@@ -35,11 +40,15 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
       <CardHeader className="p-0 relative">
         <div className="aspect-square relative">
           <Image
-            src={product.imageUrl}
+            src={mainImage}
             alt={product.name}
             fill
             className="object-cover"
             data-ai-hint="product image"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = "/placeholder-product.svg";
+            }}
           />
         </div>
         <Badge className={`absolute top-1 right-1 sm:top-2 sm:right-2 border-transparent text-white text-xs sm:text-sm ${statusInfo.color}`}>

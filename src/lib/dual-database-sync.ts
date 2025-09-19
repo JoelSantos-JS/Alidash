@@ -596,14 +596,60 @@ export class DualDatabaseSync {
     try {
       // 1. Atualizar no Firebase
       try {
-        const firebaseRef = doc(firebaseDb, 'user-data', this.userId, 'products', productId)
-        await updateDoc(firebaseRef, {
-          ...updates,
-          updatedAt: new Date()
-        })
-        result.firebaseSuccess = true
-        if (process.env.NODE_ENV === 'development') {
-          console.log('✅ Produto atualizado no Firebase')
+        const firebaseRef = doc(firebaseDb, 'user-data', this.userId)
+        const docSnap = await getDoc(firebaseRef)
+        
+        if (docSnap.exists()) {
+          const currentData = docSnap.data()
+          const currentProducts = currentData.products || []
+          
+          // Encontrar e atualizar o produto específico
+          const productIndex = currentProducts.findIndex((p: Product) => p.id === productId)
+          
+          if (productIndex !== -1) {
+            const updatedProduct = {
+              ...currentProducts[productIndex],
+              ...updates,
+              updatedAt: new Date()
+            }
+            
+            // Recalcular campos financeiros se necessário
+            if (updates.purchasePrice !== undefined || updates.shippingCost !== undefined || 
+                updates.importTaxes !== undefined || updates.packagingCost !== undefined ||
+                updates.marketingCost !== undefined || updates.otherCosts !== undefined ||
+                updates.sellingPrice !== undefined) {
+              
+              const totalCost = updatedProduct.purchasePrice + updatedProduct.shippingCost + 
+                              updatedProduct.importTaxes + updatedProduct.packagingCost + 
+                              updatedProduct.marketingCost + updatedProduct.otherCosts
+              const expectedProfit = updatedProduct.sellingPrice - totalCost
+              const profitMargin = updatedProduct.sellingPrice > 0 ? (expectedProfit / updatedProduct.sellingPrice) * 100 : 0
+              const roi = totalCost > 0 ? (expectedProfit / totalCost) * 100 : 0
+              const actualProfit = expectedProfit * updatedProduct.quantitySold
+              
+              updatedProduct.totalCost = totalCost
+              updatedProduct.expectedProfit = expectedProfit
+              updatedProduct.profitMargin = profitMargin
+              updatedProduct.roi = roi
+              updatedProduct.actualProfit = actualProfit
+            }
+            
+            currentProducts[productIndex] = updatedProduct
+            
+            await setDoc(firebaseRef, {
+              ...currentData,
+              products: currentProducts
+            }, { merge: true })
+            
+            result.firebaseSuccess = true
+            if (process.env.NODE_ENV === 'development') {
+              console.log('✅ Produto atualizado no Firebase')
+            }
+          } else {
+            result.errors.push('Firebase: Produto não encontrado')
+          }
+        } else {
+          result.errors.push('Firebase: Documento do usuário não encontrado')
         }
       } catch (error) {
         result.errors.push(`Firebase: ${error}`)
@@ -640,11 +686,27 @@ export class DualDatabaseSync {
     try {
       // 1. Deletar do Firebase
       try {
-        const firebaseRef = doc(firebaseDb, 'user-data', this.userId, 'products', productId)
-        await deleteDoc(firebaseRef)
-        result.firebaseSuccess = true
-        if (process.env.NODE_ENV === 'development') {
-          console.log('✅ Produto deletado do Firebase')
+        const firebaseRef = doc(firebaseDb, 'user-data', this.userId)
+        const docSnap = await getDoc(firebaseRef)
+        
+        if (docSnap.exists()) {
+          const currentData = docSnap.data()
+          const currentProducts = currentData.products || []
+          
+          // Filtrar o produto a ser deletado
+          const updatedProducts = currentProducts.filter((p: Product) => p.id !== productId)
+          
+          await setDoc(firebaseRef, {
+            ...currentData,
+            products: updatedProducts
+          }, { merge: true })
+          
+          result.firebaseSuccess = true
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ Produto deletado do Firebase')
+          }
+        } else {
+          result.errors.push('Firebase: Documento do usuário não encontrado')
         }
       } catch (error) {
         result.errors.push(`Firebase: ${error}`)

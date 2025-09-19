@@ -25,6 +25,7 @@ import { suggestPrice, suggestDescription } from "@/ai/flows/dream-planner";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrackingView } from "./tracking-view";
+import { ImageGallery } from "./image-gallery";
 import { useAuth } from "@/hooks/use-auth";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,7 +36,15 @@ const productSchema = z.object({
   category: z.string().min(1, { message: "A categoria é obrigatória" }),
   supplier: z.string().min(2, { message: "O fornecedor deve ter pelo menos 2 caracteres." }),
   aliexpressLink: z.string().url({ message: "Por favor, insira uma URL válida." }).optional().or(z.literal('')),
-  imageUrl: z.string().url({ message: "Por favor, insira uma URL de imagem válida." }),
+  imageUrl: z.string().url({ message: "Por favor, insira uma URL de imagem válida." }).optional().or(z.literal('')), // Agora opcional
+  images: z.array(z.object({
+    id: z.string(),
+    url: z.string().url(),
+    type: z.enum(['main', 'gallery', 'thumbnail']),
+    alt: z.string(),
+    created_at: z.string(),
+    order: z.number().optional()
+  })).default([]), // Novo campo para múltiplas imagens
   description: z.string().optional(),
   notes: z.string().optional(),
   trackingCode: z.string().optional(),
@@ -54,6 +63,9 @@ const productSchema = z.object({
 }).refine(data => data.quantitySold <= data.quantity, {
     message: "A quantidade vendida não pode ser maior que a comprada.",
     path: ["quantitySold"],
+}).refine(data => (data.images && data.images.length > 0) || (data.imageUrl && data.imageUrl.trim() !== ''), {
+    message: "Pelo menos uma imagem é obrigatória (URL única ou galeria).",
+    path: ["images"],
 });
 
 type ProductFormValues = Omit<Product, 'id' | 'totalCost' | 'expectedProfit' | 'profitMargin' | 'roi' | 'actualProfit'> & { purchaseDate: Date };
@@ -95,12 +107,14 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
         trackingCode: productToEdit.trackingCode || '',
         description: productToEdit.description || '',
         aliexpressLink: productToEdit.aliexpressLink || '',
+        images: productToEdit.images || [],
      } : {
         name: "",
         category: "",
         supplier: "",
         aliexpressLink: "",
         imageUrl: "",
+        images: [],
         description: "",
         notes: "",
         trackingCode: "",
@@ -390,6 +404,28 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                           <FormControl>
                             <Input {...field} placeholder="https://pt.aliexpress.com/item/..." />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </CardContent>
+                  </Card>
+
+                  {/* Galeria de Imagens */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Imagens do Produto</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Adicione múltiplas imagens para o produto. A imagem principal será usada como destaque.
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <FormField control={form.control} name="images" render={({ field }) => (
+                        <FormItem>
+                          <ImageGallery
+                            images={field.value || []}
+                            onChange={field.onChange}
+                            maxImages={5}
+                          />
                           <FormMessage />
                         </FormItem>
                       )} />

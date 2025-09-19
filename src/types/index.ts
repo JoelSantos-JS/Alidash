@@ -1,5 +1,14 @@
 
 
+export interface ProductImage {
+  id: string;
+  url: string;
+  type: 'main' | 'gallery' | 'thumbnail';
+  alt: string;
+  created_at: string;
+  order?: number;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -7,6 +16,7 @@ export interface Product {
   supplier: string;
   aliexpressLink: string;
   imageUrl: string;
+  images?: ProductImage[]; // Novo campo para múltiplas imagens
   description: string;
   notes?: string;
   trackingCode?: string; // Código de rastreio

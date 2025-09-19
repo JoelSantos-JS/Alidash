@@ -42,6 +42,7 @@ export default function ProdutosPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [supplierFilter, setSupplierFilter] = useState("all")
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null)
   const [isProductFormOpen, setIsProductFormOpen] = useState(false)
   const [isSaleFormOpen, setIsSaleFormOpen] = useState(false)
   const [isDetailViewOpen, setIsDetailViewOpen] = useState(false)
@@ -203,22 +204,125 @@ export default function ProdutosPage() {
     setIsProductFormOpen(true)
   }
 
-  const handleProductCreated = (newProduct: Product) => {
-    setProducts(prev => [...prev, newProduct])
-    setIsProductFormOpen(false)
-    toast({
-      title: "Sucesso",
-      description: "Produto criado com sucesso!",
-    })
+  const handleProductCreated = async (newProduct: Product) => {
+    try {
+      // Primeiro, buscar o usuário no Supabase
+      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`)
+      
+      if (userResponse.ok) {
+        const userResult = await userResponse.json()
+        const supabaseUser = userResult.user
+        
+        // Fazer a chamada para a API de criação
+        const createResponse = await fetch(`/api/products/create?user_id=${supabaseUser.id}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(newProduct)
+        })
+        
+        if (createResponse.ok) {
+          const createResult = await createResponse.json()
+          console.log('✅ Produto criado:', createResult)
+          
+          // Atualizar o estado local apenas se a API foi bem-sucedida
+          setProducts(prev => [...prev, newProduct])
+          setIsProductFormOpen(false)
+          
+          toast({
+            title: "Sucesso",
+            description: "Produto criado com sucesso!",
+          })
+        } else {
+          const errorText = await createResponse.text()
+          console.error('❌ Erro ao criar produto:', errorText)
+          toast({
+            title: "Erro",
+            description: "Não foi possível criar o produto. Tente novamente.",
+            variant: "destructive",
+          })
+        }
+      } else {
+        console.error('❌ Usuário não encontrado no Supabase')
+        toast({
+          title: "Erro",
+          description: "Usuário não encontrado. Faça login novamente.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error('❌ Erro ao criar produto:', error)
+      toast({
+        title: "Erro",
+        description: "Erro inesperado ao criar produto.",
+        variant: "destructive",
+      })
+    }
   }
 
-  const handleProductUpdated = (updatedProduct: Product) => {
-    setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p))
+  const handleEditProduct = (product: Product) => {
+    setProductToEdit(product)
     setIsDetailViewOpen(false)
-    toast({
-      title: "Sucesso",
-      description: "Produto atualizado com sucesso!",
-    })
+    setIsProductFormOpen(true)
+  }
+
+  const handleProductUpdated = async (updatedProduct: Product) => {
+    try {
+      // Primeiro, buscar o usuário no Supabase
+      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`)
+      
+      if (userResponse.ok) {
+        const userResult = await userResponse.json()
+        const supabaseUser = userResult.user
+        
+        // Fazer a chamada para a API de atualização
+        const updateResponse = await fetch(`/api/products/update?user_id=${supabaseUser.id}&product_id=${updatedProduct.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updatedProduct)
+        })
+        
+        if (updateResponse.ok) {
+          const updateResult = await updateResponse.json()
+          console.log('✅ Produto atualizado:', updateResult)
+          
+          // Atualizar o estado local apenas se a API foi bem-sucedida
+          setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p))
+          setProductToEdit(null)
+          setIsProductFormOpen(false)
+          
+          toast({
+            title: "Sucesso",
+            description: "Produto atualizado com sucesso!",
+          })
+        } else {
+          const errorText = await updateResponse.text()
+          console.error('❌ Erro ao atualizar produto:', errorText)
+          toast({
+            title: "Erro",
+            description: "Não foi possível atualizar o produto. Tente novamente.",
+            variant: "destructive",
+          })
+        }
+      } else {
+        console.error('❌ Usuário não encontrado no Supabase')
+        toast({
+          title: "Erro",
+          description: "Usuário não encontrado. Faça login novamente.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error('❌ Erro ao atualizar produto:', error)
+      toast({
+        title: "Erro",
+        description: "Erro inesperado ao atualizar produto.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleProductDeleted = (productId: string) => {
@@ -490,24 +594,25 @@ export default function ProdutosPage() {
       <Dialog open={isProductFormOpen} onOpenChange={setIsProductFormOpen}>
         <DialogContent className="max-w-4xl max-h-[95vh] sm:max-h-[90vh] w-[95vw] sm:w-auto">
           <ProductForm
-            onSave={handleProductCreated}
-            productToEdit={null}
-            onCancel={() => setIsProductFormOpen(false)}
+            onSave={productToEdit ? handleProductUpdated : handleProductCreated}
+            productToEdit={productToEdit}
+            onCancel={() => {
+              setProductToEdit(null)
+              setIsProductFormOpen(false)
+            }}
           />
         </DialogContent>
       </Dialog>
 
       <Dialog open={isDetailViewOpen} onOpenChange={setIsDetailViewOpen}>
-        <DialogContent className="max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto w-[95vw] sm:w-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl">Detalhes do Produto</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-3xl max-h-[90vh] w-[95vw] sm:w-auto p-0 overflow-hidden">
           {selectedProduct && (
             <ProductDetailView
               product={selectedProduct}
               onEdit={() => {
-                // TODO: Implement edit functionality
-                console.log('Edit product:', selectedProduct.id)
+                if (selectedProduct) {
+                  handleEditProduct(selectedProduct)
+                }
               }}
               onDelete={() => {
                 if (selectedProduct) {

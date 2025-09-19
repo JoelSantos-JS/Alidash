@@ -182,6 +182,25 @@ export class SupabaseService {
       days_to_sell: productData.daysToSell
     }
 
+    // Preparar dados de imagens
+    let imagesData = [];
+    if (productData.images && productData.images.length > 0) {
+      imagesData = productData.images;
+    } else if (productData.imageUrl && productData.imageUrl.trim() !== '') {
+      // Criar objeto de imagem a partir do imageUrl se não houver images
+      imagesData = [{
+        id: `img_new_${Date.now()}`,
+        url: productData.imageUrl,
+        type: 'main',
+        alt: productData.name || 'Imagem do produto',
+        created_at: new Date().toISOString(),
+        order: 1
+      }];
+    }
+
+    // Adicionar campo images aos dados
+    supabaseProductData.images = imagesData;
+
     const { data, error } = await this.client
       .from('products')
       .insert(supabaseProductData as any)
@@ -231,6 +250,7 @@ export class SupabaseService {
     if (updates.supplier) supabaseUpdates.supplier = updates.supplier
     if (updates.aliexpressLink) supabaseUpdates.aliexpress_link = updates.aliexpressLink
     if (updates.imageUrl) supabaseUpdates.image_url = updates.imageUrl
+    if (updates.images !== undefined) supabaseUpdates.images = updates.images
     if (updates.description) supabaseUpdates.description = updates.description
     if (updates.notes) supabaseUpdates.notes = updates.notes
     if (updates.trackingCode) supabaseUpdates.tracking_code = updates.trackingCode
@@ -245,7 +265,11 @@ export class SupabaseService {
     if (updates.quantity !== undefined) supabaseUpdates.quantity = updates.quantity
     if (updates.quantitySold !== undefined) supabaseUpdates.quantity_sold = updates.quantitySold
     if (updates.status) supabaseUpdates.status = updates.status
-    if (updates.purchaseDate) supabaseUpdates.purchase_date = updates.purchaseDate.toISOString()
+    if (updates.purchaseDate) {
+      // Garantir que purchaseDate seja um objeto Date válido
+      const date = updates.purchaseDate instanceof Date ? updates.purchaseDate : new Date(updates.purchaseDate)
+      supabaseUpdates.purchase_date = date.toISOString()
+    }
     if (updates.roi !== undefined) supabaseUpdates.roi = updates.roi
     if (updates.actualProfit !== undefined) supabaseUpdates.actual_profit = updates.actualProfit
     if (updates.daysToSell !== undefined) supabaseUpdates.days_to_sell = updates.daysToSell
@@ -851,13 +875,29 @@ export class SupabaseService {
     const roi = data.roi || (totalCost > 0 ? (expectedProfit / totalCost) * 100 : 0)
     const actualProfit = data.actual_profit || (expectedProfit * (data.quantity_sold || 0))
     
+    // Processar imagens - usar novo campo images ou fallback para image_url
+    let images = [];
+    if (data.images && Array.isArray(data.images) && data.images.length > 0) {
+      images = data.images;
+    } else if (data.image_url && data.image_url.trim() !== '') {
+      // Fallback: criar objeto de imagem a partir do image_url para compatibilidade
+      images = [{
+        id: `img_fallback_${data.id}`,
+        url: data.image_url,
+        type: 'main',
+        alt: data.name || 'Imagem do produto',
+        created_at: data.created_at || new Date().toISOString()
+      }];
+    }
+    
     return {
       id: data.id,
       name: data.name,
       category: data.category,
       supplier: data.supplier || '',
       aliexpressLink: data.aliexpress_link || '',
-      imageUrl: data.image_url || '',
+      imageUrl: data.image_url || '', // Mantido para compatibilidade
+      images: images, // Novo sistema de múltiplas imagens
       description: data.description || '',
       notes: data.notes,
       trackingCode: data.tracking_code,

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -8,8 +8,31 @@ import { ThemeProvider } from "@/components/theme-provider";
 const inter = Inter({ subsets: ["latin"], variable: "--font-body" });
 
 export const metadata: Metadata = {
-  title: "VoxCash",
-  description: "Dashboard financeiro pessoal e empresarial.",
+  title: "Alidash - Gestão Completa",
+  description: "Sistema completo de gestão pessoal e empresarial com notificações inteligentes.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Alidash"
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "default",
+    "apple-mobile-web-app-title": "Alidash",
+    "application-name": "Alidash",
+    "msapplication-TileColor": "#2563eb",
+    "msapplication-config": "/browserconfig.xml"
+  }
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#2563eb"
 };
 
 export default function RootLayout({
@@ -25,6 +48,30 @@ export default function RootLayout({
         <link
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
           rel="stylesheet"
+        />
+        
+        {/* PWA Icons */}
+        <link rel="icon" type="image/svg+xml" href="/icon-192x192.svg" />
+        <link rel="apple-touch-icon" href="/icon-192x192.svg" />
+        <link rel="mask-icon" href="/icon-192x192.svg" color="#2563eb" />
+        
+        {/* Service Worker Registration */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                      console.log('SW registrado com sucesso:', registration.scope);
+                    })
+                    .catch(function(error) {
+                      console.log('Falha ao registrar SW:', error);
+                    });
+                });
+              }
+            `,
+          }}
         />
       </head>
       <body className={`${inter.variable} font-body antialiased`}>

@@ -171,7 +171,7 @@ export function PersonalCategoryForm({ category, onSubmit, onCancel, isLoading =
     defaultValues: {
       name: category?.name || "",
       type: category?.type || "expense",
-      category: category?.category || "",
+      category: category?.category || undefined,
       description: category?.description || "",
       color: category?.color || "#3B82F6",
       icon: category?.icon || "Tag",

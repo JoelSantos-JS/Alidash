@@ -197,6 +197,9 @@ export function ProductsSidebar({
     // Category analysis
     const categoryStats = products.reduce((acc, product) => {
       const category = product.category
+      // Filtrar categorias vazias ou inválidas
+      if (!category || category.trim() === '') return acc
+      
       if (!acc[category]) {
         acc[category] = { count: 0, profit: 0, revenue: 0 }
       }
@@ -209,6 +212,9 @@ export function ProductsSidebar({
     // Supplier analysis
     const supplierStats = products.reduce((acc, product) => {
       const supplier = product.supplier
+      // Filtrar fornecedores vazios ou inválidos
+      if (!supplier || supplier.trim() === '') return acc
+      
       if (!acc[supplier]) {
         acc[supplier] = { count: 0, profit: 0, revenue: 0 }
       }

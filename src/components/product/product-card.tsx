@@ -30,7 +30,11 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
   // Buscar imagem principal ou usar imageUrl como fallback
   const mainImage = product.images?.find(img => img.type === 'main')?.url || 
                    product.images?.[0]?.url || 
-                   product.imageUrl;
+                   product.imageUrl || 
+                   "/placeholder-product.svg";
+
+  // Garantir que não seja uma string vazia
+  const imageSrc = mainImage && mainImage.trim() !== "" ? mainImage : "/placeholder-product.svg";
 
   return (
     <Card
@@ -40,7 +44,7 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
       <CardHeader className="p-0 relative">
         <div className="aspect-square relative">
           <Image
-            src={mainImage}
+            src={imageSrc}
             alt={product.name}
             fill
             className="object-cover"

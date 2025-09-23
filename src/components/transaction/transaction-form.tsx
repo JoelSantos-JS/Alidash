@@ -79,8 +79,8 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
       description: transactionToEdit?.description || "",
       amount: transactionToEdit?.amount || 0,
       type: transactionToEdit?.type || "revenue",
-      category: transactionToEdit?.category || "",
-      subcategory: transactionToEdit?.subcategory || "",
+      category: transactionToEdit?.category || undefined,
+      subcategory: transactionToEdit?.subcategory || undefined,
       paymentMethod: transactionToEdit?.paymentMethod || "pix",
       status: transactionToEdit?.status || "completed",
       date: transactionToEdit?.date || new Date(),
@@ -477,4 +477,4 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
       </Form>
     </>
   );
-} 
+}

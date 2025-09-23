@@ -64,7 +64,7 @@ export function ExpenseForm({ onSave, onCancel, expenseToEdit }: ExpenseFormProp
     defaultValues: {
       description: expenseToEdit?.description || "",
       amount: expenseToEdit?.amount || 0,
-      category: expenseToEdit?.category || "",
+      category: expenseToEdit?.category || undefined,
       type: expenseToEdit?.type || "purchase",
       supplier: expenseToEdit?.supplier || "",
       date: expenseToEdit?.date || new Date(),
@@ -272,4 +272,4 @@ export function ExpenseForm({ onSave, onCancel, expenseToEdit }: ExpenseFormProp
       </Form>
     </>
   );
-} 
+}

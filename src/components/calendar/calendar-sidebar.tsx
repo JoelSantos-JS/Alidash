@@ -33,67 +33,74 @@ import { Label } from "@/components/ui/label"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
 
-// Tipos para eventos de agenda
-type CalendarEvent = {
-  id: string
-  title: string
-  description?: string
-  startTime: Date
-  endTime: Date
-  location?: string
-  attendees?: string[]
-  type: 'meeting' | 'task' | 'reminder' | 'personal'
-  priority: 'low' | 'medium' | 'high'
-  status: 'confirmed' | 'tentative' | 'cancelled'
-  isRecurring?: boolean
-  calendarId?: string
-  googleEventId?: string
+// Importar tipos do hook
+import { CalendarEvent } from '@/hooks/useCalendarEvents'
+
+// Tipo local para compatibilidade
+type LocalCalendarEvent = CalendarEvent & {
+  priority?: 'low' | 'medium' | 'high'
+  type?: 'meeting' | 'task' | 'reminder' | 'personal'
 }
 
 type CalendarSidebarProps = {
-  events: CalendarEvent[]
+  events: LocalCalendarEvent[]
   selectedDate?: Date
-  onEventClick?: (event: CalendarEvent) => void
+  onEventClick?: (event: LocalCalendarEvent) => void
   onCreateEvent?: () => void
   onRefresh?: () => void
   isLoading?: boolean
   className?: string
 }
 
+// Função para converter eventos do hook para formato local
+const convertToLocalEvent = (event: CalendarEvent): LocalCalendarEvent => ({
+  ...event,
+  startTime: new Date(event.start_time),
+  endTime: new Date(event.end_time),
+  priority: 'medium', // valor padrão
+  type: 'meeting', // valor padrão
+  attendees: event.attendees || []
+})
+
 // Dados de exemplo para demonstração
-const sampleEvents: CalendarEvent[] = [
+const sampleEvents: LocalCalendarEvent[] = [
   {
     id: '1',
+    user_id: 'sample',
     title: 'Reunião de Planejamento',
     description: 'Discussão sobre metas do próximo trimestre',
+    start_time: new Date(2025, 8, 7, 9, 0).toISOString(),
+    end_time: new Date(2025, 8, 7, 10, 30).toISOString(),
     startTime: new Date(2025, 8, 7, 9, 0),
     endTime: new Date(2025, 8, 7, 10, 30),
     location: 'Sala de Reuniões A',
-    attendees: ['João Silva', 'Maria Santos'],
+    attendees: [],
     type: 'meeting',
     priority: 'high',
     status: 'confirmed',
-    isRecurring: false
+    is_all_day: false,
+    recurrence: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   },
   {
     id: '2',
+    user_id: 'sample',
     title: 'Apresentação do Projeto',
+    description: '',
+    start_time: new Date(2025, 8, 7, 14, 0).toISOString(),
+    end_time: new Date(2025, 8, 7, 15, 0).toISOString(),
     startTime: new Date(2025, 8, 7, 14, 0),
     endTime: new Date(2025, 8, 7, 15, 0),
+    location: '',
+    attendees: [],
     type: 'meeting',
     priority: 'medium',
     status: 'confirmed',
-    isRecurring: false
-  },
-  {
-    id: '3',
-    title: 'Lembrete: Enviar Relatório',
-    startTime: new Date(2025, 8, 8, 16, 0),
-    endTime: new Date(2025, 8, 8, 16, 30),
-    type: 'reminder',
-    priority: 'medium',
-    status: 'confirmed',
-    isRecurring: false
+    is_all_day: false,
+    recurrence: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   }
 ]
 

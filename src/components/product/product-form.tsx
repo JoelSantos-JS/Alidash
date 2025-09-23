@@ -110,7 +110,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
         images: productToEdit.images || [],
      } : {
         name: "",
-        category: "",
+        category: undefined,
         supplier: "",
         aliexpressLink: "",
         imageUrl: "",

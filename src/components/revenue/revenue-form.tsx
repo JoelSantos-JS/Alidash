@@ -60,7 +60,7 @@ export function RevenueForm({ onSave, onCancel, revenueToEdit }: RevenueFormProp
     defaultValues: {
       description: revenueToEdit?.description || "",
       amount: revenueToEdit?.amount || 0,
-      category: revenueToEdit?.category || "",
+      category: revenueToEdit?.category || undefined,
       source: revenueToEdit?.source || "sale",
       date: revenueToEdit?.date || new Date(),
       notes: revenueToEdit?.notes || "",
@@ -249,4 +249,4 @@ export function RevenueForm({ onSave, onCancel, revenueToEdit }: RevenueFormProp
       </Form>
     </>
   );
-} 
+}

@@ -117,7 +117,7 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
         status: betToEdit.status,
         notes: betToEdit.notes,
         earnedFreebetValue: betToEdit.earnedFreebetValue || 0,
-        betType: betToEdit.betType || '',
+        betType: betToEdit.betType || undefined,
         stake: betToEdit.stake || 0,
         odds: betToEdit.odds || 1.01,
     } : {
@@ -135,8 +135,8 @@ export function BetForm({ onSave, betToEdit, onCancel }: BetFormProps) {
     }) : {
         type: 'single',
         sport: "Futebol",
-        event: "",
-        betType: "",
+        event: undefined,
+        betType: undefined,
         stake: 10,
         odds: 1.5,
         status: 'pending',

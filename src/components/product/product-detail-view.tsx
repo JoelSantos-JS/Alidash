@@ -47,7 +47,11 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
   // Buscar imagem principal ou usar imageUrl como fallback
   const mainImage = product.images?.find(img => img.type === 'main')?.url || 
                    product.images?.[0]?.url || 
-                   product.imageUrl;
+                   product.imageUrl || 
+                   "/placeholder-product.svg";
+
+  // Garantir que não seja uma string vazia
+  const imageSrc = mainImage && mainImage.trim() !== "" ? mainImage : "/placeholder-product.svg";
 
   return (
     <TooltipProvider>
@@ -58,7 +62,7 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
             {/* Imagem menor e responsiva */}
             <div className="relative w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0 rounded-lg overflow-hidden shadow-md">
               <Image
-                src={mainImage}
+                src={imageSrc}
                 alt={product.name}
                 fill
                 className="object-cover"

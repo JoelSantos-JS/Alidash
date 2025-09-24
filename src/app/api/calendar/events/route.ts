@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createServiceClient } from '@/utils/supabase/server';
 
 /**
  * GET - Buscar eventos locais do usuário
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     
     // First, get the Supabase user ID from Firebase UID
     const { data: user, error: userError } = await supabase
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     
     // First, get the Supabase user ID from Firebase UID
     const { data: user, error: userError } = await supabase
@@ -199,7 +199,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     
     // First, get the Supabase user ID from Firebase UID
     const { data: user, error: userError } = await supabase
@@ -283,7 +283,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     
     // First, get the Supabase user ID from Firebase UID
     const { data: user, error: userError } = await supabase

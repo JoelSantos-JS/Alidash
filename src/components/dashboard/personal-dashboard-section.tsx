@@ -2,17 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ExpensesChart } from "./expenses-chart";
 import { 
   DollarSign, 
   TrendingUp, 
   TrendingDown, 
   PiggyBank, 
-  Target, 
-  Plus,
   User,
   Wallet,
   CreditCard,
@@ -40,16 +38,7 @@ interface PersonalSummary {
   nonEssentialExpenses: number;
 }
 
-interface PersonalGoal {
-  id: string;
-  name: string;
-  target_amount: number;
-  current_amount: number;
-  deadline: string;
-  progress_percentage: number;
-  status: 'active' | 'paused' | 'completed' | 'cancelled';
-  type: string;
-}
+
 
 interface PersonalExpense {
   id: string;
@@ -85,7 +74,6 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
     essentialExpenses: 0,
     nonEssentialExpenses: 0
   });
-  const [goals, setGoals] = useState<PersonalGoal[]>([]);
   const [recentExpenses, setRecentExpenses] = useState<PersonalExpense[]>([]);
   const [recentIncomes, setRecentIncomes] = useState<PersonalIncome[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,12 +110,7 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
         }
       }
       
-      // Carregar metas
-      const goalsResponse = await fetch(`/api/personal/goals?user_id=${supabaseUserId}`);
-      if (goalsResponse.ok) {
-        const goalsData = await goalsResponse.json();
-        setGoals(goalsData.goals || []);
-      }
+
       
       // Carregar despesas recentes
       const expensesResponse = await fetch(`/api/personal/expenses/recent?user_id=${supabaseUserId}&limit=5`);
@@ -163,38 +146,7 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
       nonEssentialExpenses: 1100.00
     });
     
-    setGoals([
-      {
-        id: '1',
-        name: 'Reserva de Emergência',
-        target_amount: 15000.00,
-        current_amount: 8500.00,
-        deadline: '2025-12-31',
-        progress_percentage: 56.7,
-        status: 'active',
-        type: 'emergency_fund'
-      },
-      {
-        id: '2',
-        name: 'Viagem para Europa',
-        target_amount: 8000.00,
-        current_amount: 3200.00,
-        deadline: '2025-07-15',
-        progress_percentage: 40.0,
-        status: 'active',
-        type: 'vacation'
-      },
-      {
-        id: '3',
-        name: 'Novo Notebook',
-        target_amount: 4500.00,
-        current_amount: 2800.00,
-        deadline: '2025-03-30',
-        progress_percentage: 62.2,
-        status: 'active',
-        type: 'purchase'
-      }
-    ]);
+
     
     setRecentExpenses([
       { id: '1', description: 'Supermercado Extra', amount: 285.50, category: 'food', date: '2025-01-10', is_essential: true, payment_method: 'debit_card' },
@@ -230,19 +182,7 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
     return <IconComponent className="h-4 w-4" />;
   };
 
-  const getGoalIcon = (type: string) => {
-    const icons: Record<string, any> = {
-      emergency_fund: PiggyBank,
-      savings: DollarSign,
-      investment: TrendingUp,
-      purchase: ShoppingBag,
-      vacation: Plane,
-      home_purchase: Home,
-      other: Target
-    };
-    const IconComponent = icons[type] || Target;
-    return <IconComponent className="h-4 w-4" />;
-  };
+
 
   const getPaymentMethodIcon = (method: string) => {
     const icons: Record<string, any> = {
@@ -332,78 +272,22 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
         </Card>
       </div>
 
-      {/* Seção Principal - Metas e Transações Recentes */}
+      {/* Seção Principal - Gráfico de Gastos e Transações Recentes */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Metas Financeiras */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                Metas Pessoais
-              </CardTitle>
-              <Button size="sm" variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Meta
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground">Suas metas financeiras pessoais</p>
-          </CardHeader>
-          <CardContent>
-            {goals.length === 0 ? (
-              <div className="text-center py-8">
-                <Target className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground mb-4">Nenhuma meta financeira encontrada</p>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Criar Primeira Meta
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {goals.slice(0, 3).map((goal) => (
-                  <div key={goal.id} className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        {getGoalIcon(goal.type)}
-                        <div>
-                          <p className="font-medium">{goal.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {goal.current_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} de{' '}
-                            {goal.target_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge variant={goal.status === 'active' ? 'default' : 'secondary'}>
-                        {goal.progress_percentage.toFixed(0)}%
-                      </Badge>
-                    </div>
-                    <Progress value={goal.progress_percentage} className="h-2" />
-                  </div>
-                ))}
-                {goals.length > 3 && (
-                  <Button variant="outline" className="w-full">
-                    Ver todas as metas ({goals.length})
-                  </Button>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Gráfico de Gastos e Despesas */}
+        <ExpensesChart 
+          totalExpenses={personalSummary.totalExpenses}
+          essentialExpenses={personalSummary.essentialExpenses}
+          nonEssentialExpenses={personalSummary.nonEssentialExpenses}
+        />
 
         {/* Transações Recentes */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                Transações Recentes
-              </CardTitle>
-              <Button size="sm" variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Transação
-              </Button>
-            </div>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Transações Recentes
+            </CardTitle>
             <p className="text-sm text-muted-foreground">Últimas movimentações financeiras</p>
           </CardHeader>
           <CardContent>

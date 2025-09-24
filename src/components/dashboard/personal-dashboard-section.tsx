@@ -5,7 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { ExpensesChart } from "./expenses-chart";
+import MonthlyIncomeForm from "@/components/forms/monthly-income-form";
+import SalarySettingsForm from "@/components/forms/salary-settings-form";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -26,7 +29,9 @@ import {
   Zap,
   Shield,
   Shirt,
-  Gift
+  Gift,
+  Plus,
+  Settings
 } from "lucide-react";
 
 interface PersonalSummary {
@@ -79,6 +84,8 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
   const [loading, setLoading] = useState(true);
   const [currentMonth] = useState(1); // Janeiro para usar os dados de teste
   const [currentYear] = useState(2025);
+  const [showIncomeForm, setShowIncomeForm] = useState(false);
+  const [showSalarySettings, setShowSalarySettings] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -229,7 +236,27 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
         <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Ganhos do Mês</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowIncomeForm(true)}
+                className="h-6 px-2 text-xs"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Renda
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowSalarySettings(true)}
+                className="h-6 px-2 text-xs"
+                title="Configurar Salário Fixo"
+              >
+                <Settings className="h-3 w-3" />
+              </Button>
+              <TrendingUp className="h-4 w-4 text-green-600" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
@@ -279,6 +306,7 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
           totalExpenses={personalSummary.totalExpenses}
           essentialExpenses={personalSummary.essentialExpenses}
           nonEssentialExpenses={personalSummary.nonEssentialExpenses}
+          totalIncome={personalSummary.totalIncome}
         />
 
         {/* Transações Recentes */}
@@ -381,6 +409,30 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal de Renda Mensal */}
+      {showIncomeForm && (
+        <MonthlyIncomeForm
+          isOpen={showIncomeForm}
+          onClose={() => setShowIncomeForm(false)}
+          onSuccess={() => {
+            setShowIncomeForm(false);
+            loadPersonalData(); // Recarrega os dados após cadastrar nova renda
+          }}
+        />
+      )}
+
+      {/* Modal de Configuração de Salário */}
+      {showSalarySettings && (
+        <SalarySettingsForm
+          isOpen={showSalarySettings}
+          onClose={() => setShowSalarySettings(false)}
+          onSuccess={() => {
+            setShowSalarySettings(false);
+            loadPersonalData(); // Recarrega os dados após configurar salário
+          }}
+        />
+      )}
     </div>
   );
 }

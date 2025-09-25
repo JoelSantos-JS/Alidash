@@ -8,9 +8,12 @@
     "genkit:dev": "genkit start -- tsx src/ai/flows/dream-planner.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/flows/dream-planner.ts",
     "build": "next build",
+    "build:clean": "rm -rf .next && npm run build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "pre-deploy": "node scripts/pre-deploy-check.js",
+    "deploy:check": "npm run pre-deploy && echo 'Pronto para deploy!'"
   },
   "dependencies": {
     "@genkit-ai/firebase": "^1.18.0",

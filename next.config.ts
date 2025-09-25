@@ -7,6 +7,43 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Configurações para evitar problemas de chunks e cache
+  generateBuildId: async () => {
+    // Usar commit SHA do Vercel ou timestamp para builds únicos
+    return process.env.VERCEL_GIT_COMMIT_SHA || `build-${Date.now()}`
+  },
+  // Headers de cache otimizados
+  async headers() {
+    return [
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+        ],
+      },
+    ]
+  },
+  // Configuração experimental para melhor estabilidade
+  experimental: {
+    optimizeCss: false, // Evita problemas com CSS chunks
+    esmExternals: 'loose', // Melhor compatibilidade com módulos
+  },
   images: {
     remotePatterns: [
       {

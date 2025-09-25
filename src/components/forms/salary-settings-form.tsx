@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2, Briefcase, Settings, Calendar, DollarSign } from "lucide-react";
+import { Loader2, Briefcase, Settings, Calendar, DollarSign, Save, Info } from "lucide-react";
 
 interface SalarySettingsFormProps {
   isOpen: boolean;
@@ -95,18 +95,28 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.uid) return;
+    if (!user?.uid) {
+      console.error('❌ Usuário não autenticado');
+      return;
+    }
 
     setLoading(true);
     try {
+      console.log('🔄 Iniciando salvamento das configurações de salário...');
+      console.log('👤 Firebase UID:', user.uid);
+      console.log('📧 Email:', user.email);
+      
       // Buscar usuário Supabase
       const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
       if (!userResponse.ok) {
+        const errorText = await userResponse.text();
+        console.error('❌ Erro ao buscar usuário:', errorText);
         throw new Error('Usuário não encontrado');
       }
       
       const userResult = await userResponse.json();
       const supabaseUserId = userResult.user.id;
+      console.log('✅ Supabase User ID:', supabaseUserId);
 
       // Preparar dados das configurações
       const settingsData = {
@@ -121,6 +131,8 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
         notes: formData.notes
       };
 
+      console.log('📋 Dados a serem salvos:', settingsData);
+
       const response = await fetch('/api/personal/salary-settings', {
         method: 'POST',
         headers: {
@@ -130,8 +142,13 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
       });
 
       if (!response.ok) {
-        throw new Error('Erro ao salvar configurações');
+        const errorText = await response.text();
+        console.error('❌ Erro na resposta da API:', errorText);
+        throw new Error(`Erro ao salvar configurações: ${response.status} - ${errorText}`);
       }
+
+      const result = await response.json();
+      console.log('✅ Configurações salvas com sucesso:', result);
 
       toast({
         title: "✅ Configurações Salvas!",
@@ -140,10 +157,10 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
 
       onSuccess();
     } catch (error) {
-      console.error('Erro ao salvar configurações:', error);
+      console.error('❌ Erro ao salvar configurações:', error);
       toast({
         title: "❌ Erro",
-        description: "Não foi possível salvar as configurações. Tente novamente.",
+        description: error instanceof Error ? error.message : "Não foi possível salvar as configurações. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -226,93 +243,118 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
+            <DollarSign className="h-5 w-5 text-green-600" />
             Configurar Salário Fixo
           </DialogTitle>
         </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Status Ativo */}
-          <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
-            <div>
-              <Label htmlFor="is_active" className="font-medium">Salário Automático</Label>
-              <p className="text-xs text-muted-foreground">Aplicar salário automaticamente todo mês</p>
-            </div>
-            <Switch
-              id="is_active"
-              checked={formData.is_active}
-              onCheckedChange={(checked) => setFormData({...formData, is_active: checked})}
-            />
-          </div>
-
-          {/* Descrição e Valor */}
-          <div className="space-y-4">
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Informações Básicas */}
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="description">Descrição</Label>
+              <Label htmlFor="amount" className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Valor *
+              </Label>
               <Input
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                placeholder="Ex: Salário Mensal"
+                id="amount"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0,00"
+                value={formData.amount}
+                onChange={(e) => setFormData({...formData, amount: e.target.value})}
                 required
               />
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="amount">Valor (R$)</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                  placeholder="0,00"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="source">Empresa/Fonte</Label>
-                <Input
-                  id="source"
-                  value={formData.source}
-                  onChange={(e) => setFormData({...formData, source: e.target.value})}
-                  placeholder="Ex: Empresa XYZ"
-                  required
-                />
-              </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="payment_day" className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Dia do Recebimento
+              </Label>
+              <Select value={formData.payment_day} onValueChange={(value) => setFormData({...formData, payment_day: value})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({length: 31}, (_, i) => i + 1).map(day => (
+                    <SelectItem key={day} value={day.toString()}>
+                      Dia {day}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
-
-          {/* Dia do Pagamento */}
+          
           <div className="space-y-2">
-            <Label htmlFor="payment_day" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Dia do Pagamento
+            <Label htmlFor="description" className="flex items-center gap-2">
+              <Briefcase className="h-4 w-4" />
+              Descrição *
             </Label>
-            <Select value={formData.payment_day} onValueChange={(value) => setFormData({...formData, payment_day: value})}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Array.from({length: 31}, (_, i) => i + 1).map(day => (
-                  <SelectItem key={day} value={day.toString()}>
-                    Dia {day}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Input
+              id="description"
+              placeholder="Ex: Salário Janeiro 2025"
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              required
+            />
           </div>
-
-          {/* Configurações de Impostos */}
-          <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
-            <div className="flex items-center justify-between">
+          
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Categoria *
+              </Label>
+              <select
+                value="salary"
+                className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
+                disabled
+              >
+                <option value="salary">Salário</option>
+              </select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="source" className="flex items-center gap-2">
+                <Briefcase className="h-4 w-4" />
+                Fonte/Pagador *
+              </Label>
+              <Input
+                id="source"
+                placeholder="Ex: Empresa XYZ Ltda"
+                value={formData.source}
+                onChange={(e) => setFormData({...formData, source: e.target.value})}
+                required
+              />
+            </div>
+          </div>
+          
+          {/* Configurações */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium">Configurações</h3>
+            
+            <div className="flex items-center justify-between p-3 border rounded-lg">
               <div>
-                <Label htmlFor="is_taxable">Tributável</Label>
-                <p className="text-xs text-muted-foreground">Este salário está sujeito a impostos</p>
+                <Label htmlFor="is_active" className="font-medium">Receita Recorrente</Label>
+                <p className="text-sm text-muted-foreground">Esta receita se repete mensalmente</p>
+              </div>
+              <Switch
+                id="is_active"
+                checked={formData.is_active}
+                onCheckedChange={(checked) => setFormData({...formData, is_active: checked})}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div>
+                <Label htmlFor="is_taxable" className="font-medium">Receita Tributável</Label>
+                <p className="text-sm text-muted-foreground">Sujeita a imposto de renda</p>
               </div>
               <Switch
                 id="is_taxable"
@@ -320,70 +362,53 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
                 onCheckedChange={(checked) => setFormData({...formData, is_taxable: checked})}
               />
             </div>
-
+            
             {formData.is_taxable && (
-              <div className="space-y-2">
-                <Label htmlFor="tax_withheld">Imposto Retido (R$)</Label>
+              <div className="space-y-2 ml-4">
+                <Label htmlFor="tax_withheld">Imposto Retido na Fonte</Label>
                 <Input
                   id="tax_withheld"
                   type="number"
                   step="0.01"
+                  min="0"
+                  placeholder="0,00"
                   value={formData.tax_withheld}
                   onChange={(e) => setFormData({...formData, tax_withheld: e.target.value})}
-                  placeholder="0,00"
                 />
               </div>
             )}
           </div>
-
+          
           {/* Observações */}
           <div className="space-y-2">
-            <Label htmlFor="notes">Observações (opcional)</Label>
+            <Label htmlFor="notes">Observações</Label>
             <Textarea
               id="notes"
+              placeholder="Informações adicionais sobre esta receita..."
               value={formData.notes}
               onChange={(e) => setFormData({...formData, notes: e.target.value})}
-              placeholder="Informações adicionais sobre o salário..."
               rows={3}
             />
           </div>
-
-          {/* Informação sobre funcionamento */}
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-start gap-2">
-              <Briefcase className="h-4 w-4 text-blue-600 mt-0.5" />
-              <div className="text-sm text-blue-800">
-                <p className="font-medium">Como funciona:</p>
-                <p className="text-xs mt-1">
-                  O salário será automaticamente adicionado às suas receitas no dia configurado de cada mês, 
-                  desde que a opção "Salário Automático" esteja ativada.
-                </p>
-              </div>
-            </div>
-          </div>
-
+          
           {/* Botões */}
-          <div className="flex justify-between pt-4">
-            <Button 
-              type="button" 
-              variant="secondary" 
+          <div className="flex gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
               onClick={handleApplyCurrentMonth}
               disabled={applyingCurrentMonth || !formData.amount}
+              className="flex-1"
             >
-              {applyingCurrentMonth && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              <Calendar className="mr-2 h-4 w-4" />
+              <Calendar className="h-4 w-4 mr-2" />
               Aplicar Mês Atual
             </Button>
-            
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar Configurações
-              </Button>
-            </div>
+            <Button type="submit" disabled={loading} className="flex-1">
+              {loading ? 'Salvando...' : 'Salvar'}
+            </Button>
           </div>
         </form>
       </DialogContent>

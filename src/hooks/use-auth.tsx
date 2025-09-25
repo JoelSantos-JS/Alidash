@@ -189,12 +189,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/cadastro');
 
-    if (!user && !isAuthPage) {
-      router.push('/login');
-    } else if (user && isAuthPage) {
-      router.push('/');
-    }
-  }, [user, loading, pathname, router]);
+    // Adicionar delay para evitar loops de navegação
+    const timeoutId = setTimeout(() => {
+      if (!user && !isAuthPage) {
+        router.push('/login');
+      } else if (user && isAuthPage) {
+        router.push('/');
+      }
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [user, loading, pathname]);
 
   const logoutWithBackup = async () => {
     if (user) {

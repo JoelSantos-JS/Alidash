@@ -25,6 +25,59 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        source: '/_next/static/css/:path*.css',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'text/css; charset=utf-8',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/_next/static/chunks/:path*.js',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/javascript; charset=utf-8',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/_next/image/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=300, s-maxage=600, stale-while-revalidate=86400',
+          },
+        ],
+      },
+      {
+        source: '/icon-:size*.svg',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, immutable',
+          },
+        ],
+      },
+      {
         source: '/:path*',
         headers: [
           {
@@ -35,15 +88,29 @@ const nextConfig: NextConfig = {
             key: 'X-Content-Type-Options',
             value: 'nosniff',
           },
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on',
+          },
         ],
       },
     ]
   },
   // Configuração experimental para melhor estabilidade
   experimental: {
-    optimizeCss: false, // Evita problemas com CSS chunks
-    esmExternals: 'loose', // Melhor compatibilidade com módulos
+    optimizeCss: true, // Habilitar otimização CSS
+    webpackBuildWorker: true, // Melhorar performance do build
   },
+  
+  // Configurações para produção
+  poweredByHeader: false,
+  reactStrictMode: true,
+  
+  // Pacotes externos para server components
+  serverExternalPackages: ['@opentelemetry/winston-transport', 'handlebars'],
+  
+  // Otimizações de performance
+  compress: true,
   images: {
     remotePatterns: [
       {
@@ -57,6 +124,47 @@ const nextConfig: NextConfig = {
     ],
   },
   webpack: (config, { isServer }) => {
+    // Otimizações de performance
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: {
+        chunks: 'all',
+        maxSize: 244000, // Limitar tamanho dos chunks
+        cacheGroups: {
+          default: {
+            minChunks: 2,
+            priority: -20,
+            reuseExistingChunk: true,
+          },
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            chunks: 'all',
+            priority: 10,
+            enforce: true,
+          },
+          recharts: {
+            test: /[\\/]node_modules[\\/]recharts[\\/]/,
+            name: 'recharts',
+            chunks: 'async',
+            priority: 20,
+            enforce: true,
+          },
+          dateFns: {
+            test: /[\\/]node_modules[\\/]date-fns[\\/]/,
+            name: 'date-fns',
+            chunks: 'all',
+            priority: 15,
+            enforce: true,
+          },
+        },
+      },
+      // Configurações para evitar problemas de chunks
+      runtimeChunk: {
+        name: 'runtime',
+      },
+    };
+
     // Resolver problemas com módulos OpenTelemetry e Handlebars
     config.resolve.fallback = {
       ...config.resolve.fallback,
@@ -100,6 +208,18 @@ const nextConfig: NextConfig = {
       /require\.extensions is not supported by webpack/,
       /Critical dependency: the request of a dependency is an expression/,
     ]
+
+    // Configurações para melhor estabilidade de chunks
+    config.output = {
+      ...config.output,
+      crossOriginLoading: 'anonymous',
+      chunkLoadingGlobal: 'webpackChunkLoad',
+    }
+
+    // Configurar retry para chunks falhados
+    if (!isServer) {
+      config.output.publicPath = '/_next/'
+    }
 
     return config
   },

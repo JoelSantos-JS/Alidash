@@ -5,7 +5,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-body" });
+const inter = Inter({ 
+  subsets: ["latin"], 
+  variable: "--font-body",
+  display: 'swap',
+  preload: true,
+  weight: ['400', '500', '600', '700']
+});
 
 export const metadata: Metadata = {
   title: "Alidash - Gestão Completa",
@@ -43,13 +49,6 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-        
         {/* PWA Icons */}
         <link rel="icon" type="image/svg+xml" href="/icon-192x192.svg" />
         <link rel="apple-touch-icon" href="/icon-192x192.svg" />
@@ -70,6 +69,39 @@ export default function RootLayout({
                     });
                 });
               }
+            `,
+          }}
+        />
+        
+        {/* Chunk Error Handler */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Handler global para erros de chunks
+              window.addEventListener('error', function(event) {
+                if (event.error && (
+                  event.error.name === 'ChunkLoadError' ||
+                  event.message.includes('Loading chunk') ||
+                  event.message.includes('Loading CSS chunk')
+                )) {
+                  console.warn('🔄 Erro de chunk detectado, recarregando...', event.error);
+                  setTimeout(function() {
+                    window.location.reload();
+                  }, 1000);
+                }
+              });
+              
+              window.addEventListener('unhandledrejection', function(event) {
+                if (event.reason && event.reason.message && (
+                  event.reason.message.includes('Loading chunk') ||
+                  event.reason.message.includes('Failed to import')
+                )) {
+                  console.warn('🔄 Promise rejeitada por chunk, recarregando...', event.reason);
+                  setTimeout(function() {
+                    window.location.reload();
+                  }, 1000);
+                }
+              });
             `,
           }}
         />

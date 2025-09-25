@@ -1,7 +1,15 @@
 "use client"
 
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts"
 import * as React from "react";
+import { 
+  LazyBarChartWrapper, 
+  LazyBar, 
+  LazyCartesianGrid, 
+  LazyXAxis, 
+  LazyYAxis, 
+  LazyTooltip, 
+  LazyLegend 
+} from "@/components/ui/lazy-chart";
 
 import {
   Card,
@@ -49,10 +57,9 @@ export function ProfitChart({ data, isLoading }: ProfitChartProps) {
                 ))}
             </div>
         ) : chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
+            <LazyBarChartWrapper data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                <LazyCartesianGrid strokeDasharray="3 3" />
+                <LazyXAxis 
                     dataKey="name" 
                     fontSize={10} 
                     tickLine={false} 
@@ -62,14 +69,14 @@ export function ProfitChart({ data, isLoading }: ProfitChartProps) {
                     height={60}
                     interval={0}
                 />
-                <YAxis 
+                <LazyYAxis 
                     fontSize={10} 
                     tickLine={false} 
                     axisLine={false} 
                     tickFormatter={(value) => `R$${value}`}
                     width={50}
                 />
-                <Tooltip 
+                <LazyTooltip 
                     cursor={{fill: 'hsl(var(--muted))'}}
                     contentStyle={{
                         background: 'hsl(var(--background))',
@@ -82,24 +89,23 @@ export function ProfitChart({ data, isLoading }: ProfitChartProps) {
                         name === 'lucro' ? 'Lucro Realizado' : 'Custo Total'
                     ]}
                 />
-                <Legend 
+                <LazyLegend 
                     iconType="circle" 
                     wrapperStyle={{ fontSize: '12px' }}
                 />
-                <Bar 
+                <LazyBar 
                     dataKey="lucro" 
                     name="Lucro Realizado" 
                     fill="hsl(var(--primary))" 
                     radius={[4, 4, 0, 0]} 
                 />
-                <Bar 
+                <LazyBar 
                     dataKey="custo" 
                     name="Custo Total" 
                     fill="hsl(var(--destructive))" 
                     radius={[4, 4, 0, 0]} 
                 />
-            </BarChart>
-            </ResponsiveContainer>
+            </LazyBarChartWrapper>
         ) : (
              <div className="h-full flex items-center justify-center text-center text-muted-foreground p-4">
                 <div>

@@ -7,11 +7,7 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Configurações para evitar problemas de chunks e cache
-  generateBuildId: async () => {
-    // Usar commit SHA do Vercel ou timestamp para builds únicos
-    return process.env.VERCEL_GIT_COMMIT_SHA || `build-${Date.now()}`
-  },
+  
   // Headers de cache otimizados
   async headers() {
     return [
@@ -69,15 +65,6 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: '/icon-:size*.svg',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=86400, immutable',
-          },
-        ],
-      },
-      {
         source: '/:path*',
         headers: [
           {
@@ -96,13 +83,8 @@ const nextConfig: NextConfig = {
       },
     ]
   },
-  // Configuração experimental para melhor estabilidade
-  experimental: {
-    optimizeCss: true, // Habilitar otimização CSS
-    webpackBuildWorker: true, // Melhorar performance do build
-  },
   
-  // Configurações para produção
+  // Configurações básicas para produção
   poweredByHeader: false,
   reactStrictMode: true,
   
@@ -123,49 +105,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  
+  // Configuração webpack simplificada para compatibilidade com Vercel
   webpack: (config, { isServer }) => {
-    // Otimizações de performance
-    config.optimization = {
-      ...config.optimization,
-      splitChunks: {
-        chunks: 'all',
-        maxSize: 244000, // Limitar tamanho dos chunks
-        cacheGroups: {
-          default: {
-            minChunks: 2,
-            priority: -20,
-            reuseExistingChunk: true,
-          },
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
-            priority: 10,
-            enforce: true,
-          },
-          recharts: {
-            test: /[\\/]node_modules[\\/]recharts[\\/]/,
-            name: 'recharts',
-            chunks: 'async',
-            priority: 20,
-            enforce: true,
-          },
-          dateFns: {
-            test: /[\\/]node_modules[\\/]date-fns[\\/]/,
-            name: 'date-fns',
-            chunks: 'all',
-            priority: 15,
-            enforce: true,
-          },
-        },
-      },
-      // Configurações para evitar problemas de chunks
-      runtimeChunk: {
-        name: 'runtime',
-      },
-    };
-
-    // Resolver problemas com módulos OpenTelemetry e Handlebars
+    // Resolver problemas com módulos Node.js
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
@@ -185,40 +128,6 @@ const nextConfig: NextConfig = {
         '@genkit-ai/core': false,
         'genkit': false,
       }
-
-      // Adicionar configuração para ignorar require.extensions
-      config.module = config.module || {}
-      config.module.unknownContextCritical = false
-      config.module.unknownContextRegExp = /^\.\/.*$/
-      config.module.unknownContextRequest = '.'
-    }
-
-    // Configurar externals para módulos Node.js
-    config.externals = config.externals || []
-    if (isServer) {
-      config.externals.push({
-        '@opentelemetry/winston-transport': 'commonjs @opentelemetry/winston-transport',
-        'handlebars': 'commonjs handlebars',
-        'dotprompt': 'commonjs dotprompt',
-      })
-    }
-
-    // Suprimir avisos específicos do webpack
-    config.ignoreWarnings = [
-      /require\.extensions is not supported by webpack/,
-      /Critical dependency: the request of a dependency is an expression/,
-    ]
-
-    // Configurações para melhor estabilidade de chunks
-    config.output = {
-      ...config.output,
-      crossOriginLoading: 'anonymous',
-      chunkLoadingGlobal: 'webpackChunkLoad',
-    }
-
-    // Configurar retry para chunks falhados
-    if (!isServer) {
-      config.output.publicPath = '/_next/'
     }
 
     return config

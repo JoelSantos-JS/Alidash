@@ -128,7 +128,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   errorData = { message: 'Empty response body' };
                 }
               } catch (textError) {
-                errorData = { message: 'Error reading response text', error: textError.message };
+                errorData = { message: `Error reading response text: ${textError instanceof Error ? textError.message : 'Unknown error'}` };
               }
               
               if (process.env.NODE_ENV === 'development') {

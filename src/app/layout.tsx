@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import "@/styles/performance-optimized.css";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -49,6 +50,16 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
+        {/* DNS Prefetch para recursos externos */}
+        <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="//fonts.gstatic.com" />
+        <link rel="dns-prefetch" href="//firebaseapp.com" />
+        <link rel="dns-prefetch" href="//googleapis.com" />
+        
+        {/* Preconnect para recursos críticos */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        
         {/* PWA Icons */}
         <link rel="icon" type="image/svg+xml" href="/icon-192x192.svg" />
         <link rel="apple-touch-icon" href="/icon-192x192.svg" />

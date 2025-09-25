@@ -1,0 +1,183 @@
+/* Otimizações de performance para mobile */
+
+/* Contenção de layout para reduzir reflow */
+.performance-container {
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
+}
+
+/* Otimizações para listas longas */
+.performance-list {
+  contain: layout;
+  will-change: transform;
+}
+
+.performance-list-item {
+  contain: layout style;
+  transform: translateZ(0); /* Força layer de composição */
+}
+
+/* Otimizações para animações */
+.performance-animate {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Reduzir motion para usuários que preferem */
+@media (prefers-reduced-motion: reduce) {
+  .performance-animate,
+  .performance-animate *,
+  .performance-animate *::before,
+  .performance-animate *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Otimizações para imagens */
+.performance-image {
+  content-visibility: auto;
+  contain-intrinsic-size: 300px 200px;
+  object-fit: cover;
+  image-rendering: optimizeSpeed;
+}
+
+/* Lazy loading placeholder */
+.performance-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Otimizações para scroll */
+.performance-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Contenção para componentes independentes */
+.performance-card {
+  contain: layout style paint;
+  isolation: isolate;
+}
+
+/* Otimizações para texto */
+.performance-text {
+  text-rendering: optimizeSpeed;
+  font-display: swap;
+}
+
+/* Otimizações para grids e flexbox */
+.performance-grid {
+  contain: layout;
+  display: grid;
+  grid-template-rows: masonry; /* Quando suportado */
+}
+
+.performance-flex {
+  contain: layout;
+  display: flex;
+}
+
+/* Otimizações para modais e overlays */
+.performance-modal {
+  contain: layout style paint;
+  isolation: isolate;
+  will-change: transform, opacity;
+}
+
+/* Otimizações para formulários */
+.performance-form {
+  contain: layout style;
+}
+
+.performance-input {
+  contain: layout style;
+  will-change: auto;
+}
+
+/* Otimizações para navegação */
+.performance-nav {
+  contain: layout style;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+/* Otimizações para conteúdo crítico */
+.performance-critical {
+  contain: none; /* Não aplicar contenção em conteúdo crítico */
+  content-visibility: visible;
+}
+
+/* Otimizações para conexões lentas */
+@media (max-width: 768px) and (max-resolution: 1.5dppx) {
+  .performance-image {
+    image-rendering: optimizeSpeed;
+  }
+  
+  .performance-animate {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Otimizações para modo economia de dados */
+@media (prefers-reduced-data: reduce) {
+  .performance-image {
+    display: none;
+  }
+  
+  .performance-video {
+    display: none;
+  }
+  
+  .performance-animation {
+    animation: none !important;
+  }
+}
+
+/* Utilities para performance */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.contain-layout {
+  contain: layout;
+}
+
+.contain-paint {
+  contain: paint;
+}
+
+.contain-size {
+  contain: size;
+}
+
+.contain-style {
+  contain: style;
+}
+
+.content-visibility-auto {
+  content-visibility: auto;
+}
+
+.isolate {
+  isolation: isolate;
+}

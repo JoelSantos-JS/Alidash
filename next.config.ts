@@ -93,6 +93,33 @@ const nextConfig: NextConfig = {
   
   // Otimizações de performance
   compress: true,
+  
+  // Otimizações específicas para mobile
+  modularizeImports: {
+    '@mui/icons-material': {
+      transform: '@mui/icons-material/{{member}}',
+    },
+    'lodash': {
+      transform: 'lodash/{{member}}',
+    },
+  },
+  
+  // Configurações experimentais para performance
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['@mui/material', '@mui/icons-material', 'lucide-react'],
+  },
+  
+  // Configurações do Turbopack (estável)
+  turbopack: {
+    rules: {
+      '*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js',
+      },
+    },
+  },
+  
   images: {
     remotePatterns: [
       {
@@ -104,6 +131,8 @@ const nextConfig: NextConfig = {
         hostname: '**',
       },
     ],
+    formats: ['image/webp', 'image/avif'],
+    minimumCacheTTL: 31536000,
   },
   
   // Configuração webpack simplificada para compatibilidade com Vercel

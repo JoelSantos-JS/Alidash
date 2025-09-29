@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { DollarSign, Package, TrendingUp, Clock } from "lucide-react";
 
 import type { Product } from "@/types";
@@ -10,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { SafeImage } from "@/components/ui/safe-image";
 
 type ProductCardProps = {
   product: Product;
@@ -43,16 +43,12 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
     >
       <CardHeader className="p-0 relative">
         <div className="aspect-square relative">
-          <Image
+          <SafeImage
             src={imageSrc}
             alt={product.name}
             fill
             className="object-cover"
             data-ai-hint="product image"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = "/placeholder-product.svg";
-            }}
           />
         </div>
         <Badge className={`absolute top-1 right-1 sm:top-2 sm:right-2 border-transparent text-white text-xs sm:text-sm ${statusInfo.color}`}>

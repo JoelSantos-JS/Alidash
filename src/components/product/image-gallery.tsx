@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Plus, X, Upload, Image as ImageIcon } from "lucide-react";
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/safe-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -175,15 +175,11 @@ export function ImageGallery({ images, onChange, maxImages = 5 }: ImageGalleryPr
             <Card key={image.id} className="relative group">
               <CardContent className="p-2">
                 <div className="relative aspect-square">
-                  <Image
+                  <SafeImage
                     src={image.url}
                     alt={image.alt}
                     fill
                     className="object-cover rounded-md"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = "/placeholder-product.svg";
-                    }}
                   />
                   
                   {/* Badge do tipo */}

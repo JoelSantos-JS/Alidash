@@ -1,7 +1,7 @@
 
 "use client";
 
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/safe-image";
 import Link from "next/link";
 import { ExternalLink, Trash2, Pencil, Info, AlertTriangle, NotebookText, ShoppingCart, History } from "lucide-react";
 
@@ -61,16 +61,12 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
           <div className="flex flex-col sm:flex-row gap-6 items-start">
             {/* Imagem menor e responsiva */}
             <div className="relative w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0 rounded-lg overflow-hidden shadow-md">
-              <Image
+              <SafeImage
                 src={imageSrc}
                 alt={product.name}
                 fill
                 className="object-cover"
                 data-ai-hint="product thumbnail"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = "/placeholder-product.svg";
-                }}
               />
             </div>
             

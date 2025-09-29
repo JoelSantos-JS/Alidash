@@ -104,6 +104,19 @@ export class SupabaseService {
     if (process.env.NODE_ENV === 'development') {
       console.log('✅ Usuário criado no Supabase:', data)
     }
+
+    // Criar dados pessoais iniciais para usuários com account_type 'personal'
+    if (userData.account_type === 'personal') {
+      try {
+        await this.createInitialPersonalData(data.id, userData.firebase_uid)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Dados pessoais iniciais criados para o usuário:', data.id)
+        }
+      } catch (personalDataError) {
+        console.error('⚠️ Erro ao criar dados pessoais iniciais:', personalDataError)
+        // Não falhar a criação do usuário se houver erro nos dados pessoais
+      }
+    }
     
     return data
   }
@@ -137,6 +150,92 @@ export class SupabaseService {
       .eq('id', userId)
 
     if (error) throw error
+  }
+
+  // =====================================
+  // PERSONAL DATA INITIALIZATION
+  // =====================================
+
+  async createInitialPersonalData(userId: string, firebaseUid?: string) {
+    const userIdToUse = firebaseUid || userId
+    const currentDate = new Date().toISOString().split('T')[0]
+    const nextMonth = new Date()
+    nextMonth.setMonth(nextMonth.getMonth() + 1)
+    const nextYear = new Date()
+    nextYear.setFullYear(nextYear.getFullYear() + 1)
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🏠 Criando dados pessoais iniciais para usuário:', userIdToUse)
+    }
+
+    try {
+      // 1. Criar orçamento inicial
+      const initialBudget = {
+        user_id: userIdToUse,
+        name: `Orçamento ${nextMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`,
+        month: nextMonth.getMonth() + 1,
+        year: nextMonth.getFullYear(),
+        categories: {
+          food: 800,
+          transportation: 300,
+          utilities: 400,
+          entertainment: 200,
+          healthcare: 300,
+          housing: 1000
+        },
+        total_budget: 3000.00,
+        status: 'active',
+        notes: 'Orçamento inicial - ajuste conforme necessário'
+      }
+
+      const { error: budgetError } = await this.client
+        .from('personal_budgets')
+        .insert(initialBudget)
+
+      if (budgetError) {
+        console.error('❌ Erro ao criar orçamento inicial:', budgetError)
+      } else if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Orçamento inicial criado')
+      }
+
+      // 2. Criar meta de reserva de emergência
+      const emergencyGoal = {
+        user_id: userIdToUse,
+        name: 'Reserva de Emergência',
+        description: 'Reserva para 6 meses de gastos essenciais',
+        type: 'emergency_fund',
+        target_amount: 18000.00,
+        current_amount: 0.00,
+        deadline: nextYear.toISOString().split('T')[0],
+        priority: 'high',
+        monthly_contribution: 500.00,
+        notes: 'Meta prioritária para segurança financeira. Recomenda-se ter 6 meses de gastos guardados.'
+      }
+
+      const { error: goalError } = await this.client
+        .from('personal_goals')
+        .insert(emergencyGoal)
+
+      if (goalError) {
+        console.error('❌ Erro ao criar meta inicial:', goalError)
+      } else if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Meta de reserva de emergência criada')
+      }
+
+      // 3. Criar receita de exemplo (comentada para não criar dados fictícios)
+      // Usuários podem adicionar suas próprias receitas
+      
+      // 4. Criar categoria de gastos essenciais (se houver tabela de categorias)
+      // Isso pode ser implementado quando a tabela personal_categories estiver em uso
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Dados pessoais iniciais criados com sucesso')
+      }
+
+    } catch (error) {
+      console.error('❌ Erro geral ao criar dados pessoais iniciais:', error)
+      throw error
+    }
   }
 
   // =====================================

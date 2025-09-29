@@ -121,13 +121,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 if (responseText) {
                   try {
                     errorData = JSON.parse(responseText);
-                  } catch (parseError) {
+                  } catch (parseError: unknown) {
                     errorData = { message: 'Error parsing response', raw: responseText };
                   }
                 } else {
                   errorData = { message: 'Empty response body' };
                 }
-              } catch (textError) {
+              } catch (textError: unknown) {
                 errorData = { message: `Error reading response text: ${textError instanceof Error ? textError.message : 'Unknown error'}` };
               }
               
@@ -187,7 +187,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (loading) return;
 
-    const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/cadastro');
+    const isAuthPage = pathname.startsWith('/login');
 
     // Adicionar delay para evitar loops de navegação
     const timeoutId = setTimeout(() => {
@@ -211,7 +211,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (process.env.NODE_ENV === 'development') {
           console.log('✅ Backup automático concluído');
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('❌ Erro no backup automático:', {
           message: error instanceof Error ? error.message : 'Erro desconhecido',
           details: error ? String(error) : 'Sem detalhes disponíveis',
@@ -235,7 +235,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       logoutWithBackup
   };
   
-  if (loading && !(pathname.startsWith('/login') || pathname.startsWith('/cadastro'))) {
+  // Mostrar loading para qualquer página que não seja de auth quando estiver carregando
+  // ou quando não há usuário autenticado
+  if (loading || (!user && !pathname.startsWith('/login'))) {
     return (
         <div className="flex items-center justify-center h-screen bg-background">
             <div className="text-center">

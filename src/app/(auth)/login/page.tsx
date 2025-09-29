@@ -4,7 +4,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2, Package } from "lucide-react";
-import Link from "next/link";
 import { signInWithEmailAndPassword } from "firebase/auth";
 
 import { Button } from "@/components/ui/button";
@@ -94,12 +93,7 @@ export default function LoginPage() {
           </Button>
         </form>
       </Form>
-      <p className="text-center text-sm text-white/70 mt-6">
-        Não tem uma conta?{' '}
-        <Link href="/cadastro" className="text-white hover:text-blue-300 underline">
-          Cadastre-se
-        </Link>
-      </p>
+
     </>
   );
 }

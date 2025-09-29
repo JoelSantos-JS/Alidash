@@ -229,7 +229,7 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (loading) return;
 
-    const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/cadastro');
+    const isAuthPage = pathname.startsWith('/login');
 
     if (!user && !isAuthPage) {
       router.push('/login');
@@ -256,7 +256,7 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
   };
   
   // Loading screen for non-auth pages
-  if (loading && !(pathname.startsWith('/login') || pathname.startsWith('/cadastro'))) {
+  if (loading && !pathname.startsWith('/login')) {
     return (
         <div className="flex items-center justify-center h-screen bg-background">
             <div className="text-center">

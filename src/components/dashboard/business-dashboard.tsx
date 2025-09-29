@@ -51,6 +51,7 @@ interface BusinessDashboardProps {
   onDeleteProduct: (product: Product) => void;
   onSellProduct: (product: Product) => void;
   onUpgradeClick?: () => void;
+  onLoadExampleData?: () => void;
 }
 
 export function BusinessDashboard({
@@ -69,7 +70,8 @@ export function BusinessDashboard({
   onEditProduct,
   onDeleteProduct,
   onSellProduct,
-  onUpgradeClick = () => {}
+  onUpgradeClick = () => {},
+  onLoadExampleData = () => {}
 }: BusinessDashboardProps) {
   // Função para scroll das tabs
   const handleTabScroll = (direction: 'left' | 'right') => {
@@ -192,6 +194,24 @@ export function BusinessDashboard({
             {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} className="h-[300px] sm:h-[350px] w-full" />
             ))}
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="text-center py-12">
+            <Package className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Nenhum produto encontrado</h3>
+            <p className="text-muted-foreground mb-6">
+              Comece adicionando seus primeiros produtos ou carregue alguns dados de exemplo.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button onClick={onOpenForm} className="gap-2">
+                <PlusCircle className="h-4 w-4"/>
+                Adicionar Primeiro Produto
+              </Button>
+              <Button variant="outline" onClick={onLoadExampleData} className="gap-2">
+                <Package className="h-4 w-4"/>
+                Carregar Dados de Exemplo
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">

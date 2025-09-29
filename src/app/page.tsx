@@ -8,6 +8,7 @@ import type { Product, Sale } from "@/types";
 import { ProductSearch } from "@/components/product/product-search";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductDetailView } from "@/components/product/product-detail-view";
+import { ProductEditMenu } from "@/components/product/product-edit-menu";
 import { ProductForm } from "@/components/product/product-form";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -89,6 +90,7 @@ import { AccountTypeToggle, useAccountType, type AccountType } from "@/component
 import { isFeatureEnabled } from "@/config/features";
 import Link from "next/link";
 import { notifyProductCreated, notifyProductSold } from '@/lib/n8n-events';
+import { initialProducts } from '@/data/initial-products';
 
 interface ExtendedSale extends Sale {
   productName?: string;
@@ -104,102 +106,7 @@ const cleanUndefinedValues = (obj: any): any => {
   }));
 };
 
-const initialProducts: Product[] = [
-  {
-    id: "1",
-    name: "Smartphone Xiaomi",
-    category: "Eletrônicos",
-    supplier: "AliExpress",
-    aliexpressLink: "https://example.com",
-    imageUrl: "/placeholder-product.svg",
-    description: "Smartphone de última geração",
-    purchasePrice: 800,
-    shippingCost: 50,
-    importTaxes: 120,
-    packagingCost: 10,
-    marketingCost: 30,
-    otherCosts: 20,
-    totalCost: 1030,
-    sellingPrice: 1500,
-    expectedProfit: 470,
-    profitMargin: 31.3,
-    sales: [
-      {
-        id: "sale1",
-        date: new Date(2024, 11, 15),
-        quantity: 1,
-        buyerName: "João Silva",
-        productId: "1"
-      }
-    ],
-    quantity: 3,
-    quantitySold: 1,
-    status: 'selling',
-    purchaseDate: new Date(2024, 11, 1),
-    roi: 45.6,
-    actualProfit: 470
-  },
-  {
-    id: "2",
-    name: "Fone de Ouvido Bluetooth",
-    category: "Acessórios",
-    supplier: "AliExpress",
-    aliexpressLink: "https://example.com",
-    imageUrl: "/placeholder-product.svg",
-    description: "Fone sem fio de alta qualidade",
-    purchasePrice: 120,
-    shippingCost: 15,
-    importTaxes: 18,
-    packagingCost: 5,
-    marketingCost: 10,
-    otherCosts: 5,
-    totalCost: 173,
-    sellingPrice: 250,
-    expectedProfit: 77,
-    profitMargin: 30.8,
-    sales: [],
-    quantity: 5,
-    quantitySold: 0,
-    status: 'received',
-    purchaseDate: new Date(2024, 11, 10),
-    roi: 0,
-    actualProfit: 0
-  },
-  {
-    id: "3",
-    name: "Relógio Smart",
-    category: "Eletrônicos",
-    supplier: "AliExpress",
-    aliexpressLink: "https://example.com",
-    imageUrl: "/placeholder-product.svg",
-    description: "Relógio inteligente com monitor cardíaco",
-    purchasePrice: 200,
-    shippingCost: 25,
-    importTaxes: 30,
-    packagingCost: 8,
-    marketingCost: 15,
-    otherCosts: 7,
-    totalCost: 285,
-    sellingPrice: 450,
-    expectedProfit: 165,
-    profitMargin: 36.7,
-    sales: [
-      {
-        id: "sale2",
-        date: new Date(2024, 11, 20),
-        quantity: 1,
-        buyerName: "Maria Santos",
-        productId: "3"
-      }
-    ],
-    quantity: 2,
-    quantitySold: 1,
-    status: 'selling',
-    purchaseDate: new Date(2024, 11, 5),
-    roi: 57.9,
-    actualProfit: 165
-  }
-];
+
 
 export default function Home() {
   const { user, loading: authLoading, isPro, openUpgradeModal, logoutWithBackup } = useAuth();
@@ -218,14 +125,16 @@ export default function Home() {
     }
   }, [setAccountType]);
   
-  // Debug logs para verificar estado da autenticação
-  console.log('🔍 Estado da autenticação:', {
-    user: !!user,
-    userUid: user?.uid,
-    userEmail: user?.email,
-    authLoading,
-    accountType
-  });
+  // Debug logs para verificar estado da autenticação (apenas em desenvolvimento)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 Estado da autenticação:', {
+      user: !!user,
+      userUid: user?.uid,
+      userEmail: user?.email,
+      authLoading,
+      accountType
+    });
+  }
   
   // Hook de sincronização dual - só criar quando user existir
   const dualSync = useMemo(() => {
@@ -238,10 +147,12 @@ export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [showEditMenu, setShowEditMenu] = useState(true); // true = menu de edição, false = detalhes completos
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSaleFormOpen, setIsSaleFormOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [periodFilter, setPeriodFilter] = useState<"day" | "week" | "month">("month");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -253,6 +164,47 @@ export default function Home() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const { toast } = useToast();
   const router = useRouter();
+
+  // Função para carregar dados iniciais apenas para usuários novos
+  const loadInitialDataForNewUser = async () => {
+    if (!user) return;
+    
+    try {
+      // Verificar se o usuário já tem produtos
+      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
+      
+      if (userResponse.ok) {
+        const userResult = await userResponse.json();
+        const supabaseUser = userResult.user;
+        
+        // Verificar se já tem produtos
+        const productsResponse = await fetch(`/api/products/list?user_id=${supabaseUser.id}`);
+        if (productsResponse.ok) {
+          const productsResult = await productsResponse.json();
+          
+          // Se não tem produtos, é um usuário novo - carregar dados de exemplo
+          if (productsResult.products.length === 0) {
+            setProducts(initialProducts);
+            toast({
+              title: "Bem-vindo!",
+              description: "Carregamos alguns produtos de exemplo para você começar.",
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar usuário novo:', error);
+    }
+  };
+
+  // Função para carregar dados de exemplo manualmente
+  const handleLoadExampleData = () => {
+    setProducts(initialProducts);
+    toast({
+      title: "Dados de exemplo carregados!",
+      description: "Agora você pode explorar as funcionalidades do sistema.",
+    });
+  };
 
   // Função para carregar orçamento do banco de dados
   const loadBudgetFromDatabase = async (supabaseUserId: string) => {
@@ -321,114 +273,72 @@ export default function Home() {
   // Remover redirecionamento automático - dashboard pessoal será integrado
 
   useEffect(() => {
-    console.log('🔍 useEffect executado - authLoading:', authLoading, 'user:', !!user);
     if (authLoading || !user) {
-      console.log('⏳ Aguardando autenticação...');
       return;
     }
 
     const fetchData = async () => {
       try {
-        console.log('🔄 Carregando dados do Supabase para usuário:', user.uid);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Carregando dados do Supabase para usuário:', user.uid);
+        }
 
-        // Carregar produtos via API
-        let supabaseProducts: Product[] = [];
-        try {
-          // Primeiro buscar o usuário no Supabase
+        // Primeiro buscar o usuário no Supabase
         const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
         
         if (!userResponse.ok) {
-          console.log('⚠️ Usuário não encontrado no Supabase');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('⚠️ Usuário não encontrado no Supabase');
+          }
+          setProducts([]);
+          setIsLoading(false);
           return;
         }
         
         const userResult = await userResponse.json();
         const supabaseUser = userResult.user;
+        const supabaseUserId = supabaseUser.id;
         
-        const response = await fetch(`/api/products/get?user_id=${supabaseUser.id}`);
-          if (response.ok) {
-            const data = await response.json();
-            supabaseProducts = data.products || [];
-            console.log('📦 Produtos encontrados:', supabaseProducts.length);
-          }
-        } catch (error) {
-          console.log('⚠️ Erro ao carregar produtos:', error);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Usuário Supabase encontrado:', supabaseUserId);
         }
 
-        // Buscar usuário Supabase
-        let supabaseUserId: string | null = null;
-        try {
-          const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
-          if (userResponse.ok) {
-            const userResult = await userResponse.json();
-            supabaseUserId = userResult.user.id;
-            console.log('✅ Usuário Supabase encontrado:', supabaseUserId);
-            
-            // Carregar orçamento do banco de dados
-            await loadBudgetFromDatabase(supabaseUserId);
-          }
-        } catch (error) {
-          console.log('⚠️ Erro ao buscar usuário:', error);
+        // Carregar orçamento do banco de dados
+        await loadBudgetFromDatabase(supabaseUserId);
+
+        // Fazer todas as chamadas de API em paralelo para melhor performance
+        const [
+          productsResult,
+          revenuesResult,
+          expensesResult,
+          salesResult,
+          transactionsResult
+        ] = await Promise.allSettled([
+          fetch(`/api/products/get?user_id=${supabaseUserId}`).then(res => res.ok ? res.json() : { products: [] }),
+          fetch(`/api/revenues/get?user_id=${supabaseUserId}`).then(res => res.ok ? res.json() : { revenues: [] }),
+          fetch(`/api/expenses/get?user_id=${supabaseUserId}`).then(res => res.ok ? res.json() : { expenses: [] }),
+          fetch(`/api/sales/get?user_id=${supabaseUserId}`).then(res => res.ok ? res.json() : { sales: [] }),
+          fetch(`/api/transactions/get?user_id=${supabaseUserId}`).then(res => res.ok ? res.json() : { transactions: [] })
+        ]);
+
+        // Extrair dados dos resultados
+        const supabaseProducts = productsResult.status === 'fulfilled' ? (productsResult.value.products || []) : [];
+        const supabaseRevenues = revenuesResult.status === 'fulfilled' ? (revenuesResult.value.revenues || []) : [];
+        const supabaseExpenses = expensesResult.status === 'fulfilled' ? (expensesResult.value.expenses || []) : [];
+        const supabaseSales = salesResult.status === 'fulfilled' ? (salesResult.value.sales || []) : [];
+        const supabaseTransactions = transactionsResult.status === 'fulfilled' ? (transactionsResult.value.transactions || []) : [];
+
+        // Log de erros se houver (apenas em desenvolvimento)
+        if (process.env.NODE_ENV === 'development') {
+          if (productsResult.status === 'rejected') console.log('⚠️ Erro ao carregar produtos:', productsResult.reason);
+          if (revenuesResult.status === 'rejected') console.log('⚠️ Erro ao carregar receitas:', revenuesResult.reason);
+          if (expensesResult.status === 'rejected') console.log('⚠️ Erro ao carregar despesas:', expensesResult.reason);
+          if (salesResult.status === 'rejected') console.log('⚠️ Erro ao carregar vendas:', salesResult.reason);
+          if (transactionsResult.status === 'rejected') console.log('⚠️ Erro ao carregar transações:', transactionsResult.reason);
         }
 
-        // Carregar receitas
-        let supabaseRevenues: any[] = [];
-        if (supabaseUserId) {
-          try {
-            const revenuesResponse = await fetch(`/api/revenues/get?user_id=${supabaseUserId}`);
-            if (revenuesResponse.ok) {
-              const revenuesData = await revenuesResponse.json();
-              supabaseRevenues = revenuesData.revenues || [];
-            }
-          } catch (error) {
-            console.log('⚠️ Erro ao carregar receitas:', error);
-          }
-        }
-
-        // Carregar despesas
-        let supabaseExpenses: any[] = [];
-        if (supabaseUserId) {
-          try {
-            const expensesResponse = await fetch(`/api/expenses/get?user_id=${supabaseUserId}`);
-            if (expensesResponse.ok) {
-              const expensesData = await expensesResponse.json();
-              supabaseExpenses = expensesData.expenses || [];
-            }
-          } catch (error) {
-            console.log('⚠️ Erro ao carregar despesas:', error);
-          }
-        }
-
-        // Carregar vendas
-        let supabaseSales: any[] = [];
-        if (supabaseUserId) {
-          try {
-            const salesResponse = await fetch(`/api/sales/get?user_id=${supabaseUser.id}`);
-            if (salesResponse.ok) {
-              const salesData = await salesResponse.json();
-              supabaseSales = salesData.sales || [];
-            }
-          } catch (error) {
-            console.log('⚠️ Erro ao carregar vendas:', error);
-          }
-        }
-
-        // Carregar transações
-        let supabaseTransactions: any[] = [];
-        if (supabaseUserId) {
-          try {
-            const transactionsResponse = await fetch(`/api/transactions/get?user_id=${supabaseUserId}`);
-            if (transactionsResponse.ok) {
-              const transactionsData = await transactionsResponse.json();
-              supabaseTransactions = transactionsData.transactions || [];
-            }
-          } catch (error) {
-            console.log('⚠️ Erro ao carregar transações:', error);
-          }
-        }
-
-        // Usar dados do Supabase ou fallback para dados de exemplo
-        const finalProducts = supabaseProducts.length > 0 ? supabaseProducts : initialProducts;
+        // Usar apenas dados do Supabase (sem fallback para dados de exemplo)
+        const finalProducts = supabaseProducts;
         
         setProducts(finalProducts);
         setRevenues(supabaseRevenues);
@@ -436,17 +346,19 @@ export default function Home() {
         setSales(supabaseSales);
         setTransactions(supabaseTransactions);
         
-        console.log('📊 Dashboard carregado:', {
-          produtos: finalProducts.length,
-          receitas: supabaseRevenues.length,
-          despesas: supabaseExpenses.length,
-          vendas: supabaseSales.length,
-          transacoes: supabaseTransactions.length
-        });
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📊 Dashboard carregado:', {
+            produtos: finalProducts.length,
+            receitas: supabaseRevenues.length,
+            despesas: supabaseExpenses.length,
+            vendas: supabaseSales.length,
+            transacoes: supabaseTransactions.length
+          });
+        }
 
       } catch (error) {
         console.error('❌ Erro ao carregar dados:', error);
-        setProducts(initialProducts);
+        setProducts([]);
       }
       setIsLoading(false);
     }
@@ -462,9 +374,13 @@ export default function Home() {
       const cleanProducts = productsToSave.map(product => cleanUndefinedValues(product));
       const docRef = doc(db, "user-data", user.uid);
       await setDoc(docRef, { products: cleanProducts }, { merge: true });
-      console.log('✅ Produtos salvos no Firebase');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Produtos salvos no Firebase');
+      }
     } catch (error) {
-      console.error("Erro ao salvar produtos:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Erro ao salvar produtos:", error);
+      }
       toast({
         variant: 'destructive',
         title: "Erro ao Salvar",
@@ -560,91 +476,251 @@ export default function Home() {
   const handleSaveProduct = async (productData: Product) => {
     const sanitizedProductData = cleanUndefinedValues(productData);
 
-    if(productToEdit) {
-      // Editar produto existente
-      const updatedProducts = products.map(p => p.id === productToEdit.id ? { ...p, ...sanitizedProductData, id: p.id } : p)
-      setProducts(updatedProducts);
-      await saveDataToFirebase(updatedProducts);
+    try {
+      // Primeiro buscar o usuário no Supabase
+      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
       
-      toast({
-        title: "Produto Atualizado!",
-        description: `O produto "${productData.name}" foi atualizado.`,
-      });
-    } else {
-      // Adicionar novo produto
-      const newProduct: Product = {
-        ...sanitizedProductData,
-        id: new Date().getTime().toString(),
-        sales: [],
+      if (userResponse.ok) {
+        const userResult = await userResponse.json();
+        const supabaseUser = userResult.user;
+
+        if(productToEdit) {
+          // Editar produto existente
+          const updatedProduct = { ...productToEdit, ...sanitizedProductData, id: productToEdit.id };
+          
+          // Atualizar usando a API de sincronização dual
+          const updateResponse = await fetch(`/api/products/update?user_id=${supabaseUser.id}&product_id=${productToEdit.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updatedProduct)
+          });
+          
+          if (updateResponse.ok) {
+            const result = await updateResponse.json();
+            console.log('✅ Produto atualizado:', result);
+            
+            // Só atualizar estado local se a operação foi bem-sucedida
+            if (result.success) {
+              const updatedProducts = products.map(p => p.id === productToEdit.id ? updatedProduct : p);
+              setProducts(updatedProducts);
+              
+              toast({
+                title: "Produto Atualizado!",
+                description: `O produto "${productData.name}" foi atualizado com sucesso.`,
+              });
+            } else {
+              throw new Error(result.errors?.join(', ') || 'Erro desconhecido');
+            }
+          } else {
+            const errorResult = await updateResponse.json();
+            throw new Error(errorResult.error || 'Erro ao atualizar produto');
+          }
+        } else {
+          // Adicionar novo produto
+          const newProduct: Product = {
+            ...sanitizedProductData,
+            id: new Date().getTime().toString(),
+            sales: [],
+          }
+          
+          // Criar usando a API de sincronização dual
+          const createResponse = await fetch(`/api/products/create?user_id=${supabaseUser.id}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(newProduct)
+          });
+          
+          if (createResponse.ok) {
+            const result = await createResponse.json();
+            console.log('✅ Produto criado:', result);
+            
+            // Só atualizar estado local se a operação foi bem-sucedida
+            if (result.success) {
+              const updatedProducts = [newProduct, ...products];
+              setProducts(updatedProducts);
+              
+              toast({
+                title: "Produto Adicionado!",
+                description: `O produto "${productData.name}" foi adicionado com sucesso.`,
+              });
+            } else {
+              throw new Error(result.errors?.join(', ') || 'Erro desconhecido');
+            }
+          } else {
+            const errorResult = await createResponse.json();
+            throw new Error(errorResult.error || 'Erro ao criar produto');
+          }
+        }
+      } else {
+        throw new Error('Erro ao buscar dados do usuário');
       }
-      const updatedProducts = [newProduct, ...products];
-      setProducts(updatedProducts);
-      await saveDataToFirebase(updatedProducts);
-      
+
+      setIsFormOpen(false);
+      setProductToEdit(null);
+    } catch (error) {
+      console.error('❌ Erro ao salvar produto:', error);
       toast({
-        title: "Produto Adicionado!",
-        description: `O produto "${productData.name}" foi adicionado.`,
+        variant: 'destructive',
+        title: "Erro ao Salvar",
+        description: `Não foi possível salvar o produto: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
       });
     }
-
-    setIsFormOpen(false);
-    setProductToEdit(null);
   }
 
   const handleDeleteProduct = async (productId: string) => {
     const product = products.find(p => p.id === productId);
-    if (!product) return;
+    if (!product || isDeleting) return;
 
+    setIsDeleting(true);
+    
+    // Feedback visual imediato - atualizar UI otimisticamente
     const updatedProducts = products.filter(p => p.id !== productId);
     setProducts(updatedProducts);
     setProductToDelete(null);
     setSelectedProduct(null);
-    
-    await saveDataToFirebase(updatedProducts);
-    
-    toast({
-      variant: 'destructive',
-      title: "Produto Excluído!",
-      description: `O produto "${product.name}" foi excluído.`,
-    });
+
+    try {
+      // Buscar usuário e deletar produto em paralelo (otimização)
+      const [userResponse] = await Promise.all([
+        fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`)
+      ]);
+      
+      if (userResponse.ok) {
+        const userResult = await userResponse.json();
+        const supabaseUser = userResult.user;
+        
+        // Deletar usando a API de sincronização dual
+        const deleteResponse = await fetch(`/api/products/delete?user_id=${supabaseUser.id}&product_id=${productId}`, {
+          method: 'DELETE',
+        });
+        
+        if (deleteResponse.ok) {
+          const result = await deleteResponse.json();
+          console.log('✅ Produto deletado:', result);
+          
+          // Verificar se ambos os bancos funcionaram ou se não há erros críticos
+          const hasErrors = result.errors && result.errors.length > 0;
+          const bothSucceeded = result.firebaseSuccess && result.supabaseSuccess;
+          const atLeastOneSucceeded = result.firebaseSuccess || result.supabaseSuccess;
+          
+          if (bothSucceeded) {
+            // Sucesso completo
+            toast({
+              title: "Produto Excluído!",
+              description: `O produto "${product.name}" foi excluído com sucesso.`,
+            });
+          } else if (atLeastOneSucceeded && !hasErrors) {
+            // Sucesso parcial mas sem erros críticos
+            toast({
+              title: "Produto Excluído!",
+              description: `O produto "${product.name}" foi excluído com sucesso.`,
+            });
+          } else {
+            // Falha ou erros críticos - reverter mudança otimística
+            setProducts(products);
+            const errorMessage = hasErrors ? result.errors.join(', ') : 'Erro desconhecido na sincronização';
+            throw new Error(errorMessage);
+          }
+        } else {
+          // Reverter mudança otimística se falhou
+          setProducts(products);
+          const errorResult = await deleteResponse.json();
+          throw new Error(errorResult.error || 'Erro ao deletar produto');
+        }
+      } else {
+        // Reverter mudança otimística se falhou
+        setProducts(products);
+        throw new Error('Erro ao buscar dados do usuário');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao excluir produto:', error);
+      toast({
+        variant: 'destructive',
+        title: "Erro ao Excluir",
+        description: `Não foi possível excluir o produto: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   }
   
   const handleRegisterSale = async (product: Product, saleData: Omit<Sale, 'id' | 'date'>) => {
     const cleanSaleData = cleanUndefinedValues(saleData);
     
-    const newSale: Sale = {
-      ...cleanSaleData,
-      id: new Date().getTime().toString(),
-      date: new Date(),
-    }
-
-    const updatedProducts = products.map(p => {
-      if (p.id === product.id) {
-        const newQuantitySold = p.quantitySold + saleData.quantity;
-        const newActualProfit = p.expectedProfit * newQuantitySold;
-        const newStatus = newQuantitySold >= p.quantity ? 'sold' : p.status;
+    try {
+      // Primeiro buscar o usuário no Supabase
+      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      
+      if (userResponse.ok) {
+        const userResult = await userResponse.json();
+        const supabaseUser = userResult.user;
         
-        return {
-          ...p,
+        const newSale: Sale = {
+          ...cleanSaleData,
+          id: new Date().getTime().toString(),
+          date: new Date(),
+        }
+
+        // Calcular dados atualizados do produto
+        const newQuantitySold = product.quantitySold + saleData.quantity;
+        const newActualProfit = product.expectedProfit * newQuantitySold;
+        const newStatus = newQuantitySold >= product.quantity ? 'sold' : product.status;
+        
+        const updatedProduct = {
+          ...product,
           quantitySold: newQuantitySold,
           actualProfit: newActualProfit,
           status: newStatus,
-          sales: [...(p.sales || []), newSale],
+          sales: [...(product.sales || []), newSale],
+        };
+
+        // Atualizar produto no Supabase usando a API de sincronização dual
+        const updateResponse = await fetch(`/api/products/update?user_id=${supabaseUser.id}&product_id=${product.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updatedProduct)
+        });
+        
+        if (updateResponse.ok) {
+          const result = await updateResponse.json();
+          console.log('✅ Venda registrada:', result);
+          
+          // Só atualizar estado local se a operação foi bem-sucedida
+          if (result.success) {
+            const updatedProducts = products.map(p => p.id === product.id ? updatedProduct : p);
+            setProducts(updatedProducts);
+            
+            setIsSaleFormOpen(false);
+            setSelectedProduct(null);
+            
+            toast({
+              title: "Venda Registrada!",
+              description: `${saleData.quantity} unidade(s) de "${product.name}" vendida(s) com sucesso.`,
+            });
+          } else {
+            throw new Error(result.errors?.join(', ') || 'Erro desconhecido');
+          }
+        } else {
+          const errorResult = await updateResponse.json();
+          throw new Error(errorResult.error || 'Erro ao registrar venda');
         }
+      } else {
+        throw new Error('Erro ao buscar dados do usuário');
       }
-      return p;
-    });
-    
-    setProducts(updatedProducts);
-    await saveDataToFirebase(updatedProducts);
-    
-    setIsSaleFormOpen(false);
-    setSelectedProduct(null);
-    
-    toast({
-      title: "Venda Registrada!",
-      description: `${saleData.quantity} unidade(s) de "${product.name}" vendida(s).`,
-    });
+    } catch (error) {
+      console.error('❌ Erro ao registrar venda:', error);
+      toast({
+        variant: 'destructive',
+        title: "Erro ao Registrar Venda",
+        description: `Não foi possível registrar a venda: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+      });
+    }
   }
 
   const getInitials = (email: string | null | undefined) => {
@@ -1224,7 +1300,10 @@ export default function Home() {
                 isPro={isPro}
                 onOpenForm={() => handleOpenForm()}
                 onSearch={handleSearch}
-                onProductClick={(product) => setSelectedProduct(product)}
+                onProductClick={(product) => {
+                  setSelectedProduct(product);
+                  setShowEditMenu(true); // Sempre mostrar menu de edição primeiro
+                }}
                 onEditProduct={(product) => {
                   setProductToEdit(product);
                   setIsFormOpen(true);
@@ -1235,6 +1314,7 @@ export default function Home() {
                   setIsSaleFormOpen(true);
                 }}
                 onUpgradeClick={openUpgradeModal}
+                onLoadExampleData={handleLoadExampleData}
               />
             )}
           </main>
@@ -1249,6 +1329,7 @@ export default function Home() {
             setIsFormOpen(false);
             setProductToEdit(null);
             setIsSaleFormOpen(false);
+            setShowEditMenu(true);
           }
         }}
       >
@@ -1273,10 +1354,24 @@ export default function Home() {
                   }}
                />
              </div>
+          ) : selectedProduct && showEditMenu ? (
+            <ProductEditMenu 
+              product={selectedProduct} 
+              onEdit={() => {
+                setProductToEdit(selectedProduct);
+                setIsFormOpen(true);
+              }}
+              onDelete={() => setProductToDelete(selectedProduct)}
+              onRegisterSale={() => setIsSaleFormOpen(true)}
+              onViewDetails={() => setShowEditMenu(false)}
+            />
           ) : selectedProduct ? (
             <ProductDetailView 
               product={selectedProduct} 
-              onEdit={() => handleOpenForm(selectedProduct)}
+              onEdit={() => {
+                setProductToEdit(selectedProduct);
+                setIsFormOpen(true);
+              }}
               onDelete={() => setProductToDelete(selectedProduct)}
               onRegisterSale={() => setIsSaleFormOpen(true)}
             />
@@ -1298,9 +1393,12 @@ export default function Home() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => productToDelete && handleDeleteProduct(productToDelete.id)}>
-              Sim, excluir produto
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => productToDelete && handleDeleteProduct(productToDelete.id)}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Excluindo..." : "Sim, excluir produto"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

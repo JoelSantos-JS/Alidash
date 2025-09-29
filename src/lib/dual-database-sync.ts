@@ -686,6 +686,10 @@ export class DualDatabaseSync {
     try {
       // 1. Deletar do Firebase
       try {
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`🔍 Tentando deletar produto ${productId} do Firebase para usuário ${this.userId}`)
+        }
+        
         const firebaseRef = doc(firebaseDb, 'user-data', this.userId)
         const docSnap = await getDoc(firebaseRef)
         
@@ -693,8 +697,23 @@ export class DualDatabaseSync {
           const currentData = docSnap.data()
           const currentProducts = currentData.products || []
           
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`📦 Produtos atuais no Firebase: ${currentProducts.length}`)
+            console.log(`🔍 Procurando produto com ID: ${productId}`)
+          }
+          
+          // Verificar se o produto existe antes de tentar deletar
+          const productExists = currentProducts.some((p: Product) => p.id === productId)
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`🔍 Produto existe no Firebase: ${productExists}`)
+          }
+          
           // Filtrar o produto a ser deletado
           const updatedProducts = currentProducts.filter((p: Product) => p.id !== productId)
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`📦 Produtos após filtro: ${updatedProducts.length}`)
+          }
           
           await setDoc(firebaseRef, {
             ...currentData,
@@ -706,10 +725,18 @@ export class DualDatabaseSync {
             console.log('✅ Produto deletado do Firebase')
           }
         } else {
-          result.errors.push('Firebase: Documento do usuário não encontrado')
+          const errorMsg = 'Firebase: Documento do usuário não encontrado'
+          result.errors.push(errorMsg)
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`❌ ${errorMsg}`)
+          }
         }
       } catch (error) {
-        result.errors.push(`Firebase: ${error}`)
+        const errorMsg = `Firebase: ${error}`
+        result.errors.push(errorMsg)
+        if (process.env.NODE_ENV === 'development') {
+          console.error(`❌ Erro no Firebase:`, error)
+        }
       }
 
       // 2. Deletar do Supabase

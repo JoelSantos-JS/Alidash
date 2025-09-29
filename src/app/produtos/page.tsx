@@ -581,7 +581,7 @@ export default function ProdutosPage() {
                   <ProductCard
                     key={product.id}
                     product={product}
-                    onSelect={() => handleProductSelect(product)}
+                    onClick={() => handleProductSelect(product)}
                   />
                 ))}
               </div>

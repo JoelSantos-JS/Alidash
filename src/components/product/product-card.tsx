@@ -1,4 +1,4 @@
-import { DollarSign, Package, TrendingUp, Clock } from "lucide-react";
+import { DollarSign, Package, TrendingUp, Clock, Edit, Trash2, ShoppingCart, MoreVertical } from "lucide-react";
 
 import type { Product } from "@/types";
 import {
@@ -10,10 +10,20 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SafeImage } from "@/components/ui/safe-image";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type ProductCardProps = {
   product: Product;
-  onSelect: () => void;
+  onClick: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onSell?: () => void;
 };
 
 const statusMap = {
@@ -24,7 +34,7 @@ const statusMap = {
     sold: { label: 'Esgotado', color: 'bg-gray-500' },
 }
 
-export function ProductCard({ product, onSelect }: ProductCardProps) {
+export function ProductCard({ product, onClick, onEdit, onDelete, onSell }: ProductCardProps) {
   const statusInfo = statusMap[product.status];
 
   // Buscar imagem principal ou usar imageUrl como fallback
@@ -39,7 +49,7 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
   return (
     <Card
       className="flex flex-col h-full overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer"
-      onClick={onSelect}
+      onClick={onClick}
     >
       <CardHeader className="p-0 relative">
         <div className="aspect-square relative">
@@ -54,6 +64,45 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
         <Badge className={`absolute top-1 right-1 sm:top-2 sm:right-2 border-transparent text-white text-xs sm:text-sm ${statusInfo.color}`}>
           {statusInfo.label}
         </Badge>
+        {(onEdit || onDelete || onSell) && (
+          <div className="absolute top-1 left-1 sm:top-2 sm:left-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-6 w-6 p-0 bg-white/90 hover:bg-white"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreVertical className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
+                {onSell && (
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSell(); }}>
+                    <ShoppingCart className="mr-2 h-4 w-4" />
+                    Registrar Venda
+                  </DropdownMenuItem>
+                )}
+                {onEdit && (
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar Produto
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <DropdownMenuItem 
+                    onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Excluir Produto
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="p-3 sm:p-4 flex-1">
         <CardTitle className="text-sm sm:text-base font-semibold leading-tight mb-2 min-h-8 sm:min-h-10">

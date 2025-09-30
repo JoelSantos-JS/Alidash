@@ -33,7 +33,7 @@ import { SurebetCalculator } from '@/components/bets/surebet-calculator';
 import { AdvancedSurebetCalculator } from '@/components/bets/advanced-surebet-calculator';
 import { isToday, isThisWeek, isThisMonth } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { UpgradeToProCard } from '@/components/layout/upgrade-to-pro-card';
+
 
 
 const initialBets: Bet[] = [];
@@ -41,7 +41,7 @@ const initialBets: Bet[] = [];
 type Period = 'day' | 'week' | 'month';
 
 export default function BetsPage() {
-    const { user, loading: authLoading, isPro, openUpgradeModal } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const [bets, setBets] = useState<Bet[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -396,15 +396,7 @@ export default function BetsPage() {
                             </TabsContent>
                             
                             <TabsContent value="advanced">
-                            {isPro ? (
-                                    <AdvancedSurebetCalculator />
-                            ) : (
-                                    <UpgradeToProCard 
-                                        title="Desbloqueie a Calculadora Avançada"
-                                        description="A calculadora avançada permite análises complexas com taxas, limites e verificação de cenários para maximizar seus lucros."
-                                        onUpgradeClick={openUpgradeModal}
-                                    />
-                            )}
+                                <AdvancedSurebetCalculator />
                             </TabsContent>
                         </Tabs>
                     </TabsContent>

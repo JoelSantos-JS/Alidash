@@ -19,17 +19,17 @@ interface NotificationPreferences {
   transaction_alerts: boolean
   goal_reminders: boolean
   debt_reminders: boolean
-  reminder_time_minutes: number
+  reminder_time: number
 }
 
 export default function NotificationSettings() {
   const { user } = useAuth()
   const { 
     permission, 
-    isSubscribed, 
+    subscription, 
     requestPermission, 
-    subscribe, 
-    unsubscribe,
+    subscribeToPush, 
+    unsubscribeFromPush,
     testNotification 
   } = useNotifications()
   
@@ -41,7 +41,7 @@ export default function NotificationSettings() {
     transaction_alerts: true,
     goal_reminders: true,
     debt_reminders: true,
-    reminder_time_minutes: 15
+    reminder_time: 15
   })
   
   const [loading, setLoading] = useState(true)
@@ -108,15 +108,15 @@ export default function NotificationSettings() {
         }
       }
       
-      if (!isSubscribed) {
-        const subscribed = await subscribe()
+      if (!subscription) {
+        const subscribed = await subscribeToPush()
         if (!subscribed) {
           toast.error('Erro ao ativar notificações push')
           return
         }
       }
     } else {
-      await unsubscribe()
+      await unsubscribeFromPush()
     }
 
     setPreferences(prev => ({ ...prev, push_notifications: enabled }))
@@ -305,11 +305,11 @@ export default function NotificationSettings() {
             Minutos antes do evento para receber lembretes
           </p>
           <select
-            value={preferences.reminder_time_minutes}
+            value={preferences.reminder_time}
             onChange={(e) =>
               setPreferences(prev => ({ 
                 ...prev, 
-                reminder_time_minutes: parseInt(e.target.value) 
+                reminder_time: parseInt(e.target.value) 
               }))
             }
             className="w-full p-2 border rounded-md"
@@ -326,14 +326,28 @@ export default function NotificationSettings() {
 
         <Separator />
 
-        {/* Botão Salvar */}
-        <Button 
-          onClick={savePreferences} 
-          disabled={saving}
-          className="w-full"
-        >
-          {saving ? 'Salvando...' : 'Salvar Preferências'}
-        </Button>
+        {/* Botões de Ação */}
+        <div className="space-y-3">
+          {/* Botão de Teste - só aparece se push notifications estiver ativo */}
+          {preferences.push_notifications && subscription && (
+            <Button 
+              onClick={handleTestNotification}
+              variant="outline"
+              className="w-full"
+            >
+              🔔 Testar Notificação
+            </Button>
+          )}
+          
+          {/* Botão Salvar */}
+          <Button 
+            onClick={savePreferences} 
+            disabled={saving}
+            className="w-full"
+          >
+            {saving ? 'Salvando...' : 'Salvar Preferências'}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )

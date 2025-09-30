@@ -31,7 +31,7 @@ import { useDualSync } from '@/lib/dual-database-sync';
 const initialDreams: Dream[] = [];
 
 export default function DreamsPage() {
-  const { user, loading: authLoading, isPro, openUpgradeModal } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [dreams, setDreams] = useState<Dream[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlanning, setIsPlanning] = useState<string | null>(null);
@@ -108,7 +108,7 @@ export default function DreamsPage() {
   }, [dreams, isLoading, user, authLoading, toast]);
   
   useEffect(() => {
-    if (isLoading || dreams.length === 0 || !isPro) return;
+    if (isLoading || dreams.length === 0) return;
 
     // Find the dream with the lowest progress percentage
     const dreamWithLowestProgress = dreams
@@ -132,7 +132,7 @@ export default function DreamsPage() {
         }, 2000); // Delay to allow the user to settle
       }
     }
-  }, [isLoading, dreams, toast, isPro]);
+  }, [isLoading, dreams, toast]);
 
   const handleOpenForm = (dream: Dream | null = null) => {
     setDreamToEdit(dream);
@@ -214,23 +214,14 @@ export default function DreamsPage() {
   }
 
   const handlePlanClick = (dream: Dream) => {
-    if (!isPro) {
-        openUpgradeModal();
-        return;
-    }
     handlePlanDream(dream);
   }
 
   const handleRefineClick = (dream: Dream) => {
-     if (!isPro) {
-        openUpgradeModal();
-        return;
-    }
     setDreamToRefine(dream);
   }
 
   const handlePlanDream = async (dream: Dream) => {
-    if (!isPro) return;
     setIsPlanning(dream.id);
     try {
       const existingPlan = dream.plan;
@@ -261,7 +252,7 @@ export default function DreamsPage() {
   }
 
   const handleRefinePlan = async (instruction: string) => {
-    if (!dreamToRefine || !isPro) return;
+    if (!dreamToRefine) return;
     const dreamId = dreamToRefine.id;
     setIsPlanning(dreamId);
     setDreamToRefine(null);
@@ -337,7 +328,6 @@ export default function DreamsPage() {
                         dream={dream}
                         plan={dream.plan}
                         isPlanning={isPlanning === dream.id}
-                        isPro={isPro}
                         onPlan={() => handlePlanClick(dream)}
                         onRefine={() => handleRefineClick(dream)}
                         onEdit={() => handleOpenForm(dream)}

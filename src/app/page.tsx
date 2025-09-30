@@ -109,7 +109,7 @@ const cleanUndefinedValues = (obj: any): any => {
 
 
 export default function Home() {
-  const { user, loading: authLoading, isPro, openUpgradeModal, logoutWithBackup } = useAuth();
+  const { user, loading: authLoading, logoutWithBackup } = useAuth();
   
   // Hook para gerenciar tipo de conta (modular para futuras expansões)
   const { accountType, setAccountType, isPersonal, isBusiness } = useAccountType('business');
@@ -1297,7 +1297,6 @@ export default function Home() {
                 revenues={revenues}
                 expenses={expenses}
                 transactions={transactions}
-                isPro={isPro}
                 onOpenForm={() => handleOpenForm()}
                 onSearch={handleSearch}
                 onProductClick={(product) => {
@@ -1313,7 +1312,7 @@ export default function Home() {
                   setSelectedProduct(product);
                   setIsSaleFormOpen(true);
                 }}
-                onUpgradeClick={openUpgradeModal}
+
                 onLoadExampleData={handleLoadExampleData}
               />
             )}

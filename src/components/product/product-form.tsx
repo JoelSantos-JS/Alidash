@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CalendarIcon, Loader2, Sparkles, Package, ClipboardList, Lock, DollarSign, Calculator } from "lucide-react";
+import { CalendarIcon, Loader2, Sparkles, Package, ClipboardList, DollarSign, Calculator } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import React, { useState } from "react";
@@ -134,7 +134,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
 
   const { formState: { isSubmitting }, watch, setValue, control } = form;
   const { toast } = useToast();
-  const { user, isPro, openUpgradeModal } = useAuth();
+  const { user } = useAuth();
   const [isSuggesting, setIsSuggesting] = React.useState({ price: false, description: false});
   const [isCustomCategory, setIsCustomCategory] = React.useState(false);
   
@@ -191,10 +191,6 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
   };
 
   const handleSuggestPrice = async () => {
-    if (!isPro) {
-        openUpgradeModal();
-        return;
-    }
     const { name, category } = watchedValues;
     const { totalCost } = calculateFinancials(watchedValues);
     
@@ -228,10 +224,6 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
   }
 
   const handleSuggestDescription = async () => {
-     if (!isPro) {
-        openUpgradeModal();
-        return;
-    }
     const { name, description } = watchedValues;
     if (!name) {
         toast({ variant: "destructive", title: "Nome do Produto Necessário", description: "Por favor, preencha o nome do produto primeiro." });
@@ -358,14 +350,13 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                                     className="p-0 h-auto"
                                   >
                                     {isSuggesting.description ? (
-                                      <Loader2 className="animate-spin mr-2" />
+                                      <Loader2 className="mr-2 animate-spin" />
                                     ) : (
-                                      isPro ? <Sparkles className="mr-2 text-primary" /> : <Lock className="mr-2"/>
+                                      <Sparkles className="mr-2 text-primary" />
                                     )}
                                     Sugerir com IA
                                   </Button>
                                 </TooltipTrigger>
-                                {!isPro && <TooltipContent><p>Funcionalidade Pro</p></TooltipContent>}
                               </Tooltip>
                             </TooltipProvider>
                           </FormLabel>
@@ -635,11 +626,10 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                                     {isSuggesting.price ? (
                                       <Loader2 className="animate-spin" />
                                     ) : (
-                                      isPro ? <Sparkles className="text-primary" /> : <Lock />
+                                      <Sparkles className="text-primary" />
                                     )}
                                   </Button>
                                 </TooltipTrigger>
-                                {!isPro && <TooltipContent><p>Funcionalidade Pro</p></TooltipContent>}
                               </Tooltip>
                             </TooltipProvider>
                           </div>

@@ -13,9 +13,13 @@ export default function AuthLayout({
     const [animationEnabled, setAnimationEnabled] = useState(true);
     const [quality, setQuality] = useState<'low' | 'medium' | 'high'>('medium');
     const [showSettings, setShowSettings] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
 
-    // Detectar preferência do usuário por animações reduzidas
+    // Evitar problemas de hidratação
     useEffect(() => {
+        setIsMounted(true);
+        
+        // Detectar preferência do usuário por animações reduzidas
         const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (prefersReducedMotion) {
             setAnimationEnabled(false);
@@ -47,7 +51,7 @@ export default function AuthLayout({
     return (
         <div className="flex items-center justify-center min-h-screen relative">
             <BlackHoleBackground 
-                enableAnimation={animationEnabled} 
+                enableAnimation={isMounted ? animationEnabled : false} 
                 quality={quality}
             />
             

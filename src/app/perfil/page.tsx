@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 import { 
   User, 
   ShieldCheck, 
@@ -22,8 +24,6 @@ import {
   Eye,
   EyeOff,
   Mail,
-  Phone,
-  MapPin,
   Package,
   KeyRound,
   BarChart
@@ -34,22 +34,178 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { backupUserData } from "@/lib/backup-client";
+import NotificationSettings from "@/components/notifications/notification-settings";
 
 export default function ProfilePage() {
-    const { user, isPro, proSubscription, openUpgradeModal, logoutWithBackup } = useAuth();
+    const { user, userData, logoutWithBackup, refreshUserData } = useAuth();
+    const { toast } = useToast();
     const searchParams = useSearchParams();
     const defaultTab = searchParams.get('tab') || 'account';
+    
+    // Estados para configurações
+    const [emailNotifications, setEmailNotifications] = useState(false);
+    const [autoBackup, setAutoBackup] = useState(true);
+    const [backupInterval, setBackupInterval] = useState<NodeJS.Timeout | null>(null);
+    
+    // Estado para dados do usuário - usar userData do Supabase
+    const [userName, setUserName] = useState(userData?.name || user?.displayName || '');
+    const [isUpdatingName, setIsUpdatingName] = useState(false);
+
+    // Carregar nome do usuário quando disponível - priorizar userData
+    useEffect(() => {
+        const currentName = userData?.name || user?.displayName || '';
+        setUserName(currentName);
+    }, [userData?.name, user?.displayName]);
+
+    // Função para atualizar o nome do usuário
+    const updateUserName = async () => {
+        if (!user?.uid || !userName.trim()) {
+            toast({
+                title: "Erro",
+                description: "Nome não pode estar vazio.",
+                variant: "destructive",
+                duration: 3000,
+            });
+            return;
+        }
+
+        if (userName.trim() === (userData?.name || user?.displayName)) {
+            toast({
+                title: "Informação",
+                description: "O nome não foi alterado.",
+                duration: 2000,
+            });
+            return;
+        }
+
+        setIsUpdatingName(true);
+
+        try {
+            const response = await fetch('/api/user/profile', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    firebase_uid: user.uid,
+                    name: userName.trim()
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Erro ao atualizar nome');
+            }
+
+            const result = await response.json();
+            
+            // Atualizar dados locais
+            await refreshUserData();
+            
+            toast({
+                title: "Nome Atualizado",
+                description: "Seu nome foi atualizado com sucesso!",
+                duration: 3000,
+            });
+
+            console.log('Nome atualizado com sucesso:', result.user);
+
+        } catch (error: any) {
+            console.error('Erro ao atualizar nome:', error);
+            toast({
+                title: "Erro ao Atualizar Nome",
+                description: error.message || "Houve um problema ao atualizar seu nome.",
+                variant: "destructive",
+                duration: 3000,
+            });
+        } finally {
+            setIsUpdatingName(false);
+        }
+    };
 
     const handleLogout = async () => {
         await logoutWithBackup();
     };
 
-    const planName = proSubscription?.plan === 'lifetime' ? 'Vitalício' 
-                   : proSubscription?.plan === 'monthly' ? 'Mensal' 
-                   : proSubscription?.plan === 'biweekly' ? 'Quinzenal' : 'N/A';
+    // Função para executar backup automático
+    const performAutoBackup = async () => {
+        if (!user || !autoBackup) return;
+        
+        try {
+            console.log('🔄 Executando backup automático...');
+            await backupUserData(user);
+            console.log('✅ Backup automático concluído');
+            
+            toast({
+                title: "Backup Automático Concluído",
+                description: "Seus dados foram salvos com sucesso.",
+                duration: 2000,
+            });
+        } catch (error: any) {
+            console.error('❌ Erro no backup automático:', error);
+            toast({
+                title: "Erro no Backup Automático",
+                description: "Houve um problema ao fazer o backup. Tente novamente.",
+                variant: "destructive",
+                duration: 3000,
+            });
+        }
+    };
+
+    // Função para ativar/desativar backup automático
+    const toggleAutoBackup = (enabled: boolean) => {
+        setAutoBackup(enabled);
+        
+        if (enabled) {
+            toast({
+                title: "Backup Automático Ativado",
+                description: "O backup será executado automaticamente a cada 30 minutos.",
+                duration: 3000,
+            });
+            console.log('Backup automático ativado');
+        } else {
+            toast({
+                title: "Backup Automático Desativado",
+                description: "O backup automático foi desabilitado.",
+                duration: 3000,
+            });
+            console.log('Backup automático desativado');
+            if (backupInterval) {
+                clearInterval(backupInterval);
+                setBackupInterval(null);
+            }
+        }
+    };
+
+    // Configurar intervalo de backup automático
+    useEffect(() => {
+        if (autoBackup && user) {
+            // Backup a cada 30 minutos (1800000 ms)
+            const interval = setInterval(performAutoBackup, 30 * 60 * 1000);
+            setBackupInterval(interval);
+            
+            return () => {
+                if (interval) {
+                    clearInterval(interval);
+                }
+            };
+        } else if (backupInterval) {
+            clearInterval(backupInterval);
+            setBackupInterval(null);
+        }
+    }, [autoBackup, user]);
+
+    // Limpar intervalo ao desmontar componente
+    useEffect(() => {
+        return () => {
+            if (backupInterval) {
+                clearInterval(backupInterval);
+            }
+        };
+    }, []);
 
     const getInitials = (email: string | null | undefined) => {
         if (!email) return 'U';
@@ -104,34 +260,25 @@ export default function ProfilePage() {
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="name">Nome Completo</Label>
-                                            <Input 
-                                                id="name" 
-                                                placeholder="Seu nome completo"
-                                            />
+                                            <div className="flex flex-col sm:flex-row gap-2">
+                                                <Input 
+                                                    id="name" 
+                                                    placeholder="Seu nome completo"
+                                                    value={userName}
+                                                    onChange={(e) => setUserName(e.target.value)}
+                                                    disabled={isUpdatingName}
+                                                    className="flex-1"
+                                                />
+                                                <Button 
+                                                    onClick={updateUserName}
+                                                    disabled={isUpdatingName || !userName.trim() || userName.trim() === (userData?.name || user?.displayName)}
+                                                    size="sm"
+                                                    className="w-full sm:w-auto min-w-[80px]"
+                                                >
+                                                    {isUpdatingName ? "Salvando..." : "Salvar"}
+                                                </Button>
+                                            </div>
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="phone">Telefone</Label>
-                                            <Input 
-                                                id="phone" 
-                                                placeholder="(11) 99999-9999"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="location">Localização</Label>
-                                            <Input 
-                                                id="location" 
-                                                placeholder="Cidade, Estado"
-                                            />
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="space-y-2">
-                                        <Label htmlFor="bio">Biografia</Label>
-                                        <Textarea 
-                                            id="bio" 
-                                            placeholder="Conte um pouco sobre você..."
-                                            rows={3}
-                                        />
                                     </div>
 
                                     <Separator />
@@ -139,30 +286,8 @@ export default function ProfilePage() {
                                     <div className="space-y-4">
                                         <div className="flex justify-between items-center">
                                             <span className="font-medium">Plano Atual</span>
-                                            {isPro ? (
-                                                <Badge className="bg-green-500 hover:bg-green-600 text-white gap-1.5 border-transparent">
-                                                    <ShieldCheck className="w-4 h-4"/> Pro
-                                                </Badge>
-                                            ) : (
-                                                <Badge variant="secondary">Gratuito</Badge>
-                                            )}
+                                            <Badge variant="secondary">Gratuito</Badge>
                                         </div>
-                                        
-                                        {isPro && proSubscription && (
-                                            <>
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-muted-foreground">Tipo de Plano</span>
-                                                    <span className="capitalize">{planName}</span>
-                                                </div>
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-muted-foreground">Acesso até</span>
-                                                    <span className="flex items-center gap-2">
-                                                        <Calendar className="w-4 h-4 text-muted-foreground"/>
-                                                        {proSubscription.expiresAt.toDate().toLocaleDateString('pt-BR')}
-                                                    </span>
-                                                </div>
-                                            </>
-                                        )}
                                     </div>
                                 </CardContent>
                                 <CardFooter className="flex-col items-start gap-4">
@@ -194,11 +319,6 @@ export default function ProfilePage() {
                                                 </div>
                                             </div>
                                         </>
-                                    )}
-                                    {!isPro && (
-                                        <Button onClick={openUpgradeModal} className="w-full">
-                                            <Zap className="mr-2 h-4 w-4"/> Fazer Upgrade para o Pro
-                                        </Button>
                                     )}
                                     <Button variant="outline" onClick={handleLogout} className="w-full">
                                         <LogOut className="mr-2 h-4 w-4"/> Sair da Conta
@@ -240,7 +360,10 @@ export default function ProfilePage() {
                                                     Receber notificações importantes por email
                                                 </p>
                                             </div>
-                                            <Switch />
+                                            <Switch 
+                                                checked={emailNotifications}
+                                                onCheckedChange={setEmailNotifications}
+                                            />
                                         </div>
                                         
                                         <Separator />
@@ -249,10 +372,13 @@ export default function ProfilePage() {
                                             <div className="space-y-0.5">
                                                 <Label>Backup Automático</Label>
                                                 <p className="text-sm text-muted-foreground">
-                                                    Fazer backup automático dos dados
+                                                    Fazer backup automático dos dados a cada 30 minutos
                                                 </p>
                                             </div>
-                                            <Switch defaultChecked />
+                                            <Switch 
+                                                checked={autoBackup}
+                                                onCheckedChange={toggleAutoBackup}
+                                            />
                                         </div>
                                         
                                         <Separator />
@@ -275,64 +401,7 @@ export default function ProfilePage() {
                         </TabsContent>
 
                         <TabsContent value="notifications" className="space-y-6">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <Bell className="w-5 h-5" />
-                                        Notificações
-                                    </CardTitle>
-                                    <CardDescription>Configure como você quer receber notificações.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-6">
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <div className="space-y-0.5">
-                                                <Label>Novos Produtos</Label>
-                                                <p className="text-sm text-muted-foreground">
-                                                    Notificar quando novos produtos forem adicionados
-                                                </p>
-                                            </div>
-                                            <Switch defaultChecked />
-                                        </div>
-                                        
-                                        <Separator />
-                                        
-                                        <div className="flex items-center justify-between">
-                                            <div className="space-y-0.5">
-                                                <Label>Vendas Realizadas</Label>
-                                                <p className="text-sm text-muted-foreground">
-                                                    Notificar sobre vendas realizadas
-                                                </p>
-                                            </div>
-                                            <Switch defaultChecked />
-                                        </div>
-                                        
-                                        <Separator />
-                                        
-                                        <div className="flex items-center justify-between">
-                                            <div className="space-y-0.5">
-                                                <Label>Estoque Baixo</Label>
-                                                <p className="text-sm text-muted-foreground">
-                                                    Alertar quando produtos estiverem com estoque baixo
-                                                </p>
-                                            </div>
-                                            <Switch defaultChecked />
-                                        </div>
-                                        
-                                        <Separator />
-                                        
-                                        <div className="flex items-center justify-between">
-                                            <div className="space-y-0.5">
-                                                <Label>Relatórios Semanais</Label>
-                                                <p className="text-sm text-muted-foreground">
-                                                    Enviar relatórios semanais por email
-                                                </p>
-                                            </div>
-                                            <Switch />
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                            <NotificationSettings />
                         </TabsContent>
 
 

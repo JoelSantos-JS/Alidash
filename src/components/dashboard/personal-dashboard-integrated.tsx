@@ -60,10 +60,9 @@ interface PersonalDashboardProps {
   summaryStats: any;
   isLoading: boolean;
   periodFilter: string;
-  isPro: boolean;
 }
 
-export function PersonalDashboard({ summaryStats, isLoading, periodFilter, isPro }: PersonalDashboardProps) {
+export function PersonalDashboard({ summaryStats, isLoading, periodFilter }: PersonalDashboardProps) {
   const { user } = useAuth();
   const [personalSummary, setPersonalSummary] = useState<PersonalSummary>({
     totalIncome: 0,

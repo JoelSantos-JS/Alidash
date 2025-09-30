@@ -16,7 +16,6 @@ interface DreamCardProps {
   dream: Dream;
   plan?: DreamPlan | null;
   isPlanning?: boolean;
-  isPro: boolean;
   onPlan: () => void;
   onRefine: () => void;
   onEdit: () => void;
@@ -30,7 +29,7 @@ const statusMap = {
 };
 
 
-export function DreamCard({ dream, plan, isPlanning = false, isPro, onPlan, onRefine, onEdit, onDelete }: DreamCardProps) {
+export function DreamCard({ dream, plan, isPlanning = false, onPlan, onRefine, onEdit, onDelete }: DreamCardProps) {
   const progress = dream.targetAmount > 0 ? (dream.currentAmount / dream.targetAmount) * 100 : 0;
   const statusInfo = statusMap[dream.status];
 
@@ -124,37 +123,25 @@ export function DreamCard({ dream, plan, isPlanning = false, isPro, onPlan, onRe
             <Tooltip>
                 <TooltipTrigger asChild>
                     <div className="flex-1">
-                        <Button className="w-full" onClick={onPlan} disabled={isPlanning || !isPro}>
+                        <Button className="w-full" onClick={onPlan} disabled={isPlanning}>
                             {isPlanning ? (
                                 <><Loader2 className="mr-2 animate-spin"/> Gerando...</>
-                            ) : !isPro ? (
-                                <><Lock className="mr-2"/> Planejar com IA</>
                             ) : (
                                 <><Wand2 className="mr-2"/> {plan ? 'Novo Plano' : 'Planejar com IA'}</>
                             )}
                         </Button>
                     </div>
                 </TooltipTrigger>
-                {!isPro && (
-                     <TooltipContent>
-                        <p>Funcionalidade Pro: Faça upgrade para usar a IA.</p>
-                    </TooltipContent>
-                )}
             </Tooltip>
              <Tooltip>
                 <TooltipTrigger asChild>
                     <div className='flex-shrink-0'>
-                        <Button variant="outline" onClick={onRefine} disabled={!plan || isPlanning || !isPro}>
-                            {!isPro ? <Lock className="mr-2"/> : <Sparkles className="mr-2"/>}
+                        <Button variant="outline" onClick={onRefine} disabled={!plan || isPlanning}>
+                            <Sparkles className="mr-2"/>
                              Aprimorar
                         </Button>
                     </div>
                 </TooltipTrigger>
-                 {!isPro && (
-                     <TooltipContent>
-                        <p>Funcionalidade Pro: Faça upgrade para usar a IA.</p>
-                    </TooltipContent>
-                )}
             </Tooltip>
         </TooltipProvider>
         

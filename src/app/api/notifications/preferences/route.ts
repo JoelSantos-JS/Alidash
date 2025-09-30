@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 
 export interface NotificationPreferences {
-  pushNotifications: boolean
-  emailNotifications: boolean
-  calendarReminders: boolean
-  productAlerts: boolean
-  transactionAlerts: boolean
-  goalReminders: boolean
-  debtReminders: boolean
-  reminderTime: number
+  push_notifications: boolean
+  email_notifications: boolean
+  calendar_reminders: boolean
+  product_alerts: boolean
+  transaction_alerts: boolean
+  goal_reminders: boolean
+  debt_reminders: boolean
+  reminder_time: number
 }
 
 /**
@@ -37,17 +37,17 @@ export async function GET(request: NextRequest) {
       .maybeSingle()
 
     if (!tableExists && tableExists !== null) {
-      // Tabela não existe, retornar preferências padrão
-      const defaultPreferences: NotificationPreferences = {
-        pushNotifications: false,
-        emailNotifications: true,
-        calendarReminders: true,
-        productAlerts: true,
-        transactionAlerts: true,
-        goalReminders: true,
-        debtReminders: true,
-        reminderTime: 15
-      }
+      // Se não existir, retornar preferências padrão
+    const defaultPreferences: NotificationPreferences = {
+      push_notifications: false,
+      email_notifications: true,
+      calendar_reminders: true,
+      product_alerts: true,
+      transaction_alerts: true,
+      goal_reminders: true,
+      debt_reminders: true,
+      reminder_time: 15
+    }
 
       return NextResponse.json({
         preferences: defaultPreferences,
@@ -72,14 +72,14 @@ export async function GET(request: NextRequest) {
     if (!preferences) {
       // Usuário não tem preferências salvas, retornar padrão
       const defaultPreferences: NotificationPreferences = {
-        pushNotifications: false,
-        emailNotifications: true,
-        calendarReminders: true,
-        productAlerts: true,
-        transactionAlerts: true,
-        goalReminders: true,
-        debtReminders: true,
-        reminderTime: 15
+        push_notifications: false,
+        email_notifications: true,
+        calendar_reminders: true,
+        product_alerts: true,
+        transaction_alerts: true,
+        goal_reminders: true,
+        debt_reminders: true,
+        reminder_time: 15
       }
 
       return NextResponse.json({
@@ -87,16 +87,16 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Converter dados do banco para o formato esperado
+    // Retornar dados do banco diretamente (já estão em snake_case)
     const userPreferences: NotificationPreferences = {
-      pushNotifications: preferences.push_notifications || false,
-      emailNotifications: preferences.email_notifications || true,
-      calendarReminders: preferences.calendar_reminders || true,
-      productAlerts: preferences.product_alerts || true,
-      transactionAlerts: preferences.transaction_alerts || true,
-      goalReminders: preferences.goal_reminders || true,
-      debtReminders: preferences.debt_reminders || true,
-      reminderTime: preferences.reminder_time || 15
+      push_notifications: preferences.push_notifications || false,
+      email_notifications: preferences.email_notifications || true,
+      calendar_reminders: preferences.calendar_reminders || true,
+      product_alerts: preferences.product_alerts || true,
+      transaction_alerts: preferences.transaction_alerts || true,
+      goal_reminders: preferences.goal_reminders || true,
+      debt_reminders: preferences.debt_reminders || true,
+      reminder_time: preferences.reminder_time || 15
     }
 
     return NextResponse.json({
@@ -148,14 +148,14 @@ export async function POST(request: NextRequest) {
     // Converter formato do frontend para o banco
     const dbPreferences = {
       user_id,
-      push_notifications: preferences.pushNotifications || false,
-      email_notifications: preferences.emailNotifications !== false,
-      calendar_reminders: preferences.calendarReminders !== false,
-      product_alerts: preferences.productAlerts !== false,
-      transaction_alerts: preferences.transactionAlerts !== false,
-      goal_reminders: preferences.goalReminders !== false,
-      debt_reminders: preferences.debtReminders !== false,
-      reminder_time: preferences.reminderTime || 15,
+      push_notifications: preferences.push_notifications || false,
+      email_notifications: preferences.email_notifications !== false,
+      calendar_reminders: preferences.calendar_reminders !== false,
+      product_alerts: preferences.product_alerts !== false,
+      transaction_alerts: preferences.transaction_alerts !== false,
+      goal_reminders: preferences.goal_reminders !== false,
+      debt_reminders: preferences.debt_reminders !== false,
+      reminder_time: preferences.reminder_time || 15,
       updated_at: new Date().toISOString()
     }
 

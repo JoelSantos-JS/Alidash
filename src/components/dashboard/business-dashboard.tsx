@@ -43,14 +43,12 @@ interface BusinessDashboardProps {
   revenues: any[];
   expenses: any[];
   transactions: any[];
-  isPro?: boolean;
   onOpenForm: () => void;
   onSearch: (term: string) => void;
   onProductClick: (product: Product) => void;
   onEditProduct: (product: Product) => void;
   onDeleteProduct: (product: Product) => void;
   onSellProduct: (product: Product) => void;
-  onUpgradeClick?: () => void;
   onLoadExampleData?: () => void;
 }
 
@@ -63,15 +61,13 @@ export function BusinessDashboard({
   revenues,
   expenses,
   transactions,
-  isPro = false,
   onOpenForm,
   onSearch,
   onProductClick,
   onEditProduct,
   onDeleteProduct,
   onSellProduct,
-  onUpgradeClick = () => {},
-  onLoadExampleData = () => {}
+  onLoadExampleData
 }: BusinessDashboardProps) {
   // Função para scroll das tabs
   const handleTabScroll = (direction: 'left' | 'right') => {
@@ -230,7 +226,7 @@ export function BusinessDashboard({
       </TabsContent>
       
       <TabsContent value="suppliers">
-        <SupplierChart data={products} isLoading={isLoading} isPro={isPro} onUpgradeClick={onUpgradeClick} />
+        <SupplierChart data={products} isLoading={isLoading} />
       </TabsContent>
       
       <TabsContent value="sales">

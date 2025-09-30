@@ -13,7 +13,19 @@ export function BlackHoleBackground({
 }: BlackHoleBackgroundProps = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isLowPerformance, setIsLowPerformance] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const [showCanvas, setShowCanvas] = useState(false);
   const animationRef = useRef<number>();
+
+  // Evitar problemas de hidratação
+  useEffect(() => {
+    setIsMounted(true);
+    // Delay showing canvas to ensure hydration is complete
+    const timer = setTimeout(() => {
+      setShowCanvas(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     // Detectar dispositivos de baixa performance
@@ -37,7 +49,7 @@ export function BlackHoleBackground({
       return true;
     };
 
-    if (!enableAnimation || !checkPerformance()) {
+    if (!enableAnimation || !showCanvas || !checkPerformance()) {
       return;
     }
 
@@ -248,57 +260,66 @@ export function BlackHoleBackground({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [enableAnimation, quality]);
+  }, [enableAnimation, quality, showCanvas]);
 
-  // Fallback para dispositivos de baixa performance ou quando animação está desabilitada
-  if (!enableAnimation || isLowPerformance) {
-    return (
+  // Renderização consistente para evitar problemas de hidratação
+  // Sempre renderizar o mesmo elemento base, independente do estado
+  const fallbackBackground = (
+    <div 
+      className="fixed inset-0 w-full h-full"
+      style={{
+        background: `
+          radial-gradient(circle at 30% 40%, rgba(5, 24, 90, 0.8) 0%, transparent 50%),
+          radial-gradient(circle at 70% 60%, rgba(13, 62, 147, 0.6) 0%, transparent 50%),
+          radial-gradient(circle at 50% 50%, rgba(8, 105, 211, 0.4) 0%, transparent 70%),
+          linear-gradient(135deg, #020626 0%, #05185a 25%, #0d3e93 50%, #0869d3 75%, #0cc2f5 100%)
+        `,
+        zIndex: -1
+      }}
+    >
+      {/* Efeito de partículas estáticas para manter algum visual */}
       <div 
-        className="fixed inset-0 w-full h-full"
+        className="absolute inset-0 opacity-30"
         style={{
-          background: `
-            radial-gradient(circle at 30% 40%, rgba(5, 24, 90, 0.8) 0%, transparent 50%),
-            radial-gradient(circle at 70% 60%, rgba(13, 62, 147, 0.6) 0%, transparent 50%),
-            radial-gradient(circle at 50% 50%, rgba(8, 105, 211, 0.4) 0%, transparent 70%),
-            linear-gradient(135deg, #020626 0%, #05185a 25%, #0d3e93 50%, #0869d3 75%, #0cc2f5 100%)
+          backgroundImage: `
+            radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,0.3), transparent),
+            radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.2), transparent),
+            radial-gradient(1px 1px at 90px 40px, rgba(255,255,255,0.4), transparent),
+            radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.2), transparent),
+            radial-gradient(2px 2px at 160px 30px, rgba(255,255,255,0.3), transparent)
           `,
-          zIndex: -1
+          backgroundRepeat: 'repeat',
+          backgroundSize: '200px 100px'
         }}
-      >
-        {/* Efeito de partículas estáticas para manter algum visual */}
-        <div 
-          className="absolute inset-0 opacity-30"
-          style={{
-            backgroundImage: `
-              radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,0.3), transparent),
-              radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.2), transparent),
-              radial-gradient(1px 1px at 90px 40px, rgba(255,255,255,0.4), transparent),
-              radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.2), transparent),
-              radial-gradient(2px 2px at 160px 30px, rgba(255,255,255,0.3), transparent)
-            `,
-            backgroundRepeat: 'repeat',
-            backgroundSize: '200px 100px'
-          }}
-        />
-      </div>
-    );
-  }
+      />
+    </div>
+  );
 
+  // Always render the fallback background first to ensure consistent hydration
+  // Then progressively enhance with canvas if conditions are met
   return (
     <>
-      <canvas
-        ref={canvasRef}
-        className="fixed inset-0 w-full h-full block"
-        style={{ zIndex: -1 }}
-      />
-      <div 
-        className="fixed inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(70% 90% at 50% 65%, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 55%, rgba(0,0,0,.45) 100%)',
-          mixBlendMode: 'multiply',
-          zIndex: -1
-        }}
-      />
+      {/* Always render fallback background for consistent hydration */}
+      {fallbackBackground}
+      
+      {/* Only render canvas after hydration is complete and conditions are met */}
+      {isMounted && showCanvas && enableAnimation && !isLowPerformance && (
+        <>
+          <canvas
+            ref={canvasRef}
+            className="fixed inset-0 w-full h-full block"
+            style={{ zIndex: -1 }}
+          />
+          <div 
+            className="fixed inset-0 pointer-events-none"
+            style={{
+              background: 'radial-gradient(70% 90% at 50% 65%, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 55%, rgba(0,0,0,.45) 100%)',
+              mixBlendMode: 'multiply',
+              zIndex: -1
+            }}
+          />
+        </>
+      )}
     </>
   );
 }

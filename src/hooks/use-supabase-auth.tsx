@@ -5,13 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { supabase, supabaseService } from '@/lib/supabase-service';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { Loader2 } from 'lucide-react';
-import { UpgradeToProDialog } from '@/components/layout/upgrade-to-pro-dialog';
 
-interface ProSubscription {
-    plan: 'biweekly' | 'monthly' | 'lifetime';
-    startedAt: string;
-    expiresAt: string;
-}
 
 interface User {
   id: string;
@@ -31,12 +25,8 @@ interface AuthContextType {
   supabaseUser: SupabaseUser | null;
   session: Session | null;
   loading: boolean;
-  isPro: boolean;
-  proSubscription: ProSubscription | null;
-  productLimit: number;
   accountType: 'personal' | 'business';
   setAccountType: (type: 'personal' | 'business') => void;
-  openUpgradeModal: () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, userData?: { name?: string }) => Promise<void>;
   signOut: () => Promise<void>;
@@ -50,54 +40,10 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isPro, setIsPro] = useState(false);
-  const [proSubscription, setProSubscription] = useState<ProSubscription | null>(null);
-  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [accountType, setAccountType] = useState<'personal' | 'business'>('personal');
   
   const pathname = usePathname();
   const router = useRouter();
-
-  const checkSubscriptionStatus = (sub: ProSubscription | null) => {
-    if (!sub) return false;
-    const now = new Date();
-    const expiresAtDate = new Date(sub.expiresAt);
-    return now < expiresAtDate;
-  };
-
-  const handleUpgrade = async (plan: 'biweekly' | 'monthly') => {
-    if (!user) return;
-    
-    const now = new Date();
-    const expiresAt = new Date(now);
-    
-    if (plan === 'biweekly') {
-        expiresAt.setDate(now.getDate() + 15);
-    } else { // monthly
-        expiresAt.setDate(now.getDate() + 30);
-    }
-
-    const newSubscription: ProSubscription = {
-        plan,
-        startedAt: now.toISOString(),
-        expiresAt: expiresAt.toISOString(),
-    };
-
-    // Store subscription in Supabase (you'll need to create a subscriptions table)
-    // For now, we'll store it in user metadata or a separate table
-    const { error } = await supabase.auth.updateUser({
-      data: { proSubscription: newSubscription }
-    });
-
-    if (error) {
-      console.error('Error updating subscription:', error);
-      return;
-    }
-
-    setProSubscription(newSubscription);
-    setIsPro(true);
-    setIsUpgradeModalOpen(false);
-  }
 
   // Auth methods
   const signIn = async (email: string, password: string) => {
@@ -174,16 +120,9 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(userData);
       setAccountType(userData.account_type as 'personal' | 'business');
 
-      // Check subscription status from user metadata
-      const subscription = supabaseUser.user_metadata?.proSubscription || null;
-      setProSubscription(subscription);
-      setIsPro(checkSubscriptionStatus(subscription));
-
     } catch (error) {
       console.error('Error loading user data:', error);
       setUser(null);
-      setProSubscription(null);
-      setIsPro(false);
     }
   };
 
@@ -197,8 +136,6 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
         loadUserData(session.user);
       } else {
         setUser(null);
-        setProSubscription(null);
-        setIsPro(false);
       }
       
       setLoading(false);
@@ -215,8 +152,6 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
         await loadUserData(session.user);
       } else {
         setUser(null);
-        setProSubscription(null);
-        setIsPro(false);
       }
 
       setLoading(false);
@@ -238,17 +173,13 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user, loading, pathname, router]);
 
-  const value: AuthContextType = { 
-    user, 
+  const value: AuthContextType = {
+    user,
     supabaseUser,
     session,
     loading, 
-    isPro, 
-    proSubscription,
-    productLimit: isPro ? Infinity : 20,
     accountType,
     setAccountType,
-    openUpgradeModal: () => setIsUpgradeModalOpen(true),
     signIn,
     signUp,
     signOut,
@@ -270,11 +201,6 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AuthContext.Provider value={value}>
         {children}
-        <UpgradeToProDialog 
-            isOpen={isUpgradeModalOpen}
-            onOpenChange={setIsUpgradeModalOpen}
-            onUpgrade={handleUpgrade}
-        />
     </AuthContext.Provider>
   );
 };

@@ -4,14 +4,14 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 
 export interface NotificationPreferences {
-  pushNotifications: boolean
-  emailNotifications: boolean
-  calendarReminders: boolean
-  productAlerts: boolean
-  transactionAlerts: boolean
-  goalReminders: boolean
-  debtReminders: boolean
-  reminderTime: number // minutos antes do evento
+  push_notifications: boolean
+  email_notifications: boolean
+  calendar_reminders: boolean
+  product_alerts: boolean
+  transaction_alerts: boolean
+  goal_reminders: boolean
+  debt_reminders: boolean
+  reminder_time: number // minutos antes do evento
 }
 
 export interface PushNotificationData {
@@ -29,14 +29,14 @@ export function useNotifications() {
   const [isSupported, setIsSupported] = useState(false)
   const [subscription, setSubscription] = useState<PushSubscription | null>(null)
   const [preferences, setPreferences] = useState<NotificationPreferences>({
-    pushNotifications: false,
-    emailNotifications: true,
-    calendarReminders: true,
-    productAlerts: true,
-    transactionAlerts: true,
-    goalReminders: true,
-    debtReminders: true,
-    reminderTime: 15
+    push_notifications: false,
+    email_notifications: true,
+    calendar_reminders: true,
+    product_alerts: true,
+    transaction_alerts: true,
+    goal_reminders: true,
+    debt_reminders: true,
+    reminder_time: 15
   })
   const [loading, setLoading] = useState(false)
 
@@ -271,7 +271,7 @@ export function useNotifications() {
     testNotification,
     
     // Helpers
-    isEnabled: permission === 'granted' && preferences.pushNotifications,
+    isEnabled: permission === 'granted' && preferences.push_notifications,
     canRequest: isSupported && permission === 'default'
   }
 }

@@ -917,7 +917,8 @@ export default function Home() {
                 <span className="text-sm sm:text-base">Metas</span>
               </Button>
               
-              <Button 
+              {/* Agenda temporariamente oculta */}
+              {/* <Button 
                 variant="ghost" 
                 className="w-full justify-start gap-2 sm:gap-3" 
                 size="lg"
@@ -925,7 +926,7 @@ export default function Home() {
               >
                 <CalendarIcon className="h-4 w-4" />
                 <span className="text-sm sm:text-base">Agenda</span>
-              </Button>
+              </Button> */}
             </nav>
 
             {/* User Section */}

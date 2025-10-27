@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/firebase'
-import { doc, getDoc } from 'firebase/firestore'
+import { createClient } from '@supabase/supabase-js'
 
 /**
  * GET - Health check para integração N8N
@@ -9,23 +8,34 @@ export async function GET(request: NextRequest) {
   try {
     const startTime = Date.now()
     
-    // Testar conectividade com Firebase
-    const testDoc = await getDoc(doc(db, 'health-check', 'test'))
-    const firebaseLatency = Date.now() - startTime
+    // Testar conectividade com Supabase
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
     
-    // Verificar se o Firebase está acessível
-    const firebaseStatus = firebaseLatency < 5000 ? 'healthy' : 'slow'
+    // Fazer uma query simples para testar conectividade
+    const { data, error } = await supabase
+      .from('users')
+      .select('count')
+      .limit(1)
+    
+    const supabaseLatency = Date.now() - startTime
+    
+    // Verificar se o Supabase está acessível
+    const supabaseStatus = !error && supabaseLatency < 5000 ? 'healthy' : 'slow'
     
     // Verificar variáveis de ambiente necessárias
     const envCheck = {
-      firebase: !!process.env.FIREBASE_PROJECT_ID || true, // Firebase config is hardcoded
+      supabase_url: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      supabase_anon_key: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       nodeEnv: !!process.env.NODE_ENV
     }
     
     const allEnvHealthy = Object.values(envCheck).every(Boolean)
     
     // Status geral
-    const overallStatus = firebaseStatus === 'healthy' && allEnvHealthy ? 'healthy' : 'degraded'
+    const overallStatus = supabaseStatus === 'healthy' && allEnvHealthy ? 'healthy' : 'degraded'
     
     const healthData = {
       status: overallStatus,
@@ -33,9 +43,10 @@ export async function GET(request: NextRequest) {
       version: '1.0.0',
       uptime: process.uptime(),
       services: {
-        firebase: {
-          status: firebaseStatus,
-          latency: `${firebaseLatency}ms`
+        supabase: {
+          status: supabaseStatus,
+          latency: `${supabaseLatency}ms`,
+          error: error?.message || null
         },
         environment: {
           status: allEnvHealthy ? 'healthy' : 'missing_vars',
@@ -43,7 +54,7 @@ export async function GET(request: NextRequest) {
         }
       },
       integration: {
-        name: 'Alidash N8N Integration',
+        name: 'VoxCash N8N Integration',
         endpoints: [
           '/api/n8n/auth',
           '/api/n8n/products', 
@@ -66,7 +77,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
       error: error instanceof Error ? error.message : 'Unknown error',
       services: {
-        firebase: { status: 'error' },
+        supabase: { status: 'error' },
         environment: { status: 'unknown' }
       }
     }, { status: 503 })

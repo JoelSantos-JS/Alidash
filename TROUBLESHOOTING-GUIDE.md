@@ -1,4 +1,4 @@
-# 🔧 Guia de Troubleshooting - Alidash
+# 🔧 Guia de Troubleshooting - VoxCash
 
 Este guia ajuda a identificar e resolver problemas comuns que podem ocorrer durante o desenvolvimento e deploy da aplicação.
 
@@ -98,7 +98,7 @@ This will prevent signInWithPopup, signInWithRedirect...
 1. **Configurar domínios autorizados no Firebase:**
    - Acesse [Firebase Console](https://console.firebase.google.com)
    - Vá em Authentication > Settings > Authorized domains
-   - Adicione seu domínio de produção (ex: `alidash.vercel.app`)
+   - Adicione seu domínio de produção (ex: `voxcash.vercel.app`)
 
 2. **Verificar variáveis de ambiente:**
 ```bash

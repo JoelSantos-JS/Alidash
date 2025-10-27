@@ -1,7 +1,7 @@
 "use client"
 
-import * as React from "react"
-import { Pie, PieChart, Cell, Tooltip } from "recharts"
+import * as React from "react";
+import { Pie, PieChart, Cell, Tooltip, ResponsiveContainer } from "recharts"
 
 import {
   Card,
@@ -10,12 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartTooltipContent,
-} from "@/components/ui/chart"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Skeleton } from "../ui/skeleton";
 import type { Product } from "@/types"
 
 type CategoryChartProps = {
@@ -42,13 +37,6 @@ export function CategoryChart({ data, isLoading }: CategoryChartProps) {
 
   }, [data]);
 
-  const chartConfig = React.useMemo(() => 
-    chartData.reduce((acc, item) => {
-        acc[item.name] = { label: item.name, color: item.fill };
-        return acc;
-    }, {} as ChartConfig)
-  , [chartData]);
-
 
   return (
     <Card className="flex flex-col h-full">
@@ -60,29 +48,37 @@ export function CategoryChart({ data, isLoading }: CategoryChartProps) {
         {isLoading ? (
             <Skeleton className="w-[200px] h-[200px] sm:w-[250px] sm:h-[250px] rounded-full" />
         ) : chartData.length > 0 ? (
-            <ChartContainer
-            config={chartConfig}
-            className="mx-auto aspect-square max-h-[200px] sm:max-h-[250px]"
-            >
-            <PieChart>
-                <Tooltip
-                cursor={false}
-                content={<ChartTooltipContent hideLabel nameKey="name" />}
-                />
-                <Pie
-                data={chartData}
-                dataKey="value"
-                nameKey="name"
-                innerRadius={40}
-                outerRadius={80}
-                strokeWidth={3}
-                >
-                {chartData.map((entry) => (
-                    <Cell key={`cell-${entry.name}`} fill={entry.fill} />
-                ))}
-                </Pie>
-            </PieChart>
-            </ChartContainer>
+            <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                    <Tooltip
+                        cursor={false}
+                        formatter={(value: any, name: any) => [
+                            `${value} produtos`,
+                            name
+                        ]}
+                        contentStyle={{
+                            background: 'hsl(var(--background))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: 'var(--radius)',
+                            fontSize: '12px'
+                        }}
+                    />
+                    <Pie
+                        data={chartData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={40}
+                        outerRadius={80}
+                        strokeWidth={3}
+                        cx="50%"
+                        cy="50%"
+                    >
+                        {chartData.map((entry) => (
+                            <Cell key={`cell-${entry.name}`} fill={entry.fill} />
+                        ))}
+                    </Pie>
+                </PieChart>
+            </ResponsiveContainer>
         ) : (
             <div className="text-center text-muted-foreground py-8 sm:py-10 px-4">
                 <p className="text-sm sm:text-base">Nenhum dado para exibir.</p>

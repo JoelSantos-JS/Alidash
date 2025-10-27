@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import {
   Plus,
   Search,
@@ -81,7 +81,7 @@ const PRIORITY_LEVELS = {
 };
 
 export default function PersonalGoalsPage() {
-  const { user } = useAuth();
+  const { user } = useSupabaseAuth();
   const { toast } = useToast();
   const [goals, setGoals] = useState<PersonalGoal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,7 +106,7 @@ export default function PersonalGoalsPage() {
       setLoading(true);
       
       // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
       if (!userResponse.ok) {
         throw new Error('Usuário não encontrado');
       }

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import { X, TrendingDown, Calendar, CreditCard, Tag, FileText, MapPin, Building } from "lucide-react";
 
 interface PersonalExpense {
@@ -59,7 +59,7 @@ const PAYMENT_METHODS = {
 };
 
 export default function PersonalExpenseForm({ isOpen, onClose, onSuccess, editingExpense }: PersonalExpenseFormProps) {
-  const { user } = useAuth();
+  const { user } = useSupabaseAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   
@@ -101,14 +101,8 @@ export default function PersonalExpenseForm({ isOpen, onClose, onSuccess, editin
     try {
       setLoading(true);
       
-      // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
-      if (!userResponse.ok) {
-        throw new Error('Usuário não encontrado');
-      }
-      
-      const userResult = await userResponse.json();
-      const supabaseUserId = userResult.user.id;
+      // O usuário já é do Supabase, usar ID diretamente
+      const supabaseUserId = user.id;
       
       const expenseData = {
         user_id: supabaseUserId,

@@ -3,12 +3,12 @@ import { supabaseAdminService } from '@/lib/supabase-service'
 
 export async function PUT(request: NextRequest) {
   try {
-    const { firebase_uid, name } = await request.json()
+    const { user_id, name } = await request.json()
 
-    // Validação do firebase_uid
-    if (!firebase_uid || typeof firebase_uid !== 'string') {
+    // Validação do user_id
+    if (!user_id || typeof user_id !== 'string') {
       return NextResponse.json(
-        { error: 'firebase_uid é obrigatório e deve ser uma string válida' },
+        { error: 'user_id é obrigatório e deve ser uma string válida' },
         { status: 400 }
       )
     }
@@ -40,8 +40,8 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Buscar usuário pelo Firebase UID
-    const user = await supabaseAdminService.getUserByFirebaseUid(firebase_uid)
+    // Buscar usuário pelo ID
+    const user = await supabaseAdminService.getUserById(user_id)
     
     if (!user) {
       return NextResponse.json(
@@ -73,7 +73,6 @@ export async function PUT(request: NextRequest) {
     if (error) {
       console.error('Erro ao atualizar perfil:', {
         error,
-        firebase_uid,
         user_id: user.id,
         attempted_name: sanitizedName
       })
@@ -87,7 +86,6 @@ export async function PUT(request: NextRequest) {
     if (process.env.NODE_ENV === 'development') {
       console.log('✅ Perfil atualizado com sucesso:', {
         user_id: user.id,
-        firebase_uid,
         old_name: user.name,
         new_name: sanitizedName
       })

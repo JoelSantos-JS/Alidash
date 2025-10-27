@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import {
   Plus,
   Search,
@@ -55,7 +55,7 @@ const INCOME_CATEGORIES = {
 };
 
 export default function PersonalIncomesPage() {
-  const { user } = useAuth();
+  const { user } = useSupabaseAuth();
   const { toast } = useToast();
   const [incomes, setIncomes] = useState<PersonalIncome[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +75,7 @@ export default function PersonalIncomesPage() {
       setLoading(true);
       
       // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
       if (!userResponse.ok) {
         throw new Error('Usuário não encontrado');
       }

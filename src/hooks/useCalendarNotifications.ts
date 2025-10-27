@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useCallback } from 'react'
-import { useAuth } from '@/hooks/use-auth'
+import { useAuth } from '@/hooks/use-supabase-auth'
 import { useNotifications } from '@/hooks/useNotifications'
 
 export interface CalendarEvent {
@@ -102,7 +102,7 @@ ${events.length === 1 ? 'Você tem 1 evento hoje.' : `Você tem ${events.length}
 Tenha um ótimo dia!
 
 ---
-Alidash - Seu assistente pessoal
+VoxCash - Seu assistente pessoal
     `.trim()
 
     try {
@@ -164,7 +164,7 @@ ${conflictList}
 Recomendamos revisar sua agenda para evitar sobreposições.
 
 ---
-Alidash - Seu assistente pessoal
+VoxCash - Seu assistente pessoal
           `.trim(),
           type: 'calendar_event',
           data: {

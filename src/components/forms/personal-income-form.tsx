@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import { X, DollarSign, Calendar, User, Building, Tag, FileText } from "lucide-react";
 
 interface PersonalIncome {
@@ -44,7 +44,7 @@ const INCOME_CATEGORIES = {
 };
 
 export default function PersonalIncomeForm({ isOpen, onClose, onSuccess, editingIncome }: PersonalIncomeFormProps) {
-  const { user } = useAuth();
+  const { user } = useSupabaseAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   
@@ -84,14 +84,8 @@ export default function PersonalIncomeForm({ isOpen, onClose, onSuccess, editing
     try {
       setLoading(true);
       
-      // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
-      if (!userResponse.ok) {
-        throw new Error('Usuário não encontrado');
-      }
-      
-      const userResult = await userResponse.json();
-      const supabaseUserId = userResult.user.id;
+      // O usuário já é do Supabase, usar ID diretamente
+      const supabaseUserId = user.id;
       
       const incomeData = {
         user_id: supabaseUserId,

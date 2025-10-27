@@ -1,6 +1,4 @@
-import { db } from './firebase'
-import { doc, getDoc } from 'firebase/firestore'
-import { User } from 'firebase/auth'
+import { createClient } from '@supabase/supabase-js'
 
 export interface BackupData {
   userId: string
@@ -10,30 +8,51 @@ export interface BackupData {
   lastSync: Date
 }
 
+export interface SupabaseUser {
+  id: string
+  email?: string
+}
+
 /**
  * Faz backup dos dados do usuário atual
  */
-export async function backupUserData(user: User): Promise<BackupData> {
+export async function backupUserData(user: SupabaseUser): Promise<BackupData> {
   if (!user) {
     throw new Error('Usuário não autenticado')
   }
 
   try {
-    // Buscar dados do Firebase (com autenticação do usuário)
-    const userDocRef = doc(db, 'user-data', user.uid)
-    const userDocSnap = await getDoc(userDocRef)
+    // Buscar dados do Supabase
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
 
-    if (!userDocSnap.exists()) {
-      throw new Error('Dados do usuário não encontrados')
-    }
+    // Buscar produtos do usuário
+    const { data: products } = await supabase
+      .from('products')
+      .select('*')
+      .eq('user_id', user.id)
 
-    const userData = userDocSnap.data()
+    // Buscar goals (dreams) do usuário
+    const { data: dreams } = await supabase
+      .from('goals')
+      .select('*')
+      .eq('user_id', user.id)
+
+    // Buscar apostas (se existir tabela)
+    const { data: bets } = await supabase
+      .from('bets')
+      .select('*')
+      .eq('user_id', user.id)
+      .then(result => result.data)
+      .catch(() => []) // Se tabela não existir, retorna array vazio
 
     const backupData: BackupData = {
-      userId: user.uid,
-      products: userData.products || [],
-      dreams: userData.dreams || [],
-      bets: userData.bets || [],
+      userId: user.id,
+      products: products || [],
+      dreams: dreams || [],
+      bets: bets || [],
       lastSync: new Date()
     }
 
@@ -75,4 +94,4 @@ export async function getBackupStatus(userId: string) {
     console.error('Erro ao verificar status do backup:', error)
     return { exists: false, lastSync: null, itemCounts: null }
   }
-} 
+}

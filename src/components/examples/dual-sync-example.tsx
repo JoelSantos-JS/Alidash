@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useDualSync, DualSyncPresets, type DualSyncResult } from '@/lib/dual-database-sync'
-import { useAuth } from '@/hooks/use-auth'
+import { useAuth } from '@/hooks/use-supabase-auth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

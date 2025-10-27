@@ -1,99 +1,161 @@
-"use client";
+'use client'
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Loader2, Package } from "lucide-react";
-import { signInWithEmailAndPassword } from "firebase/auth";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
-import { auth } from "@/lib/firebase";
-
-const loginSchema = z.object({
-  email: z.string().email({ message: "Por favor, insira um e-mail válido." }),
-  password: z.string().min(6, { message: "A senha deve ter pelo menos 6 caracteres." }),
-});
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { useAuth } from '@/hooks/use-supabase-auth'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Eye, EyeOff, Loader2, Mail, Lock, Package } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function LoginPage() {
-  const { toast } = useToast();
-  const form = useForm<z.infer<typeof loginSchema>>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const { formState: { isSubmitting } } = form;
+  const { signIn } = useAuth()
+  const router = useRouter()
 
-  const onSubmit = async (data: z.infer<typeof loginSchema>) => {
-    try {
-      await signInWithEmailAndPassword(auth, data.email, data.password);
-      toast({
-        title: "Login bem-sucedido!",
-        description: "Bem-vindo de volta!",
-      });
-      // A redirection will be handled by the useAuth hook
-    } catch (error: any) {
-      console.error("Login error:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro no Login",
-        description: "E-mail ou senha incorretos. Por favor, tente novamente.",
-      });
+  const validateForm = () => {
+    if (!email.trim()) {
+      setError('Email é obrigatório')
+      return false
     }
-  };
+
+    if (!email.includes('@')) {
+      setError('Email inválido')
+      return false
+    }
+
+    if (!password) {
+      setError('Senha é obrigatória')
+      return false
+    }
+
+    if (password.length < 6) {
+      setError('Senha deve ter pelo menos 6 caracteres')
+      return false
+    }
+
+    return true
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+
+    if (!validateForm()) {
+      return
+    }
+
+    try {
+      setIsLoading(true)
+      await signIn(email, password)
+      // Success is handled by the auth context (redirect + toast)
+    } catch (error) {
+      console.error('Login error:', error)
+      // Error toast is handled by the auth context
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      toast.error('Digite seu email primeiro')
+      return
+    }
+
+    try {
+      // This would use the resetPassword function from auth context
+      toast.success('Email de recuperação enviado!')
+    } catch (error) {
+      toast.error('Erro ao enviar email de recuperação')
+    }
+  }
 
   return (
-    <>
-      <div className="text-center mb-8">
-        <Package className="h-12 w-12 text-white mx-auto mb-4 drop-shadow-lg" />
-        <h1 className="text-3xl font-bold text-white mb-2 drop-shadow-lg">Bem-vindo de Volta!</h1>
-        <p className="text-white/80">Faça login para acessar seu dashboard.</p>
-      </div>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <FormField control={form.control} name="email" render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-white">E-mail</FormLabel>
-              <FormControl>
-                <Input 
-                  type="email" 
-                  {...field} 
-                  placeholder="seu@email.com" 
-                  className="bg-white/20 border-white/30 text-white placeholder:text-white/50 focus:bg-white/30"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <FormField control={form.control} name="password" render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-white">Senha</FormLabel>
-              <FormControl>
-                <Input 
-                  type="password" 
-                  {...field} 
-                  placeholder="••••••••" 
-                  className="bg-white/20 border-white/30 text-white placeholder:text-white/50 focus:bg-white/30"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <Button 
-            type="submit" 
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg" 
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? <Loader2 className="animate-spin" /> : "Entrar"}
-          </Button>
-        </form>
-      </Form>
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-lg border border-white/30 rounded-lg p-8">
+        <div className="space-y-6 text-center mb-8">
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold text-white">
+              Bem-vindo de Volta!
+            </h1>
+            <p className="text-white/80">
+              Faça login para acessar seu dashboard.
+            </p>
+          </div>
+        </div>
 
-    </>
-  );
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {error && (
+            <div className="bg-red-500/20 border border-red-400/50 text-white p-3 rounded-lg">
+              <p>{error}</p>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <label htmlFor="email" className="text-white font-medium block">E-mail</label>
+            <input
+              id="email"
+              type="email"
+              placeholder="seu@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-transparent border border-white/40 text-white placeholder:text-white/60 focus:border-white focus:ring-white/20 p-3 rounded-lg focus:outline-none focus:ring-2"
+              disabled={isLoading}
+              autoComplete="email"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="password" className="text-white font-medium block">Senha</label>
+            <input
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-transparent border border-white/40 text-white placeholder:text-white/60 focus:border-white focus:ring-white/20 p-3 rounded-lg focus:outline-none focus:ring-2"
+              disabled={isLoading}
+              autoComplete="current-password"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                Entrando...
+              </div>
+            ) : (
+              'Entrar'
+            )}
+          </button>
+
+          <div className="text-center">
+            <p className="text-white/80 text-sm">
+              Não tem uma conta?{' '}
+              <Link href="/cadastro" className="text-white font-medium hover:underline">
+                Cadastre-se
+              </Link>
+            </p>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
 }

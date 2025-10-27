@@ -3,17 +3,17 @@ import { supabaseAdminService } from '@/lib/supabase-service'
 
 export async function POST(request: NextRequest) {
   try {
-    const { firebase_uid } = await request.json()
+    const { user_id } = await request.json()
 
-    if (!firebase_uid || typeof firebase_uid !== 'string') {
+    if (!user_id || typeof user_id !== 'string') {
       return NextResponse.json(
-        { error: 'firebase_uid é obrigatório e deve ser uma string válida' },
+        { error: 'user_id é obrigatório e deve ser uma string válida' },
         { status: 400 }
       )
     }
 
-    // Buscar usuário pelo Firebase UID
-    const user = await supabaseAdminService.getUserByFirebaseUid(firebase_uid)
+    // Buscar usuário pelo ID
+    const user = await supabaseAdminService.getUserById(user_id)
     
     if (!user) {
       return NextResponse.json(
@@ -27,7 +27,6 @@ export async function POST(request: NextRequest) {
       success: true,
       user: {
         id: user.id,
-        firebase_uid: user.firebase_uid,
         email: user.email,
         name: user.name,
         avatar_url: user.avatar_url,

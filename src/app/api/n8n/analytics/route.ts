@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/firebase'
-import { doc, getDoc } from 'firebase/firestore'
+import { createClient } from '@supabase/supabase-js'
 import { authenticateN8NRequest, hasPermission, N8N_PERMISSIONS } from '@/lib/n8n-auth'
 import type { Product, Goal, Transaction, Dream, Bet } from '@/types'
 
@@ -110,19 +109,25 @@ export async function GET(request: NextRequest) {
     }
 
     // Buscar dados do usuário
-    const userDocRef = doc(db, 'user-data', userId)
-    const userDocSnap = await getDoc(userDocRef)
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
-    if (!userDocSnap.exists()) {
-      return NextResponse.json({ error: 'Dados do usuário não encontrados' }, { status: 404 })
-    }
+    // Buscar dados de diferentes tabelas
+    const [productsResult, goalsResult, transactionsResult, dreamsResult, betsResult] = await Promise.all([
+      supabase.from('products').select('*').eq('user_id', userId),
+      supabase.from('goals').select('*').eq('user_id', userId),
+      supabase.from('transactions').select('*').eq('user_id', userId),
+      supabase.from('dreams').select('*').eq('user_id', userId),
+      supabase.from('bets').select('*').eq('user_id', userId)
+    ])
 
-    const userData = userDocSnap.data()
-    const products: Product[] = userData.products || []
-    const goals: Goal[] = userData.goals || []
-    const transactions: Transaction[] = userData.transactions || []
-    const dreams: Dream[] = userData.dreams || []
-    const bets: Bet[] = userData.bets || []
+    const products: Product[] = productsResult.data || []
+    const goals: Goal[] = goalsResult.data || []
+    const transactions: Transaction[] = transactionsResult.data || []
+    const dreams: Dream[] = dreamsResult.data || []
+    const bets: Bet[] = betsResult.data || []
 
     // Filtrar dados pelo período
     const filteredProducts = products.filter(p => {
@@ -190,14 +195,27 @@ export async function POST(request: NextRequest) {
     const userId = authResult.userId!
 
     // Buscar dados
-    const userDocRef = doc(db, 'user-data', userId)
-    const userDocSnap = await getDoc(userDocRef)
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
-    if (!userDocSnap.exists()) {
-      return NextResponse.json({ error: 'Dados do usuário não encontrados' }, { status: 404 })
+    // Buscar dados de diferentes tabelas
+    const [productsResult, goalsResult, transactionsResult, dreamsResult, betsResult] = await Promise.all([
+      supabase.from('products').select('*').eq('user_id', userId),
+      supabase.from('goals').select('*').eq('user_id', userId),
+      supabase.from('transactions').select('*').eq('user_id', userId),
+      supabase.from('dreams').select('*').eq('user_id', userId),
+      supabase.from('bets').select('*').eq('user_id', userId)
+    ])
+
+    const userData = {
+      products: productsResult.data || [],
+      goals: goalsResult.data || [],
+      transactions: transactionsResult.data || [],
+      dreams: dreamsResult.data || [],
+      bets: betsResult.data || []
     }
-
-    const userData = userDocSnap.data()
     let report: any = {}
 
     switch (reportType) {

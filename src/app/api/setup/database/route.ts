@@ -12,23 +12,22 @@ export async function POST(request: NextRequest) {
     const userData = await request.json();
     
     // Extract user data from request
-    const { firebase_uid, email, name, avatar_url } = userData;
+    const { email, name, avatar_url } = userData;
     
-    if (!firebase_uid || !email) {
+    if (!email) {
       return NextResponse.json({
         success: false,
-        error: 'firebase_uid and email are required'
+        error: 'email is required'
       }, { status: 400 });
     }
     
     // Check if user already exists
-    let user = await supabaseAdminService.getUserByFirebaseUid(firebase_uid);
+    let user = await supabaseAdminService.getUserByEmail(email);
     
     if (!user) {
       // Create user in Supabase
-      console.log('👤 Creating user in Supabase:', { firebase_uid, email, name });
+      console.log('👤 Creating user in Supabase:', { email, name });
       user = await supabaseAdminService.createUser({
-        firebase_uid,
         email,
         name: name || null,
         avatar_url: avatar_url || null,
@@ -50,7 +49,6 @@ export async function POST(request: NextRequest) {
       message: 'User setup completed successfully',
       user: {
         id: user.id,
-        firebase_uid: user.firebase_uid,
         email: user.email,
         name: user.name
       },

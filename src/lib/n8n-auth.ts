@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server'
-import { db } from './firebase'
-import { doc, getDoc } from 'firebase/firestore'
+import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 
 export interface N8NApiKey {
@@ -37,14 +36,21 @@ export async function validateN8NApiKey(apiKey: string): Promise<N8NAuthResult> 
       return { success: false, error: 'API key é obrigatória' }
     }
 
-    // Buscar a API key no Firebase
-    const apiKeyDoc = await getDoc(doc(db, 'n8n-api-keys', apiKey))
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    // Buscar a API key no Supabase
+    const { data: keyData, error } = await supabase
+      .from('n8n_api_keys')
+      .select('*')
+      .eq('api_key', apiKey)
+      .single()
     
-    if (!apiKeyDoc.exists()) {
+    if (error || !keyData) {
       return { success: false, error: 'API key inválida' }
     }
-
-    const keyData = apiKeyDoc.data() as N8NApiKey
 
     // Verificar se a key está ativa
     if (!keyData.isActive) {

@@ -49,17 +49,17 @@ async function checkSupabaseUsers() {
     
     // Verificar se existe o usuário específico
     const targetUser = users.find(u => 
-      u.email === 'joeltere9@gmail.com' || 
-      u.firebase_uid === '1sAltLnRMgO3ZCYnh4zn9iFck0B3'
+      u.email === 'davi10@gmail.com'
     );
     
     if (targetUser) {
-      console.log('🎯 Usuário encontrado!');
-      console.log(`   ID correto: ${targetUser.id}`);
-      console.log(`   Use este ID no script de migração`);
+      console.log('🎯 Usuário davi10@gmail.com encontrado no Supabase!');
+      console.log(`   ID: ${targetUser.id}`);
+      console.log(`   Firebase UID: ${targetUser.firebase_uid || 'N/A'}`);
+      console.log(`   Criado em: ${targetUser.created_at}`);
     } else {
-      console.log('⚠️ Usuário específico não encontrado');
-      console.log('💡 Você pode usar qualquer um dos IDs listados acima');
+      console.log('⚠️ Usuário davi10@gmail.com NÃO encontrado no Supabase');
+      console.log('💡 Precisamos sincronizar este usuário com o Supabase');
     }
     
   } catch (error) {
@@ -68,4 +68,4 @@ async function checkSupabaseUsers() {
 }
 
 // Executar verificação
-checkSupabaseUsers(); 
+checkSupabaseUsers();

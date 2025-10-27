@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Shield, Database, RefreshCw, CheckCircle, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
 import { backupUserData, getBackupStatus } from "@/lib/backup-client";
 
@@ -22,7 +22,7 @@ export function BackupStatusCard() {
       if (!user) return;
       
       try {
-        const status = await getBackupStatus(user.uid);
+        const status = await getBackupStatus(user.id);
         if (status.exists) {
           setLastBackup(status.lastSync);
           setItemCounts(status.itemCounts);
@@ -127,4 +127,4 @@ export function BackupStatusCard() {
       </CardContent>
     </Card>
   );
-} 
+}

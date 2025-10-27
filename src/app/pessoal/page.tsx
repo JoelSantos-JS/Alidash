@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +41,7 @@ interface PersonalGoal {
 }
 
 export default function PersonalDashboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useSupabaseAuth();
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<PersonalSummary>({
     totalIncome: 0,
@@ -66,7 +66,7 @@ export default function PersonalDashboard() {
       setLoading(true);
       
       // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
       if (!userResponse.ok) {
         console.log('⚠️ Usuário não encontrado no Supabase');
         return;

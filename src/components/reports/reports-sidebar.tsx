@@ -51,7 +51,7 @@ type ReportsSidebarProps = {
   categoryFilter: string
   onPeriodFilterChange: (period: "week" | "month" | "quarter" | "year") => void
   onCategoryFilterChange: (category: string) => void
-  onExport?: () => void
+  onExport?: (format: 'pdf' | 'excel') => void
   onRefresh?: () => void
   isLoading?: boolean
   className?: string
@@ -519,11 +519,23 @@ export function ReportsSidebar({
               <span className="font-medium">Exportar Dados</span>
             </div>
             <div className="grid grid-cols-1 gap-2">
-              <Button variant="outline" size="sm" className="justify-start gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="justify-start gap-2"
+                onClick={() => onExport?.('pdf')}
+                disabled={!data.length}
+              >
                 <Download className="h-4 w-4" />
                 Relatório PDF
               </Button>
-              <Button variant="outline" size="sm" className="justify-start gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="justify-start gap-2"
+                onClick={() => onExport?.('excel')}
+                disabled={!data.length}
+              >
                 <FileText className="h-4 w-4" />
                 Planilha Excel
               </Button>

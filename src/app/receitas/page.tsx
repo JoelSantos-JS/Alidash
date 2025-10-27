@@ -1,15 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-supabase-auth";
+import { useData } from "@/contexts/data-context";
 import { RevenueSection } from "@/components/dashboard/revenue-section";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowUp, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { useDualSync } from '@/lib/dual-database-sync';
 
-import { db } from "@/lib/firebase";
 import type { Product, Revenue } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -116,220 +114,91 @@ const initialProducts: Product[] = [
 
 export default function ReceitasPage() {
   const { user, loading: authLoading } = useAuth();
+  const { revenues, addRevenue, refreshData, isLoading: dataLoading } = useData();
   const router = useRouter();
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
-  const [revenues, setRevenues] = useState<Revenue[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [periodFilter, setPeriodFilter] = useState<"day" | "week" | "month">("month");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [revenueToEdit, setRevenueToEdit] = useState<Revenue | null>(null);
-  
-  // Estado para armazenar o ID do usuário no Supabase
-  const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null);
-  
-  // Hook de sincronização dual
-  const dualSync = useDualSync(supabaseUserId || user?.uid || '', 'BEST_EFFORT');
 
   useEffect(() => {
     if (authLoading || !user) return;
 
-    const fetchData = async () => {
+    const fetchProducts = async () => {
+      if (!user?.id) return;
+
       try {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔄 Carregando dados de produtos e receitas:', user.uid);
-        }
+        console.log('🔄 Iniciando busca de produtos para usuário:', user.id);
+
+        // Buscar produtos do Supabase
+        const productsResponse = await fetch(`/api/products/get?user_id=${user.id}`);
         
-        // Carregar produtos do Firebase (mantendo compatibilidade)
-        const docRef = doc(db, "user-data", user.uid);
-        const docSnap = await getDoc(docRef);
-
-        let firebaseProducts: Product[] = [];
-        let firebaseRevenues: Revenue[] = [];
-
-        if (docSnap.exists()) {
-          const userData = docSnap.data();
-          if (process.env.NODE_ENV === 'development') {
-            console.log('📦 Dados encontrados no Firebase:', {
-              products: userData.products?.length || 0,
-              revenues: userData.revenues?.length || 0
-            });
-          }
-          
-          if (userData.products && userData.products.length > 0) {
-            const data = userData.products;
-            firebaseProducts = data.map((p: any) => ({
-              ...p,
-              purchaseDate: p.purchaseDate?.toDate ? p.purchaseDate.toDate() : new Date(p.purchaseDate),
-              sales: p.sales ? p.sales.map((s: any) => ({
-                ...s, 
-                date: s.date?.toDate ? s.date.toDate() : 
-                      typeof s.date === 'string' ? new Date(s.date) : 
-                      new Date(s.date)
-              })) : [],
-            }));
-          }
-
-          if (userData.revenues && userData.revenues.length > 0) {
-            const data = userData.revenues;
-            firebaseRevenues = data.map((r: any) => ({
-              ...r,
-              date: r.date?.toDate ? r.date.toDate() : new Date(r.date)
-            }));
-          }
-        }
-
-        // Carregar receitas do Supabase
-        let supabaseRevenues: Revenue[] = [];
-        try {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('🔍 Tentando buscar receitas do Supabase...');
-          }
-          
-          // Primeiro, buscar o usuário no Supabase usando API route
-          const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
-          
-          if (userResponse.ok) {
-            const userResult = await userResponse.json();
-            const supabaseUser = userResult.user;
-            
-            if (process.env.NODE_ENV === 'development') {
-              console.log('✅ Usuário encontrado no Supabase:', supabaseUser.id);
-            }
-            setSupabaseUserId(supabaseUser.id);
-            
-            // Agora buscar as receitas usando API route
-            const revenuesResponse = await fetch(`/api/revenues/get?user_id=${supabaseUser.id}`);
-            
-            if (revenuesResponse.ok) {
-              const revenuesResult = await revenuesResponse.json();
-              supabaseRevenues = revenuesResult.revenues.map((revenue: any) => {
-                if (process.env.NODE_ENV === 'development') {
-                  console.log('🔄 Convertendo receita:', revenue);
-                }
-                const date = new Date(revenue.date);
-                const time = date.toTimeString().slice(0, 5);
-                if (process.env.NODE_ENV === 'development') {
-                  console.log('🕐 Hora extraída:', time, 'de', revenue.date);
-                }
-                return {
-                  id: revenue.id,
-                  date: date,
-                  time: time, // Extrai HH:MM do timestamp
-                  description: revenue.description,
-                  amount: parseFloat(revenue.amount),
-                  category: revenue.category || 'Outros',
-                  source: revenue.source || 'other',
-                  notes: revenue.notes,
-                  productId: revenue.product_id
-                };
-              });
-              if (process.env.NODE_ENV === 'development') {
-                console.log('📊 Receitas do Supabase:', supabaseRevenues.length);
-              }
-            } else {
-              console.error('❌ Erro ao buscar receitas:', await revenuesResponse.text());
-            }
-          } else {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('⚠️ Usuário não encontrado no Supabase, usando apenas Firebase');
-            }
-          }
-        } catch (error) {
-          console.error('❌ Erro ao buscar receitas do Supabase:', error);
-          if (process.env.NODE_ENV === 'development') {
-            console.log('📥 Continuando apenas com dados do Firebase');
-          }
-        }
-
-        // Combinar receitas do Firebase e Supabase (priorizando Supabase)
-        const allRevenues = [...supabaseRevenues, ...firebaseRevenues];
-        
-        // Remover duplicatas baseado no ID
-        const uniqueRevenues = allRevenues.filter((revenue, index, self) => 
-          index === self.findIndex(r => r.id === revenue.id)
-        );
-
-        let finalProducts = firebaseProducts;
-        if (finalProducts.length === 0) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('📥 Nenhum produto encontrado, usando dados de exemplo');
-          }
-          finalProducts = initialProducts;
+        if (productsResponse.ok) {
+          const productsData = await productsResponse.json();
+          const supabaseProducts = productsData.products || [];
+          console.log('📦 Produtos do Supabase:', supabaseProducts.length);
+          setProducts(supabaseProducts.length > 0 ? supabaseProducts : initialProducts);
         } else {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Usando produtos reais do banco de dados');
-          }
+          console.log('❌ Erro ao buscar produtos do Supabase, usando produtos iniciais');
+          setProducts(initialProducts);
         }
-
-        setProducts(finalProducts);
-        setRevenues(uniqueRevenues);
-        if (process.env.NODE_ENV === 'development') {
-          console.log('📊 Dados carregados:', {
-            produtos: finalProducts.length,
-            receitas: uniqueRevenues.length,
-            supabaseRevenues: supabaseRevenues.length,
-            firebaseRevenues: firebaseRevenues.length
-          });
-        }
-        
-        // Debug detalhado das receitas
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔍 Debug das receitas do Supabase:', supabaseRevenues);
-          console.log('🔍 Debug das receitas do Firebase:', firebaseRevenues);
-          console.log('🔍 Debug das receitas finais:', uniqueRevenues);
-        }
-        
-        // Debug detalhado de cada receita
-        uniqueRevenues.forEach((revenue, index) => {
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`📊 Receita ${index + 1}:`, {
-              id: revenue.id,
-              description: revenue.description,
-              amount: revenue.amount,
-              category: revenue.category,
-              source: revenue.source,
-              date: revenue.date
-            });
-          }
-        });
-
       } catch (error) {
-        console.error('❌ Erro ao carregar dados:', error);
-        if (process.env.NODE_ENV === 'development') {
-          console.log('📥 Usando dados de exemplo devido ao erro');
-        }
+        console.error('❌ Erro ao buscar produtos:', error);
         setProducts(initialProducts);
       }
-      setIsLoading(false);
-    }
-    
-    fetchData();
-  }, [user, authLoading]);
+    };
+
+    fetchProducts();
+  }, [user?.id, authLoading]);
 
 
 
   const handleSaveRevenue = async (revenueData: Revenue) => {
+    if (!user?.id) {
+      toast({
+        variant: 'destructive',
+        title: "Erro de Autenticação",
+        description: "Usuário não autenticado.",
+      });
+      return;
+    }
+
     if (revenueToEdit) {
       // Editar receita existente
       try {
-        const result = await dualSync.updateRevenue(revenueToEdit.id, revenueData);
-        
-        if (result.success) {
-          const updatedRevenues = revenues.map(r => 
-            r.id === revenueToEdit.id ? { ...r, ...revenueData, id: r.id } : r
-          );
-          setRevenues(updatedRevenues);
+        const response = await fetch('/api/revenues/update', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: revenueToEdit.id,
+            user_id: user.id,
+            description: revenueData.description,
+            amount: revenueData.amount,
+            category: revenueData.category,
+            source: revenueData.source,
+            notes: revenueData.notes,
+            product_id: revenueData.productId,
+            date: revenueData.date.toISOString(),
+          }),
+        });
+
+        if (response.ok) {
+          // Atualizar dados no contexto global
+          refreshData();
           
           toast({
             title: "Receita Atualizada!",
-            description: `${revenueData.description} - Sincronizada com sucesso`,
+            description: `${revenueData.description} - Atualizada com sucesso`,
           });
         } else {
+          const errorData = await response.text();
           toast({
             variant: 'destructive',
             title: "Erro ao Atualizar Receita",
-            description: `Falha na sincronização: ${result.errors.join(', ')}`,
+            description: `Falha na atualização: ${errorData}`,
           });
         }
       } catch (error) {
@@ -343,24 +212,41 @@ export default function ReceitasPage() {
     } else {
       // Adicionar nova receita
       try {
-        const result = await dualSync.createRevenue(revenueData);
-        
-        if (result.success) {
+        const response = await fetch('/api/revenues/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: user.id,
+            description: revenueData.description,
+            amount: revenueData.amount,
+            category: revenueData.category,
+            source: revenueData.source,
+            notes: revenueData.notes,
+            product_id: revenueData.productId,
+            date: revenueData.date.toISOString(),
+          }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
           const newRevenue: Revenue = {
             ...revenueData,
-            id: new Date().getTime().toString(),
+            id: result.revenue.id,
           };
-          setRevenues(prev => [newRevenue, ...prev]);
+          addRevenue(newRevenue);
           
           toast({
             title: "Receita Adicionada!",
-            description: `${revenueData.description} - Sincronizada com sucesso`,
+            description: `${revenueData.description} - Criada com sucesso`,
           });
         } else {
+          const errorData = await response.text();
           toast({
             variant: 'destructive',
             title: "Erro ao Criar Receita",
-            description: `Falha na sincronização: ${result.errors.join(', ')}`,
+            description: `Falha na criação: ${errorData}`,
           });
         }
       } catch (error) {
@@ -476,7 +362,7 @@ export default function ReceitasPage() {
 
       {/* Main Content */}
       <main className="p-3 md:p-6">
-        {isLoading ? (
+        {dataLoading ? (
           <div className="space-y-4 md:space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
               {Array.from({ length: 4 }).map((_, i) => (

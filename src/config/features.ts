@@ -37,7 +37,6 @@ export interface SystemFeatures {
   
   // Integrations
   supabaseSync: FeatureConfig;
-  firebaseBackup: FeatureConfig;
   n8nIntegration: FeatureConfig;
 }
 
@@ -121,10 +120,7 @@ export const FEATURES: SystemFeatures = {
     enabled: true,
     description: "Sincronização com Supabase"
   },
-  firebaseBackup: {
-    enabled: true,
-    description: "Backup no Firebase"
-  },
+
   n8nIntegration: {
     enabled: true,
     description: "Integração com N8N para automações"

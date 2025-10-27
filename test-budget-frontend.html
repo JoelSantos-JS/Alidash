@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Orçamento Frontend</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Teste de Funcionalidade do Orçamento</h1>
+    
+    <div class="test-section">
+        <h3>1. Teste de Carregamento do Orçamento</h3>
+        <button onclick="testLoadBudget()">Carregar Orçamento</button>
+        <div id="loadResult" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Teste de Atualização do Orçamento</h3>
+        <input type="number" id="newBudgetValue" placeholder="Novo valor do orçamento" value="1500">
+        <button onclick="testUpdateBudget()">Atualizar Orçamento</button>
+        <div id="updateResult" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Logs do Console</h3>
+        <button onclick="clearLogs()">Limpar Logs</button>
+        <div id="consoleLogs" class="log"></div>
+    </div>
+
+    <script>
+        // Interceptar console.log para mostrar na página
+        const originalLog = console.log;
+        const logDiv = document.getElementById('consoleLogs');
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const logEntry = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            logDiv.textContent += new Date().toLocaleTimeString() + ': ' + logEntry + '\n';
+            logDiv.scrollTop = logDiv.scrollHeight;
+        };
+
+        async function testLoadBudget() {
+            const resultDiv = document.getElementById('loadResult');
+            resultDiv.textContent = 'Testando carregamento do orçamento...\n';
+            
+            try {
+                // Simular o que o frontend faz
+                console.log('🔄 Iniciando teste de carregamento do orçamento');
+                
+                // Primeiro, vamos verificar se há um usuário logado
+                const response = await fetch('/api/budgets?user_id=test-user-id');
+                const data = await response.json();
+                
+                resultDiv.textContent += `Status: ${response.status}\n`;
+                resultDiv.textContent += `Dados recebidos: ${JSON.stringify(data, null, 2)}\n`;
+                
+                console.log('📊 Resposta da API de orçamento:', data);
+                
+            } catch (error) {
+                resultDiv.textContent += `Erro: ${error.message}\n`;
+                console.error('❌ Erro no teste de carregamento:', error);
+            }
+        }
+
+        async function testUpdateBudget() {
+            const resultDiv = document.getElementById('updateResult');
+            const newValue = document.getElementById('newBudgetValue').value;
+            resultDiv.textContent = `Testando atualização do orçamento para ${newValue}...\n`;
+            
+            try {
+                console.log('💾 Iniciando teste de atualização do orçamento para:', newValue);
+                
+                const response = await fetch('/api/budgets', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: 'test-user-id',
+                        monthly_budget: parseFloat(newValue)
+                    })
+                });
+                
+                const data = await response.json();
+                
+                resultDiv.textContent += `Status: ${response.status}\n`;
+                resultDiv.textContent += `Dados recebidos: ${JSON.stringify(data, null, 2)}\n`;
+                
+                console.log('📡 Resposta da API de atualização:', data);
+                
+                // Verificar se a atualização foi persistida
+                setTimeout(async () => {
+                    const verifyResponse = await fetch('/api/budgets?user_id=test-user-id');
+                    const verifyData = await verifyResponse.json();
+                    resultDiv.textContent += `\nVerificação: ${JSON.stringify(verifyData, null, 2)}\n`;
+                    console.log('🔍 Verificação da atualização:', verifyData);
+                }, 1000);
+                
+            } catch (error) {
+                resultDiv.textContent += `Erro: ${error.message}\n`;
+                console.error('❌ Erro no teste de atualização:', error);
+            }
+        }
+
+        function clearLogs() {
+            document.getElementById('consoleLogs').textContent = '';
+        }
+
+        // Inicializar
+        console.log('🚀 Página de teste carregada');
+    </script>
+</body>
+</html>

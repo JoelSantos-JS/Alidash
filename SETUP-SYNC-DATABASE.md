@@ -9,7 +9,7 @@ Para que o sistema de sincronização bidirecional funcione corretamente, você 
 ### 1. Acesse o Painel do Supabase
 - Vá para [https://supabase.com/dashboard](https://supabase.com/dashboard)
 - Faça login na sua conta
-- Selecione o projeto **Alidash**
+- Selecione o projeto **VoxCash**
 
 ### 2. Abra o SQL Editor
 - No menu lateral, clique em **SQL Editor**

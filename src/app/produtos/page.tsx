@@ -10,13 +10,12 @@ import { ProductDetailView } from "@/components/product/product-detail-view"
 import { ProductSearch } from "@/components/product/product-search"
 import { SaleForm } from "@/components/product/sale-form"
 import { TrackingView } from "@/components/product/tracking-view"
+import { CatalogManager } from "@/components/product/catalog-manager"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/hooks/use-supabase-auth"
 import { useIsMobile } from "@/hooks/use-mobile"
 import type { Product } from "@/types"
-import { db } from "@/lib/firebase"
-import { doc, getDoc } from "firebase/firestore"
 import { 
   Package, 
   Plus, 
@@ -90,98 +89,33 @@ export default function ProdutosPage() {
   }, [products, searchQuery, categoryFilter, statusFilter, supplierFilter])
 
   const fetchProducts = async () => {
-    if (!user?.uid) return
+    if (!user?.id) return
     
     try {
       setIsLoading(true)
-      console.log('🔄 Carregando produtos do usuário:', user.uid)
+      console.log('🔄 Carregando produtos do usuário:', user.id)
       
-      // Carregar do Firebase (backup/fallback)
-      const docRef = doc(db, "user-data", user.uid)
-      const docSnap = await getDoc(docRef)
-
-      let firebaseProducts: Product[] = []
-
-      if (docSnap.exists()) {
-        const userData = docSnap.data()
-        console.log('📦 Produtos encontrados no Firebase (backup):', userData.products?.length || 0)
-        
-        // Carregar produtos do Firebase
-        if (userData.products && userData.products.length > 0) {
-          const data = userData.products
-          firebaseProducts = data.map((p: any) => ({
-            ...p,
-            purchaseDate: p.purchaseDate?.toDate ? p.purchaseDate.toDate() : new Date(p.purchaseDate),
-            sales: p.sales ? p.sales.map((s: any) => ({
-              ...s, 
-              date: s.date?.toDate ? s.date.toDate() : 
-                    typeof s.date === 'string' ? new Date(s.date) : 
-                    new Date(s.date)
-            })) : [],
-          }))
-        }
-      }
-
-      // 2. Tentar carregar produtos do Supabase (fonte primária)
-      let supabaseProducts: Product[] = []
-      try {
-        console.log('🔍 Tentando buscar produtos do Supabase (fonte primária)...')
-        
-        // Primeiro, buscar o usuário no Supabase usando API route
-        const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`)
-        
-        if (userResponse.ok) {
-          const userResult = await userResponse.json()
-          const supabaseUser = userResult.user
-          
-          console.log('✅ Usuário encontrado no Supabase:', supabaseUser.id)
-          
-          // Agora buscar os produtos usando API route
-          const productsResponse = await fetch(`/api/products/get?user_id=${supabaseUser.id}`)
-          
-          if (productsResponse.ok) {
-            const productsResult = await productsResponse.json()
-            supabaseProducts = productsResult.products?.map((product: any) => ({
-              ...product,
-              purchaseDate: new Date(product.purchase_date || product.purchaseDate),
-              sales: product.sales || []
-            })) || []
-            console.log('📊 Produtos do Supabase:', supabaseProducts.length)
-          } else {
-            console.error('❌ Erro ao buscar produtos do Supabase:', await productsResponse.text())
-          }
-        } else {
-          console.log('⚠️ Usuário não encontrado no Supabase, usando apenas Firebase')
-        }
-      } catch (error) {
-        console.error('❌ Erro ao buscar produtos do Supabase:', error)
-        console.log('📥 Continuando apenas com dados do Firebase')
-      }
-
-      // 3. Usar apenas produtos do Supabase (fonte primária) para evitar duplicação
-      let finalProducts = supabaseProducts
+      // Buscar produtos do Supabase
+      const productsResponse = await fetch(`/api/products/get?user_id=${user.id}`)
       
-      // Se não houver produtos no Supabase, usar Firebase como fallback
-      if (finalProducts.length === 0 && firebaseProducts.length > 0) {
-        console.log('📥 Usando produtos do Firebase como fallback')
-        finalProducts = firebaseProducts
-      }
-
-      console.log('📊 Produtos finais:', {
-        firebase: firebaseProducts.length,
-        supabase: supabaseProducts.length,
-        final: finalProducts.length
-      })
-      
-      if (finalProducts.length === 0) {
-        console.log('📥 Nenhum produto encontrado nos bancos de dados')
-        // Não usar dados de exemplo - deixar vazio para mostrar estado real
-        finalProducts = []
+      if (productsResponse.ok) {
+        const productsResult = await productsResponse.json()
+        const products = productsResult.products?.map((product: any) => ({
+          ...product,
+          purchaseDate: new Date(product.purchase_date || product.purchaseDate),
+          sales: product.sales || []
+        })) || []
+        
+        console.log('📊 Produtos carregados do Supabase:', products.length)
+        setProducts(products)
       } else {
-        console.log('✅ Usando produtos reais do banco de dados (priorizando Supabase)')
+        console.error('❌ Erro ao buscar produtos do Supabase:', await productsResponse.text())
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os produtos.",
+          variant: "destructive",
+        })
       }
-
-      setProducts(finalProducts)
       
     } catch (error) {
       console.error('Error fetching products:', error)
@@ -204,50 +138,69 @@ export default function ProdutosPage() {
     setIsProductFormOpen(true)
   }
 
-  const handleProductCreated = async (newProduct: Product) => {
+  const handleProductCreated = async (newProduct: Product | Partial<Product>) => {
+    if (!user?.id) return
+    
     try {
-      // Primeiro, buscar o usuário no Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`)
+      // Converter Partial<Product> para Product completo se necessário
+      const completeProduct: Product = {
+        id: '',
+        name: newProduct.name || '',
+        category: newProduct.category || '',
+        supplier: newProduct.supplier || '',
+        aliexpressLink: newProduct.aliexpressLink || '',
+        imageUrl: newProduct.imageUrl || '',
+        images: newProduct.images || [],
+        description: newProduct.description || '',
+        notes: newProduct.notes || '',
+        trackingCode: newProduct.trackingCode || '',
+        purchasePrice: newProduct.purchasePrice || 0,
+        shippingCost: newProduct.shippingCost || 0,
+        importTaxes: newProduct.importTaxes || 0,
+        packagingCost: newProduct.packagingCost || 0,
+        marketingCost: newProduct.marketingCost || 0,
+        otherCosts: newProduct.otherCosts || 0,
+        totalCost: (newProduct.purchasePrice || 0) + (newProduct.shippingCost || 0) + (newProduct.importTaxes || 0) + (newProduct.packagingCost || 0) + (newProduct.marketingCost || 0) + (newProduct.otherCosts || 0),
+        sellingPrice: newProduct.sellingPrice || 0,
+        expectedProfit: (newProduct.sellingPrice || 0) - ((newProduct.purchasePrice || 0) + (newProduct.shippingCost || 0) + (newProduct.importTaxes || 0) + (newProduct.packagingCost || 0) + (newProduct.marketingCost || 0) + (newProduct.otherCosts || 0)),
+        profitMargin: newProduct.sellingPrice ? (((newProduct.sellingPrice || 0) - ((newProduct.purchasePrice || 0) + (newProduct.shippingCost || 0) + (newProduct.importTaxes || 0) + (newProduct.packagingCost || 0) + (newProduct.marketingCost || 0) + (newProduct.otherCosts || 0))) / (newProduct.sellingPrice || 1)) * 100 : 0,
+        sales: newProduct.sales || [],
+        quantity: newProduct.quantity || 1,
+        quantitySold: newProduct.quantitySold || 0,
+        status: newProduct.status || 'purchased',
+        purchaseDate: newProduct.purchaseDate || new Date(),
+        roi: 0,
+        actualProfit: 0,
+        daysToSell: newProduct.daysToSell
+      }
       
-      if (userResponse.ok) {
-        const userResult = await userResponse.json()
-        const supabaseUser = userResult.user
+      // Fazer a chamada para a API de criação usando o user.id diretamente
+      const createResponse = await fetch(`/api/products/create?user_id=${user.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(completeProduct)
+      })
+      
+      if (createResponse.ok) {
+        const createResult = await createResponse.json()
+        console.log('✅ Produto criado:', createResult)
         
-        // Fazer a chamada para a API de criação
-        const createResponse = await fetch(`/api/products/create?user_id=${supabaseUser.id}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(newProduct)
+        // Atualizar o estado local apenas se a API foi bem-sucedida
+        setProducts(prev => [...prev, completeProduct])
+        setIsProductFormOpen(false)
+        
+        toast({
+          title: "Sucesso",
+          description: "Produto criado com sucesso!",
         })
-        
-        if (createResponse.ok) {
-          const createResult = await createResponse.json()
-          console.log('✅ Produto criado:', createResult)
-          
-          // Atualizar o estado local apenas se a API foi bem-sucedida
-          setProducts(prev => [...prev, newProduct])
-          setIsProductFormOpen(false)
-          
-          toast({
-            title: "Sucesso",
-            description: "Produto criado com sucesso!",
-          })
-        } else {
-          const errorText = await createResponse.text()
-          console.error('❌ Erro ao criar produto:', errorText)
-          toast({
-            title: "Erro",
-            description: "Não foi possível criar o produto. Tente novamente.",
-            variant: "destructive",
-          })
-        }
       } else {
-        console.error('❌ Usuário não encontrado no Supabase')
+        const errorText = await createResponse.text()
+        console.error('❌ Erro ao criar produto:', errorText)
         toast({
           title: "Erro",
-          description: "Usuário não encontrado. Faça login novamente.",
+          description: "Não foi possível criar o produto. Tente novamente.",
           variant: "destructive",
         })
       }
@@ -268,50 +221,37 @@ export default function ProdutosPage() {
   }
 
   const handleProductUpdated = async (updatedProduct: Product) => {
+    if (!user?.id) return
+    
     try {
-      // Primeiro, buscar o usuário no Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`)
+      // Fazer a chamada para a API de atualização usando o user.id diretamente
+      const updateResponse = await fetch(`/api/products/update?user_id=${user.id}&product_id=${updatedProduct.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedProduct)
+      })
       
-      if (userResponse.ok) {
-        const userResult = await userResponse.json()
-        const supabaseUser = userResult.user
+      if (updateResponse.ok) {
+        const updateResult = await updateResponse.json()
+        console.log('✅ Produto atualizado:', updateResult)
         
-        // Fazer a chamada para a API de atualização
-        const updateResponse = await fetch(`/api/products/update?user_id=${supabaseUser.id}&product_id=${updatedProduct.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(updatedProduct)
+        // Atualizar o estado local apenas se a API foi bem-sucedida
+        setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p))
+        setProductToEdit(null)
+        setIsProductFormOpen(false)
+        
+        toast({
+          title: "Sucesso",
+          description: "Produto atualizado com sucesso!",
         })
-        
-        if (updateResponse.ok) {
-          const updateResult = await updateResponse.json()
-          console.log('✅ Produto atualizado:', updateResult)
-          
-          // Atualizar o estado local apenas se a API foi bem-sucedida
-          setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p))
-          setProductToEdit(null)
-          setIsProductFormOpen(false)
-          
-          toast({
-            title: "Sucesso",
-            description: "Produto atualizado com sucesso!",
-          })
-        } else {
-          const errorText = await updateResponse.text()
-          console.error('❌ Erro ao atualizar produto:', errorText)
-          toast({
-            title: "Erro",
-            description: "Não foi possível atualizar o produto. Tente novamente.",
-            variant: "destructive",
-          })
-        }
       } else {
-        console.error('❌ Usuário não encontrado no Supabase')
+        const errorText = await updateResponse.text()
+        console.error('❌ Erro ao atualizar produto:', errorText)
         toast({
           title: "Erro",
-          description: "Usuário não encontrado. Faça login novamente.",
+          description: "Não foi possível atualizar o produto. Tente novamente.",
           variant: "destructive",
         })
       }
@@ -323,6 +263,21 @@ export default function ProdutosPage() {
         variant: "destructive",
       })
     }
+  }
+
+  const handleProductEdit = (product: Product) => {
+    setProductToEdit(product)
+    setIsProductFormOpen(true)
+  }
+
+  const handleProductDelete = (product: Product) => {
+    setSelectedProduct(product)
+    setIsDetailViewOpen(true)
+  }
+
+  const handleProductSell = (product: Product) => {
+    setSelectedProduct(product)
+    setIsSaleFormOpen(true)
   }
 
   const handleProductDeleted = (productId: string) => {
@@ -387,6 +342,7 @@ export default function ProdutosPage() {
         onStatusFilterChange={setStatusFilter}
         onSupplierFilterChange={setSupplierFilter}
         onAddProduct={handleAddProduct}
+        onSaveCompactProduct={handleProductCreated}
         onRefresh={handleRefresh}
         onExport={handleExport}
         onImport={handleImport}
@@ -408,10 +364,10 @@ export default function ProdutosPage() {
                   variant="outline" 
                   size="sm"
                   onClick={() => setIsSidebarOpen(true)}
-                  className="lg:hidden flex items-center gap-2 border-2 hover:border-primary"
+                  className="lg:hidden flex items-center gap-2 border-2 hover:border-primary h-9 px-3"
                 >
                   <Menu className="h-4 w-4" />
-                  <span className="text-xs">Menu</span>
+                  <span className="text-sm font-medium">Menu</span>
                 </Button>
                 
                 <Button 
@@ -430,24 +386,31 @@ export default function ProdutosPage() {
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <CatalogManager 
+                products={products}
+                onProductUpdate={(productId, isPublic) => {
+                  setProducts(prev => prev.map(p => 
+                    p.id === productId ? { ...p, isPublic } : p
+                  ))
+                }}
+              />
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={handleRefresh} 
                 disabled={isLoading}
-                className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3"
+                className="h-9 w-9 sm:h-9 sm:w-auto sm:px-3 flex-shrink-0"
               >
                 <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
                 <span className="hidden sm:inline ml-1">Atualizar</span>
               </Button>
               <Button 
                 onClick={handleAddProduct}
-                className="h-8 sm:h-9 text-sm"
+                className="h-9 sm:h-9 text-sm flex-shrink-0 min-w-[100px] sm:min-w-0"
               >
                 <Plus className="h-4 w-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Adicionar Produto</span>
-                <span className="sm:hidden">Adicionar</span>
+                <span className="text-xs sm:text-sm">Adicionar</span>
               </Button>
             </div>
           </div>
@@ -576,12 +539,15 @@ export default function ProdutosPage() {
               </div>
 
               {/* Products Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-4 lg:gap-6">
                 {filteredProducts.map((product) => (
                   <ProductCard
                     key={product.id}
                     product={product}
                     onClick={() => handleProductSelect(product)}
+                    onEdit={() => handleProductEdit(product)}
+                    onDelete={() => handleProductDelete(product)}
+                    onSell={() => handleProductSell(product)}
                   />
                 ))}
               </div>

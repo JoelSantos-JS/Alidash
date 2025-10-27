@@ -7,12 +7,12 @@ import { createServiceClient } from '@/utils/supabase/server';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const firebaseUid = searchParams.get('user_id');
+    const userId = searchParams.get('user_id');
     const startDate = searchParams.get('start_date');
     const endDate = searchParams.get('end_date');
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    if (!firebaseUid) {
+    if (!userId) {
       return NextResponse.json(
         { error: 'user_id é obrigatório' },
         { status: 400 }
@@ -20,23 +20,6 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = createServiceClient();
-    
-    // First, get the Supabase user ID from Firebase UID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('firebase_uid', firebaseUid)
-      .single();
-
-    if (userError || !user) {
-      console.error('Erro ao buscar usuário:', userError);
-      return NextResponse.json(
-        { error: 'Usuário não encontrado' },
-        { status: 404 }
-      );
-    }
-
-    const userId = user.id;
     
     let query = supabase
       .from('calendar_events')
@@ -92,7 +75,7 @@ export async function POST(request: NextRequest) {
   try {
     const eventData = await request.json();
     const { 
-      user_id: firebaseUid, 
+      user_id: userId, 
       title, 
       description, 
       start_time, 
@@ -103,7 +86,7 @@ export async function POST(request: NextRequest) {
       recurrence 
     } = eventData;
 
-    if (!firebaseUid || !title || !start_time || !end_time) {
+    if (!userId || !title || !start_time || !end_time) {
       return NextResponse.json(
         { error: 'Campos obrigatórios: user_id, title, start_time, end_time' },
         { status: 400 }
@@ -111,23 +94,6 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createServiceClient();
-    
-    // First, get the Supabase user ID from Firebase UID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('firebase_uid', firebaseUid)
-      .single();
-
-    if (userError || !user) {
-      console.error('Erro ao buscar usuário:', userError);
-      return NextResponse.json(
-        { error: 'Usuário não encontrado' },
-        { status: 404 }
-      );
-    }
-
-    const userId = user.id;
     
     const { data: event, error } = await supabase
       .from('calendar_events')
@@ -180,7 +146,7 @@ export async function PUT(request: NextRequest) {
     const eventData = await request.json();
     const { 
       id,
-      user_id: firebaseUid, 
+      user_id: userId, 
       title, 
       description, 
       start_time, 
@@ -192,7 +158,7 @@ export async function PUT(request: NextRequest) {
       recurrence 
     } = eventData;
 
-    if (!id || !firebaseUid) {
+    if (!id || !userId) {
       return NextResponse.json(
         { error: 'id e user_id são obrigatórios' },
         { status: 400 }
@@ -200,23 +166,6 @@ export async function PUT(request: NextRequest) {
     }
 
     const supabase = createServiceClient();
-    
-    // First, get the Supabase user ID from Firebase UID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('firebase_uid', firebaseUid)
-      .single();
-
-    if (userError || !user) {
-      console.error('Erro ao buscar usuário:', userError);
-      return NextResponse.json(
-        { error: 'Usuário não encontrado' },
-        { status: 404 }
-      );
-    }
-
-    const userId = user.id;
     
     const updateData: any = {
       updated_at: new Date().toISOString()
@@ -274,9 +223,9 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('id');
-    const firebaseUid = searchParams.get('user_id');
+    const userId = searchParams.get('user_id');
 
-    if (!eventId || !firebaseUid) {
+    if (!eventId || !userId) {
       return NextResponse.json(
         { error: 'id e user_id são obrigatórios' },
         { status: 400 }
@@ -284,23 +233,6 @@ export async function DELETE(request: NextRequest) {
     }
 
     const supabase = createServiceClient();
-    
-    // First, get the Supabase user ID from Firebase UID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('firebase_uid', firebaseUid)
-      .single();
-
-    if (userError || !user) {
-      console.error('Erro ao buscar usuário:', userError);
-      return NextResponse.json(
-        { error: 'Usuário não encontrado' },
-        { status: 404 }
-      );
-    }
-
-    const userId = user.id;
     
     const { error } = await supabase
       .from('calendar_events')

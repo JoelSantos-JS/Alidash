@@ -1,216 +1,134 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-// Configurar fetch customizado para evitar problemas com undici
-const customFetch = (url: string, options?: RequestInit) => {
-  return fetch(url, {
-    ...options,
-    // Adicionar headers para evitar problemas de conectividade
-    headers: {
-      'User-Agent': 'NextJS-API-Route/1.0',
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  });
-};
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-// Debug das variáveis de ambiente
-if (process.env.NODE_ENV === 'development') {
-  console.log('🔧 Debug Supabase config:', {
-    url: supabaseUrl ? 'Definida' : 'Não definida',
-    serviceKey: supabaseServiceKey ? 'Definida' : 'Não definida',
-    urlLength: supabaseUrl?.length || 0,
-    keyLength: supabaseServiceKey?.length || 0
-  });
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    persistSession: false,
-  },
-});
-
-// Testar conexão básica
-if (process.env.NODE_ENV === 'development') {
-  console.log('🔍 Testando conexão básica com Supabase...');
-}
+import { NextRequest, NextResponse } from 'next/server'
+import { supabaseAdminService } from '@/lib/supabase-service'
 
 export async function POST(request: NextRequest) {
   try {
-    // Verificar se as variáveis de ambiente estão configuradas
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('❌ Variáveis de ambiente do Supabase não configuradas');
-      return NextResponse.json(
-        { error: 'Configuração do servidor incompleta' },
-        { status: 500 }
-      );
-    }
+    const { firebase_uid, email, name, avatar_url } = await request.json()
 
-    const { firebase_uid, email, name, avatar_url } = await request.json();
-
+    // Validação dos dados obrigatórios
     if (!firebase_uid || !email) {
       return NextResponse.json(
-        { error: 'Firebase UID e email são obrigatórios' },
+        { error: 'firebase_uid e email são obrigatórios' },
         { status: 400 }
-      );
+      )
     }
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔄 Sincronizando usuário:', { firebase_uid, email });
-    }
-
-    // Verificar se o usuário já existe no Supabase
-    let supabaseUser;
-    try {
-      supabaseUser = await supabase
-        .from('users')
-        .select('*')
-        .eq('firebase_uid', firebase_uid)
-        .single();
-    } catch (supabaseError: any) {
-      console.error('❌ Erro ao buscar usuário:', {
-        message: supabaseError.message,
-        details: supabaseError.toString(),
-        hint: 'Verifique a conectividade com o Supabase e as configurações de RLS',
-        code: supabaseError.code || 'UNKNOWN'
-      });
+    // Verificar se o usuário já existe pelo Firebase UID
+    let user = await supabaseAdminService.getUserByFirebaseUid(firebase_uid)
+    
+    if (!user) {
+      // Verificar se existe usuário com o mesmo email
+      const existingUser = await supabaseAdminService.getUserByEmail(email)
       
-      return NextResponse.json(
-        { 
-          error: 'Erro de conectividade com o banco de dados',
-          details: process.env.NODE_ENV === 'development' ? supabaseError.message : undefined
-        },
-        { status: 503 }
-      );
-    }
-
-    if (supabaseUser.error && supabaseUser.error.code === 'PGRST116') {
-      // Usuário não encontrado, criar novo
-      if (process.env.NODE_ENV === 'development') {
-        console.log('👤 Criando novo usuário no Supabase...');
-      }
-      
-      let newUser, createError;
-      try {
-        const result = await supabase
-          .from('users')
-          .insert({
-            firebase_uid,
-            email,
-            name: name || null,
-            avatar_url: avatar_url || null,
-            account_type: 'personal'
-          })
-          .select()
-          .single();
-        
-        newUser = result.data;
-        createError = result.error;
-      } catch (insertError: any) {
-        console.error('❌ Erro ao inserir usuário:', {
-          message: insertError.message,
-          details: insertError.toString(),
-          hint: 'Verifique as permissões RLS e estrutura da tabela users',
-          code: insertError.code || 'UNKNOWN'
-        });
-        
-        createError = insertError;
-      }
-
-      if (createError) {
-        console.error('❌ Erro ao criar usuário:', createError);
-        
-        // Se falhar ao criar, tentar buscar pelo email
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔄 Tentando buscar usuário pelo email...');
-        }
-        const { data: usersByEmail, error: emailError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', email)
-          .limit(1);
-        
-        if (!emailError && usersByEmail && usersByEmail.length > 0) {
-          // Atualizar o usuário existente com o Firebase UID
-          const existingUser = usersByEmail[0];
-          if (process.env.NODE_ENV === 'development') {
-            console.log('🔄 Atualizando usuário existente com Firebase UID...');
-          }
-          
-          const { data: updatedUser, error: updateError } = await supabase
-            .from('users')
-            .update({ firebase_uid })
-            .eq('id', existingUser.id)
-            .select()
-            .single();
-          
-          if (updateError) {
-            console.error('❌ Erro ao atualizar Firebase UID:', updateError);
-            return NextResponse.json(
-              { error: 'Erro ao atualizar usuário existente' },
-              { status: 500 }
-            );
-          } else {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('✅ Firebase UID atualizado com sucesso');
-            }
-            return NextResponse.json({
-              success: true,
-              user: updatedUser,
-              action: 'updated'
-            });
-          }
-        } else {
-          return NextResponse.json(
-            { error: 'Erro ao criar usuário e não foi possível encontrar usuário existente' },
-            { status: 500 }
-          );
-        }
+      if (existingUser) {
+        // Atualizar o Firebase UID do usuário existente
+        user = await supabaseAdminService.updateUserFirebaseUid(existingUser.id, firebase_uid)
       } else {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('✅ Usuário criado no Supabase:', newUser.id);
-        }
-        return NextResponse.json({
-          success: true,
-          user: newUser,
-          action: 'created'
-        });
+        // Criar novo usuário
+        user = await supabaseAdminService.createUser({
+          firebase_uid,
+          email,
+          name: name || null,
+          avatar_url: avatar_url || null,
+          account_type: 'personal'
+        })
       }
-    } else if (supabaseUser.error) {
-      console.error('❌ Erro ao buscar usuário:', supabaseUser.error);
-      return NextResponse.json(
-        { error: 'Erro ao buscar usuário' },
-        { status: 500 }
-      );
     } else {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Usuário já existe no Supabase:', supabaseUser.data.id);
+      // Atualizar dados do usuário existente se necessário
+      const updateData: any = {}
+      
+      if (name && user.name !== name) {
+        updateData.name = name
       }
-      return NextResponse.json({
-        success: true,
-        user: supabaseUser.data,
-        action: 'exists'
-      });
+      
+      if (avatar_url && user.avatar_url !== avatar_url) {
+        updateData.avatar_url = avatar_url
+      }
+      
+      if (Object.keys(updateData).length > 0) {
+        user = await supabaseAdminService.updateUser(user.id, updateData)
+      }
+      
+      // Atualizar último login
+      await supabaseAdminService.updateUserLastLogin(user.id)
     }
 
-  } catch (error: any) {
-    console.error('❌ Erro geral na sincronização:', {
-      message: error.message,
-      details: error.toString(),
-      hint: 'Verifique a conectividade com o Supabase e as configurações',
-      code: error.code || 'UNKNOWN'
-    });
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        firebase_uid: user.firebase_uid,
+        email: user.email,
+        name: user.name,
+        avatar_url: user.avatar_url,
+        account_type: user.account_type || 'personal'
+      }
+    })
+
+  } catch (error) {
+    console.error('Erro na sincronização do usuário:', {
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    })
     
     return NextResponse.json(
-      { 
-        error: 'Erro interno do servidor',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      },
+      { error: 'Erro interno do servidor' },
       { status: 500 }
-    );
+    )
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const url = new URL(request.url)
+    const firebase_uid = url.searchParams.get('firebase_uid')
+    const email = url.searchParams.get('email')
+
+    if (!firebase_uid && !email) {
+      return NextResponse.json(
+        { error: 'firebase_uid ou email é obrigatório' },
+        { status: 400 }
+      )
+    }
+
+    let user = null
+    
+    if (firebase_uid) {
+      user = await supabaseAdminService.getUserByFirebaseUid(firebase_uid)
+    } else if (email) {
+      user = await supabaseAdminService.getUserByEmail(email)
+    }
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Usuário não encontrado' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        firebase_uid: user.firebase_uid,
+        email: user.email,
+        name: user.name,
+        avatar_url: user.avatar_url,
+        account_type: user.account_type || 'personal'
+      }
+    })
+
+  } catch (error) {
+    console.error('Erro ao buscar usuário:', {
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    })
+    
+    return NextResponse.json(
+      { error: 'Erro interno do servidor' },
+      { status: 500 }
+    )
   }
 }

@@ -2,14 +2,15 @@
 
 import * as React from "react";
 import { 
-  LazyBarChartWrapper, 
-  LazyBar, 
-  LazyCartesianGrid, 
-  LazyXAxis, 
-  LazyYAxis, 
-  LazyTooltip, 
-  LazyLegend 
-} from "@/components/ui/lazy-chart";
+  BarChart,
+  Bar, 
+  CartesianGrid, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  Legend,
+  ResponsiveContainer
+} from "recharts";
 
 import {
   Card,
@@ -57,55 +58,57 @@ export function ProfitChart({ data, isLoading }: ProfitChartProps) {
                 ))}
             </div>
         ) : chartData.length > 0 ? (
-            <LazyBarChartWrapper data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-                <LazyCartesianGrid strokeDasharray="3 3" />
-                <LazyXAxis 
-                    dataKey="name" 
-                    fontSize={10} 
-                    tickLine={false} 
-                    axisLine={false}
-                    angle={-45}
-                    textAnchor="end"
-                    height={60}
-                    interval={0}
-                />
-                <LazyYAxis 
-                    fontSize={10} 
-                    tickLine={false} 
-                    axisLine={false} 
-                    tickFormatter={(value) => `R$${value}`}
-                    width={50}
-                />
-                <LazyTooltip 
-                    cursor={{fill: 'hsl(var(--muted))'}}
-                    contentStyle={{
-                        background: 'hsl(var(--background))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: 'var(--radius)',
-                        fontSize: '12px'
-                    }}
-                    formatter={(value: any, name: any) => [
-                        `R$ ${value.toLocaleString('pt-BR')}`, 
-                        name === 'lucro' ? 'Lucro Realizado' : 'Custo Total'
-                    ]}
-                />
-                <LazyLegend 
-                    iconType="circle" 
-                    wrapperStyle={{ fontSize: '12px' }}
-                />
-                <LazyBar 
-                    dataKey="lucro" 
-                    name="Lucro Realizado" 
-                    fill="hsl(var(--primary))" 
-                    radius={[4, 4, 0, 0]} 
-                />
-                <LazyBar 
-                    dataKey="custo" 
-                    name="Custo Total" 
-                    fill="hsl(var(--destructive))" 
-                    radius={[4, 4, 0, 0]} 
-                />
-            </LazyBarChartWrapper>
+            <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                        dataKey="name" 
+                        fontSize={10} 
+                        tickLine={false} 
+                        axisLine={false}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                        interval={0}
+                    />
+                    <YAxis 
+                        fontSize={10} 
+                        tickLine={false} 
+                        axisLine={false} 
+                        tickFormatter={(value) => `R$${value}`}
+                        width={50}
+                    />
+                    <Tooltip 
+                        cursor={{fill: 'hsl(var(--muted))'}}
+                        contentStyle={{
+                            background: 'hsl(var(--background))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: 'var(--radius)',
+                            fontSize: '12px'
+                        }}
+                        formatter={(value: any, name: any) => [
+                            `R$ ${value.toLocaleString('pt-BR')}`, 
+                            name === 'lucro' ? 'Lucro Realizado' : 'Custo Total'
+                        ]}
+                    />
+                    <Legend 
+                        iconType="circle" 
+                        wrapperStyle={{ fontSize: '12px' }}
+                    />
+                    <Bar 
+                        dataKey="lucro" 
+                        name="Lucro Realizado" 
+                        fill="hsl(var(--primary))" 
+                        radius={[4, 4, 0, 0]} 
+                    />
+                    <Bar 
+                        dataKey="custo" 
+                        name="Custo Total" 
+                        fill="hsl(var(--destructive))" 
+                        radius={[4, 4, 0, 0]} 
+                    />
+                </BarChart>
+            </ResponsiveContainer>
         ) : (
              <div className="h-full flex items-center justify-center text-center text-muted-foreground p-4">
                 <div>

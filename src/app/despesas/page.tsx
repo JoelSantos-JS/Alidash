@@ -1,17 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-supabase-auth";
+import { useData } from "@/contexts/data-context";
 import { ExpensesSection } from "@/components/dashboard/expenses-section";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowDown, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { useDualSync } from '@/lib/dual-database-sync';
-import { db } from "@/lib/firebase";
 import type { Product, Expense } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ExpenseForm } from "@/components/expense/expense-form";
 import { useToast } from "@/hooks/use-toast";
@@ -116,204 +113,97 @@ const initialProducts: Product[] = [
 
 export default function DespesasPage() {
   const { user, loading: authLoading } = useAuth();
+  const { expenses, addExpense, isLoading: dataLoading } = useData();
   const router = useRouter();
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [periodFilter, setPeriodFilter] = useState<"day" | "week" | "month">("month");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [expenseToEdit, setExpenseToEdit] = useState<Expense | null>(null);
   
-  // Hook de sincronização dual
-  const dualSync = useDualSync(user?.uid || '', 'BEST_EFFORT');
+
 
   useEffect(() => {
     if (authLoading || !user) return;
 
-    const fetchData = async () => {
+    const fetchProducts = async () => {
+      if (!user?.id) return;
+
       try {
-        console.log('🔄 Carregando dados de produtos e despesas:', user.uid);
+        console.log('🔄 Iniciando busca de produtos para usuário:', user.id);
+
+        // Buscar produtos do Supabase
+        const productsResponse = await fetch(`/api/products/get?user_id=${user.id}`);
         
-        // Buscar produtos do Firebase (como antes)
-        const docRef = doc(db, "user-data", user.uid);
-        const docSnap = await getDoc(docRef);
-
-        let firebaseProducts: Product[] = [];
-        let firebaseExpenses: Expense[] = [];
-
-        if (docSnap.exists()) {
-          const userData = docSnap.data();
-          console.log('📦 Dados encontrados no Firebase:', {
-            products: userData.products?.length || 0,
-            expenses: userData.expenses?.length || 0
-          });
-          
-          if (userData.products && userData.products.length > 0) {
-            const data = userData.products;
-            firebaseProducts = data.map((p: any) => ({
-              ...p,
-              purchaseDate: p.purchaseDate?.toDate ? p.purchaseDate.toDate() : new Date(p.purchaseDate),
-              sales: p.sales ? p.sales.map((s: any) => ({
-                ...s, 
-                date: s.date?.toDate ? s.date.toDate() : 
-                      typeof s.date === 'string' ? new Date(s.date) : 
-                      new Date(s.date)
-              })) : [],
-            }));
-          }
-
-          if (userData.expenses && userData.expenses.length > 0) {
-            const data = userData.expenses;
-            firebaseExpenses = data.map((e: any) => ({
-              ...e,
-              date: e.date?.toDate ? e.date.toDate() : new Date(e.date)
-            }));
-          }
-        }
-
-        // Tentar buscar despesas do Supabase
-        let supabaseExpenses: Expense[] = [];
-        try {
-          console.log('🔍 Tentando buscar despesas do Supabase...');
-          
-          // Primeiro, buscar o usuário no Supabase usando API route
-          const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
-          
-          if (userResponse.ok) {
-            const userResult = await userResponse.json();
-            const supabaseUser = userResult.user;
-            
-            console.log('✅ Usuário encontrado no Supabase:', supabaseUser.id);
-            
-            // Agora buscar as despesas usando API route
-            const expensesResponse = await fetch(`/api/expenses/get?user_id=${supabaseUser.id}`);
-            
-            if (expensesResponse.ok) {
-              const expensesResult = await expensesResponse.json();
-              supabaseExpenses = expensesResult.expenses.map((expense: any) => {
-                const date = new Date(expense.date);
-                return {
-                  id: expense.id,
-                  date: date,
-                  time: date.toTimeString().slice(0, 5), // Extrai HH:MM do timestamp
-                  description: expense.description,
-                  amount: expense.amount,
-                  category: expense.category,
-                  type: expense.type,
-                  supplier: expense.supplier,
-                  notes: expense.notes,
-                  productId: expense.product_id
-                };
-              });
-              console.log('📊 Despesas do Supabase:', supabaseExpenses.length);
-            } else {
-              console.error('❌ Erro ao buscar despesas:', await expensesResponse.text());
-            }
-          } else {
-            console.log('⚠️ Usuário não encontrado no Supabase, usando apenas Firebase');
-          }
-        } catch (error) {
-          console.error('❌ Erro ao buscar despesas do Supabase:', error);
-          console.log('📥 Continuando apenas com dados do Firebase');
-        }
-
-        // Combinar dados: priorizar Supabase para despesas, Firebase para produtos
-        let finalProducts = firebaseProducts;
-        if (finalProducts.length === 0) {
-          console.log('📥 Nenhum produto encontrado, usando dados de exemplo');
-          finalProducts = initialProducts;
+        if (productsResponse.ok) {
+          const productsData = await productsResponse.json();
+          const supabaseProducts = productsData.products || [];
+          console.log('📦 Produtos do Supabase:', supabaseProducts.length);
+          setProducts(supabaseProducts);
         } else {
-          console.log('✅ Usando produtos reais do Firebase');
+          console.log('❌ Erro ao buscar produtos do Supabase');
+          setProducts([]);
         }
-
-        // Para despesas, usar Supabase se disponível, senão Firebase
-        let finalExpenses = supabaseExpenses.length > 0 ? supabaseExpenses : firebaseExpenses;
-        
-        setProducts(finalProducts);
-        setExpenses(finalExpenses);
-        console.log('📊 Dados carregados com:', {
-          produtos: finalProducts.length,
-          despesas: finalExpenses.length,
-          fonte_despesas: supabaseExpenses.length > 0 ? 'Supabase' : 'Firebase'
-        });
-
       } catch (error) {
-        console.error('❌ Erro ao carregar dados:', error);
-        console.log('📥 Usando dados de exemplo devido ao erro');
-        setProducts(initialProducts);
-        setExpenses([]);
+        console.error('❌ Erro ao buscar produtos:', error);
+        setProducts([]);
       }
-      setIsLoading(false);
-    }
-    
-    fetchData();
-  }, [user, authLoading]);
+    };
+
+    fetchProducts();
+  }, [user?.id, authLoading]);
 
 
 
   const handleSaveExpense = async (expenseData: Expense) => {
-    if (expenseToEdit) {
-      // Editar despesa existente
-      const updatedExpenses = expenses.map(e => 
-        e.id === expenseToEdit.id ? { ...e, ...expenseData, id: e.id } : e
-      );
-      setExpenses(updatedExpenses);
-      
-      // Usar sincronização dual para atualizar
-      try {
-        const result = await dualSync.updateExpense(expenseToEdit.id, expenseData);
-        if (result.success) {
-          toast({
-            title: "Despesa Atualizada!",
-            description: `${expenseData.description} - Atualizada com sucesso`,
-          });
-        } else {
-          console.error('Erro na sincronização dual:', result.errors);
-          toast({
-            variant: 'destructive',
-            title: "Erro ao Atualizar",
-            description: "A despesa foi atualizada localmente, mas houve problemas na sincronização.",
-          });
-        }
-      } catch (error) {
-        console.error('Erro na sincronização dual:', error);
+    if (!user?.id) return;
+
+    try {
+      if (expenseToEdit) {
+        // Editar despesa existente - implementar quando necessário
         toast({
-          title: "Despesa Atualizada!",
-          description: `A despesa "${expenseData.description}" foi atualizada localmente.`,
+          variant: 'destructive',
+          title: "Funcionalidade em desenvolvimento",
+          description: "A edição de despesas será implementada em breve.",
         });
-      }
-    } else {
-      // Adicionar nova despesa
-      const newExpense: Expense = {
-        ...expenseData,
-        id: new Date().getTime().toString(),
-      };
-      setExpenses(prev => [newExpense, ...prev]);
-      
-      // Usar sincronização dual para criar
-      try {
-        const result = await dualSync.createExpense(expenseData);
-        if (result.success) {
-          toast({
-            title: "Despesa Adicionada!",
-            description: `${expenseData.description} - Criada com sucesso`,
-          });
+      } else {
+        // Adicionar nova despesa
+        const response = await fetch(`/api/expenses/create?user_id=${user.id}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(expenseData),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            // Usar o contexto para adicionar a despesa
+            const newExpense: Expense = {
+              ...expenseData,
+              id: result.expense.id,
+            };
+            addExpense(newExpense);
+            
+            toast({
+              title: "Despesa Adicionada!",
+              description: `${expenseData.description} - Criada com sucesso`,
+            });
+          } else {
+            throw new Error(result.error || 'Erro ao criar despesa');
+          }
         } else {
-          console.error('Erro na sincronização dual:', result.errors);
-          toast({
-            variant: 'destructive',
-            title: "Erro ao Salvar",
-            description: "A despesa foi adicionada localmente, mas houve problemas na sincronização.",
-          });
+          throw new Error('Erro na requisição');
         }
-      } catch (error) {
-        console.error('Erro na sincronização dual:', error);
-        toast({
-          title: "Despesa Adicionada!",
-          description: `A despesa "${expenseData.description}" foi adicionada localmente.`,
-        });
       }
+    } catch (error) {
+      console.error('Erro ao salvar despesa:', error);
+      toast({
+        variant: 'destructive',
+        title: "Erro ao Salvar",
+        description: error instanceof Error ? error.message : "Erro desconhecido ao salvar despesa.",
+      });
     }
 
     setIsFormOpen(false);
@@ -419,7 +309,7 @@ export default function DespesasPage() {
 
       {/* Main Content */}
       <main className="p-3 md:p-6">
-        {isLoading ? (
+        {dataLoading ? (
           <div className="space-y-4 md:space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
               {Array.from({ length: 4 }).map((_, i) => (

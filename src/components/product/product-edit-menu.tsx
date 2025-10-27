@@ -31,9 +31,21 @@ const statusMap = {
 }
 
 export function ProductEditMenu({ product, onEdit, onDelete, onRegisterSale, onViewDetails }: ProductEditMenuProps) {
-  const statusInfo = statusMap[product.status];
+  // Calcular estoque disponível
+  const availableStock = product.quantity - product.quantitySold;
+  
+  // Determinar status real baseado no estoque
+  let actualStatus = product.status;
+  if (availableStock <= 0 && product.status !== 'purchased' && product.status !== 'shipping') {
+    actualStatus = 'sold';
+  } else if (availableStock > 0 && product.status === 'sold') {
+    // Se tem estoque mas está marcado como vendido, mudar para "selling"
+    actualStatus = 'selling';
+  }
+  
+  const statusInfo = statusMap[actualStatus];
   const isLowProfit = product.profitMargin < 15;
-  const isSoldOut = product.status === 'sold';
+  const isSoldOut = availableStock <= 0;
 
   // Buscar imagem principal ou usar imageUrl como fallback
   const mainImage = product.images?.find(img => img.type === 'main')?.url || 
@@ -88,7 +100,7 @@ export function ProductEditMenu({ product, onEdit, onDelete, onRegisterSale, onV
                 {product.sellingPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </span>
               <span className="text-muted-foreground">
-                Estoque: {product.quantity - product.quantitySold}
+                Estoque: {availableStock}
               </span>
             </div>
           </div>

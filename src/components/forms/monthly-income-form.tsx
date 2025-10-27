@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/use-supabase-auth';
 import { Loader2, DollarSign, Briefcase, User, TrendingUp, Home, Gift, Building, PiggyBank } from "lucide-react";
 
 interface MonthlyIncomeFormProps {
@@ -49,18 +49,12 @@ export default function MonthlyIncomeForm({ isOpen, onClose, onSuccess, editingI
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.uid) return;
+    if (!user?.id) return;
 
     setLoading(true);
     try {
-      // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
-      if (!userResponse.ok) {
-        throw new Error('Usuário não encontrado');
-      }
-      
-      const userResult = await userResponse.json();
-      const supabaseUserId = userResult.user.id;
+      // O usuário já é do Supabase, usar ID diretamente
+      const supabaseUserId = user.id;
 
       // Preparar dados da receita
       const incomeData = {

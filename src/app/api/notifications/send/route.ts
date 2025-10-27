@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       body: notification.body,
       icon: '/icon-192x192.svg',
       badge: '/icon-192x192.svg',
-      tag: `alidash-${notification.type}-${Date.now()}`,
+      tag: `voxcash-${notification.type}-${Date.now()}`,
       requireInteraction: notification.type === 'calendar_event',
       data: {
         type: notification.type,

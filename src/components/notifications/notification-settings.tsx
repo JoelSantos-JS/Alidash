@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/hooks/use-auth'
+import { useAuth } from '@/hooks/use-supabase-auth'
 import { useNotifications } from '@/hooks/useNotifications'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Bell, Mail, Calendar, ShoppingCart, Target, CreditCard, AlertCircle } from 'lucide-react'
-import { toast } from 'sonner'
+import { useToast } from '@/hooks/use-toast'
 
 interface NotificationPreferences {
   push_notifications: boolean
@@ -24,6 +24,7 @@ interface NotificationPreferences {
 
 export default function NotificationSettings() {
   const { user } = useAuth()
+  const { toast } = useToast()
   const { 
     permission, 
     subscription, 
@@ -63,7 +64,11 @@ export default function NotificationSettings() {
       }
     } catch (error) {
       console.error('Erro ao carregar preferências:', error)
-      toast.error('Erro ao carregar preferências de notificação')
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar preferências de notificação",
+        variant: "destructive"
+      })
     } finally {
       setLoading(false)
     }
@@ -86,13 +91,20 @@ export default function NotificationSettings() {
       })
 
       if (response.ok) {
-        toast.success('Preferências salvas com sucesso!')
+        toast({
+          title: "Sucesso",
+          description: "Preferências salvas com sucesso!"
+        })
       } else {
         throw new Error('Erro ao salvar preferências')
       }
     } catch (error) {
       console.error('Erro ao salvar preferências:', error)
-      toast.error('Erro ao salvar preferências')
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar preferências",
+        variant: "destructive"
+      })
     } finally {
       setSaving(false)
     }
@@ -103,7 +115,11 @@ export default function NotificationSettings() {
       if (permission !== 'granted') {
         const granted = await requestPermission()
         if (!granted) {
-          toast.error('Permissão para notificações negada')
+          toast({
+            title: "Erro",
+            description: "Permissão para notificações negada",
+            variant: "destructive"
+          })
           return
         }
       }
@@ -111,7 +127,11 @@ export default function NotificationSettings() {
       if (!subscription) {
         const subscribed = await subscribeToPush()
         if (!subscribed) {
-          toast.error('Erro ao ativar notificações push')
+          toast({
+            title: "Erro",
+            description: "Erro ao ativar notificações push",
+            variant: "destructive"
+          })
           return
         }
       }
@@ -125,9 +145,16 @@ export default function NotificationSettings() {
   const handleTestNotification = async () => {
     try {
       await testNotification()
-      toast.success('Notificação de teste enviada!')
+      toast({
+        title: "Sucesso",
+        description: "Notificação de teste enviada!"
+      })
     } catch (error) {
-      toast.error('Erro ao enviar notificação de teste')
+      toast({
+        title: "Erro",
+        description: "Erro ao enviar notificação de teste",
+        variant: "destructive"
+      })
     }
   }
 

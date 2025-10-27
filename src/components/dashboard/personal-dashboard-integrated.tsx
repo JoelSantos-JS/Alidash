@@ -25,7 +25,7 @@ import {
   GraduationCap,
   Plane
 } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 
 interface PersonalSummary {
   totalIncome: number;
@@ -63,7 +63,7 @@ interface PersonalDashboardProps {
 }
 
 export function PersonalDashboard({ summaryStats, isLoading, periodFilter }: PersonalDashboardProps) {
-  const { user } = useAuth();
+  const { user } = useSupabaseAuth();
   const [personalSummary, setPersonalSummary] = useState<PersonalSummary>({
     totalIncome: 0,
     totalExpenses: 0,

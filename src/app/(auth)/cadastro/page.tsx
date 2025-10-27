@@ -1,160 +1,277 @@
-"use client";
+'use client'
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Loader2, Package } from "lucide-react";
-import Link from "next/link";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { useAuth } from '@/hooks/use-supabase-auth'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Eye, EyeOff, Loader2, Mail, Lock, User } from 'lucide-react'
+import { toast } from 'sonner'
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
-import { auth, db } from "@/lib/firebase";
+export default function CadastroPage() {
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [acceptTerms, setAcceptTerms] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
 
-const signupSchema = z.object({
-  email: z.string().email({ message: "Por favor, insira um e-mail válido." }),
-  password: z.string().min(6, { message: "A senha deve ter pelo menos 6 caracteres." }),
-});
+  const { signUp } = useAuth()
+  const router = useRouter()
 
-export default function SignupPage() {
-  const { toast } = useToast();
-  const form = useForm<z.infer<typeof signupSchema>>({
-    resolver: zodResolver(signupSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
-
-  const { formState: { isSubmitting } } = form;
-
-  const onSubmit = async (data: z.infer<typeof signupSchema>) => {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-      const user = userCredential.user;
-
-      const isSuperAdmin = user.email === 'joeltere9@gmail.com';
-
-      // Create a document for the user in Firestore
-       const userDocData: any = {
-        email: user.email,
-        createdAt: serverTimestamp(),
-        isSuperAdmin: isSuperAdmin,
-      };
-
-      if (isSuperAdmin) {
-        // Super admin gets a lifetime subscription
-        const farFutureDate = new Date();
-        farFutureDate.setFullYear(farFutureDate.getFullYear() + 100);
-        userDocData.proSubscription = {
-            plan: 'lifetime',
-            startedAt: Timestamp.fromDate(new Date()),
-            expiresAt: Timestamp.fromDate(farFutureDate),
-        };
-      }
-
-      await setDoc(doc(db, "users", user.uid), userDocData);
-      
-      // If it's the super admin, migrate data from local storage.
-      if(isSuperAdmin) {
-         const products = localStorage.getItem('product-dash-products');
-         const dreams = localStorage.getItem('product-dash-dreams');
-         const bets = localStorage.getItem('product-dash-bets');
-
-         const userData: Record<string, any> = {};
-        if (products) userData.products = JSON.parse(products);
-        if (dreams) userData.dreams = JSON.parse(dreams);
-        if (bets) userData.bets = JSON.parse(bets);
-         
-        if (Object.keys(userData).length > 0) {
-            await setDoc(doc(db, "user-data", user.uid), userData, { merge: true });
-        }
-
-         toast({
-            title: "Conta de Super Usuário Criada!",
-            description: "Seus dados locais foram migrados para sua conta na nuvem.",
-        });
-      } else {
-        toast({
-            title: "Conta criada com sucesso!",
-            description: "Você já pode fazer o login.",
-        });
-      }
-
-
-    } catch (error: any) {
-      console.error("Signup error:", error);
-       if (error.code === 'auth/email-already-in-use') {
-        toast({
-            variant: "destructive",
-            title: "Erro no Cadastro",
-            description: "Este e-mail já está em uso.",
-        });
-       } else {
-         toast({
-            variant: "destructive",
-            title: "Erro no Cadastro",
-            description: "Ocorreu um erro. Por favor, tente novamente.",
-        });
-       }
+  const validateForm = () => {
+    if (!name.trim()) {
+      setError('Nome é obrigatório')
+      return false
     }
-  };
+
+    if (name.trim().length < 2) {
+      setError('Nome deve ter pelo menos 2 caracteres')
+      return false
+    }
+
+    if (!email.trim()) {
+      setError('Email é obrigatório')
+      return false
+    }
+
+    if (!email.includes('@')) {
+      setError('Email inválido')
+      return false
+    }
+
+    if (!password) {
+      setError('Senha é obrigatória')
+      return false
+    }
+
+    if (password.length < 6) {
+      setError('Senha deve ter pelo menos 6 caracteres')
+      return false
+    }
+
+    if (password !== confirmPassword) {
+      setError('Senhas não coincidem')
+      return false
+    }
+
+    if (!acceptTerms) {
+      setError('Você deve aceitar os termos de uso')
+      return false
+    }
+
+    return true
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+
+    if (!validateForm()) {
+      return
+    }
+
+    try {
+      setIsLoading(true)
+      await signUp(email, password, name)
+      // Success is handled by the auth context (redirect + toast)
+    } catch (error) {
+      console.error('Signup error:', error)
+      // Error toast is handled by the auth context
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
-    <>
-      <div className="text-center mb-8">
-        <Package className="h-12 w-12 text-white mx-auto mb-4 drop-shadow-lg" />
-        <h1 className="text-3xl font-bold text-white mb-2 drop-shadow-lg">Crie sua Conta</h1>
-        <p className="text-white/80">Comece a gerenciar seus produtos e sonhos.</p>
-      </div>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <FormField control={form.control} name="email" render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-white">E-mail</FormLabel>
-              <FormControl>
-                <Input 
-                  type="email" 
-                  {...field} 
-                  placeholder="seu@email.com" 
-                  className="bg-white/20 border-white/30 text-white placeholder:text-white/50 focus:bg-white/30"
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 dark:from-gray-900 dark:to-gray-800 p-4">
+      <Card className="w-full max-w-md shadow-xl">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">
+            Criar conta
+          </CardTitle>
+          <CardDescription className="text-center">
+            Preencha os dados para criar sua conta
+          </CardDescription>
+        </CardHeader>
+
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome completo</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Seu nome completo"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="pl-10"
+                  disabled={isLoading}
+                  autoComplete="name"
+                  required
                 />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <FormField control={form.control} name="password" render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-white">Senha</FormLabel>
-              <FormControl>
-                <Input 
-                  type="password" 
-                  {...field} 
-                  placeholder="Pelo menos 6 caracteres" 
-                  className="bg-white/20 border-white/30 text-white placeholder:text-white/50 focus:bg-white/30"
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10"
+                  disabled={isLoading}
+                  autoComplete="email"
+                  required
                 />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <Button 
-            type="submit" 
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg" 
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? <Loader2 className="animate-spin" /> : "Criar Conta"}
-          </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Mínimo 6 caracteres"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10 pr-10"
+                  disabled={isLoading}
+                  autoComplete="new-password"
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirmar senha</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="Digite a senha novamente"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="pl-10 pr-10"
+                  disabled={isLoading}
+                  autoComplete="new-password"
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  disabled={isLoading}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="terms"
+                checked={acceptTerms}
+                onCheckedChange={(checked) => setAcceptTerms(checked as boolean)}
+                disabled={isLoading}
+              />
+              <Label
+                htmlFor="terms"
+                className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Aceito os{' '}
+                <Link
+                  href="/termos"
+                  className="font-medium text-primary hover:underline"
+                  target="_blank"
+                >
+                  termos de uso
+                </Link>{' '}
+                e{' '}
+                <Link
+                  href="/privacidade"
+                  className="font-medium text-primary hover:underline"
+                  target="_blank"
+                >
+                  política de privacidade
+                </Link>
+              </Label>
+            </div>
+          </CardContent>
+
+          <CardFooter className="flex flex-col space-y-4">
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Criando conta...
+                </>
+              ) : (
+                'Criar conta'
+              )}
+            </Button>
+
+            <div className="text-center text-sm">
+              <span className="text-muted-foreground">
+                Já tem uma conta?{' '}
+              </span>
+              <Link
+                href="/login"
+                className="font-medium text-primary hover:underline"
+              >
+                Faça login
+              </Link>
+            </div>
+          </CardFooter>
         </form>
-      </Form>
-      <p className="text-center text-sm text-white/70 mt-6">
-        Já tem uma conta?{' '}
-        <Link href="/login" className="text-white hover:text-blue-300 underline">
-          Faça login
-        </Link>
-      </p>
-    </>
-  );
+      </Card>
+    </div>
+  )
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,9 +10,12 @@ import {
   TrendingUp, 
   Target, 
   AlertTriangle,
-  Construction
+  Construction,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PeriodSelector } from "@/components/dashboard/period-selector";
 
 interface PersonalDashboardProps {
   summaryStats: {
@@ -33,8 +37,29 @@ interface PersonalDashboardProps {
  * interface de "em desenvolvimento" com preview das funcionalidades.
  */
 export function PersonalDashboard({ summaryStats, className }: PersonalDashboardProps) {
+  const [currentDate, setCurrentDate] = useState(new Date());
   return (
     <div className={cn("space-y-6", className)}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+        <h2 className="text-xl font-bold">Dashboard Pessoal</h2>
+        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+          <PeriodSelector 
+            currentDate={currentDate} 
+            onDateChange={(date) => {
+              setCurrentDate(date);
+              const month = date.getMonth() + 1;
+              const year = date.getFullYear();
+              console.log(`Carregando dados pessoais para: ${month}/${year}`);
+              // Aqui seria implementada a chamada para API
+            }} 
+            className="flex-1 sm:flex-initial"
+          />
+          <Badge variant="outline" className="gap-1">
+            <Construction className="h-3.5 w-3.5" />
+            <span>Em desenvolvimento</span>
+          </Badge>
+        </div>
+      </div>
       {/* Header de Desenvolvimento */}
       <Card className="border-dashed border-2 border-orange-200 bg-orange-50/50 dark:border-orange-800 dark:bg-orange-950/20">
         <CardContent className="p-6">

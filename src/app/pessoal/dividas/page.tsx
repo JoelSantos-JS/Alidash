@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import {
   Plus,
   Search,
@@ -71,7 +71,7 @@ const DEBT_STATUS = {
 };
 
 export default function PersonalDebtsPage() {
-  const { user } = useAuth();
+  const { user } = useSupabaseAuth();
   const { toast } = useToast();
   const [debts, setDebts] = useState<PersonalDebt[]>([]);
   const [loading, setLoading] = useState(true);

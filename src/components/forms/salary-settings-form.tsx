@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-supabase-auth";
 import { Loader2, Briefcase, Settings, Calendar, DollarSign, Save, Info } from "lucide-react";
 
 interface SalarySettingsFormProps {
@@ -50,24 +50,18 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
 
   // Carregar configurações existentes
   useEffect(() => {
-    if (isOpen && user?.uid) {
+    if (isOpen && user?.id) {
       loadSalarySettings();
     }
   }, [isOpen, user]);
 
   const loadSalarySettings = async () => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
     
     setLoadingSettings(true);
     try {
-      // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
-      if (!userResponse.ok) {
-        throw new Error('Usuário não encontrado');
-      }
-      
-      const userResult = await userResponse.json();
-      const supabaseUserId = userResult.user.id;
+      // O usuário já é do Supabase, usar ID diretamente
+      const supabaseUserId = user.id;
 
       // Buscar configurações de salário
       const response = await fetch(`/api/personal/salary-settings?user_id=${supabaseUserId}`);
@@ -95,7 +89,7 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.uid) {
+    if (!user?.id) {
       console.error('❌ Usuário não autenticado');
       return;
     }
@@ -103,19 +97,11 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
     setLoading(true);
     try {
       console.log('🔄 Iniciando salvamento das configurações de salário...');
-      console.log('👤 Firebase UID:', user.uid);
+      console.log('👤 Supabase User ID:', user.id);
       console.log('📧 Email:', user.email);
       
-      // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
-      if (!userResponse.ok) {
-        const errorText = await userResponse.text();
-        console.error('❌ Erro ao buscar usuário:', errorText);
-        throw new Error('Usuário não encontrado');
-      }
-      
-      const userResult = await userResponse.json();
-      const supabaseUserId = userResult.user.id;
+      // O usuário já é do Supabase, usar ID diretamente
+      const supabaseUserId = user.id;
       console.log('✅ Supabase User ID:', supabaseUserId);
 
       // Preparar dados das configurações
@@ -169,18 +155,12 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
   };
 
   const handleApplyCurrentMonth = async () => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
 
     setApplyingCurrentMonth(true);
     try {
-      // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
-      if (!userResponse.ok) {
-        throw new Error('Usuário não encontrado');
-      }
-      
-      const userResult = await userResponse.json();
-      const supabaseUserId = userResult.user.id;
+      // O usuário já é do Supabase, usar ID diretamente
+      const supabaseUserId = user.id;
 
       const currentDate = new Date();
       const currentMonth = currentDate.getMonth() + 1;

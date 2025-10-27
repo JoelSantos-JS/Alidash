@@ -148,7 +148,6 @@ export function GoalsSidebar({
   isLoading = false,
   className
 }: GoalsSidebarProps) {
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(['financial', 'business'])
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [isFiltersOpen, setIsFiltersOpen] = useState(true)
   const [isMetricsOpen, setIsMetricsOpen] = useState(true)
@@ -265,21 +264,17 @@ export function GoalsSidebar({
   }, [goals, statusFilter, categoryFilter, priorityFilter])
 
   const toggleCategory = (categoryId: string) => {
-    setSelectedCategories(prev => 
-      prev.includes(categoryId) 
-        ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId]
-    )
+    onCategoryFilterChange(categoryFilter === categoryId ? 'all' : categoryId)
   }
 
   return (
     <div className={cn(
       "w-80 border-r bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
-      "md:w-80 w-full max-w-sm", // Mobile: full width but max 384px, Desktop: 320px
+      "md:w-80 w-full max-w-sm h-[calc(100vh-8rem)] overflow-hidden", // Fixed height with overflow hidden
       className
     )}>
-      <ScrollArea className="h-full">
-        <div className="flex flex-col gap-3 p-3 md:gap-4 md:p-4"> {/* Smaller gaps and padding on mobile */}
+      <ScrollArea className="h-full w-full">
+        <div className="flex flex-col gap-3 p-3 md:gap-4 md:p-4 pb-8"> {/* Added bottom padding for better scroll */}
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -363,9 +358,22 @@ export function GoalsSidebar({
 
           <Separator />
 
-          {/* Filters */}
-          <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full group">
+          {/* Mobile Responsive Improvements */}
+          <div className="md:hidden">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+              className="w-full mb-3"
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              {isFiltersOpen ? 'Ocultar Filtros' : 'Mostrar Filtros'}
+            </Button>
+          </div>
+
+          {/* Filters Section */}
+          <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen} className={cn("md:block", !isFiltersOpen && "hidden md:block")}>
+            <CollapsibleTrigger className="hidden md:flex items-center justify-between w-full group">
               <div className="flex items-center gap-1.5 md:gap-2">
                 <Filter className="h-3 w-3 md:h-4 md:w-4" />
                 <span className="font-medium text-sm md:text-base">Filtros</span>
@@ -394,14 +402,16 @@ export function GoalsSidebar({
               <div className="space-y-1.5 md:space-y-2">
                 <Label className="text-xs font-medium text-muted-foreground">STATUS</Label>
                 <Select value={statusFilter} onValueChange={onStatusFilterChange}>
-                  <SelectTrigger className="h-7 md:h-8 text-xs md:text-sm">
-                    <SelectValue />
+                  <SelectTrigger className="h-8 text-xs md:text-sm focus:ring-2 focus:ring-primary/20">
+                    <SelectValue placeholder="Selecione o status" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os Status</SelectItem>
+                  <SelectContent className="max-h-[200px]" side="bottom" align="start">
+                    <SelectItem value="all" className="cursor-pointer">
+                      <span className="text-xs md:text-sm">Todos os Status</span>
+                    </SelectItem>
                     {STATUS_OPTIONS.map(status => (
-                      <SelectItem key={status.id} value={status.id}>
-                        <div className="flex items-center gap-1.5 md:gap-2">
+                      <SelectItem key={status.id} value={status.id} className="cursor-pointer">
+                        <div className="flex items-center gap-2">
                           <status.icon className={cn("h-3 w-3", status.color)} />
                           <span className="text-xs md:text-sm">{status.name}</span>
                         </div>
@@ -414,14 +424,16 @@ export function GoalsSidebar({
               <div className="space-y-1.5 md:space-y-2">
                 <Label className="text-xs font-medium text-muted-foreground">CATEGORIA</Label>
                 <Select value={categoryFilter} onValueChange={onCategoryFilterChange}>
-                  <SelectTrigger className="h-7 md:h-8 text-xs md:text-sm">
-                    <SelectValue />
+                  <SelectTrigger className="h-8 text-xs md:text-sm focus:ring-2 focus:ring-primary/20">
+                    <SelectValue placeholder="Selecione a categoria" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas as Categorias</SelectItem>
+                  <SelectContent className="max-h-[200px]" side="bottom" align="start">
+                    <SelectItem value="all" className="cursor-pointer">
+                      <span className="text-xs md:text-sm">Todas as Categorias</span>
+                    </SelectItem>
                     {GOAL_CATEGORIES.map(category => (
-                      <SelectItem key={category.id} value={category.id}>
-                        <div className="flex items-center gap-1.5 md:gap-2">
+                      <SelectItem key={category.id} value={category.id} className="cursor-pointer">
+                        <div className="flex items-center gap-2">
                           <category.icon className={cn("h-3 w-3", category.color)} />
                           <span className="text-xs md:text-sm">{category.name}</span>
                         </div>
@@ -434,14 +446,16 @@ export function GoalsSidebar({
               <div className="space-y-1.5 md:space-y-2">
                 <Label className="text-xs font-medium text-muted-foreground">PRIORIDADE</Label>
                 <Select value={priorityFilter} onValueChange={onPriorityFilterChange}>
-                  <SelectTrigger className="h-7 md:h-8 text-xs md:text-sm">
-                    <SelectValue />
+                  <SelectTrigger className="h-8 text-xs md:text-sm focus:ring-2 focus:ring-primary/20">
+                    <SelectValue placeholder="Selecione a prioridade" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas as Prioridades</SelectItem>
+                  <SelectContent className="max-h-[200px]" side="bottom" align="start">
+                    <SelectItem value="all" className="cursor-pointer">
+                      <span className="text-xs md:text-sm">Todas as Prioridades</span>
+                    </SelectItem>
                     {PRIORITY_LEVELS.map(priority => (
-                      <SelectItem key={priority.id} value={priority.id}>
-                        <div className="flex items-center gap-1.5 md:gap-2">
+                      <SelectItem key={priority.id} value={priority.id} className="cursor-pointer">
+                        <div className="flex items-center gap-2">
                           <div className={cn("w-2 h-2 rounded-full", priority.bgColor)} />
                           <span className="text-xs md:text-sm">{priority.name}</span>
                         </div>
@@ -461,21 +475,94 @@ export function GoalsSidebar({
               </div>
 
               {showAdvancedFilters && (
-                <div className="space-y-2 md:space-y-3 p-2 md:p-3 bg-muted/50 rounded-lg">
-                  <div className="space-y-1.5 md:space-y-2">
-                    <Label className="text-xs font-medium text-muted-foreground">PROGRESSO</Label>
-                    <div className="grid grid-cols-2 gap-1 md:gap-2">
-                      <Button variant="outline" size="sm" className="h-6 md:h-7 text-xs px-1 md:px-2">
+                <div className="space-y-2 md:space-y-3 p-3 bg-muted/30 rounded-lg border">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium text-muted-foreground">FILTRO POR PROGRESSO</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 text-xs hover:bg-primary/10 hover:border-primary/30 transition-colors"
+                        onClick={() => {
+                          // Implementar filtro por progresso 0-25%
+                          console.log('Filtrar por progresso 0-25%')
+                        }}
+                      >
                         0-25%
                       </Button>
-                      <Button variant="outline" size="sm" className="h-6 md:h-7 text-xs px-1 md:px-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 text-xs hover:bg-primary/10 hover:border-primary/30 transition-colors"
+                        onClick={() => {
+                          // Implementar filtro por progresso 26-50%
+                          console.log('Filtrar por progresso 26-50%')
+                        }}
+                      >
                         26-50%
                       </Button>
-                      <Button variant="outline" size="sm" className="h-6 md:h-7 text-xs px-1 md:px-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 text-xs hover:bg-primary/10 hover:border-primary/30 transition-colors"
+                        onClick={() => {
+                          // Implementar filtro por progresso 51-75%
+                          console.log('Filtrar por progresso 51-75%')
+                        }}
+                      >
                         51-75%
                       </Button>
-                      <Button variant="outline" size="sm" className="h-6 md:h-7 text-xs px-1 md:px-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 text-xs hover:bg-primary/10 hover:border-primary/30 transition-colors"
+                        onClick={() => {
+                          // Implementar filtro por progresso 76-100%
+                          console.log('Filtrar por progresso 76-100%')
+                        }}
+                      >
                         76-100%
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium text-muted-foreground">AÇÕES RÁPIDAS</Label>
+                    <div className="flex flex-col gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-7 justify-start text-xs hover:bg-primary/5"
+                        onClick={() => {
+                          onStatusFilterChange('active')
+                        }}
+                      >
+                        <Rocket className="h-3 w-3 mr-2 text-blue-600" />
+                        Ver Metas Ativas
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-7 justify-start text-xs hover:bg-primary/5"
+                        onClick={() => {
+                          onPriorityFilterChange('critical')
+                        }}
+                      >
+                        <AlertTriangle className="h-3 w-3 mr-2 text-red-600" />
+                        Ver Metas Críticas
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-7 justify-start text-xs hover:bg-primary/5"
+                        onClick={() => {
+                          onStatusFilterChange('completed')
+                        }}
+                      >
+                        <CheckCircle2 className="h-3 w-3 mr-2 text-green-600" />
+                        Ver Concluídas
                       </Button>
                     </div>
                   </div>
@@ -563,7 +650,7 @@ export function GoalsSidebar({
             <CollapsibleContent className="space-y-1.5 md:space-y-2 mt-2 md:mt-3">
               {GOAL_CATEGORIES.map(category => {
                 const categoryGoals = goals.filter(g => g.category === category.id)
-                const isSelected = selectedCategories.includes(category.id)
+                const isSelected = categoryFilter === category.id
                 const avgProgress = categoryGoals.length > 0 
                   ? categoryGoals.reduce((acc, g) => {
                       const progress = g.targetValue > 0 ? (g.currentValue / g.targetValue) * 100 : 0

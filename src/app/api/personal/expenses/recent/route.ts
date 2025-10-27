@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('user_id');
-    const limit = parseInt(searchParams.get('limit') || '5');
+    const limit = parseInt(searchParams.get('limit') || '4');
 
     if (!userId) {
       return NextResponse.json({ error: 'user_id é obrigatório' }, { status: 400 });
@@ -38,8 +38,8 @@ export async function GET(request: NextRequest) {
       amount: expense.amount,
       category: expense.category,
       date: expense.date,
-      is_essential: expense.is_essential,
-      payment_method: expense.payment_method
+      type: expense.type || 'Não informado',
+      supplier: expense.supplier || 'Não informado'
     })) || [];
 
     console.log('✅ Despesas recentes encontradas:', transformedExpenses.length);

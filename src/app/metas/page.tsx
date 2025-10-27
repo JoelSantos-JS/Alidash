@@ -2,10 +2,8 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/hooks/use-supabase-auth"
 import { useToast } from "@/hooks/use-toast"
-import { db } from "@/lib/firebase"
-import { doc, getDoc, setDoc } from "firebase/firestore"
 import { useDualSync } from '@/lib/dual-database-sync'
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
@@ -215,10 +213,10 @@ export default function MetasPage() {
 
     const fetchData = async () => {
       try {
-        console.log('🎯 Carregando metas do Supabase para usuário:', user.uid)
+        console.log('🎯 Carregando metas do Supabase para usuário:', user.id)
         
         // Carregar metas diretamente da API do Supabase
-        const response = await fetch(`/api/goals?user_id=${user.uid}`)
+        const response = await fetch(`/api/goals?user_id=${user.id}`)
         const data = await response.json()
         
         let userGoals: Goal[] = []
@@ -230,26 +228,26 @@ export default function MetasPage() {
           console.log('⚠️ Nenhuma meta encontrada no Supabase')
         }
         
-        // Carregar produtos do Firebase para fallback
-        const docRef = doc(db, "user-data", user.uid)
-        const docSnap = await getDoc(docRef)
+        // Carregar produtos do Supabase
+        const productsResponse = await fetch(`/api/products/get?user_id=${user.id}`)
+        const productsData = await productsResponse.json()
         let userProducts: Product[] = []
         
-        if (docSnap.exists()) {
-          const userData = docSnap.data()
-          if (userData.products && userData.products.length > 0) {
-            userProducts = userData.products.map((p: any) => ({
-              ...p,
-              purchaseDate: p.purchaseDate?.toDate ? p.purchaseDate.toDate() : new Date(p.purchaseDate),
-              sales: p.sales ? p.sales.map((s: any) => ({
-                ...s, 
-                date: s.date?.toDate ? s.date.toDate() : 
-                      typeof s.date === 'string' ? new Date(s.date) : 
-                      new Date(s.date)
-              })) : [],
-            }))
-          }
+        if (productsData.success && productsData.products) {
+          userProducts = productsData.products.map((p: any) => ({
+            ...p,
+            purchaseDate: new Date(p.purchaseDate),
+            sales: p.sales ? p.sales.map((s: any) => ({
+              ...s, 
+              date: new Date(s.date)
+            })) : [],
+          }))
+          console.log('✅ Produtos carregados do Supabase:', userProducts.length)
+        } else {
+          console.log('⚠️ Nenhum produto encontrado no Supabase')
         }
+
+
         
         setProducts(userProducts)
         setGoals(userGoals)
@@ -337,11 +335,11 @@ export default function MetasPage() {
           
           if (result.success) {
             setGoals(updatedGoals)
-            console.log(`✅ Meta atualizada - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
+            console.log(`✅ Meta atualizada - Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
             
             toast({
               title: "Meta atualizada",
-              description: `${goalData.name} - Supabase: ${result.supabaseSuccess ? '✅' : '❌'} | Firebase: ${result.firebaseSuccess ? '✅' : '❌'}`,
+              description: `${goalData.name} - Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
             })
           } else {
             toast({
@@ -382,7 +380,7 @@ export default function MetasPage() {
           if (result.success) {
             updatedGoals = [...goals, newGoal]
             setGoals(updatedGoals)
-            console.log(`✅ Meta criada - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
+            console.log(`✅ Meta criada - Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
             
             toast({
               title: "Meta criada",
@@ -432,11 +430,11 @@ export default function MetasPage() {
         if (result.success) {
           const updatedGoals = goals.filter(g => g.id !== goal.id)
           setGoals(updatedGoals)
-          console.log(`✅ Meta deletada - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
+          console.log(`✅ Meta deletada - Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
           
           toast({
-            title: "Meta excluída",
-            description: `${goal.name} - Supabase: ${result.supabaseSuccess ? '✅' : '❌'} | Firebase: ${result.firebaseSuccess ? '✅' : '❌'}`,
+            title: "Meta deletada",
+            description: `${goal.name} - Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
           })
         } else {
           toast({
@@ -469,7 +467,7 @@ export default function MetasPage() {
             : g
         )
         setGoals(updatedGoals)
-        console.log(`✅ Progresso atualizado - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
+        console.log(`✅ Progresso atualizado - Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
         
         toast({
           title: "Progresso atualizado",
@@ -508,7 +506,7 @@ export default function MetasPage() {
             : g
         )
         setGoals(updatedGoals)
-        console.log(`✅ Meta concluída - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
+        console.log(`✅ Meta concluída - Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
         
         toast({
           title: "🎉 Meta concluída!",
@@ -602,7 +600,7 @@ export default function MetasPage() {
                     Filtros e Configurações
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-80">
+                <SheetContent side="left" className="w-80 h-full">
                   <GoalsSidebar
                     goals={goals}
                     periodFilter={periodFilter}
@@ -613,12 +611,13 @@ export default function MetasPage() {
                     onStatusFilterChange={setStatusFilter}
                     priorityFilter={priorityFilter}
                     onPriorityFilterChange={setPriorityFilter}
+                    className="h-full border-0"
                   />
                 </SheetContent>
               </Sheet>
             </div>
             
-            <div className="hidden lg:block">
+            <div className="hidden lg:block sticky top-4">
               <GoalsSidebar
                 goals={goals}
                 periodFilter={periodFilter}

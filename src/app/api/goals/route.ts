@@ -16,31 +16,9 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 Buscando metas para usuário:', userId)
 
-    // Verificar se é UUID do Supabase ou Firebase UID
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)
-    
-    let goals: Goal[]
-    
-    if (isUUID) {
-      // Buscar diretamente por UUID do Supabase
-      goals = await supabaseAdminService.getGoals(userId)
-      console.log('✅ Metas encontradas (UUID direto):', goals.length)
-    } else {
-      // Buscar usuário pelo Firebase UID primeiro
-      const user = await supabaseAdminService.getUserByFirebaseUid(userId)
-      
-      if (!user) {
-        console.log('❌ Usuário não encontrado para Firebase UID:', userId)
-        return NextResponse.json(
-          { error: `Usuário não encontrado para firebase_uid: ${userId}` },
-          { status: 404 }
-        )
-      }
-      
-      console.log('✅ Usuário encontrado:', user.email)
-      goals = await supabaseAdminService.getGoals(user.id)
-      console.log('✅ Metas encontradas:', goals.length)
-    }
+    // Buscar metas diretamente por UUID do Supabase
+    const goals = await supabaseAdminService.getGoals(userId)
+    console.log('✅ Metas encontradas:', goals.length)
 
     return NextResponse.json({
       success: true,
@@ -64,11 +42,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { firebase_uid, goalData } = body
+    const { user_id, goalData } = body
 
-    if (!firebase_uid) {
+    if (!user_id) {
       return NextResponse.json(
-        { error: 'Firebase UID é obrigatório' },
+        { error: 'User ID é obrigatório' },
         { status: 400 }
       )
     }
@@ -80,18 +58,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Buscar usuário pelo firebase_uid
-    const user = await supabaseAdminService.getUserByFirebaseUid(firebase_uid)
-    
-    if (!user) {
-      return NextResponse.json(
-        { error: `Usuário não encontrado no Supabase para firebase_uid: ${firebase_uid}` },
-        { status: 404 }
-      )
-    }
-
     // Criar meta usando o UUID do Supabase
-    const goal = await supabaseAdminService.createGoal(user.id, goalData)
+    const goal = await supabaseAdminService.createGoal(user_id, goalData)
 
     return NextResponse.json({
       success: true,

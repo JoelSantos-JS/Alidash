@@ -1,5 +1,4 @@
-import { db } from './firebase'
-import { doc, getDoc, addDoc, collection } from 'firebase/firestore'
+import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 
 /**
@@ -10,7 +9,7 @@ export interface N8NEvent {
   userId: string
   data: any
   timestamp: Date
-  source: 'alidash'
+  source: 'voxcash'
   metadata?: {
     userAgent?: string
     ip?: string
@@ -78,15 +77,24 @@ export const EVENT_TYPES = {
  */
 export async function sendN8NEvent(eventType: string, userId: string, data: any, metadata?: any) {
   try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
     // Buscar configurações de webhook do usuário
-    const webhooksDoc = await getDoc(doc(db, 'user-webhooks', userId))
+    const { data: webhookData, error } = await supabase
+      .from('user_webhooks')
+      .select('webhooks')
+      .eq('user_id', userId)
+      .single()
     
-    if (!webhooksDoc.exists()) {
+    if (error || !webhookData) {
       console.log(`Nenhum webhook configurado para usuário ${userId}`)
       return
     }
     
-    const webhooks: WebhookConfig[] = webhooksDoc.data().webhooks || []
+    const webhooks: WebhookConfig[] = webhookData.webhooks || []
     const activeWebhooks = webhooks.filter(wh => wh.isActive && wh.events.includes(eventType))
     
     if (activeWebhooks.length === 0) {
@@ -100,7 +108,7 @@ export async function sendN8NEvent(eventType: string, userId: string, data: any,
       userId,
       data,
       timestamp: new Date(),
-      source: 'alidash',
+      source: 'voxcash',
       metadata
     }
     
@@ -109,9 +117,14 @@ export async function sendN8NEvent(eventType: string, userId: string, data: any,
     await Promise.allSettled(promises)
     
     // Log do evento
-    await addDoc(collection(db, 'webhook-events'), {
-      ...event,
-      webhooksSent: activeWebhooks.length,
+    await supabase.from('webhook_events').insert({
+      event_type: event.eventType,
+      user_id: event.userId,
+      data: event.data,
+      timestamp: event.timestamp.toISOString(),
+      source: event.source,
+      metadata: event.metadata,
+      webhooks_sent: activeWebhooks.length,
       status: 'sent'
     })
     
@@ -122,12 +135,12 @@ export async function sendN8NEvent(eventType: string, userId: string, data: any,
     
     // Log do erro
     const errorMessage = error instanceof Error ? error.message : String(error)
-    await addDoc(collection(db, 'webhook-events'), {
-      eventType,
-      userId,
+    await supabase.from('webhook_events').insert({
+      event_type: eventType,
+      user_id: userId,
       data,
-      timestamp: new Date(),
-      source: 'alidash',
+      timestamp: new Date().toISOString(),
+      source: 'voxcash',
       status: 'failed',
       error: errorMessage
     })
@@ -145,10 +158,10 @@ async function sendWebhook(webhook: WebhookConfig, event: N8NEvent) {
     try {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        'User-Agent': 'Alidash-Webhook/1.0',
-        'X-Alidash-Event': event.eventType,
-        'X-Alidash-Timestamp': event.timestamp.toISOString(),
-        'X-Alidash-Signature': generateSignature(event, webhook.secret),
+        'User-Agent': 'VoxCash-Webhook/1.0',
+        'X-VoxCash-Event': event.eventType,
+        'X-VoxCash-Timestamp': event.timestamp.toISOString(),
+        'X-VoxCash-Signature': generateSignature(event, webhook.secret),
         ...webhook.headers
       }
       
@@ -173,13 +186,13 @@ async function sendWebhook(webhook: WebhookConfig, event: N8NEvent) {
       } else {
         // Log do erro final
         const errorMessage = error instanceof Error ? error.message : String(error)
-        await addDoc(collection(db, 'webhook-failures'), {
-          webhookId: webhook.id,
+        await supabase.from('webhook_failures').insert({
+          webhook_id: webhook.id,
           url: webhook.url,
           event,
           error: errorMessage,
           attempts: maxRetries,
-          timestamp: new Date()
+          timestamp: new Date().toISOString()
         })
       }
     }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from 'react'
-import { useAuth } from '@/hooks/use-auth'
+import { useAuth } from '@/hooks/use-supabase-auth'
 
 export interface NotificationPreferences {
   push_notifications: boolean
@@ -247,7 +247,7 @@ export function useNotifications() {
     }
 
     return sendNotification({
-      title: 'Teste - Alidash',
+      title: 'Teste - VoxCash',
       body: 'Suas notificações estão funcionando perfeitamente! 🎉',
       type: 'general'
     })

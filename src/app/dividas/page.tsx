@@ -2,10 +2,8 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
-import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useDualSync } from '@/lib/dual-database-sync';
 import { format, isPast, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -141,25 +139,7 @@ export default function DebtsPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   
-  // Helper function to get Supabase user ID
-  const getSupabaseUserId = async () => {
-    if (!user) return null;
-    
-    try {
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
-      
-      if (!userResponse.ok) {
-        console.log('⚠️ Usuário não encontrado no Supabase');
-        return null;
-      }
-      
-      const userResult = await userResponse.json();
-      return userResult.user.id;
-    } catch (error) {
-      console.error('❌ Erro ao buscar usuário no Supabase:', error);
-      return null;
-    }
-  };
+  // User ID is now directly available from Supabase user object
   
   const [debts, setDebts] = useState<Debt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -174,17 +154,17 @@ export default function DebtsPage() {
   const [debtToDelete, setDebtToDelete] = useState<Debt | null>(null);
   
   // Hook de sincronização dual
-  const dualSync = useDualSync(user?.uid || '', 'BEST_EFFORT');
+  const dualSync = useDualSync(user?.id || '', 'BEST_EFFORT');
 
   // Carregar dados do Supabase via API
   useEffect(() => {
     const loadDebts = async () => {
-      if (!user?.uid) return;
+      if (!user?.id) return;
       
       try {
-        console.log('🔄 Carregando dívidas via API para usuário:', user.uid);
+        console.log('🔄 Carregando dívidas via API para usuário:', user.id);
         
-        const supabaseUserId = await getSupabaseUserId();
+        const supabaseUserId = user.id;
         if (!supabaseUserId) {
           console.log('⚠️ Não foi possível obter o ID do usuário no Supabase');
           setDebts(initialDebts);
@@ -224,29 +204,7 @@ export default function DebtsPage() {
     }
   }, [user, authLoading, toast]);
 
-  // Salvar dados no Firebase
-  const saveDebts = async (debtsToSave: Debt[]) => {
-    if (!user?.uid) return;
-    
-    try {
-      const docRef = doc(db, "users", user.uid);
-      const docSnap = await getDoc(docRef);
-      const existingData = docSnap.exists() ? docSnap.data() : {};
-      
-      await setDoc(docRef, {
-        ...existingData,
-        debts: debtsToSave,
-        lastUpdated: new Date()
-      }, { merge: true });
-    } catch (error) {
-      console.error("Erro ao salvar dívidas:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível salvar as alterações.",
-        variant: "destructive",
-      });
-    }
-  };
+
 
   // Filtrar e ordenar dívidas
   const filteredDebts = useMemo(() => {
@@ -392,7 +350,7 @@ export default function DebtsPage() {
 
   // Handlers
   const handleCreateDebt = async (debtData: Omit<Debt, 'id' | 'createdDate' | 'payments'>) => {
-    if (!user?.uid) {
+    if (!user?.id) {
       toast({
         title: "Erro",
         description: "Usuário não autenticado.",
@@ -404,23 +362,13 @@ export default function DebtsPage() {
     try {
       console.log('🆕 Criando dívida via API...');
       
-      const supabaseUserId = await getSupabaseUserId();
-      if (!supabaseUserId) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível identificar o usuário.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
       const response = await fetch('/api/debts/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: supabaseUserId,
+          user_id: user.id,
           debt: debtData
         })
       });
@@ -463,7 +411,7 @@ export default function DebtsPage() {
   };
 
   const handleEditDebt = async (debtData: Omit<Debt, 'id' | 'createdDate' | 'payments'>) => {
-    if (!selectedDebt || !user?.uid) {
+    if (!selectedDebt || !user?.id) {
       toast({
         title: "Erro",
         description: "Dívida não selecionada ou usuário não autenticado.",
@@ -475,23 +423,13 @@ export default function DebtsPage() {
     try {
       console.log('📝 Atualizando dívida via API...');
       
-      const supabaseUserId = await getSupabaseUserId();
-      if (!supabaseUserId) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível identificar o usuário.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
       const response = await fetch('/api/debts/update', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: supabaseUserId,
+          user_id: user.id,
           debt_id: selectedDebt.id,
           debt: debtData
         })
@@ -537,7 +475,7 @@ export default function DebtsPage() {
   };
 
   const handleDeleteDebt = async () => {
-    if (!debtToDelete || !user?.uid) {
+    if (!debtToDelete || !user?.id) {
       toast({
         title: "Erro",
         description: "Dívida não selecionada ou usuário não autenticado.",
@@ -549,17 +487,7 @@ export default function DebtsPage() {
     try {
       console.log('🗑️ Deletando dívida via API...');
       
-      const supabaseUserId = await getSupabaseUserId();
-      if (!supabaseUserId) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível identificar o usuário.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      const response = await fetch(`/api/debts/delete?id=${debtToDelete.id}&user_id=${supabaseUserId}`, {
+      const response = await fetch(`/api/debts/delete?id=${debtToDelete.id}&user_id=${user.id}`, {
         method: 'DELETE'
       });
 
@@ -568,9 +496,20 @@ export default function DebtsPage() {
       if (response.ok && result.success) {
         console.log('✅ Dívida deletada com sucesso');
         
-        // Remover a dívida do estado local
-        const updatedDebts = debts.filter(debt => debt.id !== debtToDelete.id);
-        setDebts(updatedDebts);
+        // Recarregar a lista completa do banco de dados
+        console.log('🔄 Recarregando lista de dívidas...');
+        const refreshResponse = await fetch(`/api/debts/get?user_id=${user.id}`);
+        if (refreshResponse.ok) {
+          const refreshData = await refreshResponse.json();
+          if (refreshData.success && refreshData.debts) {
+            setDebts(refreshData.debts);
+            console.log('✅ Lista atualizada com', refreshData.debts.length, 'dívidas');
+          } else {
+            // Se não há dívidas, limpar a lista
+            setDebts([]);
+            console.log('✅ Lista limpa - nenhuma dívida encontrada');
+          }
+        }
         
         toast({
           title: "Dívida Removida!",
@@ -598,7 +537,7 @@ export default function DebtsPage() {
   };
 
   const handlePayment = async (debt: Debt) => {
-    if (!user?.uid) {
+    if (!user?.id) {
       toast({
         title: "Erro",
         description: "Usuário não autenticado.",
@@ -627,23 +566,13 @@ export default function DebtsPage() {
         ]
       };
       
-      const supabaseUserId = await getSupabaseUserId();
-      if (!supabaseUserId) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível identificar o usuário.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
       const response = await fetch('/api/debts/update', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: supabaseUserId,
+          user_id: user.id,
           debt_id: debt.id,
           debt: {
             creditorName: updatedDebtData.creditorName,

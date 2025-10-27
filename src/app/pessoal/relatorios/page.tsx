@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import {
   BarChart3,
   PieChart,
@@ -65,7 +65,7 @@ interface FinancialMetrics {
 }
 
 export default function PersonalReportsPage() {
-  const { user } = useAuth();
+  const { user } = useSupabaseAuth();
   const { toast } = useToast();
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [incomeCategories, setIncomeCategories] = useState<CategoryData[]>([]);
@@ -86,7 +86,7 @@ export default function PersonalReportsPage() {
       setLoading(true);
       
       // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
       if (!userResponse.ok) {
         console.log('⚠️ Usuário não encontrado no Supabase');
         return;
@@ -252,7 +252,7 @@ export default function PersonalReportsPage() {
     try {
       if (!user) return;
       
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
       if (!userResponse.ok) throw new Error('Usuário não encontrado');
       
       const userResult = await userResponse.json();

@@ -16,41 +16,23 @@ export async function GET(request: NextRequest) {
     console.log('🚀 API route GET iniciada');
     
     const { searchParams } = new URL(request.url);
-    const firebaseUid = searchParams.get('user_id');
+    const supabaseUserId = searchParams.get('user_id');
 
-    console.log('🔍 Buscando dívidas para Firebase UID:', firebaseUid);
+    console.log('🔍 Buscando dívidas para Supabase User ID:', supabaseUserId);
 
-    if (!firebaseUid) {
-      console.log('❌ user_id (firebase_uid) não fornecido');
+    if (!supabaseUserId) {
+      console.log('❌ user_id não fornecido');
       return NextResponse.json(
-        { error: 'user_id (firebase_uid) é obrigatório' },
+        { error: 'user_id é obrigatório' },
         { status: 400 }
       );
     }
 
-    // Buscar usuário pelo firebase_uid
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('firebase_uid', firebaseUid)
-      .single();
-
-    if (userError || !user) {
-      console.log('❌ Usuário não encontrado:', userError);
-      return NextResponse.json({ 
-        success: true, 
-        debts: [],
-        message: 'Usuário não encontrado no Supabase'
-      });
-    }
-
-    console.log('✅ Usuário encontrado:', user.id);
-
-    // Buscar dívidas do usuário
+    // Buscar dívidas do usuário diretamente
     const { data: debts, error: debtsError } = await supabase
       .from('debts')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', supabaseUserId)
       .order('created_at', { ascending: false });
 
     if (debtsError) {

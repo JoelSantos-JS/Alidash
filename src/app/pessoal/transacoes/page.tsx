@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import {
   Plus,
   Search,
@@ -52,7 +52,7 @@ const TRANSACTION_TYPES = {
 };
 
 export default function PersonalTransactionsPage() {
-  const { user } = useAuth();
+  const { user } = useSupabaseAuth();
   const { toast } = useToast();
   const [transactions, setTransactions] = useState<PersonalTransaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,7 +77,7 @@ export default function PersonalTransactionsPage() {
       setLoading(true);
       
       // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
       if (!userResponse.ok) {
         throw new Error('Usuário não encontrado');
       }

@@ -27,8 +27,19 @@ export function ImageGallery({ images, onChange, maxImages = 5 }: ImageGalleryPr
   const handleAddImage = () => {
     if (!newImageUrl.trim()) return;
 
+    // Generate a consistent ID based on URL and length to avoid hydration issues
+    const generateId = (url: string, length: number) => {
+      let hash = 0;
+      for (let i = 0; i < url.length; i++) {
+        const char = url.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+      }
+      return `img_${Math.abs(hash)}_${length}`;
+    };
+
     const newImage: ProductImage = {
-      id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: generateId(newImageUrl.trim(), images.length),
       url: newImageUrl.trim(),
       type: newImageType,
       alt: newImageAlt.trim() || "Imagem do produto",

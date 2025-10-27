@@ -16,11 +16,11 @@ export async function POST(request: NextRequest) {
     console.log('🚀 API route POST iniciada');
     
     const body = await request.json();
-    const { user_id: firebaseUid, debt } = body;
+    const { user_id: supabaseUserId, debt } = body;
 
-    console.log('💳 Criando dívida para Firebase UID:', firebaseUid);
+    console.log('💳 Criando dívida para Supabase User ID:', supabaseUserId);
 
-    if (!firebaseUid || !debt) {
+    if (!supabaseUserId || !debt) {
       console.log('❌ Dados obrigatórios não fornecidos');
       return NextResponse.json(
         { error: 'user_id e debt são obrigatórios' },
@@ -28,26 +28,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Buscar usuário pelo firebase_uid
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('firebase_uid', firebaseUid)
-      .single();
-
-    if (userError || !user) {
-      console.log('❌ Usuário não encontrado:', userError);
-      return NextResponse.json(
-        { error: 'Usuário não encontrado no Supabase' },
-        { status: 404 }
-      );
-    }
-
-    console.log('✅ Usuário encontrado:', user.id);
-
     // Converter dados do frontend para o formato do Supabase
     const debtData: any = {
-      user_id: user.id,
+      user_id: supabaseUserId,
       creditor_name: debt.creditorName,
       description: debt.description,
       original_amount: debt.originalAmount,
@@ -67,9 +50,10 @@ export async function POST(request: NextRequest) {
     if (debt.tags) {
       debtData.tags = debt.tags;
     }
-    if (debt.installments) {
-      debtData.installments = debt.installments;
-    }
+    // Temporariamente removido installments devido a problema de cache do schema
+    // if (debt.installments) {
+    //   debtData.installments = debt.installments;
+    // }
     
     // Note: payments are handled separately in debt_payments table
 

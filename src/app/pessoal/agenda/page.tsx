@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import {
   Plus,
   Search,
@@ -75,7 +75,7 @@ const PRIORITY_LEVELS = {
 };
 
 export default function PersonalAgendaPage() {
-  const { user } = useAuth();
+  const { user } = useSupabaseAuth();
   const { toast } = useToast();
   const [events, setEvents] = useState<PersonalEvent[]>([]);
   const [loading, setLoading] = useState(true);

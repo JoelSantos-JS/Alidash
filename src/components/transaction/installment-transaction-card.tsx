@@ -30,11 +30,22 @@ export function InstallmentTransactionCard({
   }
 
   const { installmentInfo } = transaction;
+  
+  // Validações de segurança para evitar erros com dados undefined
+  const safeInstallmentInfo = {
+    totalAmount: installmentInfo.totalAmount ?? 0,
+    totalInstallments: installmentInfo.totalInstallments ?? 1,
+    currentInstallment: installmentInfo.currentInstallment ?? 1,
+    installmentAmount: installmentInfo.installmentAmount ?? 0,
+    remainingAmount: installmentInfo.remainingAmount ?? 0,
+    nextDueDate: installmentInfo.nextDueDate
+  };
+
   const progress = getInstallmentProgress(
-    installmentInfo.currentInstallment, 
-    installmentInfo.totalInstallments
+    safeInstallmentInfo.currentInstallment, 
+    safeInstallmentInfo.totalInstallments
   );
-  const remainingInstallments = installmentInfo.totalInstallments - installmentInfo.currentInstallment;
+  const remainingInstallments = safeInstallmentInfo.totalInstallments - safeInstallmentInfo.currentInstallment;
 
   return (
     <Card className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
@@ -44,8 +55,8 @@ export function InstallmentTransactionCard({
             <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               {formatInstallmentDescription(
                 transaction.description, 
-                installmentInfo.currentInstallment, 
-                installmentInfo.totalInstallments
+                safeInstallmentInfo.currentInstallment, 
+                safeInstallmentInfo.totalInstallments
               )}
             </CardTitle>
             <div className="flex items-center gap-2 mt-1">
@@ -61,7 +72,7 @@ export function InstallmentTransactionCard({
               R$ {transaction.amount.toFixed(2)}
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              Parcela {installmentInfo.currentInstallment}/{installmentInfo.totalInstallments}
+              Parcela {safeInstallmentInfo.currentInstallment}/{safeInstallmentInfo.totalInstallments}
             </div>
           </div>
         </div>
@@ -86,7 +97,7 @@ export function InstallmentTransactionCard({
              <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
              <div>
                <div className="font-semibold text-gray-900 dark:text-gray-100">
-                 R$ {installmentInfo.totalAmount.toFixed(2)}
+                 R$ {safeInstallmentInfo.totalAmount.toFixed(2)}
                </div>
                <div className="text-xs text-gray-600 dark:text-gray-400 font-medium">Valor total</div>
              </div>
@@ -96,7 +107,7 @@ export function InstallmentTransactionCard({
              <TrendingUp className="h-4 w-4 text-orange-600 dark:text-orange-400" />
              <div>
                <div className="font-semibold text-gray-900 dark:text-gray-100">
-                 R$ {installmentInfo.remainingAmount.toFixed(2)}
+                 R$ {safeInstallmentInfo.remainingAmount.toFixed(2)}
                </div>
                <div className="text-xs text-gray-600 dark:text-gray-400 font-medium">Restante a pagar</div>
              </div>
@@ -115,12 +126,12 @@ export function InstallmentTransactionCard({
            <div className="flex items-center gap-2">
              <div className="h-4 w-4 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
                <span className="text-xs font-bold text-blue-700 dark:text-blue-300">
-                 {installmentInfo.currentInstallment}
+                 {safeInstallmentInfo.currentInstallment}
                </span>
              </div>
              <div>
                <div className="font-semibold text-gray-900 dark:text-gray-100">
-                 R$ {installmentInfo.installmentAmount.toFixed(2)}
+                 R$ {safeInstallmentInfo.installmentAmount.toFixed(2)}
                </div>
                <div className="text-xs text-gray-600 dark:text-gray-400 font-medium">Valor da parcela</div>
              </div>
@@ -165,4 +176,4 @@ export function InstallmentTransactionCard({
       </CardContent>
     </Card>
   );
-} 
+}

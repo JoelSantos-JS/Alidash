@@ -51,11 +51,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { firebase_uid, categoryData } = body
+    const { user_id, categoryData } = body
 
-    if (!firebase_uid) {
+    if (!user_id) {
       return NextResponse.json(
-        { error: 'Firebase UID é obrigatório' },
+        { error: 'User ID é obrigatório' },
         { status: 400 }
       )
     }
@@ -67,12 +67,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Buscar usuário pelo firebase_uid
-    const user = await supabaseAdminService.getUserByFirebaseUid(firebase_uid)
+    // Buscar usuário pelo user_id
+    const user = await supabaseAdminService.getUserById(user_id)
     
     if (!user) {
       return NextResponse.json(
-        { error: `Usuário não encontrado no Supabase para firebase_uid: ${firebase_uid}` },
+        { error: `Usuário não encontrado no Supabase para user_id: ${user_id}` },
         { status: 404 }
       )
     }

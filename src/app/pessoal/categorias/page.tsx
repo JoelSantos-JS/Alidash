@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import {
   Plus,
   Search,
@@ -95,7 +95,7 @@ const DEFAULT_CATEGORIES = {
 };
 
 export default function PersonalCategoriesPage() {
-  const { user } = useAuth();
+  const { user } = useSupabaseAuth();
   const { toast } = useToast();
   const [categories, setCategories] = useState<CategoryStats[]>([]);
   const [loading, setLoading] = useState(true);
@@ -112,7 +112,7 @@ export default function PersonalCategoriesPage() {
   const handleCreateCategory = async (categoryData: any) => {
     try {
       // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
       if (!userResponse.ok) {
         throw new Error('Usuário não encontrado');
       }
@@ -161,7 +161,7 @@ export default function PersonalCategoriesPage() {
     
     // Buscar transações específicas da categoria
     try {
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
       if (!userResponse.ok) return;
       
       const userResult = await userResponse.json();
@@ -219,7 +219,7 @@ export default function PersonalCategoriesPage() {
     
     try {
       // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
       if (!userResponse.ok) {
         throw new Error('Usuário não encontrado');
       }
@@ -267,7 +267,7 @@ export default function PersonalCategoriesPage() {
       setLoading(true);
       
       // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
       if (!userResponse.ok) {
         throw new Error('Usuário não encontrado');
       }
@@ -788,7 +788,7 @@ export default function PersonalCategoriesPage() {
                  onSubmit={async (data) => {
                     try {
                       // Buscar usuário Supabase
-                      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+                      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
                       if (!userResponse.ok) {
                         throw new Error('Usuário não encontrado');
                       }

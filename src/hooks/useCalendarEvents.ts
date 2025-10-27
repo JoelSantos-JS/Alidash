@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/use-supabase-auth';
 
 export interface CalendarEvent {
   id: string;
@@ -52,15 +52,15 @@ export function useCalendarEvents() {
 
   // Verificar se as tabelas do calendário existem
   const checkTablesExist = useCallback(async () => {
-    if (!user?.uid) return false;
+    if (!user?.id) return false;
 
     try {
-      const response = await fetch(`/api/calendar/events?user_id=${user.uid}&limit=1`);
+      const response = await fetch(`/api/calendar/events?user_id=${user.id}&limit=1`);
       return response.ok;
     } catch (error) {
       return false;
     }
-  }, [user?.uid]);
+  }, [user?.id]);
 
   // Buscar eventos
   const fetchEvents = useCallback(async (
@@ -68,7 +68,7 @@ export function useCalendarEvents() {
     endDate?: string,
     limit: number = 50
   ) => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
 
     // Verificar se as tabelas existem antes de tentar buscar eventos
     const tablesExist = await checkTablesExist();
@@ -87,7 +87,7 @@ export function useCalendarEvents() {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
 
       const params = new URLSearchParams({
-        user_id: user.uid,
+        user_id: user.id,
         limit: limit.toString()
       });
 
@@ -119,7 +119,7 @@ export function useCalendarEvents() {
       }));
       return [];
     }
-  }, [user?.uid, checkTablesExist]);
+  }, [user?.id, checkTablesExist]);
 
   // Criar evento
   const createEvent = useCallback(async (eventData: CreateEventData, syncWithGoogle = false) => {
@@ -227,7 +227,7 @@ export function useCalendarEvents() {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
 
-      const response = await fetch(`/api/calendar/events?id=${eventId}&user_id=${user.uid}`, {
+      const response = await fetch(`/api/calendar/events?id=${eventId}&user_id=${user.id}`, {
         method: 'DELETE'
       });
 

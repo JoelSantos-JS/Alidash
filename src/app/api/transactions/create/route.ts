@@ -1,15 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-// Configuração direta do Supabase para evitar problemas de inicialização
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('❌ Variáveis de ambiente do Supabase não encontradas');
-}
-
-const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
+import { supabaseAdminService } from '@/lib/supabase-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,85 +35,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar se é uma transação parcelada
-    if (transaction.isInstallment && transaction.installmentInfo) {
-      console.log('🎯 Transação parcelada detectada na API:', {
-        isInstallment: transaction.isInstallment,
-        installmentInfo: transaction.installmentInfo,
-        installmentInfo_keys: Object.keys(transaction.installmentInfo),
-        has_totalAmount: 'totalAmount' in transaction.installmentInfo,
-        has_nextDueDate: 'nextDueDate' in transaction.installmentInfo,
-        totalAmount: transaction.installmentInfo.totalAmount,
-        totalInstallments: transaction.installmentInfo.totalInstallments,
-        currentInstallment: transaction.installmentInfo.currentInstallment
-      });
-    } else if (transaction.isInstallment && !transaction.installmentInfo) {
-      console.log('⚠️ ATENÇÃO: Transação marcada como parcelada mas sem installmentInfo!');
-    }
-
-    // Preparar dados para inserção
-    const insertData = {
-      user_id: user_id,
-      date: transaction.date instanceof Date ? transaction.date.toISOString() : new Date(transaction.date).toISOString(),
+    // Preparar dados da transação para o SupabaseService
+    const transactionData = {
+      date: transaction.date instanceof Date ? transaction.date : new Date(transaction.date),
       description: transaction.description,
       amount: transaction.amount,
       type: transaction.type,
       category: transaction.category,
       subcategory: transaction.subcategory,
-      payment_method: transaction.paymentMethod,
+      paymentMethod: transaction.paymentMethod,
       status: transaction.status,
       notes: transaction.notes,
-      tags: transaction.tags,
-      // Campos para compras parceladas
-      is_installment: transaction.isInstallment || false,
-      installment_info: transaction.installmentInfo ? JSON.stringify(transaction.installmentInfo) : null
+      tags: transaction.tags || [],
+      isInstallment: transaction.isInstallment || false,
+      installmentInfo: transaction.installmentInfo || null
     };
 
-    console.log('📝 Dados para inserção:', {
-      is_installment: insertData.is_installment,
-      installment_info: insertData.installment_info,
-      installment_info_parsed: insertData.installment_info ? JSON.parse(insertData.installment_info) : null
-    });
-
-    console.log('🔧 Inserindo no Supabase...');
-    const { data, error } = await supabase
-      .from('transactions')
-      .insert(insertData)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('❌ Erro ao criar transação no Supabase:', error);
-      return NextResponse.json(
-        { error: 'Erro ao criar transação no banco de dados', details: error.message },
-        { status: 500 }
-      );
-    }
-
-    console.log('✅ Transação criada com sucesso:', {
-      id: data.id,
-      description: data.description,
-      is_installment: data.is_installment,
-      installment_info: data.installment_info
-    });
-
-    // Converter para formato de resposta
-    const result = {
-      id: data.id,
-      date: new Date(data.date),
-      description: data.description,
-      amount: parseFloat(data.amount) || 0,
-      type: data.type,
-      category: data.category,
-      subcategory: data.subcategory,
-      paymentMethod: data.payment_method,
-      status: data.status,
-      notes: data.notes,
-      tags: data.tags || [],
-      productId: data.product_id,
-      isInstallment: Boolean(data.is_installment),
-      installmentInfo: data.installment_info ? JSON.parse(data.installment_info) : null
-    };
+    console.log('🔧 Criando transação usando SupabaseService...');
+    
+    // Usar o método createTransaction do SupabaseService que tem a lógica de criação automática
+    const result = await supabaseAdminService.createTransaction(user_id, transactionData);
 
     return NextResponse.json(result);
   } catch (error) {
@@ -140,4 +71,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

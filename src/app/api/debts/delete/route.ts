@@ -17,11 +17,11 @@ export async function DELETE(request: NextRequest) {
     
     const { searchParams } = new URL(request.url);
     const debtId = searchParams.get('id');
-    const firebaseUid = searchParams.get('user_id');
+    const supabaseUserId = searchParams.get('user_id');
 
-    console.log('🗑️ Deletando dívida ID:', debtId, 'para Firebase UID:', firebaseUid);
+    console.log('🗑️ Deletando dívida ID:', debtId, 'para Supabase User ID:', supabaseUserId);
 
-    if (!debtId || !firebaseUid) {
+    if (!debtId || !supabaseUserId) {
       console.log('❌ Dados obrigatórios não fornecidos');
       return NextResponse.json(
         { error: 'id e user_id são obrigatórios' },
@@ -29,29 +29,12 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Buscar usuário pelo firebase_uid
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('firebase_uid', firebaseUid)
-      .single();
-
-    if (userError || !user) {
-      console.log('❌ Usuário não encontrado:', userError);
-      return NextResponse.json(
-        { error: 'Usuário não encontrado no Supabase' },
-        { status: 404 }
-      );
-    }
-
-    console.log('✅ Usuário encontrado:', user.id);
-
     // Verificar se a dívida existe e pertence ao usuário
     const { data: existingDebt, error: checkError } = await supabase
       .from('debts')
       .select('id, user_id')
       .eq('id', debtId)
-      .eq('user_id', user.id)
+      .eq('user_id', supabaseUserId)
       .single();
 
     if (checkError || !existingDebt) {
@@ -69,7 +52,7 @@ export async function DELETE(request: NextRequest) {
       .from('debts')
       .delete()
       .eq('id', debtId)
-      .eq('user_id', user.id);
+      .eq('user_id', supabaseUserId);
 
     if (deleteError) {
       console.error('❌ Erro ao deletar dívida:', deleteError);

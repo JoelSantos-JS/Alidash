@@ -24,10 +24,7 @@ import { BetForm } from '@/components/bets/bet-form';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { BetPerformanceChart } from '@/components/bets/bet-performance-chart';
 import { BetStatusChart } from '@/components/bets/bet-status-chart';
-import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { useDualSync } from '@/lib/dual-database-sync';
+import { useAuth } from '@/hooks/use-supabase-auth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SurebetCalculator } from '@/components/bets/surebet-calculator';
 import { AdvancedSurebetCalculator } from '@/components/bets/advanced-surebet-calculator';
@@ -51,49 +48,39 @@ export default function BetsPage() {
     const [summaryPeriod, setSummaryPeriod] = useState<Period>('day');
     const { toast } = useToast();
     
-    // Hook de sincronização dual
-    const dualSync = useDualSync(user?.uid || '', 'BEST_EFFORT');
-
      useEffect(() => {
         if (authLoading || !user) return;
 
         const fetchData = async () => {
             setIsLoading(true);
-            const docRef = doc(db, "user-data", user.uid);
-            const docSnap = await getDoc(docRef);
-
-            if (docSnap.exists() && docSnap.data().bets) {
-                const data = docSnap.data().bets;
-                 const parsedBets = data.map((b: any) => ({...b, date: b.date?.toDate ? b.date.toDate() : new Date(b.date)}));
-                setBets(parsedBets);
-            } else {
+            try {
+                console.log('🔍 Carregando apostas do Supabase para usuário:', user.id);
+                
+                const response = await fetch('/api/bets');
+                const data = await response.json();
+                
+                if (data.success && data.bets) {
+                    const supabaseBets = data.bets.map((b: any) => ({
+                        ...b,
+                        date: new Date(b.date || b.created_at)
+                    }));
+                    setBets(supabaseBets);
+                    console.log('✅ Apostas carregadas do Supabase:', supabaseBets.length);
+                } else {
+                    console.log('⚠️ Nenhuma aposta encontrada no Supabase');
+                    setBets(initialBets);
+                }
+            } catch (error) {
+                console.error("❌ Erro ao carregar apostas:", error);
                 setBets(initialBets);
+            } finally {
+                setIsLoading(false);
             }
-            setIsLoading(false);
         }
         fetchData();
     }, [user, authLoading]);
 
-    useEffect(() => {
-        if (authLoading || isLoading || !user) return;
 
-        const saveData = async () => {
-            try {
-                const docRef = doc(db, "user-data", user.uid);
-                // Sanitize data before saving to remove any undefined fields
-                 const sanitizedBets = JSON.parse(JSON.stringify(bets));
-                await setDoc(docRef, { bets: sanitizedBets }, { merge: true });
-            } catch (error) {
-                console.error("Failed to save bets to Firestore", error);
-                toast({
-                    variant: 'destructive',
-                    title: "Erro ao Salvar Dados",
-                    description: "Não foi possível salvar as apostas na nuvem.",
-                })
-            }
-        }
-        saveData();
-    }, [bets, user, authLoading, isLoading, toast]);
 
 
     const summaryStats = useMemo(() => {
@@ -160,50 +147,88 @@ export default function BetsPage() {
     }
 
     const handleSaveBet = async (betData: Omit<Bet, 'id'>) => {
+        if (!user?.id) {
+            toast({
+                variant: 'destructive',
+                title: "Erro de Autenticação",
+                description: "Usuário não autenticado.",
+            });
+            return;
+        }
+
         const sanitizedBetData = JSON.parse(JSON.stringify(betData));
     
         if (betToEdit) {
             // Editar aposta existente
-            const updatedBets = bets.map(b => (b.id === betToEdit.id ? { ...b, ...sanitizedBetData, id: b.id } : b));
-            setBets(updatedBets);
-            
-            // Usar sincronização dual para atualizar
             try {
-                // Como não temos updateBet no dual sync ainda, usamos o estado local
-                console.log('✅ Aposta atualizada localmente (sincronização dual em desenvolvimento)');
-                toast({ 
-                    title: "Aposta Atualizada!", 
-                    description: `${betData.event} - Atualizada localmente` 
+                const response = await fetch('/api/bets/update', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        betId: betToEdit.id,
+                        updates: sanitizedBetData,
+                    }),
                 });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const updatedBets = bets.map(b => (b.id === betToEdit.id ? { ...b, ...sanitizedBetData, id: b.id } : b));
+                    setBets(updatedBets);
+                    
+                    toast({ 
+                        title: "Aposta Atualizada!", 
+                        description: `${betData.event} foi atualizada com sucesso.` 
+                    });
+                } else {
+                    throw new Error(data.error || 'Erro ao atualizar aposta');
+                }
             } catch (error) {
-                console.error('Erro na sincronização dual:', error);
+                console.error('Erro ao atualizar aposta:', error);
                 toast({ 
-                    title: "Aposta Atualizada!", 
-                    description: `A aposta no evento "${betData.event}" foi atualizada localmente.` 
+                    variant: 'destructive',
+                    title: "Erro ao Atualizar", 
+                    description: `Não foi possível atualizar a aposta "${betData.event}".` 
                 });
             }
         } else {
             // Adicionar nova aposta
-            const newBet: Bet = {
-                id: new Date().getTime().toString(),
-                ...sanitizedBetData,
-            };
-            setBets([newBet, ...bets]);
-            
-            // Usar sincronização dual para criar
             try {
-                const result = await dualSync.createBet(newBet);
-                console.log(`Aposta criada - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`);
-                
-                toast({ 
-                    title: "Aposta Adicionada!", 
-                    description: `${betData.event} - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}` 
+                const response = await fetch('/api/bets/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: user.id,
+                        betData: sanitizedBetData,
+                    }),
                 });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const newBet: Bet = {
+                        id: data.bet.id,
+                        ...sanitizedBetData,
+                    };
+                    setBets([newBet, ...bets]);
+                    
+                    toast({ 
+                        title: "Aposta Adicionada!", 
+                        description: `${betData.event} foi adicionada com sucesso.` 
+                    });
+                } else {
+                    throw new Error(data.error || 'Erro ao criar aposta');
+                }
             } catch (error) {
-                console.error('Erro na sincronização dual:', error);
+                console.error('Erro ao criar aposta:', error);
                 toast({ 
-                    title: "Aposta Adicionada!", 
-                    description: `Sua aposta em "${betData.event}" foi registrada localmente.` 
+                    variant: 'destructive',
+                    title: "Erro ao Adicionar", 
+                    description: `Não foi possível adicionar a aposta "${betData.event}".` 
                 });
             }
         }
@@ -215,25 +240,31 @@ export default function BetsPage() {
         const bet = bets.find(b => b.id === betId);
         if (!bet) return;
         
-        // Remover do estado local
-        setBets(bets.filter(b => b.id !== betId));
-        setBetToDelete(null);
-        
-        // Usar sincronização dual para deletar
         try {
-            // Como não temos deleteBet no dual sync ainda, simulamos
-            console.log('✅ Aposta deletada localmente (sincronização dual em desenvolvimento)');
-            toast({ 
-                variant: 'destructive', 
-                title: "Aposta Excluída!", 
-                description: `${bet.event} - Removida localmente (dual sync em desenvolvimento)` 
+            const response = await fetch(`/api/bets?betId=${betId}`, {
+                method: 'DELETE',
             });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Remover do estado local
+                setBets(bets.filter(b => b.id !== betId));
+                setBetToDelete(null);
+                
+                toast({ 
+                    title: "Aposta Excluída!", 
+                    description: `${bet.event} foi removida com sucesso.` 
+                });
+            } else {
+                throw new Error(data.error || 'Erro ao deletar aposta');
+            }
         } catch (error) {
-            console.error('Erro na sincronização dual:', error);
+            console.error('Erro ao deletar aposta:', error);
             toast({ 
                 variant: 'destructive', 
-                title: "Aposta Excluída!", 
-                description: `A aposta em "${bet.event}" foi removida localmente.` 
+                title: "Erro ao Excluir", 
+                description: `Não foi possível excluir a aposta "${bet.event}".` 
             });
         }
     }

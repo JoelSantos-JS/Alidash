@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   
-  // Headers de cache otimizados
+  // Headers de cache otimizados com revalidação
   async headers() {
     return [
       {
@@ -51,19 +51,49 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            value: 'public, max-age=86400, s-maxage=31536000',
           },
         ],
       },
+      // Headers para páginas HTML - cache mais curto com revalidação
+      {
+        source: '/((?!api|_next/static|_next/image|favicon.ico).*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800',
+          },
+        ],
+      },
+      // Headers para API routes - sem cache
       {
         source: '/api/:path*',
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=300, s-maxage=600, stale-while-revalidate=86400',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
           },
         ],
       },
+      // Headers para manifest e service worker
+      {
+        source: '/(manifest.json|sw.js)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate',
+          },
+        ],
+      },
+      // Headers de segurança
       {
         source: '/:path*',
         headers: [
@@ -83,18 +113,14 @@ const nextConfig: NextConfig = {
       },
     ]
   },
-  
-  // Configurações básicas para produção
+
   poweredByHeader: false,
   reactStrictMode: true,
-  
-  // Pacotes externos para server components
+
   serverExternalPackages: ['@opentelemetry/winston-transport', 'handlebars'],
-  
-  // Otimizações de performance
+
   compress: true,
-  
-  // Otimizações específicas para mobile
+
   modularizeImports: {
     '@mui/icons-material': {
       transform: '@mui/icons-material/{{member}}',
@@ -103,14 +129,12 @@ const nextConfig: NextConfig = {
       transform: 'lodash/{{member}}',
     },
   },
-  
-  // Configurações experimentais para performance
+
   experimental: {
     optimizeCss: true,
     optimizePackageImports: ['@mui/material', '@mui/icons-material', 'lucide-react'],
   },
-  
-  // Configurações do Turbopack (estável)
+
   turbopack: {
     rules: {
       '*.svg': {
@@ -119,7 +143,7 @@ const nextConfig: NextConfig = {
       },
     },
   },
-  
+
   images: {
     remotePatterns: [
       {
@@ -134,10 +158,8 @@ const nextConfig: NextConfig = {
     formats: ['image/webp', 'image/avif'],
     minimumCacheTTL: 31536000,
   },
-  
-  // Configuração webpack simplificada para compatibilidade com Vercel
+
   webpack: (config, { isServer }) => {
-    // Resolver problemas com módulos Node.js
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
@@ -147,15 +169,11 @@ const nextConfig: NextConfig = {
       module: false,
     }
 
-    // Ignorar módulos problemáticos no lado cliente
     if (!isServer) {
       config.resolve.alias = {
         ...config.resolve.alias,
         '@opentelemetry/winston-transport': false,
         'handlebars': false,
-        'dotprompt': false,
-        '@genkit-ai/core': false,
-        'genkit': false,
       }
     }
 

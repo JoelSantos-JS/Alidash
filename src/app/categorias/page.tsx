@@ -2,10 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
-import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -15,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -65,7 +63,7 @@ import { CategoryForm } from "@/components/category/category-form";
 interface Category {
   id: string;
   name: string;
-  type: 'income' | 'expense';
+  type: 'transaction' | 'product';
   color: string;
   icon: string;
   description?: string;
@@ -78,11 +76,11 @@ interface Category {
 
 // Categorias padrão
 const defaultCategories: Category[] = [
-  // Receitas
+  // Transações
   {
-    id: "income-salary",
+    id: "transaction-salary",
     name: "Salário",
-    type: "income",
+    type: "transaction",
     color: "#10B981",
     icon: "DollarSign",
     description: "Rendimentos do trabalho principal",
@@ -91,9 +89,9 @@ const defaultCategories: Category[] = [
     isDefault: true
   },
   {
-    id: "income-freelance",
+    id: "transaction-freelance",
     name: "Freelance",
-    type: "income",
+    type: "transaction",
     color: "#3B82F6",
     icon: "Briefcase",
     description: "Trabalhos extras e projetos",
@@ -102,9 +100,9 @@ const defaultCategories: Category[] = [
     isDefault: true
   },
   {
-    id: "income-investments",
+    id: "transaction-investments",
     name: "Investimentos",
-    type: "income",
+    type: "transaction",
     color: "#8B5CF6",
     icon: "TrendingUp",
     description: "Rendimentos de aplicações financeiras",
@@ -113,9 +111,9 @@ const defaultCategories: Category[] = [
     isDefault: true
   },
   {
-    id: "income-other",
+    id: "transaction-other",
     name: "Outras Receitas",
-    type: "income",
+    type: "transaction",
     color: "#F59E0B",
     icon: "Gift",
     description: "Outras fontes de renda",
@@ -124,11 +122,11 @@ const defaultCategories: Category[] = [
     isDefault: true
   },
 
-  // Despesas
+  // Produtos
   {
-    id: "expense-food",
+    id: "product-food",
     name: "Alimentação",
-    type: "expense",
+    type: "product",
     color: "#EF4444",
     icon: "Utensils",
     description: "Refeições, supermercado e delivery",
@@ -139,9 +137,9 @@ const defaultCategories: Category[] = [
     isDefault: true
   },
   {
-    id: "expense-transport",
+    id: "product-transport",
     name: "Transporte",
-    type: "expense",
+    type: "product",
     color: "#F97316",
     icon: "Car",
     description: "Combustível, transporte público, Uber",
@@ -152,9 +150,9 @@ const defaultCategories: Category[] = [
     isDefault: true
   },
   {
-    id: "expense-housing",
+    id: "product-housing",
     name: "Moradia",
-    type: "expense",
+    type: "product",
     color: "#06B6D4",
     icon: "Home",
     description: "Aluguel, condomínio, IPTU",
@@ -165,9 +163,9 @@ const defaultCategories: Category[] = [
     isDefault: true
   },
   {
-    id: "expense-health",
+    id: "product-health",
     name: "Saúde",
-    type: "expense",
+    type: "product",
     color: "#EC4899",
     icon: "Stethoscope",
     description: "Plano de saúde, medicamentos, consultas",
@@ -178,9 +176,9 @@ const defaultCategories: Category[] = [
     isDefault: true
   },
   {
-    id: "expense-education",
+    id: "product-education",
     name: "Educação",
-    type: "expense",
+    type: "product",
     color: "#8B5CF6",
     icon: "GraduationCap",
     description: "Cursos, livros, mensalidades",
@@ -191,9 +189,9 @@ const defaultCategories: Category[] = [
     isDefault: true
   },
   {
-    id: "expense-entertainment",
+    id: "product-entertainment",
     name: "Entretenimento",
-    type: "expense",
+    type: "product",
     color: "#F59E0B",
     icon: "Gamepad2",
     description: "Cinema, shows, jogos, hobbies",
@@ -204,9 +202,9 @@ const defaultCategories: Category[] = [
     isDefault: true
   },
   {
-    id: "expense-shopping",
+    id: "product-shopping",
     name: "Compras",
-    type: "expense",
+    type: "product",
     color: "#10B981",
     icon: "ShoppingCart",
     description: "Roupas, eletrônicos, produtos pessoais",
@@ -217,9 +215,9 @@ const defaultCategories: Category[] = [
     isDefault: true
   },
   {
-    id: "expense-services",
+    id: "product-services",
     name: "Serviços",
-    type: "expense",
+    type: "product",
     color: "#6B7280",
     icon: "Wifi",
     description: "Internet, telefone, streaming",
@@ -253,16 +251,17 @@ const iconMap: Record<string, any> = {
 
 export default function CategoriesPage() {
   const { user, loading: authLoading } = useAuth();
+  // Estados
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | "income" | "expense">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "transaction" | "product">("all");
   const [sortBy, setSortBy] = useState<"name" | "budget" | "spent" | "transactions">("name");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isFormLoading, setIsFormLoading] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -272,7 +271,7 @@ export default function CategoriesPage() {
 
     const fetchCategories = async () => {
       try {
-        console.log('🔍 Carregando categorias do Supabase para usuário:', user.uid);
+        console.log('🔍 Carregando categorias do Supabase para usuário:', user.id);
         
         // Carregar categorias diretamente da API do Supabase
         const response = await fetch('/api/categories');
@@ -318,7 +317,7 @@ export default function CategoriesPage() {
        
        const requestBody = isUpdate 
          ? { categoryId: category.id, updates: category }
-         : { firebase_uid: user.uid, categoryData: category };
+         : { user_id: user.id, categoryData: category };
        
        const response = await fetch('/api/categories', {
          method,
@@ -385,21 +384,21 @@ export default function CategoriesPage() {
   // Estatísticas
   const stats = useMemo(() => {
     const totalCategories = categories.length;
-    const incomeCategories = categories.filter(c => c.type === 'income').length;
-    const expenseCategories = categories.filter(c => c.type === 'expense').length;
+    const transactionCategories = categories.filter(c => c.type === 'transaction').length;
+    const productCategories = categories.filter(c => c.type === 'product').length;
     
     const totalBudget = categories.reduce((sum, c) => sum + (c.budget || 0), 0);
     const totalSpent = categories.reduce((sum, c) => sum + (c.spent || 0), 0);
     const totalTransactions = categories.reduce((sum, c) => sum + (c.transactions || 0), 0);
     
     const budgetUtilization = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
-    const averageBudget = expenseCategories > 0 ? totalBudget / expenseCategories : 0;
-    const averageSpent = expenseCategories > 0 ? totalSpent / expenseCategories : 0;
+    const averageBudget = productCategories > 0 ? totalBudget / productCategories : 0;
+    const averageSpent = productCategories > 0 ? totalSpent / productCategories : 0;
 
     return {
       totalCategories,
-      incomeCategories,
-      expenseCategories,
+      transactionCategories,
+      productCategories,
       totalBudget,
       totalSpent,
       totalTransactions,
@@ -567,7 +566,7 @@ export default function CategoriesPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold">Categorias</h1>
-            <p className="text-muted-foreground">Organize suas receitas e despesas por categorias</p>
+            <p className="text-muted-foreground">Organize suas transações e produtos por categorias</p>
           </div>
         </div>
         <Button onClick={() => setIsFormOpen(true)} className="gap-2">
@@ -595,7 +594,7 @@ export default function CategoriesPage() {
               <CardContent>
                 <div className="text-2xl font-bold">{stats.totalCategories}</div>
                 <p className="text-xs text-muted-foreground">
-                  {stats.incomeCategories} receitas, {stats.expenseCategories} despesas
+                  {stats.transactionCategories} transações, {stats.productCategories} produtos
                 </p>
               </CardContent>
             </Card>
@@ -653,7 +652,7 @@ export default function CategoriesPage() {
               <CardContent>
                 <div className="space-y-3">
                   {categories
-                    .filter(c => c.type === 'income')
+                    .filter(c => c.type === 'transaction')
                     .map((category) => (
                       <div key={category.id} className="flex items-center justify-between p-2 rounded-lg bg-green-50 dark:bg-green-950/20">
                         <div className="flex items-center gap-3">
@@ -686,7 +685,7 @@ export default function CategoriesPage() {
               <CardContent>
                 <div className="space-y-3">
                   {categories
-                    .filter(c => c.type === 'expense')
+                    .filter(c => c.type === 'product')
                     .map((category) => {
                       const utilization = category.budget && category.budget > 0 
                         ? ((category.spent || 0) / category.budget) * 100 
@@ -736,22 +735,22 @@ export default function CategoriesPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Badge variant="default" className="bg-green-500">
-                        Receitas
+                        Transações
                       </Badge>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm font-semibold">{stats.incomeCategories}</div>
+                      <div className="text-sm font-semibold">{stats.transactionCategories}</div>
                       <div className="text-xs text-muted-foreground">categorias</div>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Badge variant="destructive">
-                        Despesas
+                        Produtos
                       </Badge>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm font-semibold">{stats.expenseCategories}</div>
+                      <div className="text-sm font-semibold">{stats.productCategories}</div>
                       <div className="text-xs text-muted-foreground">categorias</div>
                     </div>
                   </div>
@@ -796,7 +795,7 @@ export default function CategoriesPage() {
             <CardContent>
               <div className="space-y-4">
                 {categories
-                  .filter(c => c.type === 'expense' && c.budget)
+                  .filter(c => c.type === 'product' && c.budget)
                   .map((category) => {
                     const utilization = category.budget && category.budget > 0 
                       ? ((category.spent || 0) / category.budget) * 100 
@@ -866,14 +865,14 @@ export default function CategoriesPage() {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Select value={typeFilter} onValueChange={(value: "all" | "income" | "expense") => setTypeFilter(value)}>
+              <Select value={typeFilter} onValueChange={(value: "all" | "transaction" | "product") => setTypeFilter(value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Tipo" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os tipos</SelectItem>
-                  <SelectItem value="income">Receitas</SelectItem>
-                  <SelectItem value="expense">Despesas</SelectItem>
+                  <SelectItem value="transaction">Transações</SelectItem>
+                  <SelectItem value="product">Produtos</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -944,8 +943,8 @@ export default function CategoriesPage() {
                           <p className="text-sm text-muted-foreground">{category.description}</p>
                         </div>
                       </div>
-                      <Badge variant={category.type === 'income' ? 'default' : 'secondary'}>
-                        {category.type === 'income' ? 'Receita' : 'Despesa'}
+                      <Badge variant={category.type === 'transaction' ? 'default' : 'secondary'}>
+                        {category.type === 'transaction' ? 'Transação' : 'Produto'}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -957,7 +956,7 @@ export default function CategoriesPage() {
                       </div>
                       <div>
                         <p className="text-muted-foreground">Total</p>
-                        <p className={cn("font-semibold", category.type === 'income' ? "text-green-600" : "text-red-600")}>
+                        <p className={cn("font-semibold", category.type === 'transaction' ? "text-green-600" : "text-red-600")}>
                           {(category.spent || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </p>
                       </div>
@@ -1054,7 +1053,7 @@ export default function CategoriesPage() {
               <p className="text-muted-foreground">
                 {selectedCategory 
                   ? "Atualize as informações da categoria selecionada."
-                  : "Crie uma nova categoria para organizar suas receitas e despesas."
+                  : "Crie uma nova categoria para organizar suas transações e produtos."
                 }
               </p>
             </div>

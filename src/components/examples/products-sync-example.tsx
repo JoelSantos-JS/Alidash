@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useAuth } from '@/hooks/use-auth'
+import { useAuth } from '@/hooks/use-supabase-auth'
 import { useDualSync } from '@/lib/dual-database-sync'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
@@ -327,4 +327,4 @@ export function ProductsSyncExample() {
       )}
     </div>
   )
-} 
+}

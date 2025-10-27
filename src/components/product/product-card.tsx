@@ -35,7 +35,19 @@ const statusMap = {
 }
 
 export function ProductCard({ product, onClick, onEdit, onDelete, onSell }: ProductCardProps) {
-  const statusInfo = statusMap[product.status];
+  // Calcular estoque disponível
+  const availableStock = product.quantity - product.quantitySold;
+  
+  // Determinar status real baseado no estoque
+  let actualStatus = product.status;
+  if (availableStock <= 0 && product.status !== 'purchased' && product.status !== 'shipping') {
+    actualStatus = 'sold';
+  } else if (availableStock > 0 && product.status === 'sold') {
+    // Se tem estoque mas está marcado como vendido, mudar para "selling"
+    actualStatus = 'selling';
+  }
+  
+  const statusInfo = statusMap[actualStatus];
 
   // Buscar imagem principal ou usar imageUrl como fallback
   const mainImage = product.images?.find(img => img.type === 'main')?.url || 
@@ -65,37 +77,43 @@ export function ProductCard({ product, onClick, onEdit, onDelete, onSell }: Prod
           {statusInfo.label}
         </Badge>
         {(onEdit || onDelete || onSell) && (
-          <div className="absolute top-1 left-1 sm:top-2 sm:left-2">
+          <div className="absolute top-2 left-2 sm:top-2 sm:left-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="h-6 w-6 p-0 bg-white/90 hover:bg-white"
+                  className="h-8 w-8 sm:h-6 sm:w-6 p-0 bg-white/95 hover:bg-white shadow-md border border-gray-200"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <MoreVertical className="h-3 w-3" />
+                  <MoreVertical className="h-4 w-4 sm:h-3 sm:w-3" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()} className="w-48">
                 {onSell && (
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSell(); }}>
-                    <ShoppingCart className="mr-2 h-4 w-4" />
+                  <DropdownMenuItem 
+                    onClick={(e) => { e.stopPropagation(); onSell(); }}
+                    className="py-3 px-4 text-sm font-medium"
+                  >
+                    <ShoppingCart className="mr-3 h-4 w-4" />
                     Registrar Venda
                   </DropdownMenuItem>
                 )}
                 {onEdit && (
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
-                    <Edit className="mr-2 h-4 w-4" />
+                  <DropdownMenuItem 
+                    onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                    className="py-3 px-4 text-sm font-medium"
+                  >
+                    <Edit className="mr-3 h-4 w-4" />
                     Editar Produto
                   </DropdownMenuItem>
                 )}
                 {onDelete && (
                   <DropdownMenuItem 
                     onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                    className="text-red-600 focus:text-red-600"
+                    className="py-3 px-4 text-sm font-medium text-red-600 focus:text-red-600 focus:bg-red-50"
                   >
-                    <Trash2 className="mr-2 h-4 w-4" />
+                    <Trash2 className="mr-3 h-4 w-4" />
                     Excluir Produto
                   </DropdownMenuItem>
                 )}
@@ -105,32 +123,32 @@ export function ProductCard({ product, onClick, onEdit, onDelete, onSell }: Prod
         )}
       </CardHeader>
       <CardContent className="p-3 sm:p-4 flex-1">
-        <CardTitle className="text-sm sm:text-base font-semibold leading-tight mb-2 min-h-8 sm:min-h-10">
+        <CardTitle className="text-sm sm:text-base font-semibold leading-tight mb-2 min-h-8 sm:min-h-10 line-clamp-2">
           {product.name}
         </CardTitle>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
+        <div className="flex flex-col gap-1 text-xs sm:text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
-                <Package className="w-3 h-3 sm:w-4 sm:h-4"/>
-                <span>{product.quantity - product.quantitySold} em estoque</span>
+                <Package className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0"/>
+                <span className="truncate">{availableStock} em estoque</span>
             </div>
              {product.daysToSell !== undefined && (
                  <div className="flex items-center gap-1">
-                    <Clock className="w-3 h-3 sm:w-4 sm:h-4"/>
-                    <span>Vendido em {product.daysToSell} dias</span>
+                    <Clock className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0"/>
+                    <span className="truncate">Vendido em {product.daysToSell} dias</span>
                 </div>
             )}
         </div>
       </CardContent>
-      <CardFooter className="p-3 sm:p-4 pt-0 flex justify-between items-center">
-        <div className="flex items-center gap-1">
-            <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-primary"/>
-            <span className="text-base sm:text-lg font-bold text-primary">
+      <CardFooter className="p-3 sm:p-4 pt-0 flex justify-between items-center gap-2">
+        <div className="flex items-center gap-1 min-w-0 flex-1">
+            <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0"/>
+            <span className="text-sm sm:text-lg font-bold text-primary truncate">
             {product.sellingPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </span>
         </div>
-        <div className="flex items-center gap-1 text-green-600">
+        <div className="flex items-center gap-1 text-green-600 flex-shrink-0">
             <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4"/>
-            <span className="font-medium text-xs sm:text-sm">{product.profitMargin.toFixed(2)}%</span>
+            <span className="font-medium text-xs sm:text-sm">{product.profitMargin.toFixed(1)}%</span>
         </div>
       </CardFooter>
     </Card>

@@ -187,7 +187,7 @@ function checkBundleSize() {
 
 // Executar todas as verificações
 async function runAllChecks() {
-  console.log('🚀 Verificação Pré-Deploy - Alidash\n');
+  console.log('🚀 Verificação Pré-Deploy - VoxCash\n');
   
   checkEnvironmentVariables();
   console.log('');

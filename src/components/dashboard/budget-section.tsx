@@ -15,7 +15,7 @@ import {
   Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface BudgetSectionProps {
   monthlyBudget: number;
@@ -40,16 +40,26 @@ export function BudgetSection({
   const [newBudget, setNewBudget] = useState(monthlyBudget.toString());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  // Sincronizar o estado local com o prop quando ele mudar
+  useEffect(() => {
+    console.log('🔄 BudgetSection: monthlyBudget mudou de', newBudget, 'para', monthlyBudget);
+    setNewBudget(monthlyBudget.toString());
+  }, [monthlyBudget]);
+
   const availableBalance = monthlyBudget - estimatedExpenses;
   const expensePercentage = monthlyBudget > 0 ? (estimatedExpenses / monthlyBudget) * 100 : 0;
   const missingPercentage = totalItems > 0 ? (missingItems / totalItems) * 100 : 0;
 
   const handleSaveBudget = () => {
     const budgetValue = parseFloat(newBudget);
+    console.log('💾 BudgetSection: Tentando salvar orçamento:', budgetValue, '(string:', newBudget + ')');
     if (!isNaN(budgetValue) && budgetValue >= 0) {
+      console.log('✅ BudgetSection: Valor válido, chamando onBudgetChange');
       onBudgetChange?.(budgetValue);
       setIsEditing(false);
       setIsDialogOpen(false);
+    } else {
+      console.log('❌ BudgetSection: Valor inválido');
     }
   };
 

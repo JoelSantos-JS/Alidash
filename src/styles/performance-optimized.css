@@ -79,14 +79,14 @@
 /* Otimizações para texto */
 .performance-text {
   text-rendering: optimizeSpeed;
-  font-display: swap;
+  /* font-display: swap; - Removed: should be used in @font-face rules, not class selectors */
 }
 
 /* Otimizações para grids e flexbox */
 .performance-grid {
   contain: layout;
   display: grid;
-  grid-template-rows: masonry; /* Quando suportado */
+  /* grid-template-rows: masonry; - Removed: not widely supported yet */
 }
 
 .performance-flex {
@@ -138,7 +138,7 @@
 }
 
 /* Otimizações para modo economia de dados */
-@media (prefers-reduced-data: reduce) {
+@media (prefers-reduced-data) {
   .performance-image {
     display: none;
   }

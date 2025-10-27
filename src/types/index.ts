@@ -135,6 +135,7 @@ export interface Revenue {
   source: 'sale' | 'commission' | 'bonus' | 'other';
   notes?: string;
   productId?: string; // Se relacionado a um produto
+  transactionId?: string; // ID da transação relacionada
 }
 
 export interface Expense {
@@ -148,6 +149,7 @@ export interface Expense {
   supplier?: string;
   notes?: string;
   productId?: string; // Se relacionado a um produto
+  transactionId?: string; // ID da transação relacionada
   // Campos para compras parceladas no cartão
   isInstallment?: boolean;
   installmentInfo?: {

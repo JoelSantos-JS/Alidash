@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CalendarIcon, Loader2, Sparkles, Package, ClipboardList, DollarSign, Calculator } from "lucide-react";
+import { CalendarIcon, Loader2, Sparkles, Package, ClipboardList, DollarSign, Calculator, Truck, ImageIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import React, { useState } from "react";
@@ -26,7 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrackingView } from "./tracking-view";
 import { ImageGallery } from "./image-gallery";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-supabase-auth";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -259,27 +259,39 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
-          <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mx-6 mb-4">
-              <TabsTrigger value="basic" className="flex items-center gap-2">
+          <Tabs defaultValue="product" className="w-full">
+            <TabsList className="grid w-full grid-cols-6 mx-6 mb-6">
+              <TabsTrigger value="product" className="flex items-center gap-2">
                 <Package className="h-4 w-4" />
-                Básico
+                <span className="hidden sm:inline">Produto</span>
+              </TabsTrigger>
+              <TabsTrigger value="stock" className="flex items-center gap-2">
+                <Calculator className="h-4 w-4" />
+                <span className="hidden sm:inline">Estoque</span>
+              </TabsTrigger>
+              <TabsTrigger value="images" className="flex items-center gap-2">
+                <ImageIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Imagens</span>
+              </TabsTrigger>
+              <TabsTrigger value="supplier" className="flex items-center gap-2">
+                <Truck className="h-4 w-4" />
+                <span className="hidden sm:inline">Fornecedor</span>
               </TabsTrigger>
               <TabsTrigger value="financial" className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4" />
-                Financeiro
+                <span className="hidden sm:inline">Financeiro</span>
               </TabsTrigger>
               <TabsTrigger value="tracking" className="flex items-center gap-2">
                 <ClipboardList className="h-4 w-4" />
-                Rastreio
+                <span className="hidden sm:inline">Rastreio</span>
               </TabsTrigger>
             </TabsList>
 
-            {/* Aba Básico */}
-            <TabsContent value="basic" className="space-y-6">
-              <ScrollArea className="h-[60vh] px-6">
-                <div className="space-y-6">
-                  {/* Informações Básicas */}
+            {/* Aba Produto */}
+            <TabsContent value="product" className="space-y-6">
+              <ScrollArea className="h-[55vh] sm:h-[60vh] px-4 sm:px-6">
+                <div className="space-y-4 sm:space-y-6">
+                  {/* Informações Básicas do Produto */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-lg">Informações do Produto</CardTitle>
@@ -366,70 +378,25 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                           <FormMessage />
                         </FormItem>
                       )} />
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField control={form.control} name="supplier" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Fornecedor *</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="Ex: AliExpress, Amazon..." />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        
-                        <FormField control={form.control} name="imageUrl" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>URL da Imagem *</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="https://exemplo.com/imagem.jpg" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                      </div>
-
-                      <FormField control={form.control} name="aliexpressLink" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Link do AliExpress (Opcional)</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="https://pt.aliexpress.com/item/..." />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
                     </CardContent>
                   </Card>
+                </div>
+              </ScrollArea>
+            </TabsContent>
 
-                  {/* Galeria de Imagens */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Imagens do Produto</CardTitle>
-                      <p className="text-sm text-muted-foreground">
-                        Adicione múltiplas imagens para o produto. A imagem principal será usada como destaque.
-                      </p>
-                    </CardHeader>
-                    <CardContent>
-                      <FormField control={form.control} name="images" render={({ field }) => (
-                        <FormItem>
-                          <ImageGallery
-                            images={field.value || []}
-                            onChange={field.onChange}
-                            maxImages={5}
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                    </CardContent>
-                  </Card>
-
-                  {/* Quantidade e Status */}
+            {/* Aba Estoque e Status */}
+            <TabsContent value="stock" className="space-y-6">
+              <ScrollArea className="h-[55vh] sm:h-[60vh] px-4 sm:px-6">
+                <div className="space-y-4 sm:space-y-6">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-lg">Estoque e Status</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Controle de quantidade, status do produto e data de compra.
+                      </p>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField control={form.control} name="quantity" render={({ field }) => (
                           <FormItem>
                             <FormLabel>Quantidade Comprada *</FormLabel>
@@ -449,26 +416,26 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                             <FormMessage />
                           </FormItem>
                         )} />
-                        
-                        <FormField control={form.control} name="status" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Status *</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione o status" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {Object.entries(statusOptions).map(([key, value]) => (
-                                  <SelectItem key={key} value={key}>{value}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
                       </div>
+
+                      <FormField control={form.control} name="status" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status *</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {Object.entries(statusOptions).map(([key, value]) => (
+                                <SelectItem key={key} value={key}>{value}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
 
                       <FormField control={form.control} name="purchaseDate" render={({ field }) => (
                         <FormItem className="flex flex-col">
@@ -478,14 +445,17 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                               <FormControl>
                                 <Button
                                   variant={"outline"}
-                                  className={cn("w-full justify-start pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
                                 >
-                                  <CalendarIcon className="mr-2 h-4 w-4" />
                                   {field.value ? (
                                     format(field.value, "PPP", { locale: ptBR })
                                   ) : (
-                                    <span>Escolha uma data</span>
+                                    <span>Selecione uma data</span>
                                   )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                 </Button>
                               </FormControl>
                             </PopoverTrigger>
@@ -494,9 +464,10 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                                 mode="single"
                                 selected={field.value}
                                 onSelect={field.onChange}
-                                disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                                disabled={(date) =>
+                                  date > new Date() || date < new Date("1900-01-01")
+                                }
                                 initialFocus
-                                locale={ptBR}
                               />
                             </PopoverContent>
                           </Popover>
@@ -509,10 +480,102 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
               </ScrollArea>
             </TabsContent>
 
+            {/* Aba Imagens */}
+            <TabsContent value="images" className="space-y-6">
+              <ScrollArea className="h-[55vh] sm:h-[60vh] px-4 sm:px-6">
+                <div className="space-y-4 sm:space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Imagens do Produto</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Adicione múltiplas imagens para o produto. A imagem principal será usada como destaque.
+                      </p>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <FormField control={form.control} name="imageUrl" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>URL da Imagem Principal *</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="https://exemplo.com/imagem.jpg" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+
+                      {/* Galeria de Imagens */}
+                      <div className="space-y-4">
+                        <FormLabel>Galeria de Imagens</FormLabel>
+                        <ImageGallery 
+                          images={watchedValues.images || []}
+                          onChange={(images) => setValue('images', images)}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </ScrollArea>
+            </TabsContent>
+
+            {/* Aba Fornecedor */}
+            <TabsContent value="supplier" className="space-y-6">
+              <ScrollArea className="h-[55vh] sm:h-[60vh] px-4 sm:px-6">
+                <div className="space-y-4 sm:space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Informações do Fornecedor</CardTitle>
+                      <p className="text-sm text-muted-foreground">Dados sobre onde e como o produto foi adquirido</p>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <FormField control={form.control} name="supplier" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Fornecedor *</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Ex: AliExpress, Amazon..." />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+
+                      <FormField control={form.control} name="aliexpressLink" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Link do Produto (Opcional)</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="https://pt.aliexpress.com/item/..." />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+
+                      <FormField control={form.control} name="purchaseEmail" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email da Compra</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="email" placeholder="email@exemplo.com" />
+                          </FormControl>
+                          <FormDescription>Email usado para fazer a compra</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+
+                      <FormField control={form.control} name="notes" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Anotações</FormLabel>
+                          <FormControl>
+                            <Textarea {...field} placeholder="Detalhes de envio, observações do fornecedor..." />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </CardContent>
+                  </Card>
+                </div>
+              </ScrollArea>
+            </TabsContent>
+
             {/* Aba Financeiro */}
             <TabsContent value="financial" className="space-y-6">
-              <ScrollArea className="h-[60vh] px-6">
-                <div className="space-y-6">
+              <ScrollArea className="h-[55vh] sm:h-[60vh] px-4 sm:px-6">
+                <div className="space-y-4 sm:space-y-6">
                   {/* Alertas Financeiros */}
                   {isLowProfit && (
                     <Alert variant="destructive">
@@ -682,8 +745,8 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
 
             {/* Aba Rastreio */}
             <TabsContent value="tracking" className="space-y-6">
-              <ScrollArea className="h-[60vh] px-6">
-                <div className="space-y-6">
+              <ScrollArea className="h-[55vh] sm:h-[60vh] px-4 sm:px-6">
+                <div className="space-y-4 sm:space-y-6">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-lg">Informações de Rastreio</CardTitle>
@@ -719,27 +782,6 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                           <FormMessage />
                         </FormItem>
                       )} />
-
-                      <FormField control={form.control} name="purchaseEmail" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email da Compra</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="email" placeholder="email@exemplo.com" />
-                          </FormControl>
-                          <FormDescription>Email usado para fazer a compra</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-
-                      <FormField control={form.control} name="notes" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Anotações</FormLabel>
-                          <FormControl>
-                            <Textarea {...field} placeholder="Detalhes de envio, observações do fornecedor..." />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
                     </CardContent>
                   </Card>
 
@@ -759,21 +801,21 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
           </Tabs>
 
           {/* Footer com Botões */}
-          <div className="flex flex-col gap-4 border-t bg-muted/30 p-4">
-            <div className="flex gap-2">
+          <div className="flex flex-col gap-4 border-t bg-muted/30 p-3 sm:p-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-2">
               <Button 
                 type="button" 
                 variant="ghost" 
                 onClick={onCancel} 
                 disabled={isSubmitting} 
-                className="flex-1"
+                className="flex-1 h-10 sm:h-9 text-sm font-medium"
               >
                 Cancelar
               </Button>
               <Button 
                 type="submit" 
                 disabled={isSubmitting} 
-                className="flex-1"
+                className="flex-1 h-10 sm:h-9 text-sm font-medium"
               >
                 {isSubmitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

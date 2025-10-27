@@ -23,9 +23,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { AlertTriangle } from 'lucide-react';
 import { DreamRefineDialog } from '@/components/dreams/dream-refine-dialog';
-import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { useAuth } from '@/hooks/use-supabase-auth';
 import { useDualSync } from '@/lib/dual-database-sync';
 
 const initialDreams: Dream[] = [];
@@ -42,21 +40,32 @@ export default function DreamsPage() {
   const { toast } = useToast();
   
   // Hook de sincronização dual
-  const dualSync = useDualSync(user?.uid || '', 'BEST_EFFORT');
+  const dualSync = useDualSync(user?.id || '', 'BEST_EFFORT');
 
   useEffect(() => {
     if (authLoading || !user) return;
 
     const fetchData = async () => {
-        const docRef = doc(db, "user-data", user.uid);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists() && docSnap.data().dreams) {
-            setDreams(docSnap.data().dreams || initialDreams);
+      try {
+        console.log('🎯 Carregando sonhos do Supabase para usuário:', user.id)
+        
+        // Carregar sonhos diretamente da API do Supabase
+        const response = await fetch(`/api/dreams?user_id=${user.id}`)
+        const data = await response.json()
+        
+        if (data.success && data.dreams) {
+          setDreams(data.dreams)
+          console.log('✅ Sonhos carregados do Supabase:', data.dreams.length)
         } else {
-            setDreams(initialDreams);
+          console.log('⚠️ Nenhum sonho encontrado no Supabase')
+          setDreams(initialDreams)
         }
-        setIsLoading(false);
+      } catch (error) {
+        console.error('❌ Erro ao carregar sonhos:', error)
+        setDreams(initialDreams)
+      } finally {
+        setIsLoading(false)
+      }
     }
     fetchData();
   }, [user, authLoading]);
@@ -64,48 +73,56 @@ export default function DreamsPage() {
   useEffect(() => {
     if (isLoading || authLoading || !user) return;
 
-     const saveData = async () => {
-        try {
-            const dreamsToSave = dreams.map(d => {
-                const { plan, ...dreamWithoutPlan } = d;
-                // Only include plan if it's not null/undefined
-                if (plan && Object.keys(plan).length > 0) {
-                    // Create a serializable version of the plan
-                    const serializablePlan = {
-                        description: plan.description,
-                        estimatedCost: plan.estimatedCost || [],
-                        totalEstimatedCost: plan.totalEstimatedCost || 0,
-                        actionPlan: plan.actionPlan || [],
-                        importantNotes: plan.importantNotes || [],
-                        // Only include imageUrl if it's a simple string and not too large
-                        ...(plan.imageUrl && 
-                            typeof plan.imageUrl === 'string' && 
-                            plan.imageUrl.length < 1000000 && // Limit to 1MB
-                            !plan.imageUrl.startsWith('data:') // Exclude base64 data URIs
-                            ? { imageUrl: plan.imageUrl } 
-                            : {})
-                    };
-                    return { ...dreamWithoutPlan, plan: serializablePlan };
-                }
-                return dreamWithoutPlan;
-            });
+    const saveData = async () => {
+      try {
+        const dreamsToSave = dreams.map(d => {
+          const { plan, ...dreamWithoutPlan } = d;
+          // Only include plan if it's not null/undefined
+          if (plan && Object.keys(plan).length > 0) {
+            // Create a serializable version of the plan
+            const serializablePlan = {
+              description: plan.description,
+              estimatedCost: plan.estimatedCost || [],
+              totalEstimatedCost: plan.totalEstimatedCost || 0,
+              actionPlan: plan.actionPlan || [],
+              importantNotes: plan.importantNotes || [],
+              // Only include imageUrl if it's a simple string and not too large
+              ...(plan.imageUrl && 
+                  typeof plan.imageUrl === 'string' && 
+                  plan.imageUrl.length < 1000000 && // Limit to 1MB
+                  !plan.imageUrl.startsWith('data:') // Exclude base64 data URIs
+                  ? { imageUrl: plan.imageUrl } 
+                  : {})
+            };
+            return { ...dreamWithoutPlan, plan: serializablePlan };
+          }
+          return dreamWithoutPlan;
+        });
 
-            // Para arrays de sonhos, ainda usamos Firebase como fallback
-            // mas implementamos sincronização individual para novos sonhos
-            const docRef = doc(db, "user-data", user.uid);
-            await setDoc(docRef, { dreams: dreamsToSave }, { merge: true });
-            console.log('✅ Sonhos salvos (Firebase + preparado para Supabase)');
-        } catch (error) {
-            console.error("Failed to save dreams", error);
-            toast({
-                variant: 'destructive',
-                title: "Erro ao Salvar Dados",
-                description: "Não foi possível salvar os sonhos na nuvem.",
-            })
+        // Usar sincronização dual para salvar sonhos
+        const result = await dualSync.saveDreams(dreamsToSave);
+        
+        if (result.success) {
+          console.log(`✅ Sonhos salvos - Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
+        } else {
+          console.error('❌ Erro ao salvar sonhos:', result.errors)
+          toast({
+            variant: 'destructive',
+            title: "Erro ao Salvar Dados",
+            description: "Não foi possível salvar os sonhos na nuvem.",
+          })
         }
+      } catch (error) {
+        console.error("Failed to save dreams", error);
+        toast({
+          variant: 'destructive',
+          title: "Erro ao Salvar Dados",
+          description: "Não foi possível salvar os sonhos na nuvem.",
+        })
+      }
     }
     saveData();
-  }, [dreams, isLoading, user, authLoading, toast]);
+  }, [dreams, isLoading, user, authLoading, toast, dualSync]);
   
   useEffect(() => {
     if (isLoading || dreams.length === 0) return;
@@ -172,7 +189,7 @@ export default function DreamsPage() {
         
         toast({ 
           title: "Sonho Adicionado!", 
-          description: `${dreamData.name} - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}` 
+          description: `${dreamData.name} - Supabase: ${result.supabaseSuccess ? '✅' : '❌'}` 
         });
       } catch (error) {
         console.error('Erro na sincronização dual:', error);

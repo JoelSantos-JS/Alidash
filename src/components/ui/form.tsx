@@ -76,7 +76,20 @@ const FormItem = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
-  const id = React.useId()
+  const [isHydrated, setIsHydrated] = React.useState(false)
+  const staticId = React.useRef<string>()
+  
+  // Initialize static ID only once
+  if (!staticId.current) {
+    staticId.current = `form-item-${Math.random().toString(36).substr(2, 9)}`
+  }
+  
+  React.useEffect(() => {
+    setIsHydrated(true)
+  }, [])
+  
+  // Use static ID during SSR and hydration, then switch to unique ID
+  const id = isHydrated ? staticId.current : 'form-item-static'
 
   return (
     <FormItemContext.Provider value={{ id }}>

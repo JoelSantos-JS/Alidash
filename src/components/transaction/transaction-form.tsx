@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -44,7 +44,8 @@ interface TransactionFormProps {
   transactionToEdit?: Transaction | null;
 }
 
-const transactionCategories = [
+// Categorias padrão como fallback
+const defaultTransactionCategories = [
   "Vendas",
   "Compras",
   "Serviços",
@@ -72,6 +73,41 @@ const transactionStatuses = [
 export function TransactionForm({ onSave, onCancel, transactionToEdit }: TransactionFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showInstallmentFields, setShowInstallmentFields] = useState(false);
+  const [categories, setCategories] = useState<string[]>(defaultTransactionCategories);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+
+  // Carregar categorias da API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        const response = await fetch('/api/categories');
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Filtrar apenas categorias de transação
+          const transactionCategories = data.categories
+            ?.filter((cat: any) => cat.type === 'transaction' || !cat.type) // Incluir categorias sem tipo definido
+            ?.map((cat: any) => cat.name) || [];
+          
+          // Se encontrou categorias, usar elas; senão, manter as padrão
+          if (transactionCategories.length > 0) {
+            // Combinar categorias da API com as padrão (sem duplicatas)
+            const allCategories = [...new Set([...transactionCategories, ...defaultTransactionCategories])];
+            setCategories(allCategories);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao carregar categorias:', error);
+        // Em caso de erro, manter as categorias padrão
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const form = useForm<TransactionFormData>({
     resolver: zodResolver(transactionSchema),
@@ -79,8 +115,8 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
       description: transactionToEdit?.description || "",
       amount: transactionToEdit?.amount || 0,
       type: transactionToEdit?.type || "revenue",
-      category: transactionToEdit?.category || undefined,
-      subcategory: transactionToEdit?.subcategory || undefined,
+      category: transactionToEdit?.category || "",
+      subcategory: transactionToEdit?.subcategory || "",
       paymentMethod: transactionToEdit?.paymentMethod || "pix",
       status: transactionToEdit?.status || "completed",
       date: transactionToEdit?.date || new Date(),
@@ -197,7 +233,7 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipo</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o tipo" />
@@ -219,7 +255,7 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o status" />
@@ -246,18 +282,24 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Categoria</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione uma categoria" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {transactionCategories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
+                      {loadingCategories ? (
+                        <SelectItem value="" disabled>
+                          Carregando categorias...
                         </SelectItem>
-                      ))}
+                      ) : (
+                        categories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -271,7 +313,7 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Método de Pagamento</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o método" />

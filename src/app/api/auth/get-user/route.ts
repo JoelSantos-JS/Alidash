@@ -9,35 +9,35 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const firebaseUid = searchParams.get('firebase_uid');
+    const userId = searchParams.get('user_id');
     const email = searchParams.get('email');
 
-    if (!firebaseUid && !email) {
+    if (!userId && !email) {
       return NextResponse.json(
-        { error: 'Firebase UID ou email é obrigatório' },
+        { error: 'User ID ou email é obrigatório' },
         { status: 400 }
       );
     }
 
-    console.log('🔍 Buscando usuário no Supabase:', { firebaseUid, email });
+    console.log('🔍 Buscando usuário no Supabase:', { userId, email });
 
     let user = null;
 
-    // Tentar buscar pelo Firebase UID primeiro
-    if (firebaseUid) {
-      const { data: userByUid, error: uidError } = await supabase
+    // Tentar buscar pelo User ID primeiro
+    if (userId) {
+      const { data: userById, error: idError } = await supabase
         .from('users')
         .select('*')
-        .eq('firebase_uid', firebaseUid)
+        .eq('id', userId)
         .single();
 
-      if (!uidError && userByUid) {
-        user = userByUid;
-        console.log('✅ Usuário encontrado pelo Firebase UID');
+      if (!idError && userById) {
+        user = userById;
+        console.log('✅ Usuário encontrado pelo User ID');
       }
     }
 
-    // Se não encontrou pelo UID, tentar pelo email
+    // Se não encontrou pelo ID, tentar pelo email
     if (!user && email) {
       const { data: userByEmail, error: emailError } = await supabase
         .from('users')
@@ -70,4 +70,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

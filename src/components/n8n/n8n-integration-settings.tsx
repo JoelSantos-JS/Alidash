@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/hooks/use-auth'
+import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from '@/hooks/use-toast'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -485,7 +485,7 @@ export function N8NIntegrationSettings() {
                         id="webhook-url"
                         value={newWebhookForm.url}
                         onChange={(e) => setNewWebhookForm(prev => ({ ...prev, url: e.target.value }))}
-                        placeholder="https://seu-n8n.com/webhook/alidash"
+                        placeholder="https://seu-n8n.com/webhook/voxcash"
                       />
                     </div>
                     

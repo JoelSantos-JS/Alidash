@@ -4,6 +4,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from 'next/navigation';
 import type { Product, Sale } from "@/types";
+import { useData } from "@/contexts/data-context";
 
 import { ProductSearch } from "@/components/product/product-search";
 import { ProductCard } from "@/components/product/product-card";
@@ -59,7 +60,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { SaleForm } from "@/components/product/sale-form";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-supabase-auth";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,8 +69,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+
 import { useDualSync } from '@/lib/dual-database-sync';
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -109,10 +109,19 @@ const cleanUndefinedValues = (obj: any): any => {
 
 
 export default function Home() {
-  const { user, loading: authLoading, logoutWithBackup } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
+  const { expenses, revenues, refreshData, isLoading: dataLoading } = useData();
+  
+  // Estado para controlar se a hidratação foi concluída
+  const [isHydrated, setIsHydrated] = useState(false);
   
   // Hook para gerenciar tipo de conta (modular para futuras expansões)
   const { accountType, setAccountType, isPersonal, isBusiness } = useAccountType('business');
+  
+  // Marcar como hidratado após o primeiro render no cliente
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
   
   // Detectar parâmetro mode na URL para voltar do dashboard pessoal
   useEffect(() => {
@@ -129,18 +138,19 @@ export default function Home() {
   if (process.env.NODE_ENV === 'development') {
     console.log('🔍 Estado da autenticação:', {
       user: !!user,
-      userUid: user?.uid,
+      userId: user?.id,
       userEmail: user?.email,
       authLoading,
-      accountType
+      accountType,
+      isHydrated
     });
   }
   
   // Hook de sincronização dual - só criar quando user existir
   const dualSync = useMemo(() => {
-    if (!user?.uid) return null;
-    return useDualSync(user.uid, 'BEST_EFFORT');
-  }, [user?.uid]);
+    if (!user?.id) return null;
+    return useDualSync(user.id, 'BEST_EFFORT');
+  }, [user?.id]);
   
   // Estados do componente
   const [products, setProducts] = useState<Product[]>([]);
@@ -158,8 +168,6 @@ export default function Home() {
 
   const [monthlyBudget, setMonthlyBudget] = useState(600);
   const [budgetLoading, setBudgetLoading] = useState(false);
-  const [revenues, setRevenues] = useState<any[]>([]);
-  const [expenses, setExpenses] = useState<any[]>([]);
   const [sales, setSales] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const { toast } = useToast();
@@ -171,7 +179,7 @@ export default function Home() {
     
     try {
       // Verificar se o usuário já tem produtos
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?email=${user.email}`);
       
       if (userResponse.ok) {
         const userResult = await userResponse.json();
@@ -209,13 +217,20 @@ export default function Home() {
   // Função para carregar orçamento do banco de dados
   const loadBudgetFromDatabase = async (supabaseUserId: string) => {
     try {
+      console.log('🔄 Carregando orçamento para usuário:', supabaseUserId);
       const response = await fetch(`/api/budgets?user_id=${supabaseUserId}`);
       if (response.ok) {
         const data = await response.json();
+        console.log('📊 Dados do orçamento recebidos:', data);
         if (data.budget) {
+          console.log('📝 Atualizando estado monthlyBudget de', monthlyBudget, 'para', data.budget.monthly_budget);
           setMonthlyBudget(data.budget.monthly_budget);
           console.log('✅ Orçamento carregado do banco:', data.budget.monthly_budget);
+        } else {
+          console.log('⚠️ Nenhum orçamento encontrado na resposta');
         }
+      } else {
+        console.log('❌ Erro na resposta da API:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('❌ Erro ao carregar orçamento:', error);
@@ -224,18 +239,17 @@ export default function Home() {
 
   // Função para salvar orçamento no banco de dados
   const saveBudgetToDatabase = async (newBudget: number) => {
-    if (!user?.uid) return;
+    if (!user?.id) {
+      console.log('❌ Usuário não autenticado');
+      return;
+    }
     
+    console.log('💾 Salvando orçamento:', newBudget, '(atual:', monthlyBudget + ')');
     setBudgetLoading(true);
     try {
-      // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
-      if (!userResponse.ok) {
-        throw new Error('Usuário não encontrado');
-      }
-      
-      const userResult = await userResponse.json();
-      const supabaseUserId = userResult.user.id;
+      // O usuário já é do Supabase, então podemos usar o ID diretamente
+      const supabaseUserId = user.id;
+      console.log('👤 Usuário Supabase ID:', supabaseUserId);
       
       const response = await fetch('/api/budgets', {
         method: 'PUT',
@@ -248,7 +262,11 @@ export default function Home() {
         })
       });
       
+      const responseData = await response.json();
+      console.log('📡 Resposta da API:', responseData);
+      
       if (response.ok) {
+        console.log('📝 Atualizando estado local de', monthlyBudget, 'para', newBudget);
         setMonthlyBudget(newBudget);
         toast({
           title: "Orçamento atualizado",
@@ -256,7 +274,7 @@ export default function Home() {
         });
         console.log('✅ Orçamento salvo no banco:', newBudget);
       } else {
-        throw new Error('Erro ao salvar orçamento');
+        throw new Error('Erro ao salvar orçamento: ' + responseData.error);
       }
     } catch (error) {
       console.error('❌ Erro ao salvar orçamento:', error);
@@ -280,27 +298,14 @@ export default function Home() {
     const fetchData = async () => {
       try {
         if (process.env.NODE_ENV === 'development') {
-          console.log('🔄 Carregando dados do Supabase para usuário:', user.uid);
+          console.log('🔄 Carregando dados do Supabase para usuário:', user.id);
         }
 
-        // Primeiro buscar o usuário no Supabase
-        const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
-        
-        if (!userResponse.ok) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('⚠️ Usuário não encontrado no Supabase');
-          }
-          setProducts([]);
-          setIsLoading(false);
-          return;
-        }
-        
-        const userResult = await userResponse.json();
-        const supabaseUser = userResult.user;
-        const supabaseUserId = supabaseUser.id;
+        // O usuário já é do Supabase, então podemos usar o ID diretamente
+        const supabaseUserId = user.id;
         
         if (process.env.NODE_ENV === 'development') {
-          console.log('✅ Usuário Supabase encontrado:', supabaseUserId);
+          console.log('✅ Usuário Supabase ID:', supabaseUserId);
         }
 
         // Carregar orçamento do banco de dados
@@ -309,30 +314,22 @@ export default function Home() {
         // Fazer todas as chamadas de API em paralelo para melhor performance
         const [
           productsResult,
-          revenuesResult,
-          expensesResult,
           salesResult,
           transactionsResult
         ] = await Promise.allSettled([
           fetch(`/api/products/get?user_id=${supabaseUserId}`).then(res => res.ok ? res.json() : { products: [] }),
-          fetch(`/api/revenues/get?user_id=${supabaseUserId}`).then(res => res.ok ? res.json() : { revenues: [] }),
-          fetch(`/api/expenses/get?user_id=${supabaseUserId}`).then(res => res.ok ? res.json() : { expenses: [] }),
           fetch(`/api/sales/get?user_id=${supabaseUserId}`).then(res => res.ok ? res.json() : { sales: [] }),
           fetch(`/api/transactions/get?user_id=${supabaseUserId}`).then(res => res.ok ? res.json() : { transactions: [] })
         ]);
 
         // Extrair dados dos resultados
         const supabaseProducts = productsResult.status === 'fulfilled' ? (productsResult.value.products || []) : [];
-        const supabaseRevenues = revenuesResult.status === 'fulfilled' ? (revenuesResult.value.revenues || []) : [];
-        const supabaseExpenses = expensesResult.status === 'fulfilled' ? (expensesResult.value.expenses || []) : [];
         const supabaseSales = salesResult.status === 'fulfilled' ? (salesResult.value.sales || []) : [];
         const supabaseTransactions = transactionsResult.status === 'fulfilled' ? (transactionsResult.value.transactions || []) : [];
 
         // Log de erros se houver (apenas em desenvolvimento)
         if (process.env.NODE_ENV === 'development') {
           if (productsResult.status === 'rejected') console.log('⚠️ Erro ao carregar produtos:', productsResult.reason);
-          if (revenuesResult.status === 'rejected') console.log('⚠️ Erro ao carregar receitas:', revenuesResult.reason);
-          if (expensesResult.status === 'rejected') console.log('⚠️ Erro ao carregar despesas:', expensesResult.reason);
           if (salesResult.status === 'rejected') console.log('⚠️ Erro ao carregar vendas:', salesResult.reason);
           if (transactionsResult.status === 'rejected') console.log('⚠️ Erro ao carregar transações:', transactionsResult.reason);
         }
@@ -341,16 +338,15 @@ export default function Home() {
         const finalProducts = supabaseProducts;
         
         setProducts(finalProducts);
-        setRevenues(supabaseRevenues);
-        setExpenses(supabaseExpenses);
         setSales(supabaseSales);
         setTransactions(supabaseTransactions);
+        
+        // Remover chamada para refreshData() que causava loop infinito
+        // Os dados de expenses e revenues já são carregados automaticamente pelo DataContext
         
         if (process.env.NODE_ENV === 'development') {
           console.log('📊 Dashboard carregado:', {
             produtos: finalProducts.length,
-            receitas: supabaseRevenues.length,
-            despesas: supabaseExpenses.length,
             vendas: supabaseSales.length,
             transacoes: supabaseTransactions.length
           });
@@ -364,30 +360,37 @@ export default function Home() {
     }
     
     fetchData();
-  }, [user, authLoading]);
+  }, [user, authLoading]); // Removed refreshData from dependencies
 
-  // Função para salvar dados no Firebase
-  const saveDataToFirebase = async (productsToSave: Product[]) => {
-    if (!user) return;
-    
-    try {
-      const cleanProducts = productsToSave.map(product => cleanUndefinedValues(product));
-      const docRef = doc(db, "user-data", user.uid);
-      await setDoc(docRef, { products: cleanProducts }, { merge: true });
-      if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Produtos salvos no Firebase');
+  // Remover useEffect problemático que causava loop infinito
+  // Este useEffect estava causando chamadas infinitas de API devido aos event listeners
+  // de visibilitychange, focus, pageshow e popstate que chamavam refreshData() constantemente
+
+  // Remover useEffect que causava loop infinito - forçava atualização desnecessária
+  // Este useEffect estava chamando refreshData() constantemente após mount
+
+  // Listener para eventos customizados de atualização de dados
+  useEffect(() => {
+    const handleDataUpdate = (event: CustomEvent) => {
+      console.log('🔄 Dados atualizados detectados:', event.detail);
+      // Atualizar dados quando receitas ou despesas são adicionadas/modificadas
+      if (user?.id && (event.detail.type === 'revenue' || event.detail.type === 'expense')) {
+        refreshData();
       }
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error("Erro ao salvar produtos:", error);
-      }
-      toast({
-        variant: 'destructive',
-        title: "Erro ao Salvar",
-        description: "Não foi possível salvar os dados.",
-      });
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('dataUpdated', handleDataUpdate as EventListener);
     }
-  };
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('dataUpdated', handleDataUpdate as EventListener);
+      }
+    };
+  }, [user?.id]); // Remover refreshData das dependências para evitar loop
+
+
 
   const filteredProducts = useMemo(() => {
     if (!searchTerm) return products;
@@ -478,7 +481,7 @@ export default function Home() {
 
     try {
       // Primeiro buscar o usuário no Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
       
       if (userResponse.ok) {
         const userResult = await userResponse.json();
@@ -586,7 +589,7 @@ export default function Home() {
     try {
       // Buscar usuário e deletar produto em paralelo (otimização)
       const [userResponse] = await Promise.all([
-        fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`)
+        fetch(`/api/auth/get-user?email=${user?.email}`)
       ]);
       
       if (userResponse.ok) {
@@ -653,7 +656,7 @@ export default function Home() {
     
     try {
       // Primeiro buscar o usuário no Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
       
       if (userResponse.ok) {
         const userResult = await userResponse.json();
@@ -787,6 +790,31 @@ export default function Home() {
     
     return alerts;
   }, [summaryStats, products]);
+
+  // Mostrar tela de loading enquanto a autenticação está carregando ou não hidratou
+  if (!isHydrated || authLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-sm text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirecionar para login se não estiver autenticado (apenas após hidratação)
+  if (!user) {
+    router.push('/login');
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-sm text-muted-foreground">Redirecionando para login...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -937,7 +965,7 @@ export default function Home() {
                 size="lg"
                 onClick={async () => {
                   try {
-                    await logoutWithBackup();
+                    await signOut();
                   } catch (error) {
                     console.error('Erro ao fazer logout:', error);
                   }
@@ -1082,7 +1110,7 @@ export default function Home() {
                     <DropdownMenuItem 
                       onClick={async () => {
                         try {
-                          await logoutWithBackup();
+                          await signOut();
                         } catch (error) {
                           console.error('Erro ao fazer logout:', error);
                         }

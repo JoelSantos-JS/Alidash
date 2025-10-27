@@ -22,12 +22,11 @@ export async function POST(request: NextRequest) {
     const dualSync = new DualDatabaseSync(userId, DualSyncPresets.BEST_EFFORT)
     const result = await dualSync.createProduct(productData)
 
-    console.log(`✅ Produto criado - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
+    console.log(`✅ Produto criado - Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
 
     if (result.success) {
       return NextResponse.json({ 
         success: true,
-        firebaseSuccess: result.firebaseSuccess,
         supabaseSuccess: result.supabaseSuccess,
         message: 'Produto criado com sucesso'
       })
@@ -35,7 +34,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         success: false,
         errors: result.errors,
-        firebaseSuccess: result.firebaseSuccess,
         supabaseSuccess: result.supabaseSuccess
       }, { status: 500 })
     }
@@ -46,4 +44,4 @@ export async function POST(request: NextRequest) {
       error: 'Erro interno do servidor' 
     }, { status: 500 })
   }
-} 
+}

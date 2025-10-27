@@ -40,10 +40,22 @@ const statusMap = {
     sold: { label: 'Esgotado', color: 'bg-gray-500' },
 }
 
-export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }: ProductDetailViewProps) {
-  const statusInfo = statusMap[product.status];
+export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale, onClose }: ProductDetailViewProps) {
+  // Calcular estoque disponível
+  const availableStock = product.quantity - product.quantitySold;
+  
+  // Determinar status real baseado no estoque
+  let actualStatus = product.status;
+  if (availableStock <= 0 && product.status !== 'purchased' && product.status !== 'shipping') {
+    actualStatus = 'sold';
+  } else if (availableStock > 0 && product.status === 'sold') {
+    // Se tem estoque mas está marcado como vendido, mudar para "selling"
+    actualStatus = 'selling';
+  }
+  
+  const statusInfo = statusMap[actualStatus];
   const isLowProfit = product.profitMargin < 15;
-  const isSoldOut = product.status === 'sold';
+  const isSoldOut = availableStock <= 0;
 
   // Buscar imagem principal ou usar imageUrl como fallback
   const mainImage = product.images?.find(img => img.type === 'main')?.url || 
@@ -117,7 +129,7 @@ export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }:
                 </div>
                 <div className="text-center p-2 bg-background/80 rounded-lg border">
                   <div className="text-lg font-bold text-blue-600">
-                    {product.quantity - product.quantitySold}
+                    {availableStock}
                   </div>
                   <div className="text-xs text-muted-foreground">Estoque</div>
                 </div>

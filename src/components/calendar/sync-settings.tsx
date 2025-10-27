@@ -21,7 +21,7 @@ import {
   ArrowLeftRight
 } from "lucide-react"
 import { toast } from "sonner"
-import { useAuth } from "@/hooks/use-auth"
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth"
 import { useSyncSettings } from "@/hooks/useSyncSettings"
 import { useGoogleCalendar } from "@/hooks/useGoogleCalendar"
 
@@ -45,7 +45,7 @@ interface SyncSettingsProps {
 }
 
 export function SyncSettings({ isConnected, onSync, className }: SyncSettingsProps) {
-  const { user } = useAuth()
+  const { user } = useSupabaseAuth()
   const { 
     settings, 
     loading, 

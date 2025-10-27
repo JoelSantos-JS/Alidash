@@ -19,8 +19,9 @@ import {
   FileText,
   Target
 } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
+import { exportReportToPDF, exportReportToExcel, calculateReportStats } from "@/lib/report-export";
 import type { Product } from "@/types";
 import { supabaseService } from "@/lib/supabase-service";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -39,7 +40,8 @@ import { InventoryStatusChart } from "@/components/reports/inventory-status-char
 import { SupplierPerformanceChart } from "@/components/reports/supplier-performance-chart";
 import { SalesTrendsChart } from "@/components/reports/sales-trends-chart";
 import { ProfitMarginAnalysisChart } from "@/components/reports/profit-margin-analysis-chart";
-import { ReportsSidebar } from "@/components/reports/reports-sidebar";
+// Sidebar component
+import { ReportsSidebar } from '@/components/reports/reports-sidebar';
 
 // Dados iniciais (mesmos da página principal)
 const initialProducts: Product[] = [
@@ -150,43 +152,75 @@ export default function ReportsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Carregar dados dos produtos
+  // Carregar dados dos produtos do Supabase
   useEffect(() => {
     if (authLoading || !user) return;
 
     const fetchData = async () => {
       try {
-        console.log('🔄 Carregando dados para relatórios (Supabase):', user.uid);
+        console.log('🔄 Carregando dados para relatórios (Supabase):', user.id);
 
         // Buscar produtos reais do Supabase via API
-        // Primeiro buscar o usuário no Supabase
-        const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
+        const response = await fetch(`/api/products/get?user_id=${user.id}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
         
-        if (!userResponse.ok) {
-          console.log('⚠️ Usuário não encontrado no Supabase');
-          return;
-        }
-        
-        const userResult = await userResponse.json();
-        const supabaseUser = userResult.user;
-        
-        const response = await fetch(`/api/products/get?user_id=${supabaseUser.id}`);
         if (!response.ok) {
-          throw new Error('Erro ao carregar produtos via API');
+          throw new Error(`Erro HTTP: ${response.status}`);
         }
         
         const data = await response.json();
         const supabaseProducts = data.products || [];
 
-        setProducts(supabaseProducts);
-        console.log('📊 Relatórios (Supabase) carregados com:', supabaseProducts.length, 'produtos');
+        // Validar e processar dados dos produtos
+        const processedProducts = supabaseProducts.map((product: any) => ({
+          ...product,
+          // Garantir que campos numéricos sejam números
+          purchasePrice: Number(product.purchasePrice) || 0,
+          shippingCost: Number(product.shippingCost) || 0,
+          importTaxes: Number(product.importTaxes) || 0,
+          packagingCost: Number(product.packagingCost) || 0,
+          marketingCost: Number(product.marketingCost) || 0,
+          otherCosts: Number(product.otherCosts) || 0,
+          totalCost: Number(product.totalCost) || 0,
+          sellingPrice: Number(product.sellingPrice) || 0,
+          expectedProfit: Number(product.expectedProfit) || 0,
+          actualProfit: Number(product.actualProfit) || 0,
+          profitMargin: Number(product.profitMargin) || 0,
+          roi: Number(product.roi) || 0,
+          quantity: Number(product.quantity) || 0,
+          quantitySold: Number(product.quantitySold) || 0,
+          // Garantir que datas sejam objetos Date
+          purchaseDate: product.purchaseDate ? new Date(product.purchaseDate) : new Date(),
+          // Processar vendas se existirem
+          sales: product.sales ? product.sales.map((sale: any) => ({
+            ...sale,
+            date: new Date(sale.date),
+            quantity: Number(sale.quantity) || 1
+          })) : []
+        }));
+
+        setProducts(processedProducts);
+        console.log('📊 Relatórios (Supabase) carregados com:', processedProducts.length, 'produtos');
+        
+        if (processedProducts.length === 0) {
+          toast({
+            title: "Nenhum Produto Encontrado",
+            description: "Adicione produtos para visualizar os relatórios.",
+          });
+        }
       } catch (error) {
         console.error('❌ Erro ao carregar dados para relatórios (Supabase):', error);
         toast({
           variant: 'destructive',
           title: "Erro ao Carregar Dados",
-          description: "Não foi possível carregar os dados reais do Supabase.",
+          description: "Não foi possível carregar os dados do banco. Verifique sua conexão.",
         });
+        // Em caso de erro, manter array vazio
+        setProducts([]);
       } finally {
         setIsLoading(false);
       }
@@ -267,12 +301,44 @@ export default function ReportsPage() {
   }, [periodFilter]);
 
   // Handler functions for sidebar
-  const handleExport = () => {
-    toast({
-      title: "Exportação Iniciada",
-      description: "Seu relatório está sendo gerado. Aguarde alguns segundos.",
-    });
-    // Add actual export logic here
+  const handleExport = (format: 'pdf' | 'excel') => {
+    if (!products.length) {
+      toast({
+        title: "Nenhum dado para exportar",
+        description: "Não há produtos para incluir no relatório.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const reportData = {
+        ...calculateReportStats(filteredProducts),
+        period: selectedPeriod,
+        generatedAt: new Date()
+      };
+
+      if (format === 'pdf') {
+        exportReportToPDF(reportData, { includeDetails: true });
+        toast({
+          title: "PDF exportado com sucesso",
+          description: "O relatório foi salvo em seu computador.",
+        });
+      } else {
+        exportReportToExcel(reportData, { includeDetails: true });
+        toast({
+          title: "Excel exportado com sucesso", 
+          description: "A planilha foi salva em seu computador.",
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao exportar:', error);
+      toast({
+        title: "Erro na exportação",
+        description: "Ocorreu um erro ao gerar o arquivo. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleRefresh = async () => {
@@ -328,9 +394,9 @@ export default function ReportsPage() {
       <div className="flex-1 min-w-0">
       {/* Header */}
       <div className="border-b bg-card">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
+        <div className="container mx-auto px-6 py-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div className="flex items-center gap-6">
               <Button
                 variant="ghost"
                 size="sm"
@@ -348,24 +414,24 @@ export default function ReportsPage() {
                 <ArrowLeft className="h-4 w-4" />
                 Voltar
               </Button>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-                  <BarChart3 className="h-6 w-6 text-primary" />
+              <div className="space-y-2">
+                <h1 className="text-3xl md:text-4xl font-bold flex items-center gap-3">
+                  <BarChart3 className="h-8 w-8 text-primary" />
                   Relatórios Avançados
                 </h1>
-                <p className="text-muted-foreground">
+                <p className="text-lg text-muted-foreground">
                   Análise completa dos seus produtos e desempenho
                 </p>
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Button variant="outline" size="sm" className="gap-2" onClick={handleExport}>
                 <Download className="h-4 w-4" />
                 Exportar
               </Button>
-              <Badge variant="secondary" className="gap-1">
-                <FileText className="h-3 w-3" />
+              <Badge variant="secondary" className="gap-2 px-3 py-1">
+                <FileText className="h-4 w-4" />
                 Produtos: {reportStats.totalProducts}
               </Badge>
             </div>
@@ -374,60 +440,68 @@ export default function ReportsPage() {
       </div>
 
       {/* KPIs */}
-      <div className="container mx-auto px-4 pb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-6">
+      <div className="container mx-auto px-6 py-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardContent className="p-8">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground">Investimento Total</p>
-                  <p className="text-2xl font-bold">
+                  <p className="text-3xl font-bold text-blue-600">
                     {reportStats.totalInvestment.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </p>
                 </div>
-                <DollarSign className="h-8 w-8 text-blue-600" />
+                <div className="p-3 bg-blue-100 rounded-full">
+                  <DollarSign className="h-8 w-8 text-blue-600" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-6">
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardContent className="p-8">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground">Receita Total</p>
-                  <p className="text-2xl font-bold">
+                  <p className="text-3xl font-bold text-green-600">
                     {reportStats.totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-green-600" />
+                <div className="p-3 bg-green-100 rounded-full">
+                  <TrendingUp className="h-8 w-8 text-green-600" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-6">
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardContent className="p-8">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground">Lucro Realizado</p>
-                  <p className="text-2xl font-bold">
+                  <p className="text-3xl font-bold text-purple-600">
                     {reportStats.totalProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </p>
                 </div>
-                <Target className="h-8 w-8 text-purple-600" />
+                <div className="p-3 bg-purple-100 rounded-full">
+                  <Target className="h-8 w-8 text-purple-600" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-6">
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardContent className="p-8">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground">ROI Médio</p>
-                  <p className="text-2xl font-bold">
+                  <p className="text-3xl font-bold text-orange-600">
                     {reportStats.avgROI.toFixed(1)}%
                   </p>
                 </div>
-                <BarChart3 className="h-8 w-8 text-orange-600" />
+                <div className="p-3 bg-orange-100 rounded-full">
+                  <BarChart3 className="h-8 w-8 text-orange-600" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -435,17 +509,17 @@ export default function ReportsPage() {
       </div>
 
       {/* Gráficos */}
-      <div className="container mx-auto px-4 pb-8">
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
-            <TabsTrigger value="trends">Tendências</TabsTrigger>
-            <TabsTrigger value="analysis">Análise</TabsTrigger>
+      <div className="container mx-auto px-6 pb-12">
+        <Tabs defaultValue="overview" className="space-y-8">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 h-12">
+            <TabsTrigger value="overview" className="text-base">Visão Geral</TabsTrigger>
+            <TabsTrigger value="performance" className="text-base">Performance</TabsTrigger>
+            <TabsTrigger value="trends" className="text-base">Tendências</TabsTrigger>
+            <TabsTrigger value="analysis" className="text-base">Análise</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <TabsContent value="overview" className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <ProfitabilityAnalysisChart data={filteredProducts} isLoading={isLoading} />
               <CategoryPerformanceChart data={filteredProducts} isLoading={isLoading} />
               <SalesVelocityChart data={filteredProducts} isLoading={isLoading} />
@@ -453,8 +527,8 @@ export default function ReportsPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="performance" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <TabsContent value="performance" className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <InventoryStatusChart data={filteredProducts} isLoading={isLoading} />
               <SupplierPerformanceChart data={filteredProducts} isLoading={isLoading} />
               <ProfitMarginAnalysisChart data={filteredProducts} isLoading={isLoading} />
@@ -462,18 +536,18 @@ export default function ReportsPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="trends" className="space-y-6">
-            <div className="grid grid-cols-1 gap-6">
+          <TabsContent value="trends" className="space-y-8">
+            <div className="grid grid-cols-1 gap-8">
               <SalesTrendsChart data={filteredProducts} isLoading={isLoading} />
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <CategoryPerformanceChart data={filteredProducts} isLoading={isLoading} />
                 <ROIComparisonChart data={filteredProducts} isLoading={isLoading} />
               </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="analysis" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <TabsContent value="analysis" className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <ProfitMarginAnalysisChart data={filteredProducts} isLoading={isLoading} />
               <SupplierPerformanceChart data={filteredProducts} isLoading={isLoading} />
               <SalesVelocityChart data={filteredProducts} isLoading={isLoading} />

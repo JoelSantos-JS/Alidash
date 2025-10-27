@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-supabase-auth";
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,36 +11,26 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { 
   User, 
-  ShieldCheck, 
-  Calendar, 
   LogOut, 
-  Zap, 
   Settings,
-  Bell,
-  Palette,
   Globe,
-  Download,
-  Upload,
-  Eye,
-  EyeOff,
-  Mail,
   Package,
   KeyRound,
   BarChart
 } from "lucide-react";
-import { auth } from "@/lib/firebase";
+
 import { BackupStatusCard } from "@/components/layout/backup-status-card";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
 import { backupUserData } from "@/lib/backup-client";
 import NotificationSettings from "@/components/notifications/notification-settings";
 
 export default function ProfilePage() {
-    const { user, userData, logoutWithBackup, refreshUserData } = useAuth();
+    const { user, userData, signOut, refreshUserData } = useAuth();
     const { toast } = useToast();
     const searchParams = useSearchParams();
     const defaultTab = searchParams.get('tab') || 'account';
@@ -90,7 +80,7 @@ export default function ProfilePage() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    firebase_uid: user.uid,
+                    user_id: user.id,
                     name: userName.trim()
                 })
             });
@@ -127,7 +117,7 @@ export default function ProfilePage() {
     };
 
     const handleLogout = async () => {
-        await logoutWithBackup();
+        await signOut();
     };
 
     // Função para executar backup automático

@@ -11,7 +11,7 @@ import NotificationSettings from '@/components/notifications/notification-settin
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, Calendar, Plus, Settings, RefreshCw, CheckCircle, AlertCircle, Loader2, Bell } from 'lucide-react'
-import { useAuth } from '@/hooks/use-auth'
+import { useAuth } from '@/hooks/use-supabase-auth'
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar'
 import { useCalendarEvents, CalendarEvent } from '@/hooks/useCalendarEvents'
 import { toast } from 'sonner'

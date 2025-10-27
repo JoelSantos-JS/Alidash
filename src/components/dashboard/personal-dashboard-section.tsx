@@ -93,20 +93,13 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
   }, [user, periodFilter]);
 
   const loadPersonalData = async () => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
     
     try {
       setLoading(true);
       
-      // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
-      if (!userResponse.ok) {
-        console.log('⚠️ Usuário não encontrado no Supabase');
-        return;
-      }
-      
-      const userResult = await userResponse.json();
-      const supabaseUserId = userResult.user.id;
+      // O usuário já é do Supabase, então podemos usar o ID diretamente
+      const supabaseUserId = user.id;
       
       // Carregar resumo pessoal
       const summaryResponse = await fetch(`/api/personal/summary?user_id=${supabaseUserId}&month=9&year=2025`);

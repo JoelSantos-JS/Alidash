@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import { X, ArrowUp, ArrowDown, Calendar, CreditCard, Tag, FileText, MapPin, Building } from "lucide-react";
 
 interface PersonalTransactionFormProps {
@@ -17,7 +17,8 @@ interface PersonalTransactionFormProps {
   onSuccess: () => void;
 }
 
-const INCOME_CATEGORIES = {
+// Categorias padrão como fallback
+const DEFAULT_INCOME_CATEGORIES = {
   salary: 'Salário',
   freelance: 'Freelance',
   investment: 'Investimentos',
@@ -29,7 +30,7 @@ const INCOME_CATEGORIES = {
   other: 'Outros'
 };
 
-const EXPENSE_CATEGORIES = {
+const DEFAULT_EXPENSE_CATEGORIES = {
   housing: 'Moradia',
   food: 'Alimentação',
   transportation: 'Transporte',
@@ -55,9 +56,12 @@ const PAYMENT_METHODS = {
 };
 
 export default function PersonalTransactionForm({ isOpen, onClose, onSuccess }: PersonalTransactionFormProps) {
-  const { user } = useAuth();
+  const { user } = useSupabaseAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [dynamicIncomeCategories, setDynamicIncomeCategories] = useState(DEFAULT_INCOME_CATEGORIES);
+  const [dynamicExpenseCategories, setDynamicExpenseCategories] = useState(DEFAULT_EXPENSE_CATEGORIES);
   
   const [formData, setFormData] = useState({
     type: 'expense' as 'income' | 'expense',
@@ -75,6 +79,62 @@ export default function PersonalTransactionForm({ isOpen, onClose, onSuccess }: 
     merchant: '',
     notes: ''
   });
+
+  // Carregar categorias da API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        const response = await fetch('/api/categories');
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Separar categorias por tipo
+          const incomeCategories: Record<string, string> = {};
+          const expenseCategories: Record<string, string> = {};
+          
+          data.categories?.forEach((cat: any) => {
+            // Criar uma chave baseada no nome (sem espaços e minúscula)
+            const key = cat.name.toLowerCase().replace(/\s+/g, '_');
+            
+            // Categorizar baseado no tipo ou nome
+            if (cat.type === 'income' || 
+                ['salário', 'freelance', 'investimento', 'renda'].some(word => 
+                  cat.name.toLowerCase().includes(word))) {
+              incomeCategories[key] = cat.name;
+            } else {
+              expenseCategories[key] = cat.name;
+            }
+          });
+          
+          // Combinar com categorias padrão
+          if (Object.keys(incomeCategories).length > 0) {
+            setDynamicIncomeCategories({
+              ...DEFAULT_INCOME_CATEGORIES,
+              ...incomeCategories
+            });
+          }
+          
+          if (Object.keys(expenseCategories).length > 0) {
+            setDynamicExpenseCategories({
+              ...DEFAULT_EXPENSE_CATEGORIES,
+              ...expenseCategories
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao carregar categorias:', error);
+        // Em caso de erro, manter as categorias padrão
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchCategories();
+    }
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,14 +169,8 @@ export default function PersonalTransactionForm({ isOpen, onClose, onSuccess }: 
     try {
       setLoading(true);
       
-      // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
-      if (!userResponse.ok) {
-        throw new Error('Usuário não encontrado');
-      }
-      
-      const userResult = await userResponse.json();
-      const supabaseUserId = userResult.user.id;
+      // O usuário já é do Supabase, usar ID diretamente
+      const supabaseUserId = user.id;
       
       let transactionData: any = {
         user_id: supabaseUserId,
@@ -200,7 +254,7 @@ export default function PersonalTransactionForm({ isOpen, onClose, onSuccess }: 
   };
 
   const getCurrentCategories = () => {
-    return formData.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+    return formData.type === 'income' ? dynamicIncomeCategories : dynamicExpenseCategories;
   };
 
   if (!isOpen) return null;
@@ -313,10 +367,15 @@ export default function PersonalTransactionForm({ isOpen, onClose, onSuccess }: 
                   onChange={(e) => handleInputChange('category', e.target.value)}
                   className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
                   required
+                  disabled={loadingCategories}
                 >
-                  {Object.entries(getCurrentCategories()).map(([key, label]) => (
-                    <option key={key} value={key}>{label}</option>
-                  ))}
+                  {loadingCategories ? (
+                    <option value="">Carregando categorias...</option>
+                  ) : (
+                    Object.entries(getCurrentCategories()).map(([key, label]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))
+                  )}
                 </select>
               </div>
               

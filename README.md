@@ -1,5 +1,5 @@
-# Firebase Studio
+# VoxCash - Gestão Completa
 
-This is a NextJS starter in Firebase Studio.
+Este é um sistema completo de gestão financeira e pessoal construído com NextJS.
 
-To get started, take a look at src/app/page.tsx.
+Para começar, dê uma olhada em src/app/page.tsx.

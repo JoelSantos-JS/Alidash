@@ -52,18 +52,25 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const transactionsData = useMemo(() => {
+    // Usar a data atual para processamento
     const now = new Date();
+    
+    // Log para debug
+    console.log('🔄 Renderizando TransactionsSection com', transactions.length, 'transações');
+    
+    // Verificar se as transações estão vazias
+    if (transactions.length === 0) {
+      console.log('⚠️ Nenhuma transação para processar em TransactionsSection');
+    } else {
+      console.log('✅ Transações disponíveis para renderização:', 
+        transactions.map(t => ({id: t.id, description: t.description, amount: t.amount})));
+    }
+    
+    // Função para determinar o início do período baseado no filtro
     const getPeriodStart = () => {
-      switch (periodFilter) {
-        case "day":
-          return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        case "week":
-          return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        case "month":
-          return new Date(now.getFullYear(), now.getMonth(), 1);
-        default:
-          return new Date(now.getFullYear(), now.getMonth(), 1);
-      }
+      // Não aplicamos filtro de período aqui, pois as transações já vêm filtradas da API
+      // Apenas retornamos uma data antiga para garantir que todas as transações sejam exibidas
+      return new Date(2000, 0, 1); // 1 de janeiro de 2000
     };
 
     const periodStart = getPeriodStart();
@@ -107,9 +114,18 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
       });
     }
 
+    // Log para debug
+    console.log("Transações recebidas:", transactions.length);
+    console.log("Detalhes das transações:", transactions);
+    
+    if (transactions.length === 0) {
+      console.log("⚠️ Nenhuma transação para renderizar!");
+    }
+    
     transactions.forEach((originalTransaction: TransactionType) => {
-      if (new Date(originalTransaction.date) >= periodStart) {
-        let description = originalTransaction.description;
+      // Garantir que a transação tem dados válidos
+      if (originalTransaction) {
+        let description = originalTransaction.description || "Sem descrição";
         
         // Log específico para transações parceladas
         if (originalTransaction.isInstallment && originalTransaction.installmentInfo) {
@@ -159,93 +175,9 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
       }
     });
 
-    // 2. Adicionar vendas de produtos (apenas se não houver conflito)
-    products.forEach(product => {
-      if (product.sales) {
-        product.sales
-          .filter(sale => new Date(sale.date) >= periodStart)
-          .forEach(sale => {
-            const saleTransaction = {
-              date: sale.date,
-              amount: product.sellingPrice * sale.quantity,
-              description: `Venda: ${product.name} (${sale.quantity}x)`
-            };
-            
-            const transactionKey = generateTransactionKey(saleTransaction, 'sale');
-            
-            // Verificar se já existe uma transação com a mesma chave
-            if (!transactionKeyMap.has(transactionKey)) {
-              const baseId = `sale-${sale.id}`;
-              const uniqueId = generateUniqueId(baseId);
-              
-              const displayTransaction: DisplayTransaction = {
-                id: uniqueId,
-                date: new Date(sale.date),
-                description: saleTransaction.description,
-                amount: saleTransaction.amount,
-                type: 'income',
-                category: product.category,
-                subcategory: 'Venda de Produto',
-                source: 'sale'
-              };
-              
-              processedTransactions.push(displayTransaction);
-              transactionKeyMap.set(transactionKey, displayTransaction);
-            } else {
-              if (process.env.NODE_ENV === 'development') {
-                console.log('🚫 Venda duplicada detectada e ignorada:', {
-                  description: saleTransaction.description,
-                  amount: saleTransaction.amount,
-                  date: sale.date,
-                  existingKey: transactionKey
-                });
-              }
-            }
-          });
-      }
-    });
-
-    // 3. Adicionar compras de produtos (apenas se não houver conflito)
-    products
-      .filter(product => new Date(product.purchaseDate) >= periodStart)
-      .forEach(product => {
-        const purchaseTransaction = {
-          date: product.purchaseDate,
-          amount: product.totalCost * product.quantity,
-          description: `Compra: ${product.name} (${product.quantity}x)`
-        };
-        
-        const transactionKey = generateTransactionKey(purchaseTransaction, 'purchase');
-        
-        // Verificar se já existe uma transação com a mesma chave
-        if (!transactionKeyMap.has(transactionKey)) {
-          const baseId = `purchase-${product.id}`;
-          const uniqueId = generateUniqueId(baseId);
-          
-          const displayTransaction: DisplayTransaction = {
-            id: uniqueId,
-            date: new Date(product.purchaseDate),
-            description: purchaseTransaction.description,
-            amount: purchaseTransaction.amount,
-            type: 'expense',
-            category: product.category,
-            subcategory: 'Compra de Produto',
-            source: 'product_purchase'
-          };
-          
-          processedTransactions.push(displayTransaction);
-          transactionKeyMap.set(transactionKey, displayTransaction);
-        } else {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('🚫 Compra duplicada detectada e ignorada:', {
-              description: purchaseTransaction.description,
-              amount: purchaseTransaction.amount,
-              date: product.purchaseDate,
-              existingKey: transactionKey
-            });
-          }
-        }
-      });
+    // Só adicionar dados mock se não houver transações reais
+    // REMOVIDO: Não adicionar mais dados mock de vendas e compras de produtos
+    // As transações agora vêm diretamente do banco de dados através das APIs de receitas e despesas
 
     // Ordenar por data
     processedTransactions.sort((a, b) => {
@@ -266,6 +198,15 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
       }
       transaction.balance = runningBalance;
     });
+    
+    // Filtrar transações pelo período - DESATIVADO TEMPORARIAMENTE PARA MOSTRAR TODAS AS TRANSAÇÕES
+    // const filteredByPeriod = processedTransactions.filter(transaction => {
+    //   const transactionDate = new Date(transaction.date);
+    //   return transactionDate >= periodStart;
+    // });
+    
+    // Mostrar todas as transações independente do período para debug
+    const filteredByPeriod = processedTransactions;
 
     // Calcular estatísticas
     const totalIncome = processedTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);

@@ -1,65 +1,158 @@
-// Service Worker para Alidash
-const CACHE_NAME = 'alidash-v1';
-const urlsToCache = [
-  '/',
-  '/agenda',
-  '/produtos',
-  '/transacoes',
-  '/manifest.json'
+// Service Worker para VoxCash - Versão otimizada
+const CACHE_NAME = 'voxcash-v2';
+const STATIC_CACHE = 'voxcash-static-v2';
+const DYNAMIC_CACHE = 'voxcash-dynamic-v2';
+
+// URLs para cache estático (recursos que raramente mudam)
+const staticAssets = [
+  '/manifest.json',
+  '/icon-192x192.svg',
+  '/icon-512x512.svg'
+];
+
+// URLs que devem sempre buscar da rede primeiro
+const networkFirstUrls = [
+  '/api/',
+  '/auth/',
+  '/_next/static/chunks/pages/',
+  '/_next/static/chunks/webpack'
 ];
 
 // Instalar Service Worker
 self.addEventListener('install', (event) => {
+  console.log('SW: Instalando service worker...');
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('Cache aberto');
-        return cache.addAll(urlsToCache);
+        console.log('SW: Cache estático aberto');
+        return cache.addAll(staticAssets);
+      })
+      .then(() => {
+        console.log('SW: Forçando ativação imediata');
+        return self.skipWaiting();
       })
   );
 });
 
 // Ativar Service Worker
 self.addEventListener('activate', (event) => {
+  console.log('SW: Ativando service worker...');
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Removendo cache antigo:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    Promise.all([
+      // Limpar caches antigos
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            if (cacheName !== CACHE_NAME && 
+                cacheName !== STATIC_CACHE && 
+                cacheName !== DYNAMIC_CACHE) {
+              console.log('SW: Removendo cache antigo:', cacheName);
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      }),
+      // Tomar controle imediato
+      self.clients.claim()
+    ])
   );
 });
 
-// Interceptar requisições
+// Interceptar requisições com estratégia inteligente
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Cache hit - retorna resposta
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      }
-    )
-  );
+  const { request } = event;
+  const url = new URL(request.url);
+  
+  // Ignorar requisições não-HTTP
+  if (!request.url.startsWith('http')) {
+    return;
+  }
+
+  // Estratégia Network First para APIs e recursos dinâmicos
+  if (networkFirstUrls.some(pattern => request.url.includes(pattern))) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
+  // Estratégia Cache First para recursos estáticos
+  if (request.destination === 'image' || 
+      request.url.includes('/_next/static/') ||
+      staticAssets.some(asset => request.url.endsWith(asset))) {
+    event.respondWith(cacheFirst(request));
+    return;
+  }
+
+  // Estratégia Stale While Revalidate para páginas
+  if (request.mode === 'navigate') {
+    event.respondWith(staleWhileRevalidate(request));
+    return;
+  }
+
+  // Fallback para network
+  event.respondWith(fetch(request));
 });
+
+// Estratégia Network First
+async function networkFirst(request) {
+  try {
+    const networkResponse = await fetch(request);
+    if (networkResponse.ok) {
+      const cache = await caches.open(DYNAMIC_CACHE);
+      cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  } catch (error) {
+    console.log('SW: Network failed, trying cache:', request.url);
+    const cachedResponse = await caches.match(request);
+    return cachedResponse || new Response('Offline', { status: 503 });
+  }
+}
+
+// Estratégia Cache First
+async function cacheFirst(request) {
+  const cachedResponse = await caches.match(request);
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+  
+  try {
+    const networkResponse = await fetch(request);
+    if (networkResponse.ok) {
+      const cache = await caches.open(STATIC_CACHE);
+      cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  } catch (error) {
+    console.log('SW: Failed to fetch:', request.url);
+    return new Response('Resource not available', { status: 404 });
+  }
+}
+
+// Estratégia Stale While Revalidate
+async function staleWhileRevalidate(request) {
+  const cache = await caches.open(DYNAMIC_CACHE);
+  const cachedResponse = await cache.match(request);
+  
+  const fetchPromise = fetch(request).then(networkResponse => {
+    if (networkResponse.ok) {
+      cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  }).catch(() => cachedResponse);
+  
+  return cachedResponse || fetchPromise;
+}
 
 // Gerenciar notificações push
 self.addEventListener('push', (event) => {
   console.log('Push recebido:', event);
   
   let notificationData = {
-    title: 'Alidash',
+    title: 'VoxCash',
     body: 'Nova notificação',
     icon: '/icon-192x192.svg',
     badge: '/icon-192x192.svg',
-    tag: 'alidash-notification',
+    tag: 'voxcash-notification',
     requireInteraction: false,
     actions: [
       {

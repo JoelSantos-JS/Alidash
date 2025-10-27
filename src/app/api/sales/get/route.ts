@@ -23,32 +23,9 @@ export async function GET(request: NextRequest) {
     // Verificar se é um UUID (Supabase ID) ou Firebase UID
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
     
-    let user;
-    if (isUUID) {
-      // É um UUID do Supabase, usar diretamente
-      console.log('📋 Usando UUID do Supabase diretamente:', userId);
-      user = { id: userId };
-    } else {
-      // É um Firebase UID, buscar usuário pelo firebase_uid
-      console.log('🔍 Buscando usuário pelo Firebase UID:', userId);
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('firebase_uid', userId)
-        .single();
-      
-      if (userError || !userData) {
-        console.log('❌ Usuário não encontrado:', userError);
-        return NextResponse.json({ 
-          success: true, 
-          sales: [],
-          count: 0,
-          message: 'Usuário não encontrado no Supabase'
-        });
-      }
-      
-      user = userData;
-    }
+    // Usar UUID do Supabase diretamente
+    console.log('📋 Usando UUID do Supabase:', userId);
+    const user = { id: userId };
 
     console.log('✅ Usuário encontrado:', user.id);
 

@@ -16,11 +16,11 @@ export async function PUT(request: NextRequest) {
     console.log('📝 API route PUT iniciada');
     
     const body = await request.json();
-    const { user_id: firebaseUid, debt_id: debtId, debt } = body;
+    const { user_id: supabaseUserId, debt_id: debtId, debt } = body;
 
-    console.log('📝 Atualizando dívida ID:', debtId, 'para Firebase UID:', firebaseUid);
+    console.log('📝 Atualizando dívida ID:', debtId, 'para Supabase User ID:', supabaseUserId);
 
-    if (!firebaseUid || !debtId || !debt) {
+    if (!supabaseUserId || !debtId || !debt) {
       console.log('❌ Dados obrigatórios não fornecidos');
       return NextResponse.json(
         { error: 'user_id, debt_id e debt são obrigatórios' },
@@ -28,29 +28,12 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Buscar usuário pelo firebase_uid
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('firebase_uid', firebaseUid)
-      .single();
-
-    if (userError || !user) {
-      console.log('❌ Usuário não encontrado:', userError);
-      return NextResponse.json(
-        { error: 'Usuário não encontrado no Supabase' },
-        { status: 404 }
-      );
-    }
-
-    console.log('✅ Usuário encontrado:', user.id);
-
     // Verificar se a dívida existe e pertence ao usuário
     const { data: existingDebt, error: checkError } = await supabase
       .from('debts')
       .select('id, user_id')
       .eq('id', debtId)
-      .eq('user_id', user.id)
+      .eq('user_id', supabaseUserId)
       .single();
 
     if (checkError || !existingDebt) {
@@ -95,7 +78,7 @@ export async function PUT(request: NextRequest) {
       .from('debts')
       .update(debtData)
       .eq('id', debtId)
-      .eq('user_id', user.id)
+      .eq('user_id', supabaseUserId)
       .select()
       .single();
 
@@ -115,7 +98,7 @@ export async function PUT(request: NextRequest) {
       
       const paymentData = {
         debt_id: debtId,
-        user_id: user.id,
+        user_id: supabaseUserId,
         date: latestPayment.date || new Date().toISOString(),
         amount: latestPayment.amount || debt.currentAmount,
         payment_method: latestPayment.paymentMethod || debt.paymentMethod || 'pix',

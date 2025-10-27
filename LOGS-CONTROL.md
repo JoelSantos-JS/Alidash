@@ -1,4 +1,4 @@
-# 🚫 Controle de Logs - Alidash
+# 🚫 Controle de Logs - VoxCash
 
 Este documento explica como controlar os logs da aplicação para evitar que apareçam em produção.
 
@@ -130,4 +130,4 @@ echo $NODE_ENV
 1. **Migrar gradualmente** para o logger centralizado
 2. **Adicionar níveis de log** (debug, info, warn, error)
 3. **Implementar log em arquivo** para produção
-4. **Adicionar métricas** de performance 
+4. **Adicionar métricas** de performance

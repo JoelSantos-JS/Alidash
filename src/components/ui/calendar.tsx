@@ -19,16 +19,19 @@ function Calendar({
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
-      disableNavigation={true}
+      disableNavigation={false}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
         caption_label: "text-sm font-medium",
-        nav: "hidden",
-        nav_button: "hidden",
-        nav_button_previous: "hidden",
-        nav_button_next: "hidden",
+        nav: "space-x-1 flex items-center",
+        nav_button: cn(
+          buttonVariants({ variant: "outline" }),
+          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
+        ),
+        nav_button_previous: "absolute left-1",
+        nav_button_next: "absolute right-1",
         table: "w-full border-collapse space-y-1",
         head_row: "flex",
         head_cell:
@@ -51,13 +54,11 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        IconLeft: () => null,
-        IconRight: () => null,
+        IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" {...props} />,
+        IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" {...props} />,
         Button: ({ className, ...props }) => (
           <div className={cn(className)} {...props} />
         ),
-        Nav: () => null,
-        NavButton: () => null,
         DayButton: ({ className, ...props }) => (
           <div className={cn(className)} {...props} />
         ),

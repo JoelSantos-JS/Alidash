@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-supabase-auth";
 import { 
   ShoppingCart, 
   Search, 
@@ -51,35 +51,27 @@ export function SalesHistorySection({ periodFilter }: SalesHistorySectionProps) 
 
   // Fetch sales data
   const fetchSales = async () => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
     
     try {
       setIsLoading(true);
-      console.log('🔄 Carregando vendas do usuário:', user.uid);
+      console.log('🔄 Carregando vendas do usuário:', user.id);
       
-      // Buscar usuário no Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
+      // O usuário já é do Supabase, então podemos usar o ID diretamente
+      const supabaseUserId = user.id;
       
-      if (userResponse.ok) {
-        const userResult = await userResponse.json();
-        const supabaseUser = userResult.user;
+      console.log('✅ Usuário Supabase ID:', supabaseUserId);
+      
+      // Buscar vendas usando API route
+      const salesResponse = await fetch(`/api/sales/get?user_id=${supabaseUserId}`);
         
-        console.log('✅ Usuário encontrado no Supabase:', supabaseUser.id);
-        
-        // Buscar vendas usando API route
-        const salesResponse = await fetch(`/api/sales/get?user_id=${supabaseUser.id}`);
-        
-        if (salesResponse.ok) {
-          const salesResult = await salesResponse.json();
-          const salesData = salesResult.sales || [];
-          console.log('🛒 Vendas do Supabase:', salesData.length);
-          setSales(salesData);
-        } else {
-          console.error('❌ Erro ao buscar vendas do Supabase:', await salesResponse.text());
-          setSales([]);
-        }
+      if (salesResponse.ok) {
+        const salesResult = await salesResponse.json();
+        const salesData = salesResult.sales || [];
+        console.log('🛒 Vendas do Supabase:', salesData.length);
+        setSales(salesData);
       } else {
-        console.log('⚠️ Usuário não encontrado no Supabase');
+        console.error('❌ Erro ao buscar vendas do Supabase:', await salesResponse.text());
         setSales([]);
       }
     } catch (error) {

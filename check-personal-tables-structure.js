@@ -1,95 +1,80 @@
-require('dotenv').config({ path: '.env.local' });
 const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config();
 
-// Configuração do Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error('❌ Variáveis de ambiente do Supabase não encontradas');
-  process.exit(1);
+async function checkPersonalTablesStructure() {
+  console.log('🔍 Verificando estrutura das tabelas pessoais...\n');
+
+  try {
+    // Verificar se as tabelas pessoais existem
+    const tables = ['personal_incomes', 'personal_expenses', 'personal_budgets', 'personal_goals', 'personal_categories'];
+    
+    for (const table of tables) {
+      console.log(`📋 Verificando tabela: ${table}`);
+      
+      try {
+        const { data, error } = await supabase
+          .from(table)
+          .select('*')
+          .limit(1);
+
+        if (error) {
+          console.log(`❌ Erro ao acessar ${table}:`, error.message);
+        } else {
+          console.log(`✅ Tabela ${table} existe e é acessível`);
+        }
+      } catch (err) {
+        console.log(`❌ Tabela ${table} não encontrada ou inacessível`);
+      }
+    }
+
+    // Verificar estrutura da tabela goals (que funcionou no teste anterior)
+    console.log('\n🔍 Verificando estrutura da tabela goals...');
+    const { data: goalData, error: goalError } = await supabase
+      .from('goals')
+      .select('*')
+      .limit(1);
+
+    if (goalError) {
+      console.log('❌ Erro ao acessar goals:', goalError);
+    } else {
+      console.log('✅ Tabela goals acessível');
+      
+      // Tentar inserir uma meta simples para ver quais campos são obrigatórios
+      console.log('\n🧪 Testando inserção na tabela goals...');
+      const { data: testGoal, error: testGoalError } = await supabase
+        .from('goals')
+        .insert([{
+          user_id: 'test-user-id',
+          title: 'Meta Teste',
+          description: 'Teste de inserção',
+          target_amount: 1000.00,
+          target_date: '2025-12-31',
+          category: 'financial',
+          type: 'financial'
+        }])
+        .select()
+        .single();
+
+      if (testGoalError) {
+        console.log('❌ Erro ao inserir meta teste:', testGoalError);
+      } else {
+        console.log('✅ Meta teste inserida com sucesso:', testGoal.id);
+        
+        // Limpar o teste
+        await supabase.from('goals').delete().eq('id', testGoal.id);
+        console.log('🧹 Meta teste removida');
+      }
+    }
+
+  } catch (error) {
+    console.error('❌ Erro durante verificação:', error);
+  }
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-async function testPersonalTablesUserIdType() {
-  console.log('🔍 Testando tipo de user_id nas tabelas pessoais...\n');
-
-  const testUserId = 'test_text_user_id_123';
-
-  // Teste 1: personal_budgets
-  console.log('📊 Testando personal_budgets...');
-  try {
-    const { data, error } = await supabase
-      .from('personal_budgets')
-      .insert({
-        user_id: testUserId,
-        name: 'Teste Budget',
-        month: 12,
-        year: 2024,
-        categories: { test: 100 },
-        total_budget: 100,
-        status: 'active'
-      })
-      .select();
-
-    if (error) {
-      console.log(`❌ Erro: ${error.message}`);
-      if (error.message.includes('uuid')) {
-        console.log('   → user_id ainda é UUID, precisa ser alterado para TEXT');
-      }
-    } else {
-      console.log('✅ Sucesso: user_id aceita TEXT');
-      // Limpar teste
-      await supabase.from('personal_budgets').delete().eq('user_id', testUserId);
-    }
-  } catch (err) {
-    console.log(`❌ Erro: ${err.message}`);
-  }
-
-  // Teste 2: personal_goals
-  console.log('\n🎯 Testando personal_goals...');
-  try {
-    const { data, error } = await supabase
-      .from('personal_goals')
-      .insert({
-        user_id: testUserId,
-        name: 'Teste Goal',
-        description: 'Teste',
-        type: 'savings',
-        target_amount: 1000,
-        current_amount: 0,
-        deadline: '2025-12-31',
-        priority: 'medium'
-      })
-      .select();
-
-    if (error) {
-      console.log(`❌ Erro: ${error.message}`);
-      if (error.message.includes('uuid')) {
-        console.log('   → user_id ainda é UUID, precisa ser alterado para TEXT');
-      }
-    } else {
-      console.log('✅ Sucesso: user_id aceita TEXT');
-      // Limpar teste
-      await supabase.from('personal_goals').delete().eq('user_id', testUserId);
-    }
-  } catch (err) {
-    console.log(`❌ Erro: ${err.message}`);
-  }
-
-  console.log('\n📋 CONCLUSÃO:');
-  console.log('Se você viu erros de UUID acima, execute o script fix-personal-tables-schema.sql');
-  console.log('Se você viu sucessos, as tabelas já estão configuradas corretamente');
-}
-
-// Executar teste
-testPersonalTablesUserIdType()
-  .then(() => {
-    console.log('\n🏁 Teste concluído');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('❌ Erro fatal:', error.message);
-    process.exit(1);
-  });
+// Executar verificação
+checkPersonalTablesStructure();

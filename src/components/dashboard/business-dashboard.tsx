@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from "lucide-react";
+import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import { CategoryChart } from "@/components/dashboard/category-chart";
 import { ProfitChart } from "@/components/dashboard/profit-chart";
@@ -69,6 +70,23 @@ export function BusinessDashboard({
   onSellProduct,
   onLoadExampleData
 }: BusinessDashboardProps) {
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [currentDate, setCurrentDate] = useState(new Date());
+  
+  // Função para carregar dados do período selecionado
+  const handlePeriodChange = (date: Date) => {
+    setCurrentDate(date);
+    
+    // Aqui implementaríamos a chamada para API com os parâmetros de mês e ano
+    const month = date.getMonth() + 1; // Mês em JavaScript é 0-indexed
+    const year = date.getFullYear();
+    
+    console.log(`Carregando dados para: ${month}/${year}`);
+    
+    // Exemplo de como seria a chamada para API
+    // loadDashboardData(userId, 'business', month, year);
+  };
+  
   // Função para scroll das tabs
   const handleTabScroll = (direction: 'left' | 'right') => {
     const tabsList = document.querySelector('.responsive-tabs');
@@ -177,10 +195,17 @@ export function BusinessDashboard({
         <div className="mb-6 sm:mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 mb-4">
             <h2 className="text-lg sm:text-xl font-semibold">Produtos</h2>
-            <Button onClick={onOpenForm} className="gap-2 text-sm sm:text-base">
-              <PlusCircle className="h-4 w-4"/>
-              Adicionar Produto
-            </Button>
+            <div className="flex items-center gap-2">
+              <PeriodSelector 
+            currentDate={currentDate} 
+            onDateChange={handlePeriodChange}
+            className="mr-2"
+              />
+              <Button onClick={onOpenForm} className="gap-2 text-sm sm:text-base">
+                <PlusCircle className="h-4 w-4"/>
+                Adicionar Produto
+              </Button>
+            </div>
           </div>
           <ProductSearch onSearch={onSearch} />
         </div>

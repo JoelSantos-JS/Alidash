@@ -1,14 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from '@/hooks/use-supabase-auth';
 import { TransactionsSection } from "@/components/dashboard/transactions-section";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowUpDown, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
-
-import { db } from "@/lib/firebase";
 import type { Product, Transaction } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +14,7 @@ import { TransactionForm } from "@/components/transaction/transaction-form";
 import { InstallmentManager } from "@/components/transaction/installment-manager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { PeriodSelector } from "@/components/dashboard/period-selector";
 
 const initialProducts: Product[] = [
   {
@@ -115,7 +113,7 @@ const initialProducts: Product[] = [
   }
 ];
 
-export default function TransacoesPage() {
+function TransacoesPageContent() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -126,6 +124,7 @@ export default function TransacoesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
   const [activeTab, setActiveTab] = useState("transactions");
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
   
 
 
@@ -135,239 +134,109 @@ export default function TransacoesPage() {
     const fetchData = async () => {
       try {
         if (process.env.NODE_ENV === 'development') {
-          console.log('🔄 Carregando dados de produtos e transações:', user.uid);
+          console.log('🔄 Carregando dados de produtos e transações:', user.id);
         }
         
-        // Carregar produtos do Firebase (mantendo compatibilidade)
-        const docRef = doc(db, "user-data", user.uid);
-        const docSnap = await getDoc(docRef);
+        let products: Product[] = [];
+        let transactions: Transaction[] = [];
 
-        let firebaseProducts: Product[] = [];
-        let supabaseTransactions: Transaction[] = [];
-
-        if (docSnap.exists()) {
-          const userData = docSnap.data();
-          if (process.env.NODE_ENV === 'development') {
-            console.log('📦 Dados encontrados no Firebase:', {
-              products: userData.products?.length || 0
-            });
-          }
-          
-          if (userData.products && userData.products.length > 0) {
-            const data = userData.products;
-            firebaseProducts = data.map((p: any) => ({
-              ...p,
-              purchaseDate: p.purchaseDate?.toDate ? p.purchaseDate.toDate() : new Date(p.purchaseDate),
-              sales: p.sales ? p.sales.map((s: any) => ({
-                ...s, 
-                date: s.date?.toDate ? s.date.toDate() : 
-                      typeof s.date === 'string' ? new Date(s.date) : 
-                      new Date(s.date)
-              })) : [],
-            }));
-          }
-        }
-
-        // Carregar transações do Supabase (PRINCIPAL)
+        // Carregar produtos do Supabase
         try {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('🔍 Tentando buscar transações do Supabase...');
-          }
+          const productsResponse = await fetch(`/api/products/get?user_id=${user.id}`);
           
-          // Primeiro, buscar o usuário no Supabase usando API route
-          const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user.uid}&email=${user.email}`);
-          
-          if (userResponse.ok) {
-            const userResult = await userResponse.json();
-            const supabaseUser = userResult.user;
+          if (productsResponse.ok) {
+            const productsResult = await productsResponse.json();
+            products = productsResult.products || [];
             
             if (process.env.NODE_ENV === 'development') {
-              console.log('✅ Usuário encontrado no Supabase:', supabaseUser.id);
-            }
-            
-            // Agora buscar as transações usando API route
-            const transactionsResponse = await fetch(`/api/transactions/get?user_id=${supabaseUser.id}`);
-            
-            if (transactionsResponse.ok) {
-              const transactionsResult = await transactionsResponse.json();
-              supabaseTransactions = transactionsResult.transactions.map((transaction: any) => {
-                if (process.env.NODE_ENV === 'development') {
-                  console.log('🔄 Convertendo transação:', {
-                    id: transaction.id,
-                    description: transaction.description,
-                    isInstallment: transaction.isInstallment,
-                    installmentInfo: transaction.installmentInfo,
-                    hasInstallmentFields: 'isInstallment' in transaction && 'installmentInfo' in transaction
-                  });
-                }
-                
-                // Tratar installmentInfo com segurança
-                let installmentInfo = null;
-                
-                if (transaction.installmentInfo !== null && transaction.installmentInfo !== undefined) {
-                  try {
-                    // Se já é um objeto, usar diretamente
-                    if (typeof transaction.installmentInfo === 'object' && transaction.installmentInfo !== null) {
-                      installmentInfo = transaction.installmentInfo;
-                    } 
-                    // Se é string, fazer parse JSON
-                    else if (typeof transaction.installmentInfo === 'string' && transaction.installmentInfo.trim() !== '') {
-                      installmentInfo = JSON.parse(transaction.installmentInfo);
-                    }
-                    // Se é qualquer outro tipo, usar como está
-                    else {
-                      installmentInfo = transaction.installmentInfo;
-                    }
-                  } catch (parseError) {
-                    console.error('❌ Erro ao processar installmentInfo no frontend:', {
-                      error: parseError instanceof Error ? parseError.message : parseError,
-                      raw_data: transaction.installmentInfo,
-                      type: typeof transaction.installmentInfo
-                    });
-                    installmentInfo = null;
-                  }
-                }
-                
-                const convertedTransaction = {
-                  id: transaction.id,
-                  date: new Date(transaction.date),
-                  description: transaction.description,
-                  amount: parseFloat(transaction.amount),
-                  type: transaction.type,
-                  category: transaction.category,
-                  subcategory: transaction.subcategory,
-                  paymentMethod: transaction.paymentMethod,
-                  status: transaction.status,
-                  notes: transaction.notes,
-                  tags: transaction.tags,
-                  productId: transaction.productId,
-                  isInstallment: transaction.isInstallment || false,
-                  installmentInfo: installmentInfo
-                };
-
-                // Log específico para verificar se a conversão está correta
-                if (convertedTransaction.isInstallment && convertedTransaction.installmentInfo) {
-                  if (process.env.NODE_ENV === 'development') {
-                    console.log('✅ Transação parcelada convertida corretamente:', {
-                      id: convertedTransaction.id,
-                      description: convertedTransaction.description,
-                      isInstallment: convertedTransaction.isInstallment,
-                      installmentInfo: convertedTransaction.installmentInfo,
-                      hasInstallmentInfo: !!convertedTransaction.installmentInfo,
-                      installmentInfoType: typeof convertedTransaction.installmentInfo
-                    });
-                  }
-                } else if (convertedTransaction.isInstallment && !convertedTransaction.installmentInfo) {
-                  if (process.env.NODE_ENV === 'development') {
-                    console.log('❌ PROBLEMA: Transação marcada como parcelada mas sem installmentInfo:', {
-                      id: convertedTransaction.id,
-                      description: convertedTransaction.description,
-                      isInstallment: convertedTransaction.isInstallment,
-                      installmentInfo: convertedTransaction.installmentInfo,
-                      original_installment_info: transaction.installmentInfo
-                    });
-                  }
-                }
-                
-                if (process.env.NODE_ENV === 'development') {
-                  console.log('✅ Transação convertida:', {
-                    id: convertedTransaction.id,
-                    description: convertedTransaction.description,
-                    isInstallment: convertedTransaction.isInstallment,
-                    installmentInfo: convertedTransaction.installmentInfo,
-                    isInstallmentTransaction: convertedTransaction.isInstallment && convertedTransaction.installmentInfo
-                  });
-                }
-                
-                return convertedTransaction;
-              });
-              
-              // Verificar transações parceladas
-              const installmentTransactions = supabaseTransactions.filter(t => t.isInstallment && t.installmentInfo);
-              if (process.env.NODE_ENV === 'development') {
-                console.log('📊 Análise das transações:', {
-                  total: supabaseTransactions.length,
-                  parceladas: installmentTransactions.length,
-                  naoParceladas: supabaseTransactions.length - installmentTransactions.length
-                });
-              }
-              
-              if (installmentTransactions.length > 0) {
-                if (process.env.NODE_ENV === 'development') {
-                  console.log('🎉 Transações parceladas encontradas:', installmentTransactions.map(t => ({
-                    id: t.id,
-                    description: t.description,
-                    amount: t.amount,
-                    installmentInfo: t.installmentInfo
-                  })));
-                }
-              } else {
-                if (process.env.NODE_ENV === 'development') {
-                  console.log('❌ Nenhuma transação parcelada encontrada!');
-                  console.log('Verificando todas as transações:');
-                  supabaseTransactions.forEach((t, index) => {
-                    console.log(`  ${index + 1}. ${t.description}: isInstallment=${t.isInstallment}, installmentInfo=${t.installmentInfo ? 'presente' : 'ausente'}`);
-                  });
-                }
-              }
-              if (process.env.NODE_ENV === 'development') {
-                console.log('📊 Transações do Supabase:', supabaseTransactions.length);
-              }
-            } else {
-              const errorText = await transactionsResponse.text();
-              console.error('❌ Erro ao buscar transações:', {
-                status: transactionsResponse.status,
-                statusText: transactionsResponse.statusText,
-                error: errorText
-              });
-              
-              // Tentar fazer parse do erro para mostrar detalhes
-              try {
-                const errorJson = JSON.parse(errorText);
-                console.error('❌ Detalhes do erro:', errorJson);
-              } catch (parseError) {
-                console.error('❌ Erro não é JSON válido:', errorText);
-              }
+              console.log('📦 Produtos do Supabase:', products.length);
             }
           } else {
+            console.error('❌ Erro ao buscar produtos:', productsResponse.status);
+          }
+        } catch (error) {
+          console.error('❌ Erro ao buscar produtos do Supabase:', error);
+        }
+
+        // Carregar transações do Supabase
+        try {
+          const transactionsResponse = await fetch(`/api/transactions/get?user_id=${user.id}`);
+            
+          if (transactionsResponse.ok) {
+            const transactionsResult = await transactionsResponse.json();
+            transactions = transactionsResult.transactions.map((transaction: any) => {
+              // Tratar installmentInfo com segurança
+              let installmentInfo = null;
+              
+              if (transaction.installmentInfo !== null && transaction.installmentInfo !== undefined) {
+                try {
+                  // Se já é um objeto, usar diretamente
+                  if (typeof transaction.installmentInfo === 'object' && transaction.installmentInfo !== null) {
+                    installmentInfo = transaction.installmentInfo;
+                  } 
+                  // Se é string, fazer parse JSON
+                  else if (typeof transaction.installmentInfo === 'string' && transaction.installmentInfo.trim() !== '') {
+                    installmentInfo = JSON.parse(transaction.installmentInfo);
+                  }
+                  // Se é qualquer outro tipo, usar como está
+                  else {
+                    installmentInfo = transaction.installmentInfo;
+                  }
+                } catch (parseError) {
+                  console.error('❌ Erro ao processar installmentInfo:', parseError);
+                  installmentInfo = null;
+                }
+              }
+              
+              return {
+                id: transaction.id,
+                date: new Date(transaction.date),
+                description: transaction.description,
+                amount: parseFloat(transaction.amount),
+                type: transaction.type,
+                category: transaction.category,
+                subcategory: transaction.subcategory,
+                paymentMethod: transaction.paymentMethod,
+                status: transaction.status,
+                notes: transaction.notes,
+                tags: transaction.tags,
+                productId: transaction.productId,
+                isInstallment: transaction.isInstallment || false,
+                installmentInfo: installmentInfo
+              };
+            });
+            
             if (process.env.NODE_ENV === 'development') {
-              console.log('⚠️ Usuário não encontrado no Supabase, usando apenas Firebase');
+              console.log('📊 Transações do Supabase:', transactions.length);
             }
+          } else {
+            const errorText = await transactionsResponse.text();
+            console.error('❌ Erro ao buscar transações:', {
+              status: transactionsResponse.status,
+              statusText: transactionsResponse.statusText,
+              error: errorText
+            });
           }
         } catch (error) {
           console.error('❌ Erro ao buscar transações do Supabase:', error);
-          if (process.env.NODE_ENV === 'development') {
-            console.log('📥 Continuando apenas com dados do Firebase');
-          }
         }
 
-        let finalProducts = firebaseProducts;
-        if (finalProducts.length === 0) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('📥 Nenhum produto encontrado, usando dados de exemplo');
-          }
-          finalProducts = initialProducts;
-        } else {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Usando produtos reais do banco de dados');
-          }
-        }
-
+        // Se não há produtos reais, usar dados de exemplo
+        const finalProducts = products.length > 0 ? products : initialProducts;
+        
         setProducts(finalProducts);
-        setTransactions(supabaseTransactions);
+        setTransactions(transactions);
+        
         if (process.env.NODE_ENV === 'development') {
           console.log('📊 Dados carregados:', {
             produtos: finalProducts.length,
-            transacoes: supabaseTransactions.length,
-            fonte_transacoes: 'Supabase'
+            transacoes: transactions.length,
+            fonte: 'Supabase'
           });
         }
 
       } catch (error) {
         console.error('❌ Erro ao carregar dados:', error);
-        if (process.env.NODE_ENV === 'development') {
-          console.log('📥 Usando dados de exemplo devido ao erro');
-        }
         setProducts(initialProducts);
         setTransactions([]);
       }
@@ -379,19 +248,119 @@ export default function TransacoesPage() {
 
   // Removido o useEffect que salvava automaticamente as transações
   // para evitar loops e duplicação de dados
+  
+  // Função para carregar transações de um período específico
+  const loadTransactionsForPeriod = async (date: Date) => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    try {
+      const month = date.getMonth() + 1; // Mês começa em 0, então adicionamos 1
+      const year = date.getFullYear();
+      
+      console.log(`Carregando transações para ${month}/${year}`);
+      
+      // Definir o primeiro e último dia do mês
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0);
+      
+      // Log adicional para debug
+      console.log("Usuário autenticado:", user.id);
+      
+      // Buscar transações do período
+      const transactionsResponse = await fetch(`/api/transactions/get?user_id=${user.id}&start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}`);
+        
+      if (transactionsResponse.ok) {
+        const transactionsResult = await transactionsResponse.json();
+        const periodTransactions = transactionsResult.transactions.map((t: any) => ({
+          ...t,
+          date: new Date(t.date),
+          amount: parseFloat(t.amount),
+          installmentInfo: t.installmentInfo ? 
+            (typeof t.installmentInfo === 'string' ? JSON.parse(t.installmentInfo) : t.installmentInfo) : 
+            null
+        }));
+        
+        setTransactions(periodTransactions);
+        console.log("Transações carregadas com sucesso:", periodTransactions.length);
+        
+        toast({
+          title: "Transações carregadas",
+          description: `${periodTransactions.length} transações encontradas para ${month}/${year}`,
+        });
+      } else {
+        throw new Error("Falha ao buscar transações do período");
+      }
+    } catch (error) {
+      console.error("Erro ao carregar transações:", error);
+      toast({
+        title: "Erro ao carregar transações",
+        description: "Não foi possível carregar as transações para o período selecionado.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Carregar transações do período atual quando o componente montar ou a data mudar
+  useEffect(() => {
+    if (user && !authLoading) {
+      console.log('🔄 Carregando transações para o período:', currentDate);
+      loadTransactionsForPeriod(currentDate);
+    }
+  }, [user, authLoading, currentDate]);
+  
+  // Adicionar log para verificar se as transações estão sendo carregadas corretamente
+  useEffect(() => {
+    if (transactions.length > 0) {
+      console.log('✅ Transações carregadas com sucesso:', transactions.length);
+      console.log('📊 Primeira transação:', transactions[0]);
+    } else {
+      console.log('⚠️ Nenhuma transação carregada');
+    }
+  }, [transactions]);
 
   const handleSaveTransaction = async (transactionData: Transaction) => {
     if (transactionToEdit) {
       // Editar transação existente
-      const updatedTransactions = transactions.map(t => 
-        t.id === transactionToEdit.id ? { ...t, ...transactionData, id: t.id } : t
-      );
-      setTransactions(updatedTransactions);
-      
-      toast({
-        title: "Transação Atualizada!",
-        description: `${transactionData.description} - Atualizada com sucesso`,
-      });
+      try {
+        const updateResponse = await fetch('/api/transactions/update', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: user.id,
+            transaction: { ...transactionData, id: transactionToEdit.id }
+          })
+        });
+
+        if (updateResponse.ok) {
+          const updatedTransactions = transactions.map(t => 
+            t.id === transactionToEdit.id ? { ...t, ...transactionData, id: t.id } : t
+          );
+          setTransactions(updatedTransactions);
+          
+          toast({
+            title: "Transação Atualizada!",
+            description: `${transactionData.description} - Atualizada com sucesso`,
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Erro ao atualizar",
+            description: "Não foi possível atualizar a transação no servidor.",
+          });
+        }
+      } catch (error) {
+        console.error('❌ Erro ao atualizar transação:', error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao atualizar",
+          description: "Ocorreu um erro ao atualizar a transação.",
+        });
+      }
     } else {
       // Adicionar nova transação
       const newTransaction: Transaction = {
@@ -404,54 +373,42 @@ export default function TransacoesPage() {
       
       // Salvar no Supabase
       try {
-        // Primeiro, buscar o usuário no Supabase
-        const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+        const createResponse = await fetch('/api/transactions/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: user.id,
+            transaction: newTransaction
+          })
+        });
         
-        if (userResponse.ok) {
-          const userResult = await userResponse.json();
-          const supabaseUser = userResult.user;
+        if (createResponse.ok) {
+          const result = await createResponse.json();
+          console.log('✅ Transação criada no Supabase:', result.transaction?.id);
           
-          // Criar transação no Supabase
-          const createResponse = await fetch('/api/transactions/create', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              user_id: supabaseUser.id,
-              transaction: newTransaction
-            })
-          });
-          
-          if (createResponse.ok) {
-            const result = await createResponse.json();
-            if (process.env.NODE_ENV === 'development') {
-              console.log('✅ Transação criada no Supabase:', result.transaction.id);
-            }
-            
-            toast({
-              title: "Transação Adicionada!",
-              description: `${transactionData.description} - Salva no Supabase com sucesso`,
-            });
-          } else {
-            console.error('❌ Erro ao criar transação no Supabase:', await createResponse.text());
-            toast({
-              title: "Transação Adicionada!",
-              description: `A transação "${transactionData.description}" foi adicionada localmente.`,
-            });
-          }
-        } else {
-          console.error('❌ Usuário não encontrado no Supabase');
           toast({
             title: "Transação Adicionada!",
-            description: `A transação "${transactionData.description}" foi adicionada localmente.`,
+            description: `${transactionData.description} - Salva com sucesso`,
+          });
+        } else {
+          const errorText = await createResponse.text();
+          console.error('❌ Erro ao criar transação:', errorText);
+          
+          toast({
+            variant: "destructive",
+            title: "Erro ao salvar",
+            description: `A transação foi adicionada localmente, mas não foi salva no servidor.`,
           });
         }
       } catch (error) {
-        console.error('Erro ao salvar no Supabase:', error);
+        console.error('❌ Erro ao salvar transação:', error);
+        
         toast({
-          title: "Transação Adicionada!",
-          description: `A transação "${transactionData.description}" foi adicionada localmente.`,
+          variant: "destructive",
+          title: "Erro ao salvar",
+          description: `A transação foi adicionada localmente, mas ocorreu um erro ao salvar no servidor.`,
         });
       }
     }
@@ -483,10 +440,7 @@ export default function TransacoesPage() {
   }
 
   if (!user) {
-    // Usar useEffect para navegação em vez de chamar durante render
-    useEffect(() => {
-      router.push('/login');
-    }, [router]);
+    router.push('/login');
     return null;
   }
 
@@ -494,38 +448,56 @@ export default function TransacoesPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-card border-b px-3 md:px-6 py-3 md:py-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-2 md:gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.back()}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Voltar</span>
-            </Button>
-            
-            <div>
-              <h1 className="text-lg md:text-2xl font-bold flex items-center gap-2">
-                <ArrowUpDown className="h-5 w-5 md:h-6 md:w-6 text-blue-500" />
-                Transações
-              </h1>
-              <p className="text-xs md:text-sm text-muted-foreground">
-                <span className="hidden sm:inline">Histórico completo de todas as transações financeiras</span>
-                <span className="sm:hidden">Histórico de transações</span>
-                {products.length > 0 && products !== initialProducts && (
-                  <span className="ml-2 inline-flex items-center gap-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                    <span className="w-2 h-2 bg-green-500 rounded-full block"></span>
-                    <span className="hidden sm:inline">Dados Reais</span>
-                    <span className="sm:hidden">Real</span>
-                  </span>
-                )}
-              </p>
+        <div className="flex flex-col gap-3">
+          {/* Primeira linha: Título e botão de adicionar */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.back()}
+                className="flex items-center gap-2 flex-shrink-0"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Voltar</span>
+              </Button>
+              
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg md:text-2xl font-bold flex items-center gap-2">
+                  <ArrowUpDown className="h-5 w-5 md:h-6 md:w-6 text-blue-500" />
+                  Transações
+                </h1>
+                <p className="text-xs md:text-sm text-muted-foreground truncate">
+                  <span className="hidden sm:inline">Histórico completo de todas as transações financeiras</span>
+                  <span className="sm:hidden">Histórico de transações</span>
+                  {products.length > 0 && products !== initialProducts && (
+                    <span className="ml-2 inline-flex items-center gap-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                      <span className="w-2 h-2 bg-green-500 rounded-full block"></span>
+                      <span className="hidden sm:inline">Dados Reais</span>
+                      <span className="sm:hidden">Real</span>
+                    </span>
+                  )}
+                </p>
+              </div>
             </div>
+
+            {/* Add New Transaction Button - sempre visível */}
+            <Button
+              onClick={() => {
+                setTransactionToEdit(null);
+                setIsFormOpen(true);
+              }}
+              size="sm"
+              className="flex items-center gap-1 md:gap-2 text-xs md:text-sm flex-shrink-0 ml-2"
+            >
+              <Plus className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Adicionar Nova Transação</span>
+              <span className="sm:hidden">Nova</span>
+            </Button>
           </div>
 
-          <div className="flex items-center justify-between md:gap-4">
+          {/* Segunda linha: Filtros de período */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
             {/* Period Selector */}
             <div className="flex items-center gap-1 md:gap-2 bg-muted rounded-lg p-1">
               <Button
@@ -553,20 +525,16 @@ export default function TransacoesPage() {
                 Mês
               </Button>
             </div>
-
-            {/* Add New Transaction Button */}
-            <Button
-              onClick={() => {
-                setTransactionToEdit(null);
-                setIsFormOpen(true);
+            
+            {/* Seletor de mês/ano para visualizar transações de períodos anteriores */}
+            <PeriodSelector 
+              currentDate={currentDate}
+              onDateChange={(date) => {
+                setCurrentDate(date);
+                loadTransactionsForPeriod(date);
               }}
-              size="sm"
-              className="flex items-center gap-1 md:gap-2 text-xs md:text-sm"
-            >
-              <Plus className="h-3 w-3 md:h-4 md:w-4" />
-              <span className="hidden sm:inline">Adicionar Nova Transação</span>
-              <span className="sm:hidden">Nova</span>
-            </Button>
+              className="ml-0"
+            />
           </div>
         </div>
       </header>
@@ -629,4 +597,20 @@ export default function TransacoesPage() {
       </Dialog>
     </div>
   );
+}
+
+export default function TransacoesPage() {
+  try {
+    return <TransacoesPageContent />;
+  } catch (error) {
+    // Se o provider não estiver disponível, mostra loading
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-sm text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/use-supabase-auth';
 
 interface GoogleCalendarStatus {
   isConnected: boolean;
@@ -44,12 +44,12 @@ export function useGoogleCalendar() {
       setStatus(prev => ({ ...prev, isLoading: true, error: null }));
 
       // Primeiro, verificar se as tabelas de calendário existem
-      const response = await fetch(`/api/calendar/events?user_id=${user.uid}&limit=1`);
+      const response = await fetch(`/api/calendar/events?user_id=${user.id}&limit=1`);
       const data = await response.json();
 
       if (response.ok) {
         // Se a API funcionou, verificar se há configurações do Google Calendar
-        const authResponse = await fetch(`/api/calendar/auth?user_id=${user.uid}&check_only=true`);
+        const authResponse = await fetch(`/api/calendar/auth?user_id=${user.id}&check_only=true`);
         const authData = await authResponse.json();
         
         setStatus(prev => ({

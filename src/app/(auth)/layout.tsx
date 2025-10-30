@@ -24,7 +24,7 @@ export default function AuthLayout({
     }, []);
 
     return (
-        <div className="min-h-screen relative">
+        <div className="min-h-screen relative dark">
             <BlackHoleBackground 
                 enableAnimation={isMounted ? animationEnabled : false} 
                 quality={quality}

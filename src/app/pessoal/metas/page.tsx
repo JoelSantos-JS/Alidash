@@ -54,30 +54,30 @@ interface PersonalGoal {
 }
 
 const GOAL_CATEGORIES = {
-  emergency_fund: { label: 'Reserva de Emergência', icon: PiggyBank, color: 'bg-muted/30 text-red-600' },
-  house: { label: 'Casa Própria', icon: Home, color: 'bg-muted/30 text-blue-600' },
-  car: { label: 'Veículo', icon: Car, color: 'bg-muted/30 text-green-600' },
-  education: { label: 'Educação', icon: GraduationCap, color: 'bg-muted/30 text-purple-600' },
-  health: { label: 'Saúde', icon: Heart, color: 'bg-muted/30 text-pink-600' },
-  travel: { label: 'Viagem', icon: Plane, color: 'bg-muted/30 text-orange-600' },
-  investment: { label: 'Investimento', icon: TrendingUp, color: 'bg-muted/30 text-indigo-600' },
-  retirement: { label: 'Aposentadoria', icon: Building, color: 'bg-muted/30 text-muted-foreground' },
-  debt_payoff: { label: 'Quitação de Dívidas', icon: CreditCard, color: 'bg-muted/30 text-yellow-600' },
-  gift: { label: 'Presente/Evento', icon: Gift, color: 'bg-muted/30 text-teal-600' },
-  other: { label: 'Outros', icon: Target, color: 'bg-muted/30 text-muted-foreground' }
+  emergency_fund: { label: 'Reserva de Emergência', icon: PiggyBank, color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800' },
+  house: { label: 'Casa Própria', icon: Home, color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800' },
+  car: { label: 'Veículo', icon: Car, color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800' },
+  education: { label: 'Educação', icon: GraduationCap, color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800' },
+  health: { label: 'Saúde', icon: Heart, color: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800' },
+  travel: { label: 'Viagem', icon: Plane, color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800' },
+  investment: { label: 'Investimento', icon: TrendingUp, color: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800' },
+  retirement: { label: 'Aposentadoria', icon: Building, color: 'bg-slate-100 dark:bg-slate-900/30 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800' },
+  debt_payoff: { label: 'Quitação de Dívidas', icon: CreditCard, color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800' },
+  gift: { label: 'Presente/Evento', icon: Gift, color: 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800' },
+  other: { label: 'Outros', icon: Target, color: 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-800' }
 };
 
 const GOAL_STATUS = {
-  active: { label: 'Ativa', color: 'bg-blue-100 text-blue-600', variant: 'default' as const },
-  completed: { label: 'Concluída', color: 'bg-green-100 text-green-600', variant: 'secondary' as const },
-  paused: { label: 'Pausada', color: 'bg-yellow-100 text-yellow-600', variant: 'outline' as const },
-  cancelled: { label: 'Cancelada', color: 'bg-red-100 text-red-600', variant: 'destructive' as const }
+  active: { label: 'Ativa', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800', variant: 'default' as const },
+  completed: { label: 'Concluída', color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800', variant: 'secondary' as const },
+  paused: { label: 'Pausada', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800', variant: 'outline' as const },
+  cancelled: { label: 'Cancelada', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800', variant: 'destructive' as const }
 };
 
 const PRIORITY_LEVELS = {
-  high: { label: 'Alta', color: 'text-red-600', variant: 'destructive' as const },
-  medium: { label: 'Média', color: 'text-yellow-600', variant: 'outline' as const },
-  low: { label: 'Baixa', color: 'text-green-600', variant: 'secondary' as const }
+  high: { label: 'Alta', color: 'text-red-600 dark:text-red-400', variant: 'destructive' as const },
+  medium: { label: 'Média', color: 'text-yellow-600 dark:text-yellow-400', variant: 'outline' as const },
+  low: { label: 'Baixa', color: 'text-green-600 dark:text-green-400', variant: 'secondary' as const }
 };
 
 export default function PersonalGoalsPage() {
@@ -94,6 +94,8 @@ export default function PersonalGoalsPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [goalToDelete, setGoalToDelete] = useState<PersonalGoal | null>(null);
+  const [editFormData, setEditFormData] = useState<Partial<PersonalGoal>>({});
+  const [isEditLoading, setIsEditLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -106,7 +108,7 @@ export default function PersonalGoalsPage() {
       setLoading(true);
       
       // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.id}&email=${user?.email}`);
       if (!userResponse.ok) {
         throw new Error('Usuário não encontrado');
       }
@@ -161,8 +163,100 @@ export default function PersonalGoalsPage() {
 
   const handleEditGoal = (goal: PersonalGoal) => {
     setSelectedGoal(goal);
+    setEditFormData({
+      title: goal.title,
+      description: goal.description || '',
+      target_amount: goal.target_amount,
+      current_amount: goal.current_amount,
+      category: goal.category,
+      priority: goal.priority,
+      target_date: goal.target_date,
+      status: goal.status,
+      monthly_contribution: goal.monthly_contribution || 0,
+      notes: goal.notes || ''
+    });
     setIsEditModalOpen(true);
   };
+
+  const handleUpdateGoal = async () => {
+     if (!selectedGoal || !user) return;
+     
+     try {
+       setIsEditLoading(true);
+       
+       // Buscar usuário Supabase para obter o ID
+       const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.id}&email=${user?.email}`);
+       if (!userResponse.ok) {
+         throw new Error('Usuário não encontrado');
+       }
+       
+       const userResult = await userResponse.json();
+       const supabaseUserId = userResult.user.id;
+       
+       // Atualizar via API real
+       const updateResponse = await fetch(`/api/personal/goals`, {
+         method: 'PUT',
+         headers: {
+           'Content-Type': 'application/json'
+         },
+         body: JSON.stringify({
+           id: selectedGoal.id,
+           user_id: supabaseUserId,
+           title: editFormData.title,
+           description: editFormData.description,
+           target_amount: editFormData.target_amount,
+           current_amount: editFormData.current_amount,
+           category: editFormData.category,
+           priority: editFormData.priority,
+           target_date: editFormData.target_date,
+           status: editFormData.status,
+           monthly_contribution: editFormData.monthly_contribution,
+           notes: editFormData.notes
+         })
+       });
+       
+       if (!updateResponse.ok) {
+         const errorResult = await updateResponse.json();
+         throw new Error(errorResult.error || 'Erro ao atualizar meta');
+       }
+       
+       // Atualizar no estado local
+       setGoals(prev => prev.map(g => 
+         g.id === selectedGoal.id 
+           ? {
+               ...g,
+               title: editFormData.title || g.title,
+               description: editFormData.description,
+               target_amount: editFormData.target_amount || g.target_amount,
+               current_amount: editFormData.current_amount || g.current_amount,
+               category: editFormData.category || g.category,
+               priority: editFormData.priority || g.priority,
+               target_date: editFormData.target_date || g.target_date,
+               status: editFormData.status || g.status,
+               monthly_contribution: editFormData.monthly_contribution,
+               notes: editFormData.notes
+             }
+           : g
+       ));
+       
+       toast({
+         title: "Meta Atualizada!",
+         description: `Meta "${editFormData.title}" foi atualizada com sucesso.`,
+       });
+       
+       setIsEditModalOpen(false);
+       setSelectedGoal(null);
+       setEditFormData({});
+     } catch (error) {
+       toast({
+         variant: 'destructive',
+         title: "Erro ao Atualizar",
+         description: error instanceof Error ? error.message : "Não foi possível atualizar a meta.",
+       });
+     } finally {
+       setIsEditLoading(false);
+     }
+   };
 
   const handleDeleteGoal = (goal: PersonalGoal) => {
     setGoalToDelete(goal);
@@ -174,7 +268,7 @@ export default function PersonalGoalsPage() {
     
     try {
       // Buscar usuário Supabase para obter o ID
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.id}&email=${user?.email}`);
       if (!userResponse.ok) {
         throw new Error('Usuário não encontrado');
       }
@@ -458,10 +552,10 @@ export default function PersonalGoalsPage() {
                             <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2 mb-1">
                               <h3 className="font-medium text-sm sm:text-base truncate">{goal.title}</h3>
                               <div className="flex flex-wrap gap-1">
-                                <Badge variant={statusInfo.variant} className="text-xs">
+                                <Badge className={`text-xs border ${statusInfo.color}`}>
                                   {statusInfo.label}
                                 </Badge>
-                                <Badge variant={priorityInfo.variant} className="text-xs">
+                                <Badge className={`text-xs border ${priorityInfo.color}`}>
                                   {priorityInfo.label}
                                 </Badge>
                                 {overdue && (
@@ -475,7 +569,7 @@ export default function PersonalGoalsPage() {
                               <p className="text-xs sm:text-sm text-muted-foreground mb-2 line-clamp-2">{goal.description}</p>
                             )}
                             <div className="flex flex-col xs:flex-row xs:items-center gap-2 xs:gap-4 text-xs sm:text-sm text-muted-foreground">
-                              <Badge variant="secondary" className="text-xs w-fit">
+                              <Badge className={`text-xs w-fit border ${categoryInfo.color}`}>
                                 {categoryInfo.label}
                               </Badge>
                               <span className="flex items-center gap-1">
@@ -640,13 +734,13 @@ export default function PersonalGoalsPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Status</label>
-                  <Badge variant={getStatusInfo(selectedGoal.status).variant}>
+                  <Badge className={`border ${getStatusInfo(selectedGoal.status).color}`}>
                     {getStatusInfo(selectedGoal.status).label}
                   </Badge>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Prioridade</label>
-                  <Badge variant={getPriorityInfo(selectedGoal.priority).variant}>
+                  <Badge className={`border ${getPriorityInfo(selectedGoal.priority).color}`}>
                     {getPriorityInfo(selectedGoal.priority).label}
                   </Badge>
                 </div>
@@ -686,18 +780,158 @@ export default function PersonalGoalsPage() {
 
       {/* Modal de Edição */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Meta</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-muted-foreground">
-              Funcionalidade de edição será implementada em breve.
-            </p>
-            <Button onClick={() => setIsEditModalOpen(false)} className="w-full">
-              Fechar
-            </Button>
-          </div>
+          {selectedGoal && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="text-sm font-medium">Título *</label>
+                  <Input
+                    value={editFormData.title || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="Nome da meta"
+                    className="mt-1"
+                  />
+                </div>
+                
+                <div className="md:col-span-2">
+                  <label className="text-sm font-medium">Descrição</label>
+                  <Input
+                    value={editFormData.description || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Descrição da meta (opcional)"
+                    className="mt-1"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Categoria *</label>
+                  <select
+                    value={editFormData.category || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, category: e.target.value }))}
+                    className="w-full mt-1 px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    <option value="">Selecione uma categoria</option>
+                    {Object.entries(GOAL_CATEGORIES).map(([key, category]) => (
+                      <option key={key} value={key}>{category.label}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Prioridade *</label>
+                  <select
+                    value={editFormData.priority || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, priority: e.target.value as 'high' | 'medium' | 'low' }))}
+                    className="w-full mt-1 px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    <option value="">Selecione a prioridade</option>
+                    {Object.entries(PRIORITY_LEVELS).map(([key, priority]) => (
+                      <option key={key} value={key}>{priority.label}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Valor Meta (R$) *</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editFormData.target_amount || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, target_amount: parseFloat(e.target.value) || 0 }))}
+                    placeholder="0,00"
+                    className="mt-1"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Valor Atual (R$)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editFormData.current_amount || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, current_amount: parseFloat(e.target.value) || 0 }))}
+                    placeholder="0,00"
+                    className="mt-1"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Data Meta *</label>
+                  <Input
+                    type="date"
+                    value={editFormData.target_date || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, target_date: e.target.value }))}
+                    className="mt-1"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Status *</label>
+                  <select
+                    value={editFormData.status || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, status: e.target.value as 'active' | 'completed' | 'paused' | 'cancelled' }))}
+                    className="w-full mt-1 px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    <option value="">Selecione o status</option>
+                    {Object.entries(GOAL_STATUS).map(([key, status]) => (
+                      <option key={key} value={key}>{status.label}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Contribuição Mensal (R$)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editFormData.monthly_contribution || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, monthly_contribution: parseFloat(e.target.value) || 0 }))}
+                    placeholder="0,00"
+                    className="mt-1"
+                  />
+                </div>
+                
+                <div className="md:col-span-2">
+                  <label className="text-sm font-medium">Observações</label>
+                  <Input
+                    value={editFormData.notes || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Observações adicionais (opcional)"
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <Button 
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setSelectedGoal(null);
+                    setEditFormData({});
+                  }}
+                  variant="outline" 
+                  className="flex-1"
+                  disabled={isEditLoading}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={handleUpdateGoal}
+                  className="flex-1"
+                  disabled={isEditLoading || !editFormData.title || !editFormData.target_amount || !editFormData.category || !editFormData.priority || !editFormData.target_date || !editFormData.status}
+                >
+                  {isEditLoading ? 'Salvando...' : 'Salvar Alterações'}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

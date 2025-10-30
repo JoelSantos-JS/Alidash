@@ -110,7 +110,7 @@ export function N8NIntegrationSettings() {
 
   const loadApiKeys = async () => {
     try {
-      const response = await fetch(`/api/n8n/auth?userId=${user?.uid}`)
+      const response = await fetch(`/api/n8n/auth?userId=${user?.id}`)
       if (response.ok) {
         const data = await response.json()
         setApiKeys(data.apiKeys || [])
@@ -146,7 +146,7 @@ export function N8NIntegrationSettings() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          userId: user?.uid,
+          userId: user?.id,
           ...newApiKeyForm
         })
       })
@@ -183,7 +183,7 @@ export function N8NIntegrationSettings() {
         },
         body: JSON.stringify({
           apiKey,
-          userId: user?.uid
+          userId: user?.id
         })
       })
 

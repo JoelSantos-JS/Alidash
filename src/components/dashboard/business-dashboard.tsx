@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,7 +26,9 @@ import { RevenueSection } from "@/components/dashboard/revenue-section";
 import { ExpensesSection } from "@/components/dashboard/expenses-section";
 import { TransactionsSection } from "@/components/dashboard/transactions-section";
 import { SalesHistorySection } from "@/components/dashboard/sales-history-section";
-import type { Product } from "@/types";
+import { GoalsWidget } from "@/components/dashboard/goals-widget";
+import { useAuth } from "@/hooks/use-supabase-auth";
+import type { Product, Goal } from "@/types";
 
 interface BusinessDashboardProps {
   products: Product[];
@@ -70,8 +72,34 @@ export function BusinessDashboard({
   onSellProduct,
   onLoadExampleData
 }: BusinessDashboardProps) {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [goals, setGoals] = useState<Goal[]>([]);
+  
+  // Função para carregar metas empresariais
+  const loadBusinessGoals = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const response = await fetch(`/api/business/goals?user_id=${user.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setGoals(data.goals || []);
+      } else {
+        console.error('Erro ao carregar metas empresariais:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar metas empresariais:', error);
+    }
+  };
+
+  // Carregar metas ao montar o componente
+  useEffect(() => {
+    if (user?.id) {
+      loadBusinessGoals();
+    }
+  }, [user?.id]);
   
   // Função para carregar dados do período selecionado
   const handlePeriodChange = (date: Date) => {
@@ -189,6 +217,11 @@ export function BusinessDashboard({
           <div className="lg:col-span-2">
             <CategoryChart data={products} isLoading={isLoading}/>
           </div>
+        </div>
+
+        {/* Seção de Metas Empresariais */}
+        <div className="mb-6 sm:mb-8">
+          <GoalsWidget goals={goals} className="col-span-full" />
         </div>
 
         {/* Seção de Produtos */}

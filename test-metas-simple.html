@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Metas API</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .goal { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .loading { color: #666; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Teste da API de Metas</h1>
+    <div id="status" class="loading">Carregando...</div>
+    <div id="goals"></div>
+
+    <script>
+        async function loadGoals() {
+            try {
+                const userId = 'd550e8ce-d151-4a33-9d8f-4f7cf8886c9b';
+                const response = await fetch(`http://localhost:3002/api/goals?user_id=${userId}`);
+                
+                const statusDiv = document.getElementById('status');
+                const goalsDiv = document.getElementById('goals');
+                
+                if (!response.ok) {
+                    statusDiv.className = 'error';
+                    statusDiv.textContent = `Erro: ${response.status} - ${response.statusText}`;
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.goals) {
+                    statusDiv.className = 'success';
+                    statusDiv.textContent = `✅ ${data.goals.length} metas carregadas com sucesso!`;
+                    
+                    data.goals.forEach(goal => {
+                        const goalDiv = document.createElement('div');
+                        goalDiv.className = 'goal';
+                        goalDiv.innerHTML = `
+                            <h3>${goal.name}</h3>
+                            <p><strong>Descrição:</strong> ${goal.description || 'Sem descrição'}</p>
+                            <p><strong>Progresso:</strong> ${goal.currentValue}/${goal.targetValue} ${goal.unit}</p>
+                            <p><strong>Categoria:</strong> ${goal.category}</p>
+                            <p><strong>Prioridade:</strong> ${goal.priority}</p>
+                            <p><strong>Status:</strong> ${goal.status}</p>
+                            <p><strong>Prazo:</strong> ${goal.deadline ? new Date(goal.deadline).toLocaleDateString('pt-BR') : 'Sem prazo'}</p>
+                        `;
+                        goalsDiv.appendChild(goalDiv);
+                    });
+                } else {
+                    statusDiv.className = 'error';
+                    statusDiv.textContent = '❌ Nenhuma meta encontrada ou erro na resposta';
+                }
+                
+            } catch (error) {
+                const statusDiv = document.getElementById('status');
+                statusDiv.className = 'error';
+                statusDiv.textContent = `❌ Erro: ${error.message}`;
+            }
+        }
+        
+        // Carregar metas quando a página carregar
+        window.addEventListener('load', loadGoals);
+    </script>
+</body>
+</html>

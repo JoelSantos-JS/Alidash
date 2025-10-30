@@ -60,6 +60,80 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const {
+      id,
+      user_id,
+      title,
+      description,
+      target_amount,
+      current_amount,
+      category,
+      priority,
+      target_date,
+      status,
+      monthly_contribution,
+      notes
+    } = body;
+
+    if (!id || !user_id) {
+      return NextResponse.json(
+        { error: 'ID da meta e ID do usuário são obrigatórios' },
+        { status: 400 }
+      );
+    }
+
+    // Validação dos campos obrigatórios
+    if (!title || !target_amount || !category || !priority || !target_date || !status) {
+      return NextResponse.json(
+        { error: 'Campos obrigatórios: title, target_amount, category, priority, target_date, status' },
+        { status: 400 }
+      );
+    }
+
+    const supabase = createClient();
+
+    // Atualizar a meta pessoal
+    const { data, error } = await supabase
+      .from('personal_goals')
+      .update({
+        title,
+        description,
+        target_amount: parseFloat(target_amount),
+        current_amount: parseFloat(current_amount) || 0,
+        category,
+        priority,
+        target_date,
+        status,
+        monthly_contribution: monthly_contribution ? parseFloat(monthly_contribution) : null,
+        notes,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('user_id', user_id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Erro ao atualizar meta pessoal:', error);
+      return NextResponse.json(
+        { error: 'Erro ao atualizar meta pessoal' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Erro no PUT /api/personal/goals:', error);
+    return NextResponse.json(
+      { error: 'Erro interno do servidor' },
+      { status: 500 }
+    );
+  }
+}
+
 // DELETE - Deletar meta pessoal
 export async function DELETE(request: NextRequest) {
   try {

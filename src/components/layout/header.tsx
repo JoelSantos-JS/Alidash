@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Package, User as UserIcon, LogOut, LayoutDashboard, KeyRound, BarChart, Menu, Settings, CreditCard } from "lucide-react";
-import { AccountTypeToggle } from "@/components/ui/account-type-toggle";
+import { AccountTypeToggle, useAccountType } from "@/components/ui/account-type-toggle";
 import { Logo } from "@/components/ui/logo";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { ResponsiveNavigation } from "./responsive-navigation";
@@ -18,7 +18,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 export function Header() {
-  const { user, signOut, accountType, setAccountType } = useAuth();
+  const { user, signOut } = useAuth();
+  const { accountType, setAccountType } = useAccountType();
 
   const handleLogout = async () => {
     await signOut();
@@ -42,8 +43,8 @@ export function Header() {
               
               {/* Account Type Toggle */}
               <AccountTypeToggle 
-                value={accountType} 
-                onValueChange={setAccountType}
+                currentType={accountType} 
+                onTypeChange={setAccountType}
               />
             
               <div className="flex items-center gap-4">
@@ -89,7 +90,7 @@ export function Header() {
                     <DropdownMenuTrigger asChild>
                        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                         <Avatar className="h-8 w-8">
-                            <AvatarImage src={user.photoURL || ''} alt={user.email || ''} />
+                            <AvatarImage src={''} alt={user.email || ''} />
                             <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
                         </Avatar>
                       </Button>

@@ -15,6 +15,19 @@ interface PersonalTransactionFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  transactionToEdit?: {
+    id: string;
+    type: 'income' | 'expense';
+    description: string;
+    amount: number;
+    date: string;
+    category: string;
+    source?: string;
+    payment_method?: string;
+    is_essential?: boolean;
+    is_recurring: boolean;
+    notes?: string;
+  } | null;
 }
 
 // Categorias padrão como fallback
@@ -55,7 +68,7 @@ const PAYMENT_METHODS = {
   automatic_debit: 'Débito Automático'
 };
 
-export default function PersonalTransactionForm({ isOpen, onClose, onSuccess }: PersonalTransactionFormProps) {
+export default function PersonalTransactionForm({ isOpen, onClose, onSuccess, transactionToEdit }: PersonalTransactionFormProps) {
   const { user } = useSupabaseAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -64,20 +77,20 @@ export default function PersonalTransactionForm({ isOpen, onClose, onSuccess }: 
   const [dynamicExpenseCategories, setDynamicExpenseCategories] = useState(DEFAULT_EXPENSE_CATEGORIES);
   
   const [formData, setFormData] = useState({
-    type: 'expense' as 'income' | 'expense',
-    date: new Date().toISOString().split('T')[0],
-    description: '',
-    amount: '',
-    category: 'food',
-    source: '', // Para receitas
-    payment_method: 'debit_card', // Para despesas
-    is_essential: false, // Para despesas
-    is_recurring: false,
+    type: (transactionToEdit?.type || 'expense') as 'income' | 'expense',
+    date: transactionToEdit?.date || new Date().toISOString().split('T')[0],
+    description: transactionToEdit?.description || '',
+    amount: transactionToEdit?.amount?.toString() || '',
+    category: transactionToEdit?.category || 'food',
+    source: transactionToEdit?.source || '', // Para receitas
+    payment_method: transactionToEdit?.payment_method || 'debit_card', // Para despesas
+    is_essential: transactionToEdit?.is_essential || false, // Para despesas
+    is_recurring: transactionToEdit?.is_recurring || false,
     is_taxable: false, // Para receitas
     tax_withheld: '0', // Para receitas
     location: '',
     merchant: '',
-    notes: ''
+    notes: transactionToEdit?.notes || ''
   });
 
   // Carregar categorias da API

@@ -275,6 +275,12 @@ export default function CategoriesPage() {
         
         // Carregar categorias diretamente da API do Supabase
         const response = await fetch('/api/categories');
+        
+        if (!response.ok) {
+          console.error('❌ Erro ao buscar categorias:', response.status, response.statusText)
+          throw new Error(`Erro ${response.status}: ${response.statusText}`)
+        }
+        
         const data = await response.json();
         
         if (data.success && data.categories) {

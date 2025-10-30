@@ -1,5 +1,12 @@
 
 
+// Extended User interface to include firebase_uid
+export interface ExtendedUser {
+  id: string;
+  email?: string;
+  firebase_uid?: string;
+}
+
 export interface ProductImage {
   id: string;
   url: string;
@@ -82,7 +89,7 @@ export interface DreamPlan {
     details: string;
   }[];
   importantNotes: string[];
-  imageUrl: string;
+  imageUrl?: string;
 }
 
 export interface SubBet {

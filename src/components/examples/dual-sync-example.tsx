@@ -55,7 +55,7 @@ export function DualSyncExample() {
   })
 
   // Hook de sincronização dual
-  const dualSync = useDualSync(user?.firebase_uid || '', syncStatus.syncMode)
+  const dualSync = useDualSync(user?.id || '', syncStatus.syncMode)
 
   const handleCreateProduct = async () => {
     if (!user) {
@@ -87,7 +87,7 @@ export function DualSyncExample() {
       if (result.success) {
         toast({
           title: 'Produto Criado!',
-          description: `Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
+          description: `Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
         })
         
         // Limpar formulário
@@ -143,7 +143,7 @@ export function DualSyncExample() {
       if (result.success) {
         toast({
           title: 'Transação Criada!',
-          description: `Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
+          description: `Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
         })
         
         // Limpar formulário
@@ -204,8 +204,8 @@ export function DualSyncExample() {
           <div className="flex items-center gap-1">
             <Database className="h-3 w-3" />
             <span className="text-xs">Firebase:</span>
-            <Badge variant={result.firebaseSuccess ? 'default' : 'destructive'} className="text-xs">
-              {result.firebaseSuccess ? 'OK' : 'ERRO'}
+            <Badge variant={result.supabaseSuccess ? 'default' : 'destructive'} className="text-xs">
+                {result.supabaseSuccess ? 'OK' : 'ERRO'}
             </Badge>
           </div>
           

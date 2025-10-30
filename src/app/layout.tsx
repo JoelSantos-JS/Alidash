@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import "@/styles/performance-optimized.css";
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SupabaseAuthProvider } from "@/hooks/use-supabase-auth";
 import { DataProvider } from "@/contexts/data-context";
@@ -55,7 +56,6 @@ export default function RootLayout({
         {/* DNS Prefetch para recursos externos */}
         <link rel="dns-prefetch" href="//fonts.googleapis.com" />
         <link rel="dns-prefetch" href="//fonts.gstatic.com" />
-        <link rel="dns-prefetch" href="//firebaseapp.com" />
         <link rel="dns-prefetch" href="//googleapis.com" />
         
         {/* Preconnect para recursos críticos */}
@@ -74,14 +74,21 @@ export default function RootLayout({
       <body className={`${inter.variable} font-body antialiased`}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="light"
-          enableSystem
+          defaultTheme="dark"
+          forcedTheme="dark"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <SupabaseAuthProvider>
             <DataProvider>
               {children}
               <Toaster />
+              <SonnerToaster 
+                theme="dark"
+                position="top-right"
+                richColors
+                closeButton
+              />
             </DataProvider>
           </SupabaseAuthProvider>
         </ThemeProvider>

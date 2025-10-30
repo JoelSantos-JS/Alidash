@@ -298,13 +298,27 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   }
 
   // Show loading state during initial hydration
-  if (!isHydrated || loading) {
+  if (!isHydrated) {
     return (
       <AuthContext.Provider value={value}>
         <div className="flex items-center justify-center h-screen bg-background">
           <div className="text-center">
             <LoaderCircle className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-            <p className="text-sm text-muted-foreground">Carregando...</p>
+            <p className="text-lg text-muted-foreground">Carregando...</p>
+          </div>
+        </div>
+      </AuthContext.Provider>
+    )
+  }
+
+  // Show loading state after hydration
+  if (loading) {
+    return (
+      <AuthContext.Provider value={value}>
+        <div className="flex items-center justify-center h-screen bg-background">
+          <div className="text-center">
+            <LoaderCircle className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+            <p className="text-lg text-muted-foreground">Carregando...</p>
           </div>
         </div>
       </AuthContext.Provider>

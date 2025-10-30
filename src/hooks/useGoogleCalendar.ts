@@ -30,7 +30,7 @@ export function useGoogleCalendar() {
 
   // Verificar status da conexão
   const checkConnectionStatus = useCallback(async () => {
-    if (!user?.uid) {
+    if (!user?.id) {
       setStatus(prev => ({
         ...prev,
         isConnected: false,
@@ -45,11 +45,23 @@ export function useGoogleCalendar() {
 
       // Primeiro, verificar se as tabelas de calendário existem
       const response = await fetch(`/api/calendar/events?user_id=${user.id}&limit=1`);
+      
+      if (!response.ok) {
+        console.error('Erro ao verificar eventos:', response.status);
+        return;
+      }
+      
       const data = await response.json();
 
       if (response.ok) {
         // Se a API funcionou, verificar se há configurações do Google Calendar
         const authResponse = await fetch(`/api/calendar/auth?user_id=${user.id}&check_only=true`);
+        
+        if (!authResponse.ok) {
+          console.error('Erro ao verificar autenticação:', authResponse.status);
+          return;
+        }
+        
         const authData = await authResponse.json();
         
         setStatus(prev => ({
@@ -85,17 +97,17 @@ export function useGoogleCalendar() {
         error: 'Erro de conexão com o servidor'
       }));
     }
-  }, [user?.uid]);
+  }, [user?.id]);
 
   // Conectar com Google Calendar
   const connectGoogleCalendar = useCallback(async () => {
-    if (!user?.uid) {
+    if (!user?.id) {
       throw new Error('Usuário não autenticado');
     }
 
     try {
       // Obter URL de autorização
-      const authResponse = await fetch(`/api/calendar/auth?user_id=${user.uid}`);
+      const authResponse = await fetch(`/api/calendar/auth?user_id=${user.id}`);
       const authData = await authResponse.json();
 
       if (!authResponse.ok) {
@@ -112,11 +124,11 @@ export function useGoogleCalendar() {
       }));
       throw error;
     }
-  }, [user?.uid]);
+  }, [user?.id]);
 
   // Processar callback de autorização
   const handleAuthCallback = useCallback(async (code: string, state?: string) => {
-    if (!user?.uid) {
+    if (!user?.id) {
       throw new Error('Usuário não autenticado');
     }
 
@@ -131,7 +143,7 @@ export function useGoogleCalendar() {
         body: JSON.stringify({
           code,
           state,
-          user_id: user.uid
+          user_id: user.id
         })
       });
 
@@ -159,18 +171,18 @@ export function useGoogleCalendar() {
       }));
       throw error;
     }
-  }, [user?.uid]);
+  }, [user?.id]);
 
   // Desconectar Google Calendar
   const disconnectGoogleCalendar = useCallback(async () => {
-    if (!user?.uid) {
+    if (!user?.id) {
       throw new Error('Usuário não autenticado');
     }
 
     try {
       setStatus(prev => ({ ...prev, isLoading: true, error: null }));
 
-      const response = await fetch(`/api/calendar/auth?user_id=${user.uid}`, {
+      const response = await fetch(`/api/calendar/auth?user_id=${user.id}`, {
         method: 'DELETE'
       });
 
@@ -198,11 +210,11 @@ export function useGoogleCalendar() {
       }));
       throw error;
     }
-  }, [user?.uid]);
+  }, [user?.id]);
 
   // Sincronizar eventos
   const syncEvents = useCallback(async (timeMin?: string, timeMax?: string): Promise<SyncResult> => {
-    if (!user?.uid) {
+    if (!user?.id) {
       throw new Error('Usuário não autenticado');
     }
 
@@ -210,7 +222,7 @@ export function useGoogleCalendar() {
       setStatus(prev => ({ ...prev, isLoading: true, error: null }));
 
       const params = new URLSearchParams({
-        user_id: user.uid
+        user_id: user.id
       });
 
       if (timeMin) params.append('time_min', timeMin);
@@ -249,14 +261,14 @@ export function useGoogleCalendar() {
         error: error instanceof Error ? error.message : 'Erro desconhecido'
       };
     }
-  }, [user?.uid]);
+  }, [user?.id]);
 
   // Verificar status na inicialização
   useEffect(() => {
-    if (user?.uid) {
+    if (user?.id) {
       checkConnectionStatus();
     }
-  }, [user?.uid, checkConnectionStatus]);
+  }, [user?.id, checkConnectionStatus]);
 
   return {
     status,

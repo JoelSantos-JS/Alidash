@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/use-supabase-auth';
 import { usePathname } from 'next/navigation';
 
 export function AuthDebugger() {
-  const { user, supabaseUser, session, loading } = useAuth();
+  const { user, session, loading } = useAuth();
   const pathname = usePathname();
 
   // Only show in development
@@ -19,10 +19,9 @@ export function AuthDebugger() {
         <div>📍 <strong>Pathname:</strong> {pathname}</div>
         <div>⏳ <strong>Loading:</strong> {loading ? '✅' : '❌'}</div>
         <div>🔐 <strong>Session:</strong> {session ? '✅' : '❌'}</div>
-        <div>👤 <strong>Supabase User:</strong> {supabaseUser ? '✅' : '❌'}</div>
-        <div>📊 <strong>App User:</strong> {user ? '✅' : '❌'}</div>
-        {supabaseUser && (
-          <div>📧 <strong>Email:</strong> {supabaseUser.email}</div>
+        <div>👤 <strong>User:</strong> {user ? '✅' : '❌'}</div>
+        {session?.user && (
+          <div>📧 <strong>Email:</strong> {session.user.email}</div>
         )}
         {user && (
           <div>🆔 <strong>User ID:</strong> {user.id}</div>

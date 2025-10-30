@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { ExpensesChart } from "./expenses-chart";
 import MonthlyIncomeForm from "@/components/forms/monthly-income-form";
 import SalarySettingsForm from "@/components/forms/salary-settings-form";
+import { GoalsWidget } from "@/components/dashboard/goals-widget";
+import type { Goal } from "@/types";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -81,6 +83,7 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
   });
   const [recentExpenses, setRecentExpenses] = useState<PersonalExpense[]>([]);
   const [recentIncomes, setRecentIncomes] = useState<PersonalIncome[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentMonth] = useState(1); // Janeiro para usar os dados de teste
   const [currentYear] = useState(2025);
@@ -124,6 +127,32 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
       if (incomesResponse.ok) {
         const incomesData = await incomesResponse.json();
         setRecentIncomes(incomesData.incomes || []);
+      }
+      
+      // Carregar metas pessoais
+      const goalsResponse = await fetch(`/api/personal/goals?user_id=${supabaseUserId}`);
+      if (goalsResponse.ok) {
+        const goalsData = await goalsResponse.json();
+        if (goalsData.goals) {
+          // Converter dados da API para o formato Goal
+          const formattedGoals: Goal[] = goalsData.goals.map((goal: any) => ({
+            id: goal.id,
+            name: goal.name,
+            description: goal.description,
+            category: goal.type === 'savings' ? 'financial' : 'personal',
+            type: goal.type || 'savings',
+            targetValue: goal.target_amount,
+            currentValue: goal.current_amount || 0,
+            unit: 'BRL',
+            deadline: new Date(goal.deadline),
+            createdDate: new Date(goal.created_at),
+            priority: goal.priority || 'medium',
+            status: goal.status || 'active',
+            notes: goal.notes,
+            tags: []
+          }));
+          setGoals(formattedGoals);
+        }
       }
       
     } catch (error) {
@@ -369,6 +398,9 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
           </CardContent>
         </Card>
       </div>
+
+      {/* Widget de Metas */}
+      <GoalsWidget goals={goals} className="col-span-full" />
 
       {/* Orçamento Pessoal */}
       <Card>

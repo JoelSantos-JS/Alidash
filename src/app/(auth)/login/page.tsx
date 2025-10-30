@@ -19,7 +19,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const { signIn } = useAuth()
+  const { signIn, resetPassword } = useAuth()
   const router = useRouter()
 
   const validateForm = () => {
@@ -73,10 +73,11 @@ export default function LoginPage() {
     }
 
     try {
-      // This would use the resetPassword function from auth context
-      toast.success('Email de recuperação enviado!')
+      await resetPassword(email)
+      // Success message is handled by the resetPassword function
     } catch (error) {
-      toast.error('Erro ao enviar email de recuperação')
+      // Error message is handled by the resetPassword function
+      console.error('Erro ao enviar email de recuperação:', error)
     }
   }
 
@@ -146,13 +147,20 @@ export default function LoginPage() {
             )}
           </button>
 
-          <div className="text-center">
+          <div className="text-center space-y-2">
             <p className="text-white/80 text-sm">
               Não tem uma conta?{' '}
               <Link href="/cadastro" className="text-white font-medium hover:underline">
                 Cadastre-se
               </Link>
             </p>
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="text-white/80 text-sm hover:text-white hover:underline"
+            >
+              Esqueci minha senha
+            </button>
           </div>
         </form>
       </div>

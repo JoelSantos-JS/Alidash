@@ -64,7 +64,12 @@ export function GoalMilestones({ goal, onUpdateMilestones, className }: GoalMile
   const totalMilestones = milestones.length
   const milestonesProgress = totalMilestones > 0 ? (completedMilestones / totalMilestones) * 100 : 0
 
-  const formatValue = (value: number) => {
+  const formatValue = (value: number | undefined | null) => {
+    // Handle undefined, null, or NaN values
+    if (value === undefined || value === null || isNaN(value)) {
+      return '0'
+    }
+    
     if (goal.unit === 'BRL' || goal.unit === 'USD') {
       return value.toLocaleString('pt-BR', { 
         style: 'currency', 
@@ -79,7 +84,7 @@ export function GoalMilestones({ goal, onUpdateMilestones, className }: GoalMile
       days: 'dias',
       custom: ''
     }
-    return `${value.toLocaleString('pt-BR')}${unitLabels[goal.unit]}`
+    return `${value.toLocaleString('pt-BR')}${unitLabels[goal.unit] || ''}`
   }
 
   const openCreateForm = () => {
@@ -97,8 +102,8 @@ export function GoalMilestones({ goal, onUpdateMilestones, className }: GoalMile
   const openEditForm = (milestone: GoalMilestone) => {
     setEditingMilestone(milestone)
     setFormData({
-      name: milestone.name,
-      targetValue: milestone.targetValue,
+      name: milestone.name || '',
+      targetValue: milestone.targetValue || 0,
       targetDate: new Date(milestone.targetDate),
       reward: milestone.reward || '',
       notes: milestone.notes || ''

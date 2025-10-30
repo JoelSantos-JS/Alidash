@@ -51,6 +51,12 @@ export default function DreamsPage() {
         
         // Carregar sonhos diretamente da API do Supabase
         const response = await fetch(`/api/dreams?user_id=${user.id}`)
+        
+        if (!response.ok) {
+          console.error('❌ Erro ao buscar sonhos:', response.status, response.statusText)
+          throw new Error(`Erro ${response.status}: ${response.statusText}`)
+        }
+        
         const data = await response.json()
         
         if (data.success && data.dreams) {
@@ -185,7 +191,7 @@ export default function DreamsPage() {
       // Usar sincronização dual para criar
       try {
         const result = await dualSync.createDream(newDream);
-        console.log(`Sonho criado - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`);
+        console.log(`Sonho criado - Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`);
         
         toast({ 
           title: "Sonho Adicionado!", 

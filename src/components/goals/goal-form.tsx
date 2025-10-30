@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { CalendarIcon, Loader2 } from "lucide-react"
+import { CalendarIcon, Loader2, Target, Settings, FileText, TrendingUp, Calendar as CalendarLucide } from "lucide-react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
@@ -19,6 +19,8 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
 const goalSchema = z.object({
@@ -98,7 +100,23 @@ const statusOptions: Record<Goal['status'], string> = {
 }
 
 // Suggested combinations based on category and type
-const suggestedCombinations = {
+// Tipos para as sugestões
+type SuggestionUnit = Goal['unit']
+type SuggestionType = Goal['type']
+type SuggestionCategory = Goal['category']
+
+type SuggestionData = {
+  unit: SuggestionUnit
+  examples: string[]
+}
+
+type SuggestedCombinations = {
+  [K in SuggestionCategory]?: {
+    [T in SuggestionType]?: SuggestionData
+  }
+}
+
+const suggestedCombinations: SuggestedCombinations = {
   financial: {
     savings: { unit: 'BRL', examples: ['Reserva de emergência', 'Viagem dos sonhos'] },
     revenue: { unit: 'BRL', examples: ['Renda mensal', 'Vendas do trimestre'] },
@@ -113,17 +131,14 @@ const suggestedCombinations = {
   },
   personal: {
     quantity: { unit: 'quantity', examples: ['Livros lidos', 'Exercícios por semana'] },
-    days: { unit: 'days', examples: ['Dias sem fumar', 'Streak de estudos'] },
     custom: { unit: 'custom', examples: ['Habilidade específica', 'Hobby novo'] }
   },
   health: {
     quantity: { unit: 'quantity', examples: ['Peso perdido (kg)', 'Exercícios por semana'] },
-    days: { unit: 'days', examples: ['Dias de dieta', 'Streak de academia'] },
     percentage: { unit: 'percentage', examples: ['Redução de gordura', 'Melhoria na resistência'] }
   },
   education: {
     quantity: { unit: 'quantity', examples: ['Cursos concluídos', 'Certificações'] },
-    days: { unit: 'days', examples: ['Dias de estudo', 'Streak de aprendizado'] },
     percentage: { unit: 'percentage', examples: ['Progresso no curso', 'Nota mínima'] }
   }
 }
@@ -132,9 +147,18 @@ export function GoalForm({ onSave, goalToEdit, onCancel }: GoalFormProps) {
   const form = useForm<z.infer<typeof goalSchema>>({
     resolver: zodResolver(goalSchema),
     defaultValues: goalToEdit ? {
-      ...goalToEdit,
+      name: goalToEdit.name || "",
+      description: goalToEdit.description || "",
+      category: goalToEdit.category || "financial",
+      type: goalToEdit.type || "savings",
+      targetValue: goalToEdit.targetValue || 1000,
+      currentValue: goalToEdit.currentValue || 0,
+      unit: goalToEdit.unit || "BRL",
       deadline: new Date(goalToEdit.deadline),
-      tags: goalToEdit.tags?.join(', ') || ''
+      priority: goalToEdit.priority || 'medium',
+      status: goalToEdit.status || 'active',
+      notes: goalToEdit.notes || "",
+      tags: goalToEdit.tags?.join(', ') || ""
     } : {
       name: "",
       description: "",
@@ -182,7 +206,8 @@ export function GoalForm({ onSave, goalToEdit, onCancel }: GoalFormProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5" />
             {goalToEdit ? 'Editar Meta' : 'Nova Meta'}
           </DialogTitle>
           <DialogDescription>
@@ -193,328 +218,376 @@ export function GoalForm({ onSave, goalToEdit, onCancel }: GoalFormProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh] pr-4">
-          <div className="space-y-4">
-            {/* Basic Information */}
-            <div className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome da Meta *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: Economizar para viagem" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+        <Tabs defaultValue="basic" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="basic" className="flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              <span className="hidden sm:inline">Básico</span>
+            </TabsTrigger>
+            <TabsTrigger value="config" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Configurações</span>
+            </TabsTrigger>
+            <TabsTrigger value="details" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Detalhes</span>
+            </TabsTrigger>
+          </TabsList>
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Descrição</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Descreva sua meta em detalhes..."
-                        className="resize-none"
-                        rows={3}
-                        {...field}
+          {/* Aba Informações Básicas */}
+          <TabsContent value="basic" className="space-y-6">
+            <ScrollArea className="h-[55vh] sm:h-[60vh] px-4 sm:px-6">
+              <div className="space-y-4 sm:space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Informações da Meta</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nome da Meta *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ex: Economizar para viagem" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Descrição</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Descreva sua meta em detalhes..."
+                              className="resize-none"
+                              rows={3}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="category"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Categoria *</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione a categoria" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {Object.entries(categoryOptions).map(([key, value]) => (
+                                  <SelectItem key={key} value={key}>{value}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
 
-            <Separator />
+                      <FormField
+                        control={form.control}
+                        name="type"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tipo *</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione o tipo" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {Object.entries(typeOptions).map(([key, value]) => (
+                                  <SelectItem key={key} value={key}>{value}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-            {/* Category and Type */}
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Categoria *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a categoria" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.entries(categoryOptions).map(([key, value]) => (
-                          <SelectItem key={key} value={key}>{value}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o tipo" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.entries(typeOptions).map(([key, value]) => (
-                          <SelectItem key={key} value={key}>{value}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Suggestions */}
-            {suggestions && (
-              <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                <div className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-                  💡 Sugestões para {categoryOptions[selectedCategory]} - {typeOptions[selectedType]}:
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {suggestions.examples.map((example, index) => (
-                    <Badge 
-                      key={index} 
-                      variant="secondary" 
-                      className="text-xs cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800"
-                      onClick={() => form.setValue('name', example)}
-                    >
-                      {example}
-                    </Badge>
-                  ))}
-                </div>
+                    {/* Suggestions */}
+                    {suggestions && (
+                      <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <div className="flex items-center gap-2 mb-2">
+                          <TrendingUp className="h-4 w-4 text-blue-600" />
+                          <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                            Sugestões para {categoryOptions[selectedCategory]} - {typeOptions[selectedType]}:
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {suggestions.examples.map((example: string, index: number) => (
+                            <Badge 
+                              key={index} 
+                              variant="secondary" 
+                              className="text-xs cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900"
+                              onClick={() => form.setValue('name', example)}
+                            >
+                              {example}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
-            )}
+            </ScrollArea>
+          </TabsContent>
 
-            <Separator />
+          {/* Aba Configurações */}
+          <TabsContent value="config" className="space-y-6">
+            <ScrollArea className="h-[55vh] sm:h-[60vh] px-4 sm:px-6">
+              <div className="space-y-4 sm:space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Valores e Unidades</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="unit"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Unidade *</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione a unidade" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {Object.entries(unitOptions).map(([key, value]) => (
+                                <SelectItem key={key} value={key}>{value}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-            {/* Values and Unit */}
-            <div className="space-y-4">
-              <FormField
-                control={form.control}
-                name="unit"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Unidade *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a unidade" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.entries(unitOptions).map(([key, value]) => (
-                          <SelectItem key={key} value={key}>{value}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="targetValue"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Meta *</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step={selectedUnit === 'BRL' || selectedUnit === 'USD' ? "0.01" : "1"}
+                                placeholder="0"
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="targetValue"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Meta *</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          step={selectedUnit === 'BRL' || selectedUnit === 'USD' ? "0.01" : "1"}
-                          placeholder="0"
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      <FormField
+                        control={form.control}
+                        name="currentValue"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Valor Atual</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step={selectedUnit === 'BRL' || selectedUnit === 'USD' ? "0.01" : "1"}
+                                placeholder="0"
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
 
-                <FormField
-                  control={form.control}
-                  name="currentValue"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Valor Atual</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          step={selectedUnit === 'BRL' || selectedUnit === 'USD' ? "0.01" : "1"}
-                          placeholder="0"
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Prazo e Prioridade</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="deadline"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Data Limite *</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "w-full pl-3 text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    {field.value ? (
+                                      format(field.value, "PPP", { locale: ptBR })
+                                    ) : (
+                                      <span>Selecione uma data</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value}
+                                  onSelect={field.onChange}
+                                  disabled={(date) =>
+                                    date < new Date() || date < new Date("1900-01-01")
+                                  }
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="priority"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Prioridade *</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione a prioridade" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {Object.entries(priorityOptions).map(([key, { label, color }]) => (
+                                  <SelectItem key={key} value={key}>
+                                    <div className="flex items-center gap-2">
+                                      <div className={cn("w-2 h-2 rounded-full", color.split(' ')[0])} />
+                                      {label}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Status (only for editing) */}
+                    {goalToEdit && (
+                      <FormField
+                        control={form.control}
+                        name="status"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Status</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione o status" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {Object.entries(statusOptions).map(([key, value]) => (
+                                  <SelectItem key={key} value={key}>{value}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                  </CardContent>
+                </Card>
               </div>
-            </div>
+            </ScrollArea>
+          </TabsContent>
 
-            <Separator />
+          {/* Aba Detalhes */}
+          <TabsContent value="details" className="space-y-6">
+            <ScrollArea className="h-[55vh] sm:h-[60vh] px-4 sm:px-6">
+              <div className="space-y-4 sm:space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Informações Adicionais</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="tags"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tags</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Ex: importante, urgente, pessoal (separadas por vírgula)"
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Use tags para organizar e filtrar suas metas
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-            {/* Deadline and Priority */}
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="deadline"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Data Limite *</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "PPP", { locale: ptBR })
-                            ) : (
-                              <span>Selecione uma data</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date < new Date()}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="priority"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Prioridade</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a prioridade" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.entries(priorityOptions).map(([key, { label, color }]) => (
-                          <SelectItem key={key} value={key}>
-                            <div className="flex items-center gap-2">
-                              <div className={cn("w-2 h-2 rounded-full", color)} />
-                              {label}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Status (only for editing) */}
-            {goalToEdit && (
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.entries(statusOptions).map(([key, value]) => (
-                          <SelectItem key={key} value={key}>{value}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            <Separator />
-
-            {/* Additional Information */}
-            <div className="space-y-4">
-              <FormField
-                control={form.control}
-                name="tags"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tags</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Ex: importante, urgente, pessoal (separadas por vírgula)"
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Use tags para organizar e filtrar suas metas
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Observações</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Adicione observações, estratégias ou lembretes..."
-                        className="resize-none"
-                        rows={3}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </div>
-        </ScrollArea>
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Observações</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Adicione observações, estratégias ou lembretes..."
+                              className="resize-none"
+                              rows={6}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onCancel}>

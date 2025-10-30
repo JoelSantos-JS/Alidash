@@ -27,28 +27,18 @@ export async function DELETE(request: NextRequest) {
     const dualSync = new DualDatabaseSync(userId, DualSyncPresets.BEST_EFFORT)
     const result = await dualSync.deleteProduct(productId)
 
-    console.log(`✅ Produto deletado - Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
+    console.log(`✅ Produto deletado - Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
 
-    if (result.success) {
-      return NextResponse.json({ 
-        success: true,
-        firebaseSuccess: result.firebaseSuccess,
-        supabaseSuccess: result.supabaseSuccess,
-        message: 'Produto deletado com sucesso'
-      })
-    } else {
-      return NextResponse.json({ 
-        success: false,
-        errors: result.errors,
-        firebaseSuccess: result.firebaseSuccess,
-        supabaseSuccess: result.supabaseSuccess
-      }, { status: 500 })
-    }
-
+    return NextResponse.json({
+      success: result.success,
+      supabaseSuccess: result.supabaseSuccess,
+      errors: result.errors
+    })
   } catch (error) {
-    console.error('❌ Erro ao deletar produto:', error)
-    return NextResponse.json({ 
-      error: 'Erro interno do servidor' 
+    return NextResponse.json({
+      success: false,
+      supabaseSuccess: false,
+      errors: [error instanceof Error ? error.message : 'Erro desconhecido']
     }, { status: 500 })
   }
-} 
+}

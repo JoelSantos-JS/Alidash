@@ -66,7 +66,7 @@ export default function PersonalDashboard() {
       setLoading(true);
       
       // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.id}&email=${user?.email}`);
       if (!userResponse.ok) {
         console.log('⚠️ Usuário não encontrado no Supabase');
         return;
@@ -145,7 +145,7 @@ export default function PersonalDashboard() {
       summaryResults.forEach((result, index) => {
         if (result.status === 'fulfilled' && result.value.summary) {
           console.log(`📊 API resultado ${index}:`, result.value.summary);
-        } else {
+        } else if (result.status === 'rejected') {
           console.log(`❌ API falhou ${index}:`, result.reason || 'Erro desconhecido');
         }
       });

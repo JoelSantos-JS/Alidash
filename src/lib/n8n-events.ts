@@ -7,7 +7,7 @@ import crypto from 'crypto'
 export interface N8NEvent {
   eventType: string
   userId: string
-  data: any
+  data: Record<string, unknown>
   timestamp: Date
   source: 'voxcash'
   metadata?: {
@@ -75,7 +75,7 @@ export const EVENT_TYPES = {
 /**
  * Enviar evento para N8N
  */
-export async function sendN8NEvent(eventType: string, userId: string, data: any, metadata?: any) {
+export async function sendN8NEvent(eventType: string, userId: string, data: Record<string, unknown>, metadata?: Record<string, unknown>) {
   try {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -213,7 +213,32 @@ function generateSignature(event: N8NEvent, secret?: string): string {
  * Funções auxiliares para eventos específicos
  */
 
-export async function notifyProductCreated(userId: string, product: any) {
+export async function notifyGoalCreated(userId: string, goal: Record<string, unknown>) {
+  await sendN8NEvent(EVENT_TYPES.GOAL_CREATED, userId, {
+    goalId: goal.id,
+    title: goal.title,
+    targetAmount: goal.targetAmount,
+    currentAmount: goal.currentAmount,
+    deadline: goal.deadline,
+    category: goal.category,
+    priority: goal.priority
+  })
+}
+
+export async function notifyGoalUpdated(userId: string, goal: Record<string, unknown>) {
+  await sendN8NEvent(EVENT_TYPES.GOAL_UPDATED, userId, {
+    goalId: goal.id,
+    title: goal.title,
+    targetAmount: goal.targetAmount,
+    currentAmount: goal.currentAmount,
+    deadline: goal.deadline,
+    category: goal.category,
+    priority: goal.priority,
+    progress: goal.currentAmount && goal.targetAmount ? (Number(goal.currentAmount) / Number(goal.targetAmount)) * 100 : 0
+  })
+}
+
+export async function notifyProductCreated(userId: string, product: Record<string, unknown>) {
   await sendN8NEvent(EVENT_TYPES.PRODUCT_CREATED, userId, {
     product: {
       id: product.id,
@@ -227,7 +252,22 @@ export async function notifyProductCreated(userId: string, product: any) {
   })
 }
 
-export async function notifyProductSold(userId: string, product: any, sale: any) {
+export async function notifyProductUpdated(userId: string, product: Record<string, unknown>) {
+  await sendN8NEvent(EVENT_TYPES.PRODUCT_UPDATED, userId, {
+    productId: product.id,
+    name: product.name,
+    category: product.category,
+    supplier: product.supplier,
+    purchasePrice: product.purchasePrice,
+    sellingPrice: product.sellingPrice,
+    expectedProfit: product.expectedProfit,
+    profitMargin: product.profitMargin,
+    quantity: product.quantity,
+    status: product.status
+  })
+}
+
+export async function notifyProductSold(userId: string, product: Record<string, unknown>, sale: Record<string, unknown>) {
   await sendN8NEvent(EVENT_TYPES.PRODUCT_SOLD, userId, {
     product: {
       id: product.id,
@@ -245,7 +285,7 @@ export async function notifyProductSold(userId: string, product: any, sale: any)
   })
 }
 
-export async function notifyGoalCompleted(userId: string, goal: any) {
+export async function notifyGoalCompleted(userId: string, goal: Record<string, unknown>) {
   await sendN8NEvent(EVENT_TYPES.GOAL_COMPLETED, userId, {
     goal: {
       id: goal.id,
@@ -254,24 +294,33 @@ export async function notifyGoalCompleted(userId: string, goal: any) {
       targetValue: goal.targetValue,
       currentValue: goal.currentValue,
       completedDate: new Date(),
-      daysToComplete: Math.floor((new Date().getTime() - new Date(goal.createdDate).getTime()) / (1000 * 60 * 60 * 24))
+      daysToComplete: Math.floor((new Date().getTime() - new Date(String(goal.createdDate)).getTime()) / (1000 * 60 * 60 * 24))
     }
   })
 }
 
-export async function notifyGoalMilestoneReached(userId: string, goal: any, milestone: any) {
+export async function notifyGoalAchieved(userId: string, goal: Record<string, unknown>) {
+  await sendN8NEvent(EVENT_TYPES.GOAL_COMPLETED, userId, {
+    goalId: goal.id,
+    title: goal.title,
+    targetAmount: goal.targetAmount,
+    achievedAmount: goal.currentAmount,
+    achievedDate: new Date().toISOString(),
+    category: goal.category,
+    timeTaken: goal.deadline ? Math.floor((new Date().getTime() - new Date(String(goal.createdAt)).getTime()) / (1000 * 60 * 60 * 24)) : null
+  })
+}
+
+export async function notifyGoalMilestoneReached(userId: string, goal: Record<string, unknown>, milestone: Record<string, unknown>) {
   await sendN8NEvent(EVENT_TYPES.GOAL_MILESTONE_REACHED, userId, {
-    goal: {
-      id: goal.id,
-      name: goal.name,
-      category: goal.category
-    },
-    milestone: {
-      id: milestone.id,
-      name: milestone.name,
-      targetValue: milestone.targetValue,
-      completedDate: new Date()
-    }
+    goalId: goal.id,
+    goalTitle: goal.title,
+    milestoneId: milestone.id,
+    milestoneTitle: milestone.title,
+    milestoneAmount: milestone.amount,
+    currentProgress: goal.currentAmount,
+    totalTarget: goal.targetAmount,
+    progressPercentage: goal.currentAmount && goal.targetAmount ? (Number(goal.currentAmount) / Number(goal.targetAmount)) * 100 : 0
   })
 }
 

@@ -30,7 +30,7 @@ import { backupUserData } from "@/lib/backup-client";
 import NotificationSettings from "@/components/notifications/notification-settings";
 
 export default function ProfilePage() {
-    const { user, userData, signOut, refreshUserData } = useAuth();
+    const { user, signOut } = useAuth();
     const { toast } = useToast();
     const searchParams = useSearchParams();
     const defaultTab = searchParams.get('tab') || 'account';
@@ -40,19 +40,48 @@ export default function ProfilePage() {
     const [autoBackup, setAutoBackup] = useState(true);
     const [backupInterval, setBackupInterval] = useState<NodeJS.Timeout | null>(null);
     
-    // Estado para dados do usuário - usar userData do Supabase
-    const [userName, setUserName] = useState(userData?.name || user?.displayName || '');
+    // Estado para dados do usuário
+    const [userData, setUserData] = useState<any>(null);
+    const [userName, setUserName] = useState('');
     const [isUpdatingName, setIsUpdatingName] = useState(false);
+    const [isLoadingUserData, setIsLoadingUserData] = useState(false);
 
-    // Carregar nome do usuário quando disponível - priorizar userData
+    // Função para buscar dados do usuário
+    const fetchUserData = async () => {
+        if (!user?.id) return;
+        
+        setIsLoadingUserData(true);
+        try {
+            const response = await fetch('/api/user/get', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: user.id
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                setUserData(result.user);
+                setUserName(result.user.name || user.email?.split('@')[0] || '');
+            }
+        } catch (error) {
+            console.error('Erro ao buscar dados do usuário:', error);
+        } finally {
+            setIsLoadingUserData(false);
+        }
+    };
+
+    // Carregar dados do usuário quando disponível
     useEffect(() => {
-        const currentName = userData?.name || user?.displayName || '';
-        setUserName(currentName);
-    }, [userData?.name, user?.displayName]);
+        fetchUserData();
+    }, [user?.id]);
 
     // Função para atualizar o nome do usuário
     const updateUserName = async () => {
-        if (!user?.uid || !userName.trim()) {
+        if (!user?.id || !userName.trim()) {
             toast({
                 title: "Erro",
                 description: "Nome não pode estar vazio.",
@@ -62,7 +91,7 @@ export default function ProfilePage() {
             return;
         }
 
-        if (userName.trim() === (userData?.name || user?.displayName)) {
+        if (userName.trim() === userData?.name) {
             toast({
                 title: "Informação",
                 description: "O nome não foi alterado.",
@@ -93,7 +122,7 @@ export default function ProfilePage() {
             const result = await response.json();
             
             // Atualizar dados locais
-            await refreshUserData();
+            await fetchUserData();
             
             toast({
                 title: "Nome Atualizado",
@@ -261,7 +290,7 @@ export default function ProfilePage() {
                                                 />
                                                 <Button 
                                                     onClick={updateUserName}
-                                                    disabled={isUpdatingName || !userName.trim() || userName.trim() === (userData?.name || user?.displayName)}
+                                                    disabled={isUpdatingName || !userName.trim() || userName.trim() === userData?.name}
                                                     size="sm"
                                                     className="w-full sm:w-auto min-w-[80px]"
                                                 >
@@ -333,12 +362,15 @@ export default function ProfilePage() {
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
                                             <div className="space-y-0.5">
-                                                <Label>Modo Escuro</Label>
+                                                <Label>Tema da Aplicação</Label>
                                                 <p className="text-sm text-muted-foreground">
-                                                    Alternar entre tema claro e escuro
+                                                    Modo escuro ativo permanentemente
                                                 </p>
                                             </div>
-                                            <ThemeToggle />
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="secondary">Modo Escuro</Badge>
+                                                <ThemeToggle />
+                                            </div>
                                         </div>
                                         
                                         <Separator />

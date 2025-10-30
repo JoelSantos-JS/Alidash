@@ -60,6 +60,24 @@ const ICON_MAP: Record<string, any> = {
   Tag
 };
 
+import type { Transaction as GlobalTransaction } from "@/types";
+
+// Interface local para transações pessoais (com date como string para compatibilidade com API)
+interface PersonalTransaction {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  type: 'income' | 'expense';
+  category: string;
+  source?: string;
+  payment_method?: string;
+  is_essential?: boolean;
+  is_recurring: boolean;
+  notes?: string;
+  created_at: string;
+}
+
 interface CategoryStats {
   category: string;
   label: string;
@@ -70,6 +88,7 @@ interface CategoryStats {
   balance: number;
   transactionCount: number;
   percentage: number;
+  transactions?: PersonalTransaction[];
 }
 
 // Categorias padrão baseadas no SQL - serão usadas como fallback
@@ -112,7 +131,7 @@ export default function PersonalCategoriesPage() {
   const handleCreateCategory = async (categoryData: any) => {
     try {
       // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.id}&email=${user?.email}`);
       if (!userResponse.ok) {
         throw new Error('Usuário não encontrado');
       }
@@ -161,7 +180,7 @@ export default function PersonalCategoriesPage() {
     
     // Buscar transações específicas da categoria
     try {
-      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.id}&email=${user?.email}`);
       if (!userResponse.ok) return;
       
       const userResult = await userResponse.json();
@@ -173,25 +192,40 @@ export default function PersonalCategoriesPage() {
         fetch(`/api/personal/expenses?user_id=${supabaseUserId}&category=${category.category}&limit=50`)
       ]);
       
-      const transactions = [];
+      const transactions: PersonalTransaction[] = [];
       
       if (incomesResponse.ok) {
         const incomesResult = await incomesResponse.json();
         const incomes = incomesResult.incomes || [];
-        transactions.push(...incomes.map((income: any) => ({
-          ...income,
+        transactions.push(...incomes.map((income: any): PersonalTransaction => ({
+          id: income.id,
+          date: income.date,
+          description: income.description,
+          amount: income.amount,
           type: 'income',
-          amount: income.amount
+          category: income.category,
+          source: income.source,
+          is_recurring: income.is_recurring || false,
+          notes: income.notes,
+          created_at: income.created_at
         })));
       }
       
       if (expensesResponse.ok) {
         const expensesResult = await expensesResponse.json();
         const expenses = expensesResult.expenses || [];
-        transactions.push(...expenses.map((expense: any) => ({
-          ...expense,
+        transactions.push(...expenses.map((expense: any): PersonalTransaction => ({
+          id: expense.id,
+          date: expense.date,
+          description: expense.description,
+          amount: expense.amount,
           type: 'expense',
-          amount: expense.amount
+          category: expense.category,
+          payment_method: expense.payment_method,
+          is_essential: expense.is_essential,
+          is_recurring: expense.is_recurring || false,
+          notes: expense.notes,
+          created_at: expense.created_at
         })));
       }
       
@@ -219,7 +253,7 @@ export default function PersonalCategoriesPage() {
     
     try {
       // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.id}&email=${user?.email}`);
       if (!userResponse.ok) {
         throw new Error('Usuário não encontrado');
       }
@@ -267,7 +301,7 @@ export default function PersonalCategoriesPage() {
       setLoading(true);
       
       // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.id}&email=${user?.email}`);
       if (!userResponse.ok) {
         throw new Error('Usuário não encontrado');
       }
@@ -779,7 +813,7 @@ export default function PersonalCategoriesPage() {
                <PersonalCategoryForm
                  category={{
                    name: selectedCategory.label,
-                   type: selectedCategory.totalIncome > 0 ? 'income' : 'expense',
+                   type: (DEFAULT_CATEGORIES as any)[selectedCategory.category]?.type || 'expense',
                    category: selectedCategory.category,
                    description: '',
                    color: selectedCategory.color,
@@ -788,7 +822,7 @@ export default function PersonalCategoriesPage() {
                  onSubmit={async (data) => {
                     try {
                       // Buscar usuário Supabase
-                      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
+                      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.id}&email=${user?.email}`);
                       if (!userResponse.ok) {
                         throw new Error('Usuário não encontrado');
                       }

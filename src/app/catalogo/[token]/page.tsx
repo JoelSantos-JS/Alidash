@@ -209,79 +209,80 @@ export default function PublicCatalogPage() {
               }
               
               return (
-              <div key={product.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 group">
-                {/* Product Image */}
-                <div className="relative h-64 bg-gray-100">
-                  {product.imageUrl ? (
-                    <Image
-                      src={product.imageUrl}
-                      alt={product.name}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center h-full">
-                      <Package className="h-16 w-16 text-gray-400" />
-                    </div>
-                  )}
-                  
-                  {/* Status Badge */}
-                  <div className="absolute top-3 left-3">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor}`}>
-                      {statusLabel}
-                    </span>
-                  </div>
-
-                  {/* Quantity Badge */}
-                  {availableStock > 0 && (
-                    <div className="absolute top-3 right-3">
-                      <span className="bg-white bg-opacity-90 text-gray-800 px-2 py-1 rounded-full text-xs font-semibold">
-                        {availableStock} unid.
+                <div key={product.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 group">
+                  {/* Product Image */}
+                  <div className="relative h-64 bg-gray-100">
+                    {product.imageUrl ? (
+                      <Image
+                        src={product.imageUrl}
+                        alt={product.name}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <Package className="h-16 w-16 text-gray-400" />
+                      </div>
+                    )}
+                    
+                    {/* Status Badge */}
+                    <div className="absolute top-3 left-3">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor}`}>
+                        {statusLabel}
                       </span>
                     </div>
-                  )}
-                </div>
 
-                {/* Product Info */}
-                <div className="p-6">
-                  <div className="mb-3">
-                    <span className="text-sm text-blue-600 font-medium">{product.category}</span>
+                    {/* Quantity Badge */}
+                    {availableStock > 0 && (
+                      <div className="absolute top-3 right-3">
+                        <span className="bg-white bg-opacity-90 text-gray-800 px-2 py-1 rounded-full text-xs font-semibold">
+                          {availableStock} unid.
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  
-                  <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
-                    {product.name}
-                  </h3>
-                  
-                  {product.description && (
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                      {product.description}
-                    </p>
-                  )}
 
-                  {/* Price */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-1">
-                      <DollarSign className="h-5 w-5 text-green-600" />
-                      <span className="text-2xl font-bold text-green-600">
-                        R$ {product.sellingPrice.toFixed(2)}
-                      </span>
+                  {/* Product Info */}
+                  <div className="p-6">
+                    <div className="mb-3">
+                      <span className="text-sm text-blue-600 font-medium">{product.category}</span>
                     </div>
-                  </div>
+                    
+                    <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
+                      {product.name}
+                    </h3>
+                    
+                    {product.description && (
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                        {product.description}
+                      </p>
+                    )}
 
-                  {/* Action Button */}
-                  {product.aliexpressLink && (
-                    <a
-                      href={product.aliexpressLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-colors duration-200 flex items-center justify-center space-x-2 group"
-                    >
-                      <span>Ver no AliExpress</span>
-                      <ExternalLink className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
-                    </a>
-                  )}
+                    {/* Price */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-1">
+                        <DollarSign className="h-5 w-5 text-green-600" />
+                        <span className="text-2xl font-bold text-green-600">
+                          R$ {product.sellingPrice.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action Button */}
+                    {product.aliexpressLink && (
+                      <a
+                        href={product.aliexpressLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-colors duration-200 flex items-center justify-center space-x-2 group"
+                      >
+                        <span>Ver no AliExpress</span>
+                        <ExternalLink className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
+                      </a>
+                    )}
+                  </div>
                 </div>
-              )
+              );
             })}
           </div>
         )}

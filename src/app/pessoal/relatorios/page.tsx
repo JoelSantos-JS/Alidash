@@ -86,7 +86,7 @@ export default function PersonalReportsPage() {
       setLoading(true);
       
       // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.id}&email=${user?.email}`);
       if (!userResponse.ok) {
         console.log('⚠️ Usuário não encontrado no Supabase');
         return;
@@ -252,7 +252,7 @@ export default function PersonalReportsPage() {
     try {
       if (!user) return;
       
-      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.id}&email=${user?.email}`);
       if (!userResponse.ok) throw new Error('Usuário não encontrado');
       
       const userResult = await userResponse.json();
@@ -342,7 +342,7 @@ export default function PersonalReportsPage() {
     try {
       if (!user) return;
       
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.id}&email=${user?.email}`);
       if (!userResponse.ok) throw new Error('Usuário não encontrado');
       
       const userResult = await userResponse.json();

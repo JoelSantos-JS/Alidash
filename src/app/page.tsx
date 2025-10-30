@@ -481,7 +481,7 @@ export default function Home() {
 
     try {
       // Primeiro buscar o usuário no Supabase
-      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.id}&email=${user?.email}`);
       
       if (userResponse.ok) {
         const userResult = await userResponse.json();
@@ -607,8 +607,8 @@ export default function Home() {
           
           // Verificar se ambos os bancos funcionaram ou se não há erros críticos
           const hasErrors = result.errors && result.errors.length > 0;
-          const bothSucceeded = result.firebaseSuccess && result.supabaseSuccess;
-          const atLeastOneSucceeded = result.firebaseSuccess || result.supabaseSuccess;
+          const bothSucceeded = result.supabaseSuccess;
+        const atLeastOneSucceeded = result.supabaseSuccess;
           
           if (bothSucceeded) {
             // Sucesso completo
@@ -656,7 +656,7 @@ export default function Home() {
     
     try {
       // Primeiro buscar o usuário no Supabase
-      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.uid}&email=${user?.email}`);
+      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.id}&email=${user?.email}`);
       
       if (userResponse.ok) {
         const userResult = await userResponse.json();

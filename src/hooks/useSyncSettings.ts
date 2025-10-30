@@ -29,11 +29,13 @@ export const useSyncSettings = () => {
       setError(null);
 
       const response = await fetch(`/api/calendar/sync-settings?user_id=${user.id}`);
-      const data = await response.json();
-
+      
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao carregar configurações');
+        const errorData = await response.json().catch(() => ({ error: 'Erro de comunicação' }));
+        throw new Error(errorData.error || 'Erro ao carregar configurações');
       }
+      
+      const data = await response.json();
 
       setSettings(data.settings);
     } catch (err) {

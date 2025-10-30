@@ -295,6 +295,33 @@ export class DatabaseSync {
     return result
   }
 
+  async saveDreams(dreams: Dream[]): Promise<SyncResult> {
+    const result: SyncResult = {
+      success: false,
+      supabaseSuccess: false,
+      errors: []
+    }
+
+    try {
+      // Para cada sonho, criar ou atualizar
+      for (const dream of dreams) {
+        if (dream.id) {
+          // Se tem ID, é uma atualização (implementar quando necessário)
+          console.log(`Atualizando sonho ${dream.id} (funcionalidade em desenvolvimento)`)
+        } else {
+          // Se não tem ID, é criação
+          await supabaseService.createDream(this.userId, dream)
+        }
+      }
+      result.supabaseSuccess = true
+      result.success = true
+    } catch (error) {
+      result.errors.push(`Supabase error: ${error}`)
+    }
+
+    return result
+  }
+
   // =====================================
   // BETS
   // =====================================
@@ -389,6 +416,18 @@ export const SyncPresets = {
   
   BEST_EFFORT: {
     rollbackOnFailure: false
+  } as SyncOptions,
+  
+  FIREBASE_PRIORITY: {
+    rollbackOnFailure: true
+  } as SyncOptions,
+  
+  SUPABASE_PRIORITY: {
+    rollbackOnFailure: true
+  } as SyncOptions,
+  
+  STRICT_DUAL: {
+    rollbackOnFailure: true
   } as SyncOptions
 }
 

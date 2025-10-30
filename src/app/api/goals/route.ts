@@ -82,11 +82,18 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { goalId, updates } = body
+    const { goalId, updates, userId } = body
 
     if (!goalId) {
       return NextResponse.json(
         { error: 'ID da meta é obrigatório' },
+        { status: 400 }
+      )
+    }
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'ID do usuário é obrigatório' },
         { status: 400 }
       )
     }
@@ -99,11 +106,11 @@ export async function PUT(request: NextRequest) {
     }
 
     // Atualizar meta
-    await supabaseAdminService.updateGoal(goalId, updates)
+    const updatedGoal = await supabaseAdminService.updateGoal(userId, goalId, updates)
 
     return NextResponse.json({
       success: true,
-      message: 'Meta atualizada com sucesso'
+      goal: updatedGoal
     })
 
   } catch (error) {
@@ -123,6 +130,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const goalId = searchParams.get('goalId')
+    const userId = searchParams.get('user_id')
 
     if (!goalId) {
       return NextResponse.json(
@@ -131,8 +139,15 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'ID do usuário é obrigatório' },
+        { status: 400 }
+      )
+    }
+
     // Deletar meta
-    await supabaseAdminService.deleteGoal(goalId)
+    await supabaseAdminService.deleteGoal(userId, goalId)
 
     return NextResponse.json({
       success: true,

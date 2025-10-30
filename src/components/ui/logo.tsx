@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import { useTheme } from "next-themes"
 
 interface LogoProps {
   className?: string
@@ -10,21 +9,18 @@ interface LogoProps {
 }
 
 export function Logo({ className, size = "md" }: LogoProps) {
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
-  
   const sizeClasses = {
     sm: "w-6 h-6",
     md: "w-8 h-8", 
     lg: "w-12 h-12"
   }
 
-  // Cores baseadas no tema
-  const spiderColor = isDark ? "#ffffff" : "#1a1a1a"
-  const spiderStroke = isDark ? "#e5e5e5" : "#000000"
-  const spiderDetail = isDark ? "#f0f0f0" : "#2a2a2a"
-  const spiderAccent = isDark ? "#ff6b35" : "#e55a2b"
-  const shadowColor = isDark ? "#ffffff20" : "#00000020"
+  // Cores fixas para modo escuro
+  const spiderColor = "#ffffff"
+  const spiderStroke = "#e5e5e5"
+  const spiderDetail = "#f0f0f0"
+  const spiderAccent = "#ff6b35"
+  const shadowColor = "#ffffff20"
 
   return (
     <div className={cn("flex items-center justify-center", className)}>

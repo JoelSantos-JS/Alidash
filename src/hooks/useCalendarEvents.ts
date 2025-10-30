@@ -95,11 +95,13 @@ export function useCalendarEvents() {
       if (endDate) params.append('end_date', endDate);
 
       const response = await fetch(`/api/calendar/events?${params}`);
-      const data = await response.json();
-
+      
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao buscar eventos');
+        const errorData = await response.json().catch(() => ({ error: 'Erro de comunicação' }));
+        throw new Error(errorData.error || 'Erro ao buscar eventos');
       }
+      
+      const data = await response.json();
 
       setState(prev => ({
         ...prev,
@@ -123,7 +125,7 @@ export function useCalendarEvents() {
 
   // Criar evento
   const createEvent = useCallback(async (eventData: CreateEventData, syncWithGoogle = false) => {
-    if (!user?.uid) {
+    if (!user?.id) {
       throw new Error('Usuário não autenticado');
     }
 
@@ -138,9 +140,9 @@ export function useCalendarEvents() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: user.uid,
-          ...eventData
-        })
+          ...eventData,
+          user_id: user.id,
+        }),
       });
 
       const data = await response.json();
@@ -168,11 +170,11 @@ export function useCalendarEvents() {
       }));
       throw error;
     }
-  }, [user?.uid]);
+  }, [user?.id]);
 
   // Atualizar evento
-  const updateEvent = useCallback(async (eventData: UpdateEventData) => {
-    if (!user?.uid) {
+  const updateEvent = useCallback(async (eventData: UpdateEventData, syncWithGoogle = false) => {
+    if (!user?.id) {
       throw new Error('Usuário não autenticado');
     }
 
@@ -216,11 +218,11 @@ export function useCalendarEvents() {
       }));
       throw error;
     }
-  }, [user?.uid]);
+  }, [user?.id]);
 
   // Deletar evento
-  const deleteEvent = useCallback(async (eventId: string) => {
-    if (!user?.uid) {
+  const deleteEvent = useCallback(async (eventId: string, syncWithGoogle = false) => {
+    if (!user?.id) {
       throw new Error('Usuário não autenticado');
     }
 
@@ -256,7 +258,7 @@ export function useCalendarEvents() {
       }));
       throw error;
     }
-  }, [user?.uid]);
+  }, [user?.id]);
 
   // Buscar eventos por período
   const getEventsByDateRange = useCallback((startDate: Date, endDate: Date) => {
@@ -295,10 +297,10 @@ export function useCalendarEvents() {
 
   // Carregar eventos na inicialização
   useEffect(() => {
-    if (user?.uid) {
+    if (user?.id) {
       fetchEvents();
     }
-  }, [user?.uid, fetchEvents]);
+  }, [user?.id, fetchEvents]);
 
   return {
     events: state.events,

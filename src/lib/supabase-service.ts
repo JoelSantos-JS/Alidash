@@ -522,6 +522,130 @@ export class SupabaseService {
 
     return data
   }
+
+  // =====================================
+  // GOAL OPERATIONS
+  // =====================================
+
+  async createGoal(userId: string, goalData: Omit<Goal, 'id' | 'milestones' | 'reminders'>) {
+    const insertData = {
+      user_id: userId,
+      name: goalData.name,
+      description: goalData.description,
+      category: goalData.category,
+      type: goalData.type,
+      target_value: goalData.targetValue,
+      current_value: goalData.currentValue || 0,
+      unit: goalData.unit,
+      deadline: goalData.deadline ? new Date(goalData.deadline).toISOString() : null,
+      priority: goalData.priority || 'medium',
+      status: goalData.status || 'active',
+      notes: goalData.notes || '',
+      tags: goalData.tags || [],
+      linked_product_ids: goalData.linkedEntities?.products || [],
+      linked_dream_ids: goalData.linkedEntities?.dreams || [],
+      linked_transaction_ids: goalData.linkedEntities?.transactions || [],
+      created_date: goalData.createdDate ? new Date(goalData.createdDate).toISOString() : new Date().toISOString()
+    }
+
+    const { data, error } = await this.client
+      .from('goals')
+      .insert(insertData)
+      .select()
+      .single()
+
+    if (error) {
+      throw new Error(`Erro ao criar meta: ${error.message}`)
+    }
+
+    return data
+  }
+
+  async getGoals(userId: string): Promise<Goal[]> {
+    const { data, error } = await this.client
+      .from('goals')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      throw new Error(`Erro ao buscar metas: ${error.message}`)
+    }
+
+    // Mapear campos do banco para o tipo Goal
+    return (data || []).map(goal => ({
+      id: goal.id,
+      name: goal.name,
+      description: goal.description,
+      category: goal.category,
+      type: goal.type,
+      targetValue: goal.target_value,
+      currentValue: goal.current_value,
+      unit: goal.unit,
+      deadline: goal.deadline,
+      createdDate: goal.created_date,
+      priority: goal.priority,
+      status: goal.status,
+      notes: goal.notes,
+      tags: goal.tags || [],
+      linkedEntities: {
+        products: goal.linked_product_ids || [],
+        dreams: goal.linked_dream_ids || [],
+        transactions: goal.linked_transaction_ids || []
+      },
+      milestones: [], // Será implementado quando necessário
+      reminders: []   // Será implementado quando necessário
+    }))
+  }
+
+  async updateGoal(userId: string, goalId: string, updates: Partial<Goal>) {
+    const updateData: any = {}
+    
+    // Mapear campos do Goal para campos do banco
+    if (updates.name !== undefined) updateData.name = updates.name
+    if (updates.description !== undefined) updateData.description = updates.description
+    if (updates.category !== undefined) updateData.category = updates.category
+    if (updates.type !== undefined) updateData.type = updates.type
+    if (updates.targetValue !== undefined) updateData.target_value = updates.targetValue
+    if (updates.currentValue !== undefined) updateData.current_value = updates.currentValue
+    if (updates.unit !== undefined) updateData.unit = updates.unit
+    if (updates.deadline !== undefined) {
+      updateData.deadline = updates.deadline ? new Date(updates.deadline).toISOString() : null
+    }
+    if (updates.priority !== undefined) updateData.priority = updates.priority
+    if (updates.status !== undefined) updateData.status = updates.status
+    if (updates.notes !== undefined) updateData.notes = updates.notes
+    if (updates.tags !== undefined) updateData.tags = updates.tags
+    if (updates.linkedEntities?.products !== undefined) updateData.linked_product_ids = updates.linkedEntities.products
+    if (updates.linkedEntities?.dreams !== undefined) updateData.linked_dream_ids = updates.linkedEntities.dreams
+    if (updates.linkedEntities?.transactions !== undefined) updateData.linked_transaction_ids = updates.linkedEntities.transactions
+
+    const { data, error } = await this.client
+      .from('goals')
+      .update(updateData)
+      .eq('id', goalId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+
+    if (error) {
+      throw new Error(`Erro ao atualizar meta: ${error.message}`)
+    }
+
+    return data
+  }
+
+  async deleteGoal(userId: string, goalId: string) {
+    const { error } = await this.client
+      .from('goals')
+      .delete()
+      .eq('id', goalId)
+      .eq('user_id', userId)
+
+    if (error) {
+      throw new Error(`Erro ao deletar meta: ${error.message}`)
+    }
+  }
 }
 
 export const supabaseService = new SupabaseService(false)

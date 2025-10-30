@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { Loader2, Briefcase, Settings, Calendar, DollarSign, Save, Info } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface SalarySettingsFormProps {
   isOpen: boolean;
@@ -231,145 +232,160 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
           </DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Informações Básicas */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="amount" className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
-                Valor *
-              </Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0,00"
-                value={formData.amount}
-                onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="payment_day" className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Dia do Recebimento
-              </Label>
-              <Select value={formData.payment_day} onValueChange={(value) => setFormData({...formData, payment_day: value})}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({length: 31}, (_, i) => i + 1).map(day => (
-                    <SelectItem key={day} value={day.toString()}>
-                      Dia {day}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="description" className="flex items-center gap-2">
-              <Briefcase className="h-4 w-4" />
-              Descrição *
-            </Label>
-            <Input
-              id="description"
-              placeholder="Ex: Salário Janeiro 2025"
-              value={formData.description}
-              onChange={(e) => setFormData({...formData, description: e.target.value})}
-              required
-            />
-          </div>
-          
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Tabs defaultValue="basic" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="basic" className="flex items-center gap-2">
+                <Info className="h-4 w-4" />
+                Informações Básicas
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
-                Categoria *
-              </Label>
-              <select
-                value="salary"
-                className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-                disabled
-              >
-                <option value="salary">Salário</option>
-              </select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="source" className="flex items-center gap-2">
-                <Briefcase className="h-4 w-4" />
-                Fonte/Pagador *
-              </Label>
-              <Input
-                id="source"
-                placeholder="Ex: Empresa XYZ Ltda"
-                value={formData.source}
-                onChange={(e) => setFormData({...formData, source: e.target.value})}
-                required
-              />
-            </div>
-          </div>
-          
-          {/* Configurações */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium">Configurações</h3>
-            
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <div>
-                <Label htmlFor="is_active" className="font-medium">Receita Recorrente</Label>
-                <p className="text-sm text-muted-foreground">Esta receita se repete mensalmente</p>
+                Configurações
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="basic" className="space-y-4 mt-4">
+              {/* Informações Básicas */}
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="amount" className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Valor *
+                  </Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0,00"
+                    value={formData.amount}
+                    onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="payment_day" className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Dia do Recebimento
+                  </Label>
+                  <Select value={formData.payment_day} onValueChange={(value) => setFormData({...formData, payment_day: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({length: 31}, (_, i) => i + 1).map(day => (
+                        <SelectItem key={day} value={day.toString()}>
+                          Dia {day}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <Switch
-                id="is_active"
-                checked={formData.is_active}
-                onCheckedChange={(checked) => setFormData({...formData, is_active: checked})}
-              />
-            </div>
-            
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <div>
-                <Label htmlFor="is_taxable" className="font-medium">Receita Tributável</Label>
-                <p className="text-sm text-muted-foreground">Sujeita a imposto de renda</p>
-              </div>
-              <Switch
-                id="is_taxable"
-                checked={formData.is_taxable}
-                onCheckedChange={(checked) => setFormData({...formData, is_taxable: checked})}
-              />
-            </div>
-            
-            {formData.is_taxable && (
-              <div className="space-y-2 ml-4">
-                <Label htmlFor="tax_withheld">Imposto Retido na Fonte</Label>
+              
+              <div className="space-y-2">
+                <Label htmlFor="description" className="flex items-center gap-2">
+                  <Briefcase className="h-4 w-4" />
+                  Descrição *
+                </Label>
                 <Input
-                  id="tax_withheld"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0,00"
-                  value={formData.tax_withheld}
-                  onChange={(e) => setFormData({...formData, tax_withheld: e.target.value})}
+                  id="description"
+                  placeholder="Ex: Salário Janeiro 2025"
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  required
                 />
               </div>
-            )}
-          </div>
-          
-          {/* Observações */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">Observações</Label>
-            <Textarea
-              id="notes"
-              placeholder="Informações adicionais sobre esta receita..."
-              value={formData.notes}
-              onChange={(e) => setFormData({...formData, notes: e.target.value})}
-              rows={3}
-            />
-          </div>
+              
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    Categoria *
+                  </Label>
+                  <select
+                    value="salary"
+                    className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
+                    disabled
+                  >
+                    <option value="salary">Salário</option>
+                  </select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="source" className="flex items-center gap-2">
+                    <Briefcase className="h-4 w-4" />
+                    Fonte/Pagador *
+                  </Label>
+                  <Input
+                    id="source"
+                    placeholder="Ex: Empresa XYZ Ltda"
+                    value={formData.source}
+                    onChange={(e) => setFormData({...formData, source: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="settings" className="space-y-4 mt-4">
+              {/* Configurações */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <Label htmlFor="is_active" className="font-medium">Receita Recorrente</Label>
+                    <p className="text-sm text-muted-foreground">Esta receita se repete mensalmente</p>
+                  </div>
+                  <Switch
+                    id="is_active"
+                    checked={formData.is_active}
+                    onCheckedChange={(checked) => setFormData({...formData, is_active: checked})}
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <Label htmlFor="is_taxable" className="font-medium">Receita Tributável</Label>
+                    <p className="text-sm text-muted-foreground">Sujeita a imposto de renda</p>
+                  </div>
+                  <Switch
+                    id="is_taxable"
+                    checked={formData.is_taxable}
+                    onCheckedChange={(checked) => setFormData({...formData, is_taxable: checked})}
+                  />
+                </div>
+                
+                {formData.is_taxable && (
+                  <div className="space-y-2 ml-4">
+                    <Label htmlFor="tax_withheld">Imposto Retido na Fonte</Label>
+                    <Input
+                      id="tax_withheld"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0,00"
+                      value={formData.tax_withheld}
+                      onChange={(e) => setFormData({...formData, tax_withheld: e.target.value})}
+                    />
+                  </div>
+                )}
+              </div>
+              
+              {/* Observações */}
+              <div className="space-y-2">
+                <Label htmlFor="notes">Observações</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Informações adicionais sobre esta receita..."
+                  value={formData.notes}
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  rows={3}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
           
           {/* Botões */}
           <div className="flex gap-3 pt-4">

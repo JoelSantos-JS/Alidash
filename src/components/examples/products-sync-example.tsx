@@ -35,7 +35,7 @@ export function ProductsSyncExample() {
     description: ''
   })
 
-  const { createProduct, updateProduct, deleteProduct, getProducts } = useDualSync(user?.uid || '')
+  const { createProduct, updateProduct, deleteProduct, getProducts } = useDualSync(user?.id || '')
 
   const handleCreateProduct = async () => {
     if (!user) {
@@ -81,7 +81,7 @@ export function ProductsSyncExample() {
       if (result.success) {
         toast({
           title: 'Produto Criado!',
-          description: `Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
+          description: `Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
         })
         
         // Limpar formulário
@@ -136,7 +136,7 @@ export function ProductsSyncExample() {
       if (result.success) {
         toast({
           title: 'Produto Atualizado!',
-          description: `Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
+          description: `Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
         })
         await loadProducts()
       } else {
@@ -164,7 +164,7 @@ export function ProductsSyncExample() {
       if (result.success) {
         toast({
           title: 'Produto Deletado!',
-          description: `Firebase: ${result.firebaseSuccess ? '✅' : '❌'} | Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
+          description: `Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`,
         })
         await loadProducts()
       } else {
@@ -273,7 +273,7 @@ export function ProductsSyncExample() {
             <div className="p-4 bg-muted rounded-lg">
               <h4 className="font-semibold mb-2">Último Resultado:</h4>
               <div className="text-sm space-y-1">
-                <div>Firebase: {syncStatus.lastResult.firebaseSuccess ? '✅' : '❌'}</div>
+                <div>Supabase: {syncStatus.lastResult.supabaseSuccess ? '✅' : '❌'}</div>
                 <div>Supabase: {syncStatus.lastResult.supabaseSuccess ? '✅' : '❌'}</div>
                 {syncStatus.lastResult.errors.length > 0 && (
                   <div className="text-red-600">

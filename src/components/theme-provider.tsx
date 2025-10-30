@@ -1,21 +1,22 @@
 "use client"
 
 import * as React from "react"
-import { ThemeProvider as NextThemesProvider } from "next-themes"
+import { ThemeProvider as NextThemesProvider, type ThemeProviderProps as NextThemesProviderProps } from "next-themes"
 
-export interface ThemeProviderProps {
+export interface ThemeProviderProps extends NextThemesProviderProps {
   children: React.ReactNode
-  attribute?: string | string[]
-  defaultTheme?: string
-  enableSystem?: boolean
-  disableTransitionOnChange?: boolean
-  storageKey?: string
-  themes?: string[]
-  forcedTheme?: string
-  value?: Record<string, string>
-  nonce?: string
 }
 
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+  const [mounted, setMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return <>{children}</>
+  }
+
   return <NextThemesProvider {...props}>{children}</NextThemesProvider>
 }

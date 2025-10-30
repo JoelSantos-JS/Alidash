@@ -237,51 +237,51 @@ export function GoalsOverview({ goals, className }: GoalsOverviewProps) {
     <div className={cn("space-y-6", className)}>
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+        <Card className="border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Metas</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-blue-900 dark:text-blue-100">Total de Metas</CardTitle>
+            <Target className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analytics.totalGoals}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{analytics.totalGoals}</div>
+            <p className="text-xs text-blue-600 dark:text-blue-400">
               {analytics.activeGoals} ativas
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-green-200 dark:border-green-800 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Taxa de Conclusão</CardTitle>
-            <Trophy className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-green-900 dark:text-green-100">Taxa de Conclusão</CardTitle>
+            <Trophy className="h-4 w-4 text-green-600 dark:text-green-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analytics.completionRate.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold text-green-700 dark:text-green-300">{analytics.completionRate.toFixed(1)}%</div>
+            <p className="text-xs text-green-600 dark:text-green-400">
               {analytics.completedGoals} concluídas
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Progresso Médio</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-purple-900 dark:text-purple-100">Progresso Médio</CardTitle>
+            <Activity className="h-4 w-4 text-purple-600 dark:text-purple-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analytics.avgProgress.toFixed(1)}%</div>
+            <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">{analytics.avgProgress.toFixed(1)}%</div>
             <Progress value={analytics.avgProgress} className="mt-2" />
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-orange-200 dark:border-orange-800 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Momentum</CardTitle>
-            <Flame className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-orange-900 dark:text-orange-100">Momentum</CardTitle>
+            <Flame className="h-4 w-4 text-orange-600 dark:text-orange-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analytics.momentum.toFixed(0)}%</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">{analytics.momentum.toFixed(0)}%</div>
+            <p className="text-xs text-orange-600 dark:text-orange-400">
               {analytics.overdue > 0 && `${analytics.overdue} atrasadas`}
             </p>
           </CardContent>
@@ -410,7 +410,7 @@ export function GoalsOverview({ goals, className }: GoalsOverviewProps) {
                 </p>
               ) : (
                 analytics.upcomingDeadlines.map((goal) => {
-                  const CategoryIcon = categoryIcons[goal.category]
+                  const CategoryIcon = categoryIcons[goal.category] || Star
                   return (
                     <div key={goal.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-3">
@@ -469,7 +469,7 @@ export function GoalsOverview({ goals, className }: GoalsOverviewProps) {
                 </p>
               ) : (
                 analytics.topPerformers.map((goal, index) => {
-                  const CategoryIcon = categoryIcons[goal.category]
+                  const CategoryIcon = categoryIcons[goal.category] || Star
                   return (
                     <div key={goal.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-3">
@@ -493,7 +493,7 @@ export function GoalsOverview({ goals, className }: GoalsOverviewProps) {
                             {goal.priority === 'high' && '⚡'}
                             {goal.priority === 'medium' && '📋'}
                             {goal.priority === 'low' && '📝'}
-                            {goal.priority.charAt(0).toUpperCase() + goal.priority.slice(1)}
+                            {(goal.priority || 'medium').charAt(0).toUpperCase() + (goal.priority || 'medium').slice(1)}
                           </Badge>
                         </div>
                       </div>

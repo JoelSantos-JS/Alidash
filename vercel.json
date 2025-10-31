@@ -19,6 +19,5 @@
       "NODE_ENV": "production",
       "NEXT_TELEMETRY_DISABLED": "1"
     }
-  },
-  "installCommand": "npm ci --only=production --ignore-scripts"
+  }
 }

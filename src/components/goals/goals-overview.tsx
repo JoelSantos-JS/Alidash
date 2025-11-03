@@ -416,11 +416,11 @@ export function GoalsOverview({ goals, className }: GoalsOverviewProps) {
                       <div className="flex items-center gap-3">
                         <div className={cn(
                           "p-2 rounded-lg",
-                          `bg-${goal.category === 'financial' ? 'green' : 
-                               goal.category === 'business' ? 'blue' : 
-                               goal.category === 'personal' ? 'pink' : 
-                               goal.category === 'health' ? 'red' : 
-                               goal.category === 'education' ? 'purple' : 'yellow'}-50`
+                          goal.category === 'financial' ? 'bg-green-50 text-green-600' : 
+                          goal.category === 'business' ? 'bg-blue-50 text-blue-600' : 
+                          goal.category === 'personal' ? 'bg-pink-50 text-pink-600' : 
+                          goal.category === 'health' ? 'bg-red-50 text-red-600' : 
+                          goal.category === 'education' ? 'bg-purple-50 text-purple-600' : 'bg-yellow-50 text-yellow-600'
                         )}>
                           <CategoryIcon className="h-4 w-4" />
                         </div>
@@ -478,11 +478,11 @@ export function GoalsOverview({ goals, className }: GoalsOverviewProps) {
                         </div>
                         <div className={cn(
                           "p-2 rounded-lg",
-                          `bg-${goal.category === 'financial' ? 'green' : 
-                               goal.category === 'business' ? 'blue' : 
-                               goal.category === 'personal' ? 'pink' : 
-                               goal.category === 'health' ? 'red' : 
-                               goal.category === 'education' ? 'purple' : 'yellow'}-50`
+                          goal.category === 'financial' ? 'bg-green-50 text-green-600' : 
+                          goal.category === 'business' ? 'bg-blue-50 text-blue-600' : 
+                          goal.category === 'personal' ? 'bg-pink-50 text-pink-600' : 
+                          goal.category === 'health' ? 'bg-red-50 text-red-600' : 
+                          goal.category === 'education' ? 'bg-purple-50 text-purple-600' : 'bg-yellow-50 text-yellow-600'
                         )}>
                           <CategoryIcon className="h-4 w-4" />
                         </div>

@@ -35,8 +35,9 @@ import {
   Eye
 } from "lucide-react";
 import Link from "next/link";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { PersonalGoalForm } from "@/components/goals/personal-goal-form";
 
 interface PersonalGoal {
   id: string;
@@ -305,6 +306,84 @@ export default function PersonalGoalsPage() {
     }
   };
 
+  const handleSaveNewGoal = async (goalData: any) => {
+    if (!user) return;
+    
+    try {
+      // Buscar usuário Supabase para obter o ID
+      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.id}&email=${user?.email}`);
+      if (!userResponse.ok) {
+        throw new Error('Usuário não encontrado');
+      }
+      
+      const userResult = await userResponse.json();
+      const supabaseUserId = userResult.user.id;
+      
+      // Mapear campos do formulário para a API
+      const apiData = {
+        user_id: supabaseUserId,
+        name: goalData.title, // API espera 'name', formulário envia 'title'
+        description: goalData.description,
+        type: goalData.category, // API espera 'type', formulário envia 'category'
+        target_amount: goalData.target_amount,
+        current_amount: goalData.current_amount || 0,
+        monthly_contribution: goalData.monthly_contribution,
+        deadline: goalData.target_date, // API espera 'deadline', formulário envia 'target_date'
+        priority: goalData.priority,
+        status: goalData.status || 'active',
+        notes: goalData.notes
+      };
+      
+      // Criar nova meta via API
+      const createResponse = await fetch('/api/personal/goals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(apiData),
+      });
+      
+      if (!createResponse.ok) {
+        const errorResult = await createResponse.json();
+        throw new Error(errorResult.error || 'Erro ao criar meta');
+      }
+      
+      const newGoal = await createResponse.json();
+      
+      // Mapear resposta da API para o formato do componente
+      const formattedGoal: PersonalGoal = {
+        id: newGoal.goal.id,
+        title: newGoal.goal.name,
+        description: newGoal.goal.description,
+        target_amount: newGoal.goal.target_amount,
+        current_amount: newGoal.goal.current_amount || 0,
+        category: newGoal.goal.type,
+        priority: newGoal.goal.priority || 'medium',
+        target_date: newGoal.goal.deadline,
+        status: newGoal.goal.status || 'active',
+        monthly_contribution: newGoal.goal.monthly_contribution,
+        notes: newGoal.goal.notes,
+        created_at: newGoal.goal.created_at
+      };
+      
+      // Adicionar ao estado local
+      setGoals(prev => [formattedGoal, ...prev]);
+      
+      toast({
+        title: "Meta Criada!",
+        description: `Meta "${goalData.title}" foi criada com sucesso.`,
+      });
+      
+      setIsFormOpen(false);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: "Erro ao Criar Meta",
+        description: error instanceof Error ? error.message : "Não foi possível criar a meta.",
+      });
+    }
+  };
+
   const filteredGoals = goals.filter(goal => {
     const matchesSearch = goal.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (goal.description && goal.description.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -401,16 +480,16 @@ export default function PersonalGoalsPage() {
         </div>
       </header>
 
-      <div className="container mx-auto px-3 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6">
+      <div className="container mx-auto px-4 md:px-8 py-6 md:py-8 space-y-6 md:space-y-8 max-w-7xl">
 
         {/* Cards de Resumo */}
-        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-xs sm:text-sm font-medium">Valor Total das Metas</CardTitle>
               <Target className="h-4 w-4 text-blue-600" />
             </CardHeader>
-            <CardContent className="p-3 sm:p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 break-words">
                 {totalTargetAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
@@ -425,7 +504,7 @@ export default function PersonalGoalsPage() {
               <CardTitle className="text-xs sm:text-sm font-medium">Valor Acumulado</CardTitle>
               <PiggyBank className="h-4 w-4 text-green-600" />
             </CardHeader>
-            <CardContent className="p-3 sm:p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 break-words">
                 {totalCurrentAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
@@ -440,7 +519,7 @@ export default function PersonalGoalsPage() {
               <CardTitle className="text-xs sm:text-sm font-medium">Contribuição Mensal</CardTitle>
               <Calendar className="h-4 w-4 text-purple-600" />
             </CardHeader>
-            <CardContent className="p-3 sm:p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-600 break-words">
                 {totalMonthlyContribution.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
@@ -455,7 +534,7 @@ export default function PersonalGoalsPage() {
               <CardTitle className="text-xs sm:text-sm font-medium">Metas Concluídas</CardTitle>
               <CheckCircle className="h-4 w-4 text-green-600" />
             </CardHeader>
-            <CardContent className="p-3 sm:p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">
                 {completedGoals}
               </div>
@@ -468,8 +547,8 @@ export default function PersonalGoalsPage() {
 
         {/* Filtros */}
         <Card>
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
               <div className="flex-1">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -511,10 +590,10 @@ export default function PersonalGoalsPage() {
 
         {/* Lista de Metas */}
         <Card>
-          <CardHeader className="p-3 sm:p-6">
+          <CardHeader className="p-4 sm:p-6">
             <CardTitle className="text-lg sm:text-xl">Suas Metas Financeiras</CardTitle>
           </CardHeader>
-          <CardContent className="p-3 sm:p-6">
+          <CardContent className="p-4 sm:p-6">
             {filteredGoals.length === 0 ? (
               <div className="text-center py-6 sm:py-8">
                 <Target className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-muted-foreground mb-3 sm:mb-4" />
@@ -529,7 +608,7 @@ export default function PersonalGoalsPage() {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-3 sm:space-y-4">
+              <div className="space-y-6 sm:space-y-8">
                 {filteredGoals.map((goal) => {
                   const categoryInfo = getCategoryInfo(goal.category);
                   const statusInfo = getStatusInfo(goal.status);
@@ -540,164 +619,177 @@ export default function PersonalGoalsPage() {
                   const overdue = isOverdue(goal.target_date) && goal.status === 'active';
                   
                   return (
-                    <div key={goal.id} className={`p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition-colors ${
-                      overdue ? 'border-destructive bg-destructive/5' : 'bg-muted/20'
+                    <div key={goal.id} className={`p-5 sm:p-6 lg:p-8 border rounded-xl hover:bg-muted/50 transition-all duration-200 hover:shadow-md ${
+                      overdue ? 'border-destructive bg-destructive/5' : 'bg-muted/20 hover:border-primary/20'
                     }`}>
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
-                        <div className="flex items-start gap-3 flex-1">
-                          <div className={`p-2 rounded-lg ${categoryInfo.color} flex-shrink-0`}>
-                            <IconComponent className="h-4 w-4" />
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6 mb-4 sm:mb-6">
+                        <div className="flex items-start gap-4 flex-1">
+                          <div className={`p-3 rounded-xl ${categoryInfo.color} flex-shrink-0 shadow-sm`}>
+                            <IconComponent className="h-5 w-5" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2 mb-1">
-                              <h3 className="font-medium text-sm sm:text-base truncate">{goal.title}</h3>
-                              <div className="flex flex-wrap gap-1">
-                                <Badge className={`text-xs border ${statusInfo.color}`}>
+                            <div className="flex flex-col xs:flex-row xs:items-center gap-2 xs:gap-3 mb-2">
+                              <h3 className="font-semibold text-base sm:text-lg truncate">{goal.title}</h3>
+                              <div className="flex flex-wrap gap-2">
+                                <Badge className={`text-xs border ${statusInfo.color} shadow-sm`}>
                                   {statusInfo.label}
                                 </Badge>
-                                <Badge className={`text-xs border ${priorityInfo.color}`}>
+                                <Badge className={`text-xs border ${priorityInfo.color} shadow-sm`}>
                                   {priorityInfo.label}
                                 </Badge>
                                 {overdue && (
-                                  <Badge variant="destructive" className="text-xs">
+                                  <Badge variant="destructive" className="text-xs shadow-sm">
                                     Atrasada
                                   </Badge>
                                 )}
                               </div>
                             </div>
                             {goal.description && (
-                              <p className="text-xs sm:text-sm text-muted-foreground mb-2 line-clamp-2">{goal.description}</p>
+                              <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-5 line-clamp-2">{goal.description}</p>
                             )}
-                            <div className="flex flex-col xs:flex-row xs:items-center gap-2 xs:gap-4 text-xs sm:text-sm text-muted-foreground">
-                              <Badge className={`text-xs w-fit border ${categoryInfo.color}`}>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 lg:gap-6 text-sm sm:text-base text-muted-foreground">
+                              <Badge className={`text-xs w-fit border ${categoryInfo.color} shadow-sm flex-shrink-0`}>
                                 {categoryInfo.label}
                               </Badge>
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                Meta: {new Date(goal.target_date).toLocaleDateString('pt-BR')}
+                              <span className="flex items-center gap-2 min-w-0">
+                                <Calendar className="h-4 w-4 flex-shrink-0" />
+                                <span className="break-words">Meta: {new Date(goal.target_date).toLocaleDateString('pt-BR')}</span>
                               </span>
                               {goal.monthly_contribution && goal.monthly_contribution > 0 && (
-                                <span className="truncate">
+                                <span className="break-words min-w-0">
                                   Mensal: {goal.monthly_contribution.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                 </span>
                               )}
                             </div>
                           </div>
                         </div>
-                        <div className="flex flex-col xs:flex-row xs:items-center gap-3">
+                        <div className="flex flex-col xs:flex-row xs:items-center gap-4 sm:gap-6">
                           <div className="text-left xs:text-right">
-                            <div className="text-base sm:text-lg font-bold text-blue-600 break-words">
+                            <div className="text-lg sm:text-xl font-bold text-blue-600 break-words">
                               {goal.current_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </div>
-                            <div className="text-xs sm:text-sm text-muted-foreground break-words">
+                            <div className="text-sm sm:text-base text-muted-foreground break-words">
                               de {goal.target_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </div>
                           </div>
-                          <div className="flex gap-1 justify-end">
+                          <div className="flex gap-2 justify-end">
                             <Button 
                               variant="ghost" 
                               size="sm"
                               onClick={() => handleViewGoal(goal)}
                               title="Visualizar detalhes"
-                              className="h-8 w-8 p-0"
+                              className="h-9 w-9 p-0 hover:bg-blue-100 hover:text-blue-600"
                             >
-                              <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <Eye className="h-4 w-4" />
                             </Button>
                             <Button 
                               variant="ghost" 
                               size="sm"
                               onClick={() => handleEditGoal(goal)}
                               title="Editar meta"
-                              className="h-8 w-8 p-0"
+                              className="h-9 w-9 p-0 hover:bg-green-100 hover:text-green-600"
                             >
-                              <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <Edit className="h-4 w-4" />
                             </Button>
                             <Button 
                               variant="ghost" 
                               size="sm"
                               onClick={() => handleDeleteGoal(goal)}
                               title="Excluir meta"
-                              className="h-8 w-8 p-0"
+                              className="h-9 w-9 p-0 hover:bg-red-100 hover:text-red-600"
                             >
-                              <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
                       </div>
                       
                       {/* Barra de Progresso */}
-                      <div className="space-y-2 mb-3">
-                        <div className="flex justify-between text-xs sm:text-sm">
-                          <span className="text-muted-foreground">Progresso da meta</span>
-                          <span className="font-medium">{progress.toFixed(1)}%</span>
+                      <div className="space-y-4 sm:space-y-5 mb-5 sm:mb-6">
+                        <div className="flex justify-between text-sm sm:text-base">
+                          <span className="text-muted-foreground font-medium">Progresso da meta</span>
+                          <span className="font-semibold text-primary">{progress.toFixed(1)}%</span>
                         </div>
-                        <Progress value={progress} className="h-2 sm:h-3" />
+                        <Progress value={progress} className="h-3 sm:h-4" />
                       </div>
                       
                       {/* Informações Adicionais */}
-                      <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 pt-3 border-t">
-                        <div className="bg-card p-2 sm:p-3 rounded-lg border">
-                          <p className="text-xs text-muted-foreground">Faltam</p>
-                          <p className="font-medium text-red-600 text-sm sm:text-base break-words">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 pt-5 sm:pt-6 border-t">
+                        <div className="bg-card p-4 sm:p-5 rounded-lg border hover:shadow-sm transition-shadow min-w-0 overflow-hidden">
+                          <div className="flex items-center gap-2 mb-2">
+                            <DollarSign className="h-4 w-4 text-red-500 flex-shrink-0" />
+                            <p className="text-xs text-muted-foreground font-medium truncate">Faltam</p>
+                          </div>
+                          <p className="font-semibold text-red-600 text-sm sm:text-base break-words">
                             {(goal.target_amount - goal.current_amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </p>
                         </div>
                         
                         {monthsToTarget !== null && (
-                          <div className="bg-card p-2 sm:p-3 rounded-lg border">
-                            <p className="text-xs text-muted-foreground">Tempo Estimado</p>
-                            <p className="font-medium text-sm sm:text-base">
+                          <div className="bg-card p-4 sm:p-5 rounded-lg border hover:shadow-sm transition-shadow min-w-0 overflow-hidden">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                              <p className="text-xs text-muted-foreground font-medium truncate">Tempo Estimado</p>
+                            </div>
+                            <p className="font-semibold text-sm sm:text-base text-blue-600 break-words">
                               {monthsToTarget === 0 ? 'Concluída!' : `${monthsToTarget} mês(es)`}
                             </p>
+                          </div>
+                        )}
+                        
+                        <div className="bg-card p-4 sm:p-5 rounded-lg border hover:shadow-sm transition-shadow min-w-0 overflow-hidden">
+                          <div className="flex items-center gap-2 mb-2">
+                            <AlertTriangle className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                            <p className="text-xs text-muted-foreground font-medium truncate">Prioridade</p>
+                          </div>
+                          <p className={`font-semibold text-sm sm:text-base break-words ${priorityInfo.color}`}>
+                            {priorityInfo.label}
+                          </p>
+                        </div>
+                        
+                        <div className="bg-card p-4 sm:p-5 rounded-lg border hover:shadow-sm transition-shadow min-w-0 overflow-hidden">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Calendar className="h-4 w-4 text-green-500 flex-shrink-0" />
+                            <p className="text-xs text-muted-foreground font-medium truncate">Prazo</p>
+                          </div>
+                          <div className="text-sm sm:text-base font-semibold text-green-600 break-words">
+                            {new Date(goal.target_date).toLocaleDateString('pt-BR')}
+                            {overdue && <span className="block text-red-600 font-normal text-xs mt-1">(Atrasada)</span>}
+                          </div>
+                        </div>
+                      </div>
+                    
+                      {goal.notes && (
+                        <div className="mt-3 pt-3 border-t">
+                          <p className="text-sm text-muted-foreground">{goal.notes}</p>
                         </div>
                       )}
-                      
-                      <div>
-                        <p className="text-xs text-muted-foreground">Prioridade</p>
-                        <p className={`font-medium ${priorityInfo.color}`}>
-                          {priorityInfo.label}
-                        </p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-xs text-muted-foreground">Criada em</p>
-                        <p className="font-medium">
-                          {new Date(goal.created_at).toLocaleDateString('pt-BR')}
-                        </p>
-                      </div>
                     </div>
-                    
-                    {goal.notes && (
-                      <div className="mt-3 pt-3 border-t">
-                        <p className="text-sm text-muted-foreground">{goal.notes}</p>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
         </CardContent>
       </Card>
 
-      {/* TODO: Adicionar formulário de meta pessoal */}
-      {isFormOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Nova Meta Pessoal</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">
-                Formulário de meta pessoal será implementado em breve.
-              </p>
-              <Button onClick={() => setIsFormOpen(false)} className="w-full">
-                Fechar
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* Modal de Criação/Edição de Meta */}
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Nova Meta Pessoal
+            </DialogTitle>
+            <DialogDescription>
+              Defina uma nova meta pessoal para alcançar seus objetivos financeiros.
+            </DialogDescription>
+          </DialogHeader>
+          <PersonalGoalForm
+            onSave={handleSaveNewGoal}
+            onCancel={() => setIsFormOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Modal de Visualização */}
       <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>

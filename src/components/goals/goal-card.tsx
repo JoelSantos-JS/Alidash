@@ -348,7 +348,7 @@ export function GoalCard({
           <Separator className="my-5 bg-white/30" />
 
           {/* Meta Information */}
-          <div className="grid grid-cols-2 gap-4 text-sm bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+          <div className="grid grid-cols-1 gap-4 text-sm bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm rounded-lg p-4 border border-white/20">
             <div className="flex items-center gap-3">
               <div className={cn(
                 "p-2 rounded-lg shadow-sm border backdrop-blur-sm",

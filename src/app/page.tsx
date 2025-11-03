@@ -83,7 +83,7 @@ import { StatusLegend } from "@/components/dashboard/status-legend";
 import { InventoryControlSection } from "@/components/dashboard/inventory-control-section";
 
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { Logo } from "@/components/ui/logo";
+import { ElectricVIcon } from "@/components/ui/electric-v-icon";
 import { BusinessDashboard } from "@/components/dashboard/business-dashboard";
 import { PersonalDashboardSection } from "@/components/dashboard/personal-dashboard-section";
 import { AccountTypeToggle, useAccountType, type AccountType } from "@/components/ui/account-type-toggle";
@@ -836,8 +836,8 @@ export default function Home() {
           <div className="flex flex-col h-full">
             {/* Logo */}
             <div className="flex items-center justify-between p-4 sm:p-6 border-b">
-              <div className="flex items-center gap-2">
-                <Logo size="lg" />
+              <div className="flex items-center gap-3">
+                <ElectricVIcon className="h-12 w-12 text-blue-400" />
                 <span className="text-lg sm:text-xl font-bold">VoxCash</span>
               </div>
               <Button

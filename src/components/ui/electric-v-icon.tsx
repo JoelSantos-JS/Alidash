@@ -9,7 +9,12 @@ interface ElectricVIconProps {
 
 export const ElectricVIcon = ({ className = "h-6 w-6" }: ElectricVIconProps) => (
   <div className="flex items-center justify-center">
-    <svg className={className} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg
+      className={className}
+      viewBox="0 0 32 32"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
       <defs>
         <style>{`
           @keyframes bolt-flash {
@@ -23,18 +28,16 @@ export const ElectricVIcon = ({ className = "h-6 w-6" }: ElectricVIconProps) => 
           .bolt-5 { animation: bolt-flash 1.5s ease-in-out 0.5s infinite; }
         `}</style>
       </defs>
-      
-      {/* V principal - versão outline mais visível */}
-      <path 
-        d="M4 5L16 27L28 5H23L16 19L9 5H4Z" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="2.5" 
-        strokeLinecap="round" 
-        strokeLinejoin="round" 
+
+      <path
+        d="M4 5L16 27L28 5H23L16 19L9 5H4Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
-      
-      {/* Raios animados mais visíveis */}
+
       <path className="bolt-1" d="M6 3L4 6L6.5 5.5L5 8"
         stroke="currentColor" strokeWidth="1.5"
         strokeLinecap="round" strokeLinejoin="round" fill="none" />

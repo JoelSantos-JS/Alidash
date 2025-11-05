@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import { X, CreditCard, Calendar, DollarSign, Tag, FileText, Building, Percent } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface PersonalDebt {
   id: string;
@@ -83,6 +84,53 @@ export default function PersonalDebtForm({ isOpen, onClose, onSuccess, editingDe
     notes: editingDebt?.notes || ''
   });
 
+  // Mapeia valores do formulário para enums do Supabase
+  const mapPaymentMethodToEnum = (method: string) => {
+    switch (method) {
+      case 'automatic_debit':
+      case 'bank_slip':
+        return 'bank_transfer';
+      case 'credit_card':
+      case 'pix':
+      case 'cash':
+      case 'bank_transfer':
+        return method;
+      default:
+        return 'cash';
+    }
+  };
+
+  const mapStatusToEnum = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return 'paid';
+      case 'overdue':
+        return 'overdue';
+      case 'active':
+      case 'paused':
+      default:
+        return 'pending';
+    }
+  };
+
+  const mapCategoryToEnum = (category: string) => {
+    switch (category) {
+      case 'credit_card':
+        return 'credit_card';
+      case 'personal_loan':
+      case 'car_loan':
+      case 'student_loan':
+        return 'loan';
+      case 'mortgage':
+        return 'financing';
+      case 'installment':
+        return 'personal';
+      case 'other':
+      default:
+        return 'other';
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -111,30 +159,46 @@ export default function PersonalDebtForm({ isOpen, onClose, onSuccess, editingDe
       const supabaseUserId = user.id;
       
       const totalAmount = parseFloat(formData.total_amount);
-      const currentAmount = parseFloat(formData.current_amount);
-      const remainingAmount = totalAmount - currentAmount;
+      const paidAmount = parseFloat(formData.current_amount);
+      const remainingAmount = Math.max(totalAmount - paidAmount, 0);
       
-      const debtData = {
-        user_id: supabaseUserId,
-        name: formData.name,
-        description: formData.description || null,
-        total_amount: totalAmount,
-        remaining_amount: remainingAmount,
-        paid_amount: currentAmount,
-        interest_rate: parseFloat(formData.interest_rate) || 0,
-        monthly_payment: parseFloat(formData.monthly_payment),
-        due_date: formData.due_date,
-        start_date: formData.start_date,
-        category: formData.category,
-        creditor: formData.creditor,
-        status: formData.status,
-        payment_method: formData.payment_method,
-        notes: formData.notes || null
-      };
-      
-      // Como não temos API de dívidas pessoais ainda, vamos simular o sucesso
-      // TODO: Implementar API real para dívidas pessoais
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const debtPayload = {
+          creditorName: formData.creditor,
+          description: formData.description || formData.name,
+          originalAmount: totalAmount,
+          currentAmount: remainingAmount, // saldo atual em aberto
+          interestRate: parseFloat(formData.interest_rate) || 0,
+          dueDate: new Date(formData.due_date).toISOString(),
+          category: mapCategoryToEnum(formData.category),
+          priority: 'medium',
+          status: mapStatusToEnum(formData.status),
+          paymentMethod: mapPaymentMethodToEnum(formData.payment_method),
+          notes: formData.notes || null,
+          installments: {
+            amount: parseFloat(formData.monthly_payment)
+          }
+        };
+
+      const isEditing = Boolean(editingDebt?.id);
+      const endpoint = isEditing ? '/api/debts/update' : '/api/debts/create';
+      const method = isEditing ? 'PUT' : 'POST';
+      const body = isEditing
+        ? { user_id: supabaseUserId, debt_id: editingDebt!.id, debt: debtPayload }
+        : { user_id: supabaseUserId, debt: debtPayload };
+
+      const res = await fetch(endpoint, {
+        method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.details || err?.error || 'Falha ao criar dívida');
+      }
+      const data = await res.json();
       
       toast({
         title: "Sucesso!",
@@ -173,7 +237,7 @@ export default function PersonalDebtForm({ isOpen, onClose, onSuccess, editingDe
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-red-600" />
@@ -186,234 +250,235 @@ export default function PersonalDebtForm({ isOpen, onClose, onSuccess, editingDe
         
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Informações Básicas */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium">Informações Básicas</h3>
-              
-              <div className="space-y-2">
-                <Label htmlFor="name" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Nome da Dívida *
-                </Label>
-                <Input
-                  id="name"
-                  placeholder="Ex: Cartão de Crédito Nubank"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  required
-                />
+            <Tabs defaultValue="detalhes" className="space-y-4">
+              <div className="-mx-2">
+                <TabsList className="w-full overflow-x-auto whitespace-nowrap px-2 h-11 sm:h-12 justify-start gap-2">
+                  <TabsTrigger value="detalhes" className="text-base font-medium tracking-wide px-3 py-2 sm:px-3 sm:py-2 flex-shrink-0 min-w-max">Detalhes</TabsTrigger>
+                  <TabsTrigger value="valores" className="text-base font-medium tracking-wide px-3 py-2 sm:px-3 sm:py-2 flex-shrink-0 min-w-max">Valores</TabsTrigger>
+                  <TabsTrigger value="datas" className="text-base font-medium tracking-wide px-3 py-2 sm:px-3 sm:py-2 flex-shrink-0 min-w-max">Datas & Status</TabsTrigger>
+                  <TabsTrigger value="observacoes" className="text-base font-medium tracking-wide px-3 py-2 sm:px-3 sm:py-2 flex-shrink-0 min-w-max">Observações</TabsTrigger>
+                </TabsList>
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição</Label>
-                <Input
-                  id="description"
-                  placeholder="Ex: Fatura do cartão de crédito"
-                  value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
-                />
-              </div>
-              
-              <div className="grid gap-4 md:grid-cols-2">
+
+              <TabsContent value="detalhes" className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="category" className="flex items-center gap-2">
-                    <Tag className="h-4 w-4" />
-                    Categoria *
-                  </Label>
-                  <select
-                    id="category"
-                    value={formData.category}
-                    onChange={(e) => handleInputChange('category', e.target.value)}
-                    className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-                    required
-                  >
-                    {Object.entries(DEBT_CATEGORIES).map(([key, label]) => (
-                      <option key={key} value={key}>{label}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="creditor" className="flex items-center gap-2">
-                    <Building className="h-4 w-4" />
-                    Credor *
+                  <Label htmlFor="name" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Nome da Dívida *
                   </Label>
                   <Input
-                    id="creditor"
-                    placeholder="Ex: Nubank, Caixa, Banco do Brasil"
-                    value={formData.creditor}
-                    onChange={(e) => handleInputChange('creditor', e.target.value)}
+                    id="name"
+                    placeholder="Ex: Cartão de Crédito Nubank"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
                     required
                   />
                 </div>
-              </div>
-            </div>
-            
-            {/* Valores */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium">Valores</h3>
-              
-              <div className="grid gap-4 md:grid-cols-2">
+
                 <div className="space-y-2">
-                  <Label htmlFor="total_amount" className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4" />
-                    Valor Total *
-                  </Label>
+                  <Label htmlFor="description">Descrição</Label>
                   <Input
-                    id="total_amount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0,00"
-                    value={formData.total_amount}
-                    onChange={(e) => handleInputChange('total_amount', e.target.value)}
-                    required
+                    id="description"
+                    placeholder="Ex: Fatura do cartão de crédito"
+                    value={formData.description}
+                    onChange={(e) => handleInputChange('description', e.target.value)}
                   />
                 </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="current_amount">Valor Já Pago</Label>
-                  <Input
-                    id="current_amount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0,00"
-                    value={formData.current_amount}
-                    onChange={(e) => handleInputChange('current_amount', e.target.value)}
-                  />
-                </div>
-              </div>
-              
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="monthly_payment">Parcela Mensal *</Label>
-                  <Input
-                    id="monthly_payment"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0,00"
-                    value={formData.monthly_payment}
-                    onChange={(e) => handleInputChange('monthly_payment', e.target.value)}
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="interest_rate" className="flex items-center gap-2">
-                    <Percent className="h-4 w-4" />
-                    Taxa de Juros (% a.m.)
-                  </Label>
-                  <Input
-                    id="interest_rate"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0,00"
-                    value={formData.interest_rate}
-                    onChange={(e) => handleInputChange('interest_rate', e.target.value)}
-                  />
-                </div>
-              </div>
-              
-              {/* Progresso */}
-              {(formData.total_amount && parseFloat(formData.total_amount) > 0) && (
-                <div className="p-3 bg-muted rounded-lg">
-                  <div className="flex justify-between text-sm mb-2">
-                    <span>Progresso do pagamento</span>
-                    <span className="font-medium">{calculateProgress().toFixed(1)}%</span>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="category" className="flex items-center gap-2">
+                      <Tag className="h-4 w-4" />
+                      Categoria *
+                    </Label>
+                    <select
+                      id="category"
+                      value={formData.category}
+                      onChange={(e) => handleInputChange('category', e.target.value)}
+                      className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
+                      required
+                    >
+                      {Object.entries(DEBT_CATEGORIES).map(([key, label]) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </select>
                   </div>
-                  <div className="w-full bg-background rounded-full h-2">
-                    <div 
-                      className="bg-primary h-2 rounded-full transition-all" 
-                      style={{ width: `${calculateProgress()}%` }}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="creditor" className="flex items-center gap-2">
+                      <Building className="h-4 w-4" />
+                      Credor *
+                    </Label>
+                    <Input
+                      id="creditor"
+                      placeholder="Ex: Nubank, Caixa, Banco do Brasil"
+                      value={formData.creditor}
+                      onChange={(e) => handleInputChange('creditor', e.target.value)}
+                      required
                     />
                   </div>
-                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                    <span>Pago: R$ {parseFloat(formData.current_amount || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                    <span>Restante: R$ {(parseFloat(formData.total_amount) - parseFloat(formData.current_amount || '0')).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="valores" className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="total_amount" className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4" />
+                      Valor Total *
+                    </Label>
+                    <Input
+                      id="total_amount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0,00"
+                      value={formData.total_amount}
+                      onChange={(e) => handleInputChange('total_amount', e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="current_amount">Valor Já Pago</Label>
+                    <Input
+                      id="current_amount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0,00"
+                      value={formData.current_amount}
+                      onChange={(e) => handleInputChange('current_amount', e.target.value)}
+                    />
                   </div>
                 </div>
-              )}
-            </div>
-            
-            {/* Datas e Status */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium">Datas e Status</h3>
-              
-              <div className="grid gap-4 md:grid-cols-2">
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="monthly_payment">Parcela Mensal *</Label>
+                    <Input
+                      id="monthly_payment"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0,00"
+                      value={formData.monthly_payment}
+                      onChange={(e) => handleInputChange('monthly_payment', e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="interest_rate" className="flex items-center gap-2">
+                      <Percent className="h-4 w-4" />
+                      Taxa de Juros (% a.m.)
+                    </Label>
+                    <Input
+                      id="interest_rate"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0,00"
+                      value={formData.interest_rate}
+                      onChange={(e) => handleInputChange('interest_rate', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {(formData.total_amount && parseFloat(formData.total_amount) > 0) && (
+                  <div className="p-3 bg-muted rounded-lg">
+                    <div className="flex justify-between text-sm mb-2">
+                      <span>Progresso do pagamento</span>
+                      <span className="font-medium">{calculateProgress().toFixed(1)}%</span>
+                    </div>
+                    <div className="w-full bg-background rounded-full h-2">
+                      <div 
+                        className="bg-primary h-2 rounded-full transition-all" 
+                        style={{ width: `${calculateProgress()}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                      <span>Pago: R$ {parseFloat(formData.current_amount || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                      <span>Restante: R$ {(parseFloat(formData.total_amount) - parseFloat(formData.current_amount || '0')).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="datas" className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="start_date" className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Data de Início *
+                    </Label>
+                    <Input
+                      id="start_date"
+                      type="date"
+                      value={formData.start_date}
+                      onChange={(e) => handleInputChange('start_date', e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="due_date">Próximo Vencimento *</Label>
+                    <Input
+                      id="due_date"
+                      type="date"
+                      value={formData.due_date}
+                      onChange={(e) => handleInputChange('due_date', e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Status</Label>
+                    <select
+                      id="status"
+                      value={formData.status}
+                      onChange={(e) => handleInputChange('status', e.target.value)}
+                      className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
+                    >
+                      {Object.entries(DEBT_STATUS).map(([key, label]) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="payment_method">Forma de Pagamento</Label>
+                    <select
+                      id="payment_method"
+                      value={formData.payment_method}
+                      onChange={(e) => handleInputChange('payment_method', e.target.value)}
+                      className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
+                    >
+                      {Object.entries(PAYMENT_METHODS).map(([key, label]) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="observacoes" className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="start_date" className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Data de Início *
-                  </Label>
-                  <Input
-                    id="start_date"
-                    type="date"
-                    value={formData.start_date}
-                    onChange={(e) => handleInputChange('start_date', e.target.value)}
-                    required
+                  <Label htmlFor="notes">Observações</Label>
+                  <Textarea
+                    id="notes"
+                    placeholder="Informações adicionais sobre esta dívida..."
+                    value={formData.notes}
+                    onChange={(e) => handleInputChange('notes', e.target.value)}
+                    rows={3}
                   />
                 </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="due_date">Próximo Vencimento *</Label>
-                  <Input
-                    id="due_date"
-                    type="date"
-                    value={formData.due_date}
-                    onChange={(e) => handleInputChange('due_date', e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <select
-                    id="status"
-                    value={formData.status}
-                    onChange={(e) => handleInputChange('status', e.target.value)}
-                    className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-                  >
-                    {Object.entries(DEBT_STATUS).map(([key, label]) => (
-                      <option key={key} value={key}>{label}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="payment_method">Forma de Pagamento</Label>
-                  <select
-                    id="payment_method"
-                    value={formData.payment_method}
-                    onChange={(e) => handleInputChange('payment_method', e.target.value)}
-                    className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-                  >
-                    {Object.entries(PAYMENT_METHODS).map(([key, label]) => (
-                      <option key={key} value={key}>{label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-            
-            {/* Observações */}
-            <div className="space-y-2">
-              <Label htmlFor="notes">Observações</Label>
-              <Textarea
-                id="notes"
-                placeholder="Informações adicionais sobre esta dívida..."
-                value={formData.notes}
-                onChange={(e) => handleInputChange('notes', e.target.value)}
-                rows={3}
-              />
-            </div>
-            
-            {/* Botões */}
-            <div className="flex gap-3 pt-4">
+              </TabsContent>
+            </Tabs>
+
+            <div className="flex gap-3 pt-2">
               <Button type="button" variant="outline" onClick={onClose} className="flex-1">
                 Cancelar
               </Button>

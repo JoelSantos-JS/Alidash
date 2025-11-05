@@ -82,7 +82,7 @@ import { BudgetSection } from "@/components/dashboard/budget-section";
 import { StatusLegend } from "@/components/dashboard/status-legend";
 import { InventoryControlSection } from "@/components/dashboard/inventory-control-section";
 
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+// Removido ThemeToggle do header empresarial
 import { ElectricVIcon } from "@/components/ui/electric-v-icon";
 import { BusinessDashboard } from "@/components/dashboard/business-dashboard";
 import { PersonalDashboardSection } from "@/components/dashboard/personal-dashboard-section";
@@ -838,7 +838,7 @@ export default function Home() {
             <div className="flex items-center justify-between p-4 sm:p-6 border-b">
               <div className="flex items-center gap-3">
                 <ElectricVIcon className="h-12 w-12 text-blue-400" />
-                <span className="text-lg sm:text-xl font-bold">VoxCash</span>
+                <span className="text-2xl sm:text-3xl font-bold">VoxCash</span>
               </div>
               <Button
                 variant="ghost"
@@ -982,7 +982,7 @@ export default function Home() {
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {/* Top Header */}
           <header className="bg-card border-b px-3 sm:px-4 md:px-6 py-3 sm:py-4">
-            <div className="flex items-center justify-between gap-2 sm:gap-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
               <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
                 <Button
                   variant="ghost"
@@ -1029,98 +1029,103 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-1 sm:gap-2 md:gap-4 flex-shrink-0">
-                 {/* Account Type Toggle - Preparado para futuras expansões */}
-                 <AccountTypeToggle 
-                   currentType={accountType}
-                   onTypeChange={setAccountType}
-                   disabled={false} // Pode ser habilitado quando implementarmos o modo pessoal
-                 />
+              <div className="flex items-center justify-between w-full md:w-auto gap-2 md:gap-4">
+                {/* Grupo rolável: tipo de conta e período */}
+                <div className="flex-1 min-w-0 flex items-center gap-2 md:gap-4 overflow-x-auto scrollbar-hide flex-nowrap -mx-2 px-2">
+                  {/* Account Type Toggle - Preparado para futuras expansões */}
+                  <div className="flex-shrink-0">
+                    <AccountTypeToggle 
+                      currentType={accountType}
+                      onTypeChange={setAccountType}
+                      disabled={false}
+                      mobileInline
+                    />
+                  </div>
 
-                 {/* Period Selector */}
-                 <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-                   <Button
-                     variant={periodFilter === "day" ? "default" : "ghost"}
-                     size="sm"
-                     className="text-xs px-2 sm:px-3 h-8 sm:h-9"
-                     onClick={() => setPeriodFilter("day")}
-                   >
-                     Dia
-                   </Button>
-                   <Button
-                     variant={periodFilter === "week" ? "default" : "ghost"}
-                     size="sm"
-                     className="text-xs px-2 sm:px-3 h-8 sm:h-9"
-                     onClick={() => setPeriodFilter("week")}
-                   >
-                     Sem
-                   </Button>
-                   <Button
-                     variant={periodFilter === "month" ? "default" : "ghost"}
-                     size="sm"
-                     className="text-xs px-2 sm:px-3 h-8 sm:h-9"
-                     onClick={() => setPeriodFilter("month")}
-                   >
-                     Mês
-                   </Button>
-                 </div>
-
-                 <ThemeToggle />
-
-
-
-                {/* User Avatar */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0 hover:bg-muted/50 transition-colors flex-shrink-0">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center text-white text-xs sm:text-sm font-semibold shadow-lg border-2 border-white/20 hover:scale-105 transition-transform">
-                        {getInitials(user?.email)}
-                      </div>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56" align="end" forceMount>
-                    <DropdownMenuLabel className="font-normal">
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">Minha Conta</p>
-                        <p className="text-xs leading-none text-muted-foreground">
-                          {user?.email}
-                        </p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/perfil" className="flex items-center w-full">
-                        <User className="mr-2 h-4 w-4" />
-                        <span>Perfil</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/perfil?tab=settings" className="flex items-center w-full">
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Configurações</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/pessoal" className="flex items-center w-full">
-                        <User className="mr-2 h-4 w-4" />
-                        <span>Dashboard Pessoal</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={async () => {
-                        try {
-                          await signOut();
-                        } catch (error) {
-                          console.error('Erro ao fazer logout:', error);
-                        }
-                      }}
+                  {/* Period Selector */}
+                  <div className="flex items-center gap-1 bg-muted rounded-lg p-1 flex-shrink-0">
+                    <Button
+                      variant={periodFilter === "day" ? "default" : "ghost"}
+                      size="sm"
+                      className="text-xs px-2 sm:px-3 h-8 sm:h-9"
+                      onClick={() => setPeriodFilter("day")}
                     >
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Sair</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                      Dia
+                    </Button>
+                    <Button
+                      variant={periodFilter === "week" ? "default" : "ghost"}
+                      size="sm"
+                      className="text-xs px-2 sm:px-3 h-8 sm:h-9"
+                      onClick={() => setPeriodFilter("week")}
+                    >
+                      Sem
+                    </Button>
+                    <Button
+                      variant={periodFilter === "month" ? "default" : "ghost"}
+                      size="sm"
+                      className="text-xs px-2 sm:px-3 h-8 sm:h-9"
+                      onClick={() => setPeriodFilter("month")}
+                    >
+                      Mês
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Ações fixas à direita: Avatar */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* User Avatar */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0 hover:bg-muted/50 transition-colors">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center text-white text-xs sm:text-sm font-semibold shadow-lg border-2 border-white/20">
+                          {getInitials(user?.email)}
+                        </div>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56" align="end" forceMount>
+                      <DropdownMenuLabel className="font-normal">
+                        <div className="flex flex-col space-y-1">
+                          <p className="text-sm font-medium leading-none">Minha Conta</p>
+                          <p className="text-xs leading-none text-muted-foreground">
+                            {user?.email}
+                          </p>
+                        </div>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link href="/perfil" className="flex items-center w-full">
+                          <User className="mr-2 h-4 w-4" />
+                          <span>Perfil</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/perfil?tab=settings" className="flex items-center w-full">
+                          <Settings className="mr-2 h-4 w-4" />
+                          <span>Configurações</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/pessoal" className="flex items-center w-full">
+                          <User className="mr-2 h-4 w-4" />
+                          <span>Dashboard Pessoal</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={async () => {
+                          try {
+                            await signOut();
+                          } catch (error) {
+                            console.error('Erro ao fazer logout:', error);
+                          }
+                        }}
+                      >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Sair</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
             </div>
           </header>

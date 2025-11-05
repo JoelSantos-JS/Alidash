@@ -26,9 +26,8 @@ import { RevenueSection } from "@/components/dashboard/revenue-section";
 import { ExpensesSection } from "@/components/dashboard/expenses-section";
 import { TransactionsSection } from "@/components/dashboard/transactions-section";
 import { SalesHistorySection } from "@/components/dashboard/sales-history-section";
-import { GoalsWidget } from "@/components/dashboard/goals-widget";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import type { Product, Goal } from "@/types";
+import type { Product } from "@/types";
 
 interface BusinessDashboardProps {
   products: Product[];
@@ -75,33 +74,9 @@ export function BusinessDashboard({
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [goals, setGoals] = useState<Goal[]>([]);
   
-  // Função para carregar metas empresariais
-  const loadBusinessGoals = async () => {
-    if (!user?.id) return;
-    
-    try {
-      const response = await fetch(`/api/business/goals?user_id=${user.id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setGoals(data.goals || []);
-      } else {
-        console.error('Erro ao carregar metas empresariais:', response.statusText);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar metas empresariais:', error);
-    }
-  };
-
-  // Carregar metas ao montar o componente
-  useEffect(() => {
-    if (user?.id) {
-      loadBusinessGoals();
-    }
-  }, [user?.id]);
+  // Carregar dados do período selecionado
   
-  // Função para carregar dados do período selecionado
   const handlePeriodChange = (date: Date) => {
     setCurrentDate(date);
     
@@ -219,10 +194,7 @@ export function BusinessDashboard({
           </div>
         </div>
 
-        {/* Seção de Metas Empresariais */}
-        <div className="mb-6 sm:mb-8">
-          <GoalsWidget goals={goals} className="col-span-full" />
-        </div>
+        {/* Metas removidas do dashboard empresarial conforme solicitado */}
 
         {/* Seção de Produtos */}
         <div className="mb-6 sm:mb-8">
@@ -234,9 +206,14 @@ export function BusinessDashboard({
             onDateChange={handlePeriodChange}
             className="mr-2"
               />
-              <Button onClick={onOpenForm} className="gap-2 text-sm sm:text-base">
+              <Button 
+                onClick={onOpenForm} 
+                size="sm" 
+                className="h-8 sm:h-9 px-3 sm:px-4 gap-1 sm:gap-2 text-xs sm:text-sm"
+              >
                 <PlusCircle className="h-4 w-4"/>
-                Adicionar Produto
+                <span className="hidden sm:inline">Adicionar Produto</span>
+                <span className="sm:hidden">Adicionar</span>
               </Button>
             </div>
           </div>

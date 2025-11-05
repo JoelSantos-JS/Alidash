@@ -87,8 +87,8 @@ export function RevenueForm({ onSave, onCancel, revenueToEdit }: RevenueFormProp
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 md:space-y-5 max-h-[70vh] overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <FormField
               control={form.control}
               name="description"
@@ -124,7 +124,7 @@ export function RevenueForm({ onSave, onCancel, revenueToEdit }: RevenueFormProp
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <FormField
               control={form.control}
               name="category"
@@ -188,7 +188,7 @@ export function RevenueForm({ onSave, onCancel, revenueToEdit }: RevenueFormProp
                       <Button
                         variant={"outline"}
                         className={cn(
-                          "w-full pl-3 text-left font-normal",
+                          "w-full h-9 pl-3 text-left font-normal",
                           !field.value && "text-muted-foreground"
                         )}
                       >
@@ -229,6 +229,7 @@ export function RevenueForm({ onSave, onCancel, revenueToEdit }: RevenueFormProp
                   <Textarea
                     placeholder="Adicione observações sobre esta receita..."
                     className="resize-none"
+                    rows={3}
                     {...field}
                   />
                 </FormControl>

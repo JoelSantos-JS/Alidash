@@ -33,6 +33,23 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import PersonalDebtForm from "@/components/forms/personal-debt-form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel
+} from "@/components/ui/alert-dialog";
 
 interface PersonalDebt {
   id: string;
@@ -79,6 +96,9 @@ export default function PersonalDebtsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedDebt, setSelectedDebt] = useState<PersonalDebt | null>(null);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -89,91 +109,52 @@ export default function PersonalDebtsPage() {
   const loadDebts = async () => {
     try {
       setLoading(true);
-      
-      // Simular dados de dívidas pessoais para demonstração
-      // TODO: Implementar API real para dívidas pessoais
-      const mockDebts: PersonalDebt[] = [
-        {
-          id: '1',
-          name: 'Cartão de Crédito Nubank',
-          description: 'Fatura do cartão de crédito',
-          total_amount: 2500.00,
-          remaining_amount: 1800.00,
-          paid_amount: 700.00,
-          interest_rate: 12.5,
-          monthly_payment: 300.00,
-          due_date: '2025-02-15',
-          start_date: '2024-08-15',
-          category: 'credit_card',
-          creditor: 'Nubank',
-          status: 'active',
-          payment_method: 'automatic_debit',
-          notes: 'Pagamento automático configurado',
-          created_at: '2024-08-15T10:00:00Z'
-        },
-        {
-          id: '2',
-          name: 'Financiamento do Apartamento',
-          description: 'Financiamento habitacional Caixa',
-          total_amount: 180000.00,
-          remaining_amount: 165000.00,
-          paid_amount: 15000.00,
-          interest_rate: 8.5,
-          monthly_payment: 1200.00,
-          due_date: '2025-02-10',
-          start_date: '2024-01-10',
-          category: 'mortgage',
-          creditor: 'Caixa Econômica Federal',
-          status: 'active',
-          payment_method: 'bank_transfer',
-          notes: 'Financiamento em 240 parcelas',
-          created_at: '2024-01-10T10:00:00Z'
-        },
-        {
-          id: '3',
-          name: 'Empréstimo Pessoal',
-          description: 'Empréstimo para reforma da casa',
-          total_amount: 15000.00,
-          remaining_amount: 8500.00,
-          paid_amount: 6500.00,
-          interest_rate: 15.0,
-          monthly_payment: 850.00,
-          due_date: '2025-02-20',
-          start_date: '2024-06-20',
-          category: 'personal_loan',
-          creditor: 'Banco do Brasil',
-          status: 'active',
-          payment_method: 'bank_slip',
-          notes: 'Empréstimo para reforma',
-          created_at: '2024-06-20T10:00:00Z'
-        },
-        {
-          id: '4',
-          name: 'Parcelamento Notebook',
-          description: 'MacBook Pro parcelado em 12x',
-          total_amount: 12000.00,
-          remaining_amount: 0.00,
-          paid_amount: 12000.00,
-          interest_rate: 0,
-          monthly_payment: 1000.00,
-          due_date: '2024-12-15',
-          start_date: '2024-01-15',
-          category: 'installment',
-          creditor: 'Apple Store',
-          status: 'paid',
-          payment_method: 'credit_card',
-          notes: 'Parcelamento sem juros',
-          created_at: '2024-01-15T10:00:00Z'
-        }
-      ];
-      
-      setDebts(mockDebts);
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      const supabaseUserId = user.id;
+      const res = await fetch(`/api/debts/get?user_id=${encodeURIComponent(supabaseUserId)}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.details || err?.error || 'Falha ao buscar dívidas');
+      }
+
+      const data = await res.json();
+      const apiDebts = (data?.debts || []) as any[];
+
+      const mappedDebts: PersonalDebt[] = apiDebts.map((d) => {
+        const total = Number(d.originalAmount ?? 0);
+        const current = Number(d.currentAmount ?? 0); // saldo atual no banco
+        const paid = Math.max(total - current, 0);
+
+        return {
+          id: d.id,
+          name: d.description ? String(d.description) : String(d.creditorName || 'Dívida'),
+          description: d.description || undefined,
+          total_amount: total,
+          remaining_amount: current,
+          paid_amount: paid,
+          interest_rate: d.interestRate ?? 0,
+          monthly_payment: Number(d.installments?.amount ?? 0),
+          due_date: d.dueDate ? new Date(d.dueDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          start_date: d.createdDate ? new Date(d.createdDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          category: d.category || 'other',
+          creditor: d.creditorName || '',
+          status: d.status || 'active',
+          payment_method: d.paymentMethod || undefined,
+          notes: d.notes || undefined,
+          created_at: d.createdDate ? new Date(d.createdDate).toISOString() : new Date().toISOString()
+        };
+      });
+
+      setDebts(mappedDebts);
       
     } catch (error) {
       console.error('Erro ao carregar dívidas:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar as dívidas pessoais.",
+        description: error instanceof Error ? error.message : "Não foi possível carregar as dívidas pessoais.",
         variant: "destructive"
       });
     } finally {
@@ -211,6 +192,54 @@ export default function PersonalDebtsPage() {
 
   const isOverdue = (dueDate: string) => {
     return new Date(dueDate) < new Date();
+  };
+
+  const handleViewDebt = (debt: PersonalDebt) => {
+    setSelectedDebt(debt);
+    setIsViewOpen(true);
+  };
+
+  const handleEditDebt = (debt: PersonalDebt) => {
+    setSelectedDebt(debt);
+    setIsFormOpen(true);
+  };
+
+  const handleDeleteDebt = async () => {
+    if (!selectedDebt || !user?.id) {
+      toast({
+        title: "Erro",
+        description: "Dívida não selecionada ou usuário não autenticado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/debts/delete?id=${selectedDebt.id}&user_id=${user.id}`, {
+        method: 'DELETE'
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (response.ok && (result?.success || !result?.error)) {
+        toast({
+          title: "Dívida Removida!",
+          description: `${selectedDebt.name} foi removida com sucesso.`,
+        });
+        setIsDeleteDialogOpen(false);
+        setSelectedDebt(null);
+        await loadDebts();
+      } else {
+        throw new Error(result?.details || result?.error || 'Falha ao deletar dívida');
+      }
+    } catch (error) {
+      console.error('Erro ao deletar dívida:', error);
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao deletar dívida.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (loading) {
@@ -265,24 +294,36 @@ export default function PersonalDebtsPage() {
         </div>
       </header>
 
-      <div className="container mx-auto px-3 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6">
+      <div className="container mx-auto px-3 md:px-6 py-4 md:py-6">
+        <Tabs defaultValue="overview" className="space-y-4 md:space-y-6">
+          <div className="-mx-2">
+            <TabsList className="w-full overflow-x-auto whitespace-nowrap px-2 h-10 sm:h-11 justify-start gap-1">
+              <TabsTrigger value="overview" className="text-base sm:text-base px-2 sm:px-3 py-1 sm:py-1.5 flex-shrink-0 min-w-max">
+                <span className="sm:hidden">Geral</span>
+                <span className="hidden sm:inline">Visão Geral</span>
+              </TabsTrigger>
+              <TabsTrigger value="cadastro" className="text-base sm:text-base px-2 sm:px-3 py-1 sm:py-1.5 flex-shrink-0 min-w-max">Cadastro</TabsTrigger>
+              <TabsTrigger value="relatorios" className="text-base sm:text-base px-2 sm:px-3 py-1 sm:py-1.5 flex-shrink-0 min-w-max">Relatórios</TabsTrigger>
+            </TabsList>
+          </div>
 
-        {/* Cards de Resumo */}
-        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">Total em Dívidas</CardTitle>
-              <TrendingDown className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent className="p-3 sm:p-6">
-              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 break-words">
-                {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {filteredDebts.filter(d => d.status === 'active').length} dívida(s) ativa(s)
-              </p>
-            </CardContent>
-          </Card>
+          <TabsContent value="overview" className="space-y-4 md:space-y-6">
+            {/* Cards de Resumo */}
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xs sm:text-sm font-medium">Total em Dívidas</CardTitle>
+                  <TrendingDown className="h-4 w-4 text-red-600" />
+                </CardHeader>
+                <CardContent className="p-3 sm:p-6">
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 break-words">
+                    {totalDebt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {filteredDebts.filter(d => d.status === 'active').length} dívida(s) ativa(s)
+                  </p>
+                </CardContent>
+              </Card>
 
           <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -441,13 +482,18 @@ export default function PersonalDebtsPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1 sm:gap-2 justify-end">
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleViewDebt(debt)}>
                             <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEditDebt(debt)}>
                             <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                            onClick={() => { setSelectedDebt(debt); setIsDeleteDialogOpen(true); }}
+                          >
                             <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                           </Button>
                         </div>
@@ -525,6 +571,33 @@ export default function PersonalDebtsPage() {
           )}
         </CardContent>
       </Card>
+          </TabsContent>
+
+          <TabsContent value="cadastro" className="space-y-4 md:space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Adicionar nova dívida</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">Organize o cadastro em um formulário com abas para facilitar o preenchimento.</p>
+                <Button onClick={() => setIsFormOpen(true)} className="w-full sm:w-auto">
+                  <Plus className="h-4 w-4 mr-2" /> Nova Dívida
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="relatorios" className="space-y-4 md:space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Relatórios e análises</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">Em breve: gráficos de categorias, evolução de pagamentos e atrasos.</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* Formulário de dívida pessoal */}
         {isFormOpen && (
@@ -532,14 +605,96 @@ export default function PersonalDebtsPage() {
              isOpen={isFormOpen}
              onClose={() => {
                setIsFormOpen(false);
+               setSelectedDebt(null);
              }}
              onSuccess={() => {
                loadDebts();
                setIsFormOpen(false);
+               setSelectedDebt(null);
              }}
-             editingDebt={null}
+             editingDebt={selectedDebt}
            />
         )}
+
+        {/* Modal de Visualização */}
+        <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Detalhes da Dívida</DialogTitle>
+              <DialogDescription>Visualize os valores atuais e informações salvas.</DialogDescription>
+            </DialogHeader>
+            {selectedDebt && (
+              <div className="space-y-3 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-muted-foreground">Nome</p>
+                    <p className="font-medium">{selectedDebt.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Credor</p>
+                    <p className="font-medium">{selectedDebt.creditor}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Total Original</p>
+                    <p className="font-medium">{selectedDebt.total_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Valor Restante</p>
+                    <p className="font-medium">{selectedDebt.remaining_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Valor Pago</p>
+                    <p className="font-medium">{selectedDebt.paid_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Parcela Mensal</p>
+                    <p className="font-medium">{selectedDebt.monthly_payment.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Vencimento</p>
+                    <p className="font-medium">{new Date(selectedDebt.due_date).toLocaleDateString('pt-BR')}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Início</p>
+                    <p className="font-medium">{new Date(selectedDebt.start_date).toLocaleDateString('pt-BR')}</p>
+                  </div>
+                </div>
+                {selectedDebt.notes && (
+                  <div>
+                    <p className="text-muted-foreground">Observações</p>
+                    <p className="font-medium">{selectedDebt.notes}</p>
+                  </div>
+                )}
+                <div className="mt-2 p-3 bg-muted rounded-md">
+                  <p className="text-xs text-muted-foreground">Debug</p>
+                  <pre className="text-xs overflow-auto max-h-40">
+                    {JSON.stringify(selectedDebt, null, 2)}
+                  </pre>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsViewOpen(false)}>Fechar</Button>
+                  <Button onClick={() => { setIsViewOpen(false); if (selectedDebt) handleEditDebt(selectedDebt); }}>Editar</Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Confirmação de Exclusão */}
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remover dívida?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação não pode ser desfeita. A dívida será removida do seu banco de dados.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="flex justify-end gap-2">
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteDebt}>Excluir</AlertDialogAction>
+            </div>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

@@ -14,13 +14,15 @@ interface AccountTypeToggleProps {
   onTypeChange: (type: AccountType) => void;
   className?: string;
   disabled?: boolean;
+  mobileInline?: boolean; // quando true, mostra controle inline também em mobile
 }
 
 export function AccountTypeToggle({ 
   currentType, 
   onTypeChange, 
   className,
-  disabled = false 
+  disabled = false,
+  mobileInline = false,
 }: AccountTypeToggleProps) {
   const { toast } = useToast();
 
@@ -63,32 +65,57 @@ export function AccountTypeToggle({
         </Button>
       </div>
 
-      {/* Mobile Floating Toggle */}
-      <div className="fixed bottom-4 right-4 z-30 sm:hidden">
-        <Button
-          size="lg"
-          className={cn(
-            "h-14 w-14 rounded-full shadow-xl border-2 border-white/20 transition-all duration-300 hover:scale-110 active:scale-95 relative overflow-hidden",
-            currentType === 'personal'
-              ? "bg-gradient-to-r from-purple-500 via-purple-600 to-blue-600 shadow-purple-500/25"
-              : "bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 shadow-blue-500/25"
-          )}
-          onClick={handleToggle}
-          disabled={disabled}
-        >
-          {/* Glow effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-full" />
-          
-          {/* Icon */}
-          <div className="relative z-10 text-white">
-            {currentType === 'personal' ? (
-              <User className="h-6 w-6" />
-            ) : (
-              <Building className="h-6 w-6" />
+      {/* Mobile Toggle: inline no header quando mobileInline, senão flutuante */}
+      {mobileInline ? (
+        <div className="sm:hidden flex items-center gap-1 bg-muted rounded-lg p-1">
+          <Button
+            variant={currentType === 'personal' ? 'default' : 'ghost'}
+            size="sm"
+            className="gap-1 text-xs"
+            onClick={() => !disabled && onTypeChange('personal')}
+            disabled={disabled}
+          >
+            <User className="h-4 w-4" />
+            <span>Pessoal</span>
+          </Button>
+          <Button
+            variant={currentType === 'business' ? 'default' : 'ghost'}
+            size="sm"
+            className="gap-1 text-xs"
+            onClick={() => !disabled && onTypeChange('business')}
+            disabled={disabled}
+          >
+            <Building className="h-4 w-4" />
+            <span>Empresarial</span>
+          </Button>
+        </div>
+      ) : (
+        <div className="fixed bottom-4 right-4 z-30 sm:hidden">
+          <Button
+            size="lg"
+            className={cn(
+              "h-14 w-14 rounded-full shadow-xl border-2 border-white/20 transition-all duration-300 hover:scale-110 active:scale-95 relative overflow-hidden",
+              currentType === 'personal'
+                ? "bg-gradient-to-r from-purple-500 via-purple-600 to-blue-600 shadow-purple-500/25"
+                : "bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 shadow-blue-500/25"
             )}
-          </div>
-        </Button>
-      </div>
+            onClick={handleToggle}
+            disabled={disabled}
+          >
+            {/* Glow effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-full" />
+            
+            {/* Icon */}
+            <div className="relative z-10 text-white">
+              {currentType === 'personal' ? (
+                <User className="h-6 w-6" />
+              ) : (
+                <Building className="h-6 w-6" />
+              )}
+            </div>
+          </Button>
+        </div>
+      )}
 
       {/* Current Type Badge */}
       <Badge 

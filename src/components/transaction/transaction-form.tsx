@@ -290,15 +290,17 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
                     </FormControl>
                     <SelectContent>
                       {loadingCategories ? (
-                        <SelectItem value="" disabled>
+                        <SelectItem value="__loading__" disabled>
                           Carregando categorias...
                         </SelectItem>
                       ) : (
-                        categories.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))
+                        categories
+                          .filter((category) => category && category.trim() !== "")
+                          .map((category) => (
+                            <SelectItem key={category} value={category}>
+                              {category}
+                            </SelectItem>
+                          ))
                       )}
                     </SelectContent>
                   </Select>

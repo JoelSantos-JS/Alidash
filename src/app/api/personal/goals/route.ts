@@ -75,7 +75,8 @@ export async function PUT(request: Request) {
       target_date,
       status,
       monthly_contribution,
-      notes
+      notes,
+      type
     } = body;
 
     if (!id || !user_id) {
@@ -84,33 +85,39 @@ export async function PUT(request: Request) {
         { status: 400 }
       );
     }
+    // Construir payload de atualização com base no schema existente
+    // personal_goals possui: name, description, type, target_amount, current_amount, deadline, priority, status
+    const updatePayload: Record<string, any> = {};
 
-    // Validação dos campos obrigatórios
-    if (!title || !target_amount || !category || !priority || !target_date || !status) {
+    if (title !== undefined) updatePayload.name = title;
+    if (description !== undefined) updatePayload.description = description;
+    if (typeof target_amount !== 'undefined') {
+      const ta = parseFloat(String(target_amount));
+      if (!Number.isNaN(ta)) updatePayload.target_amount = ta;
+    }
+    if (typeof current_amount !== 'undefined') {
+      const ca = parseFloat(String(current_amount));
+      if (!Number.isNaN(ca)) updatePayload.current_amount = ca;
+    }
+    if (priority !== undefined) updatePayload.priority = priority;
+    if (status !== undefined) updatePayload.status = status;
+    if (target_date !== undefined) updatePayload.deadline = target_date;
+    if (type !== undefined) updatePayload.type = type;
+
+    // Campos não existentes no schema são ignorados: category, monthly_contribution, notes
+    updatePayload.updated_at = new Date().toISOString();
+
+    if (Object.keys(updatePayload).length === 1) { // apenas updated_at
       return NextResponse.json(
-        { error: 'Campos obrigatórios: title, target_amount, category, priority, target_date, status' },
+        { error: 'Nenhum campo válido para atualização foi fornecido' },
         { status: 400 }
       );
     }
 
-    const supabase = createClient();
-
     // Atualizar a meta pessoal
     const { data, error } = await supabase
       .from('personal_goals')
-      .update({
-        title,
-        description,
-        target_amount: parseFloat(target_amount),
-        current_amount: parseFloat(current_amount) || 0,
-        category,
-        priority,
-        target_date,
-        status,
-        monthly_contribution: monthly_contribution ? parseFloat(monthly_contribution) : null,
-        notes,
-        updated_at: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq('id', id)
       .eq('user_id', user_id)
       .select()
@@ -185,7 +192,7 @@ export async function DELETE(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { user_id, name, description, type, target_amount, deadline, priority } = body;
+    const { user_id, name, description, type, target_amount, deadline, priority, current_amount } = body;
 
     if (!user_id || !name || !type || !target_amount || !deadline) {
       return NextResponse.json({ 
@@ -203,7 +210,9 @@ export async function POST(request: NextRequest) {
         description,
         type,
         target_amount,
-        current_amount: 0,
+        current_amount: typeof current_amount !== 'undefined' 
+          ? (Number.isFinite(parseFloat(String(current_amount))) ? parseFloat(String(current_amount)) : 0)
+          : 0,
         deadline,
         priority: priority || 'medium',
         status: 'active'

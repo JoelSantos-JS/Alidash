@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -11,6 +11,7 @@ import MonthlyIncomeForm from "@/components/forms/monthly-income-form";
 import SalarySettingsForm from "@/components/forms/salary-settings-form";
 import { GoalsWidget } from "@/components/dashboard/goals-widget";
 import type { Goal } from "@/types";
+import { getCache, setCache } from "@/lib/client-cache";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -83,79 +84,147 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
   });
   const [recentExpenses, setRecentExpenses] = useState<PersonalExpense[]>([]);
   const [recentIncomes, setRecentIncomes] = useState<PersonalIncome[]>([]);
+  const [expensesByCategory, setExpensesByCategory] = useState<any[]>([]);
+  const [monthlyExpenses, setMonthlyExpenses] = useState<PersonalExpense[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentMonth] = useState(1); // Janeiro para usar os dados de teste
-  const [currentYear] = useState(2025);
+  const [currentMonth] = useState(new Date().getMonth() + 1);
+  const [currentYear] = useState(new Date().getFullYear());
   const [showIncomeForm, setShowIncomeForm] = useState(false);
   const [showSalarySettings, setShowSalarySettings] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const CACHE_TTL_MS = 30_000; // 30 segundos
 
   useEffect(() => {
     if (!user) return;
     loadPersonalData();
   }, [user, periodFilter]);
 
+  // Cancelar requisições ao desmontar
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   const loadPersonalData = async () => {
     if (!user?.id) return;
     
+    // Cancelar requisições anteriores em troca rápida de modo
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const { signal } = controller;
+
     try {
       setLoading(true);
-      
-      // O usuário já é do Supabase, então podemos usar o ID diretamente
       const supabaseUserId = user.id;
-      
-      // Carregar resumo pessoal
-      const summaryResponse = await fetch(`/api/personal/summary?user_id=${supabaseUserId}&month=9&year=2025`);
-      if (summaryResponse.ok) {
-        const summaryData = await summaryResponse.json();
-        if (summaryData.summary) {
-          setPersonalSummary(summaryData.summary);
-        }
-      }
-      
 
-      
-      // Carregar despesas recentes
-      const expensesResponse = await fetch(`/api/personal/expenses/recent?user_id=${supabaseUserId}&limit=5`);
-      if (expensesResponse.ok) {
-        const expensesData = await expensesResponse.json();
-        setRecentExpenses(expensesData.expenses || []);
+      // Chaves de cache
+      const summaryKey = `personal:summary:${supabaseUserId}:${currentMonth}:${currentYear}`;
+      const expensesKey = `personal:expenses:${supabaseUserId}:recent:5`;
+      const incomesKey = `personal:incomes:${supabaseUserId}:recent:4`;
+      const goalsKey = `personal:goals:${supabaseUserId}`;
+      const monthlyExpensesKey = `personal:expenses:${supabaseUserId}:monthly:${currentMonth}:${currentYear}`;
+
+      // Aplicar cache imediato quando disponível
+      const cachedSummary = getCache<PersonalSummary>(summaryKey, CACHE_TTL_MS);
+      if (cachedSummary) setPersonalSummary(cachedSummary);
+      const cachedExpenses = getCache<PersonalExpense[]>(expensesKey, CACHE_TTL_MS);
+      if (cachedExpenses) setRecentExpenses(cachedExpenses);
+      const cachedMonthlyExpenses = getCache<PersonalExpense[]>(monthlyExpensesKey, CACHE_TTL_MS);
+      if (cachedMonthlyExpenses) setMonthlyExpenses(cachedMonthlyExpenses);
+      const cachedIncomes = getCache<PersonalIncome[]>(incomesKey, CACHE_TTL_MS);
+      if (cachedIncomes) setRecentIncomes(cachedIncomes);
+      const cachedGoals = getCache<Goal[]>(goalsKey, CACHE_TTL_MS);
+      if (cachedGoals) setGoals(cachedGoals);
+
+      // Preparar fetches paralelos somente do que falta
+      const summaryPromise = cachedSummary
+        ? Promise.resolve(cachedSummary)
+        : fetch(`/api/personal/summary?user_id=${supabaseUserId}&month=${currentMonth}&year=${currentYear}`, { signal })
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              if (data?.summary) {
+                setPersonalSummary(data.summary);
+                setCache(summaryKey, data.summary);
+                return data.summary as PersonalSummary;
+              }
+              return null;
+            });
+
+      const expensesPromise = cachedExpenses
+        ? Promise.resolve(cachedExpenses)
+        : fetch(`/api/personal/expenses/recent?user_id=${supabaseUserId}&limit=5`, { signal })
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              const list = (data?.expenses || []) as PersonalExpense[];
+              setRecentExpenses(list);
+              setCache(expensesKey, list);
+              return list;
+            });
+
+      const monthlyExpensesPromise = cachedMonthlyExpenses
+        ? Promise.resolve(cachedMonthlyExpenses)
+        : fetch(`/api/personal/expenses?user_id=${supabaseUserId}&month=${currentMonth}&year=${currentYear}`, { signal })
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              const list = (data?.expenses || []) as PersonalExpense[];
+              setMonthlyExpenses(list);
+              setCache(monthlyExpensesKey, list);
+              return list;
+            });
+
+      const incomesPromise = cachedIncomes
+        ? Promise.resolve(cachedIncomes)
+        : fetch(`/api/personal/incomes/recent?user_id=${supabaseUserId}&limit=4`, { signal })
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              const list = (data?.incomes || []) as PersonalIncome[];
+              setRecentIncomes(list);
+              setCache(incomesKey, list);
+              return list;
+            });
+
+      const goalsPromise = cachedGoals
+        ? Promise.resolve(cachedGoals)
+        : fetch(`/api/personal/goals?user_id=${supabaseUserId}`, { signal })
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              if (data?.goals) {
+                const formattedGoals: Goal[] = data.goals.map((goal: any) => ({
+                  id: goal.id,
+                  name: goal.name,
+                  description: goal.description,
+                  category: goal.type === 'savings' ? 'financial' : 'personal',
+                  type: goal.type || 'savings',
+                  targetValue: goal.target_amount,
+                  currentValue: goal.current_amount || 0,
+                  unit: 'BRL',
+                  deadline: new Date(goal.deadline),
+                  createdDate: new Date(goal.created_at),
+                  priority: goal.priority || 'medium',
+                  status: goal.status || 'active',
+                  notes: goal.notes,
+                  tags: []
+                }));
+                setGoals(formattedGoals);
+                setCache(goalsKey, formattedGoals);
+                return formattedGoals;
+              }
+              return [] as Goal[];
+            });
+
+      await Promise.allSettled([summaryPromise, expensesPromise, monthlyExpensesPromise, incomesPromise, goalsPromise]);
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        // Troca rápida de modo; ignorar erros abortados
+        return;
       }
-      
-      // Carregar receitas recentes
-      const incomesResponse = await fetch(`/api/personal/incomes/recent?user_id=${supabaseUserId}&limit=4`);
-      if (incomesResponse.ok) {
-        const incomesData = await incomesResponse.json();
-        setRecentIncomes(incomesData.incomes || []);
-      }
-      
-      // Carregar metas pessoais
-      const goalsResponse = await fetch(`/api/personal/goals?user_id=${supabaseUserId}`);
-      if (goalsResponse.ok) {
-        const goalsData = await goalsResponse.json();
-        if (goalsData.goals) {
-          // Converter dados da API para o formato Goal
-          const formattedGoals: Goal[] = goalsData.goals.map((goal: any) => ({
-            id: goal.id,
-            name: goal.name,
-            description: goal.description,
-            category: goal.type === 'savings' ? 'financial' : 'personal',
-            type: goal.type || 'savings',
-            targetValue: goal.target_amount,
-            currentValue: goal.current_amount || 0,
-            unit: 'BRL',
-            deadline: new Date(goal.deadline),
-            createdDate: new Date(goal.created_at),
-            priority: goal.priority || 'medium',
-            status: goal.status || 'active',
-            notes: goal.notes,
-            tags: []
-          }));
-          setGoals(formattedGoals);
-        }
-      }
-      
-    } catch (error) {
       console.error('❌ Erro ao carregar dados pessoais:', error);
     } finally {
       setLoading(false);
@@ -192,6 +261,53 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
       { id: '4', description: 'Cashback Cartão', amount: 50.00, category: 'bonus', date: '2025-01-01', source: 'Banco Inter' }
     ]);
   };
+
+  // Cores por categoria (alinhadas com ExpensesChart)
+  const CATEGORY_COLORS: Record<string, string> = {
+    housing: '#ef4444',
+    food: '#f97316',
+    transportation: '#eab308',
+    healthcare: '#22c55e',
+    entertainment: '#3b82f6',
+    clothing: '#8b5cf6',
+    utilities: '#06b6d4',
+    insurance: '#84cc16',
+    gifts: '#f59e0b',
+    other: '#6b7280'
+  };
+
+  // Recalcular dados por categoria sempre que despesas do mês ou totais mudarem
+  useEffect(() => {
+    const total = personalSummary.totalExpenses || 0;
+    if (!monthlyExpenses || monthlyExpenses.length === 0 || total <= 0) {
+      setExpensesByCategory([]);
+      return;
+    }
+
+    const grouped = monthlyExpenses.reduce((acc: Record<string, { amount: number; isEssential: boolean }>, exp) => {
+      const key = exp.category || 'other';
+      if (!acc[key]) {
+        acc[key] = { amount: 0, isEssential: !!exp.is_essential };
+      }
+      acc[key].amount += Number(exp.amount) || 0;
+      // Se qualquer despesa da categoria for essencial, mantemos essencial true
+      acc[key].isEssential = acc[key].isEssential || !!exp.is_essential;
+      return acc;
+    }, {});
+
+    const result = Object.entries(grouped).map(([category, info]) => ({
+      category,
+      amount: info.amount,
+      percentage: total > 0 ? (info.amount / total) * 100 : 0,
+      color: CATEGORY_COLORS[category] || CATEGORY_COLORS.other,
+      icon: category,
+      isEssential: info.isEssential
+    }));
+
+    // Ordenar por valor desc para exibição consistente
+    result.sort((a, b) => b.amount - a.amount);
+    setExpensesByCategory(result);
+  }, [monthlyExpenses, personalSummary.totalExpenses]);
 
   const getCategoryIcon = (category: string) => {
     const icons: Record<string, any> = {
@@ -329,6 +445,7 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
           essentialExpenses={personalSummary.essentialExpenses}
           nonEssentialExpenses={personalSummary.nonEssentialExpenses}
           totalIncome={personalSummary.totalIncome}
+          expensesByCategory={expensesByCategory}
         />
 
         {/* Transações Recentes */}

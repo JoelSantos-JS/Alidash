@@ -26,8 +26,10 @@ import {
   RefreshCw,
   MoreHorizontal,
   ArrowLeft,
-  Menu
+  Menu,
+  User
 } from "lucide-react"
+import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 
@@ -384,6 +386,20 @@ export default function ProdutosPage() {
                   <h1 className="text-xl sm:text-2xl font-bold">Produtos</h1>
                 </div>
               </div>
+              {/* Botão Perfil (Topo) */}
+              <div className="flex items-center gap-2">
+                <Link href="/perfil" className="hidden sm:block">
+                  <Button variant="ghost" size="sm" className="h-8">
+                    <User className="h-4 w-4 mr-2" />
+                    Perfil
+                  </Button>
+                </Link>
+                <Link href="/perfil" className="sm:hidden">
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <User className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
             </div>
             
             <div className="flex items-center gap-2 flex-wrap">
@@ -407,7 +423,7 @@ export default function ProdutosPage() {
               </Button>
               <Button 
                 onClick={handleAddProduct}
-                className="h-9 sm:h-9 text-sm flex-shrink-0 min-w-[100px] sm:min-w-0"
+                className="h-8 text-xs sm:h-9 sm:text-sm flex-shrink-0 min-w-[90px] sm:min-w-0"
               >
                 <Plus className="h-4 w-4 mr-1 sm:mr-2" />
                 <span className="text-xs sm:text-sm">Adicionar</span>

@@ -20,6 +20,8 @@ import {
 import Link from "next/link";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { AccountTypeToggle } from "@/components/ui/account-type-toggle";
+import { useRouter } from "next/navigation";
 
 interface PersonalSummary {
   totalIncome: number;
@@ -41,6 +43,15 @@ interface PersonalGoal {
 }
 
 export default function PersonalDashboard() {
+  const router = useRouter();
+
+  const handleTypeChange = (type: 'personal' | 'business') => {
+    if (type === 'business') {
+      router.push('/');
+    } else {
+      router.push('/pessoal');
+    }
+  };
   const { user, loading: authLoading } = useSupabaseAuth();
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<PersonalSummary>({
@@ -190,8 +201,8 @@ export default function PersonalDashboard() {
       {/* Header */}
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div className="flex items-center gap-3 md:gap-4">
               <Link href="/">
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="h-4 w-4 mr-2" />
@@ -205,13 +216,12 @@ export default function PersonalDashboard() {
                 </p>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Link href="/?mode=business">
-                <Button variant="outline" size="sm">
-                  <Building className="h-4 w-4 mr-2" />
-                  Voltar ao Empresarial
-                </Button>
-              </Link>
+            <div className="flex gap-2 w-full md:w-auto overflow-x-auto scrollbar-hide flex-nowrap items-center">
+              <AccountTypeToggle
+                currentType={'personal'}
+                onTypeChange={handleTypeChange}
+                mobileInline
+              />
               <Button size="sm">
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Transação

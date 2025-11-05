@@ -64,12 +64,12 @@ export function ProductCard({ product, onClick, onEdit, onDelete, onSell }: Prod
       onClick={onClick}
     >
       <CardHeader className="p-0 relative">
-        <div className="aspect-square relative">
+        <div className="aspect-[4/3] sm:aspect-square relative max-h-40 sm:max-h-none overflow-hidden bg-secondary/30">
           <SafeImage
             src={imageSrc}
             alt={product.name}
             fill
-            className="object-cover"
+            className="object-contain sm:object-cover object-center"
             data-ai-hint="product image"
           />
         </div>

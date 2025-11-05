@@ -91,7 +91,6 @@ export async function applyFixedSalaries(targetMonth: number, targetYear: number
             date: targetDate.toISOString().split('T')[0],
             source: settings.source,
             is_recurring: true,
-            recurrence_type: 'monthly',
             is_taxable: settings.is_taxable,
             tax_withheld: settings.tax_withheld,
             notes: settings.notes ? `Salário automático: ${settings.notes}` : 'Salário automático'
@@ -204,7 +203,6 @@ export async function applyUserFixedSalary(userId: string, targetMonth: number, 
         date: targetDate.toISOString().split('T')[0],
         source: salarySettings.source,
         is_recurring: true,
-        recurrence_type: 'monthly',
         is_taxable: salarySettings.is_taxable,
         tax_withheld: salarySettings.tax_withheld,
         notes: salarySettings.notes ? `Salário automático: ${salarySettings.notes}` : 'Salário automático'

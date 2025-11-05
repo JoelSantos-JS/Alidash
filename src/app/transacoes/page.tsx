@@ -151,11 +151,22 @@ function TransacoesPageContent() {
             if (process.env.NODE_ENV === 'development') {
               console.log('📦 Produtos do Supabase:', products.length);
             }
+          } else if (productsResponse.status === 404) {
+            // Em produção, tratar 404 como "nenhum produto" sem erro
+            products = [];
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('⚠️ Produtos não encontrados (404). Usando lista vazia.');
+            }
           } else {
-            console.error('❌ Erro ao buscar produtos:', productsResponse.status);
+            // Logar detalhadamente apenas em desenvolvimento
+            if (process.env.NODE_ENV === 'development') {
+              console.error('❌ Erro ao buscar produtos:', productsResponse.status);
+            }
           }
         } catch (error) {
-          console.error('❌ Erro ao buscar produtos do Supabase:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('❌ Erro ao buscar produtos do Supabase:', error);
+          }
         }
 
         // Carregar transações do Supabase
@@ -209,20 +220,32 @@ function TransacoesPageContent() {
             if (process.env.NODE_ENV === 'development') {
               console.log('📊 Transações do Supabase:', transactions.length);
             }
+          } else if (transactionsResponse.status === 404) {
+            // Tratar 404 como ausência de transações
+            transactions = [];
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('⚠️ Nenhuma transação encontrada (404).');
+            }
           } else {
-            const errorText = await transactionsResponse.text();
-            console.error('❌ Erro ao buscar transações:', {
-              status: transactionsResponse.status,
-              statusText: transactionsResponse.statusText,
-              error: errorText
-            });
+            if (process.env.NODE_ENV === 'development') {
+              const errorText = await transactionsResponse.text();
+              console.error('❌ Erro ao buscar transações:', {
+                status: transactionsResponse.status,
+                statusText: transactionsResponse.statusText,
+                error: errorText
+              });
+            }
           }
         } catch (error) {
-          console.error('❌ Erro ao buscar transações do Supabase:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('❌ Erro ao buscar transações do Supabase:', error);
+          }
         }
 
         // Se não há produtos reais, usar dados de exemplo
-        const finalProducts = products.length > 0 ? products : initialProducts;
+        const finalProducts = products.length > 0
+          ? products
+          : (process.env.NODE_ENV === 'development' ? initialProducts : []);
         
         setProducts(finalProducts);
         setTransactions(transactions);
@@ -236,8 +259,10 @@ function TransacoesPageContent() {
         }
 
       } catch (error) {
-        console.error('❌ Erro ao carregar dados:', error);
-        setProducts(initialProducts);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ Erro ao carregar dados:', error);
+        }
+        setProducts(process.env.NODE_ENV === 'development' ? initialProducts : []);
         setTransactions([]);
       }
       setIsLoading(false);
@@ -288,11 +313,23 @@ function TransacoesPageContent() {
           title: "Transações carregadas",
           description: `${periodTransactions.length} transações encontradas para ${month}/${year}`,
         });
+      } else if (transactionsResponse.status === 404) {
+        // Sem transações no período: tratar silenciosamente em produção
+        setTransactions([]);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`⚠️ Nenhuma transação encontrada para ${month}/${year} (404)`);
+        }
+        toast({
+          title: "Sem transações",
+          description: `Nenhuma transação registrada em ${month}/${year}`,
+        });
       } else {
         throw new Error("Falha ao buscar transações do período");
       }
     } catch (error) {
-      console.error("Erro ao carregar transações:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Erro ao carregar transações:", error);
+      }
       toast({
         title: "Erro ao carregar transações",
         description: "Não foi possível carregar as transações para o período selecionado.",
@@ -322,6 +359,16 @@ function TransacoesPageContent() {
   }, [transactions]);
 
   const handleSaveTransaction = async (transactionData: Transaction) => {
+    // Garantia de segurança: usuário pode ser null para o TS
+    const currentUserId = user?.id;
+    if (!currentUserId) {
+      toast({
+        variant: "destructive",
+        title: "Sessão expirada",
+        description: "Faça login novamente para salvar a transação.",
+      });
+      return;
+    }
     if (transactionToEdit) {
       // Editar transação existente
       try {
@@ -331,7 +378,7 @@ function TransacoesPageContent() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            user_id: user.id,
+            user_id: currentUserId,
             transaction: { ...transactionData, id: transactionToEdit.id }
           })
         });
@@ -379,7 +426,7 @@ function TransacoesPageContent() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            user_id: user.id,
+            user_id: currentUserId,
             transaction: newTransaction
           })
         });

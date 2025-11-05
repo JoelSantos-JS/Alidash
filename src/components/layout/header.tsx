@@ -35,11 +35,11 @@ export function Header() {
       {/* Header Principal */}
       <header className="border-b bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4">
-          <div className="flex h-16 items-center justify-between">
-              <Link href="/" className="flex items-center gap-3 cursor-pointer">
-                  <ElectricVIcon className="h-12 w-12 text-blue-400" />
-                  <span className="text-xl font-bold">VoxCash</span>
-              </Link>
+            <div className="flex h-16 items-center justify-between">
+                <Link href="/" className="flex items-center gap-3 cursor-pointer">
+                    <ElectricVIcon className="h-12 w-12 text-blue-400" />
+                    <span className="text-2xl font-bold">VoxCash</span>
+                </Link>
               
               {/* Account Type Toggle */}
               <AccountTypeToggle 

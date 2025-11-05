@@ -155,309 +155,27 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        {/* Informações Básicas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="creditorName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nome do Credor *</FormLabel>
-                <FormControl>
-                  <Input placeholder="Ex: Banco do Brasil" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 sm:space-y-5 pb-10">
+        <Tabs defaultValue="detalhes" className="w-full">
+          <TabsList className="w-full overflow-x-auto whitespace-nowrap px-2 sm:px-3 py-1.5 mb-2 border-b border-border bg-transparent rounded-none">
+            <TabsTrigger className="px-2 sm:px-3 text-xs sm:text-sm" value="detalhes">Detalhes</TabsTrigger>
+            <TabsTrigger className="px-2 sm:px-3 text-xs sm:text-sm" value="valores">Valores</TabsTrigger>
+            <TabsTrigger className="px-2 sm:px-3 text-xs sm:text-sm" value="pagamento">Pagamento</TabsTrigger>
+            <TabsTrigger className="px-2 sm:px-3 text-xs sm:text-sm" value="parcelas">Parcelas</TabsTrigger>
+            <TabsTrigger className="px-2 sm:px-3 text-xs sm:text-sm" value="notas">Notas</TabsTrigger>
+          </TabsList>
 
-          <FormField
-            control={form.control}
-            name="category"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Categoria *</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a categoria" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {categoryOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Descrição *</FormLabel>
-              <FormControl>
-                <Textarea 
-                  placeholder="Descreva a dívida..." 
-                  className="resize-none" 
-                  rows={3}
-                  {...field} 
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Valores */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="originalAmount"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Valor Original *</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="number" 
-                    step="0.01" 
-                    min="0.01"
-                    placeholder="0,00" 
-                    {...field}
-                    onChange={(e) => {
-                      const value = parseFloat(e.target.value);
-                      field.onChange(isNaN(value) ? 0 : value);
-                    }}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="currentAmount"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Valor Atual *</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="number" 
-                    step="0.01" 
-                    min="0.01"
-                    placeholder="0,00" 
-                    {...field}
-                    onChange={(e) => {
-                      const value = parseFloat(e.target.value);
-                      field.onChange(isNaN(value) ? 0 : value);
-                    }}
-                  />
-                </FormControl>
-                <FormDescription className="text-xs text-muted-foreground">
-                  Valor com juros, multas, etc.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        {/* Data e Prioridade */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="dueDate"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Data de Vencimento *</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "PPP", { locale: ptBR })
-                        ) : (
-                          <span>Selecione uma data</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) =>
-                        date < new Date(new Date().setHours(0, 0, 0, 0))
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="priority"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Prioridade</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a prioridade" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {priorityOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        {/* Status e Forma de Pagamento */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="status"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Status</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o status" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {statusOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="paymentMethod"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Forma de Pagamento</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a forma" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {paymentMethodOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        {/* Taxa de Juros */}
-        <FormField
-          control={form.control}
-          name="interestRate"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Taxa de Juros (% a.m.)</FormLabel>
-              <FormControl>
-                <Input 
-                  type="number" 
-                  step="0.01" 
-                  min="0"
-                  placeholder="0,00" 
-                  {...field}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value);
-                    field.onChange(isNaN(value) ? 0 : value);
-                  }}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Parcelamento */}
-        <div className="space-y-4">
-          <FormField
-            control={form.control}
-            name="hasInstallments"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel>Esta dívida é parcelada?</FormLabel>
-                </div>
-              </FormItem>
-            )}
-          />
-
-          {form.watch("hasInstallments") && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <TabsContent value="detalhes" className="space-y-4 sm:space-y-5 pt-1">
+            {/* Informações Básicas */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <FormField
                 control={form.control}
-                name="installmentTotal"
+                name="creditorName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Total de Parcelas *</FormLabel>
+                    <FormLabel>Nome do Credor *</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        min="1"
-                        placeholder="12" 
-                        {...field}
-                        onChange={(e) => {
-                          const value = parseInt(e.target.value);
-                          field.onChange(isNaN(value) ? undefined : value);
-                        }}
-                      />
+                      <Input className="h-9" placeholder="Ex: Banco do Brasil" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -466,18 +184,69 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
 
               <FormField
                 control={form.control}
-                name="installmentPaid"
+                name="category"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Parcelas Pagas</FormLabel>
+                    <FormLabel>Categoria *</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Selecione a categoria" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categoryOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Descrição *</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Descreva a dívida..." 
+                      className="resize-none" 
+                      rows={2}
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </TabsContent>
+
+          <TabsContent value="valores" className="space-y-4 sm:space-y-5 pt-1">
+            {/* Valores */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="originalAmount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor Original *</FormLabel>
                     <FormControl>
                       <Input 
+                        className="h-9"
                         type="number" 
-                        min="0"
-                        placeholder="0" 
+                        step="0.01" 
+                        min="0.01"
+                        placeholder="0,00" 
                         {...field}
                         onChange={(e) => {
-                          const value = parseInt(e.target.value);
+                          const value = parseFloat(e.target.value);
                           field.onChange(isNaN(value) ? 0 : value);
                         }}
                       />
@@ -489,12 +258,13 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
 
               <FormField
                 control={form.control}
-                name="installmentAmount"
+                name="currentAmount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Valor da Parcela *</FormLabel>
+                    <FormLabel>Valor Atual *</FormLabel>
                     <FormControl>
                       <Input 
+                        className="h-9"
                         type="number" 
                         step="0.01" 
                         min="0.01"
@@ -502,40 +272,296 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
                         {...field}
                         onChange={(e) => {
                           const value = parseFloat(e.target.value);
-                          field.onChange(isNaN(value) ? undefined : value);
+                          field.onChange(isNaN(value) ? 0 : value);
                         }}
                       />
                     </FormControl>
+                    <FormDescription className="text-xs text-muted-foreground">
+                      Valor com juros, multas, etc.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
-          )}
-        </div>
 
-        {/* Observações */}
-        <FormField
-          control={form.control}
-          name="notes"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Observações (opcional)</FormLabel>
-              <FormControl>
-                <Textarea 
-                  placeholder="Observações adicionais..." 
-                  className="resize-none" 
-                  rows={3}
-                  {...field} 
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            {/* Data e Prioridade */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="dueDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Data de Vencimento *</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full pl-3 text-left font-normal h-9",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP", { locale: ptBR })
+                            ) : (
+                              <span>Selecione uma data</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date < new Date(new Date().setHours(0, 0, 0, 0))
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="priority"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Prioridade</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Selecione a prioridade" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {priorityOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="pagamento" className="space-y-4 sm:space-y-5 pt-1">
+            {/* Status e Forma de Pagamento */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Selecione o status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {statusOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="paymentMethod"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Forma de Pagamento</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Selecione a forma" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {paymentMethodOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Taxa de Juros */}
+            <FormField
+              control={form.control}
+              name="interestRate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Taxa de Juros (% a.m.)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      className="h-9"
+                      type="number" 
+                      step="0.01" 
+                      min="0"
+                      placeholder="0,00" 
+                      {...field}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        field.onChange(isNaN(value) ? 0 : value);
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </TabsContent>
+
+          <TabsContent value="parcelas" className="space-y-4 sm:space-y-5 pt-1">
+            {/* Parcelamento */}
+            <div className="space-y-3">
+              <FormField
+                control={form.control}
+                name="hasInstallments"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>Esta dívida é parcelada?</FormLabel>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              {form.watch("hasInstallments") && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="installmentTotal"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Total de Parcelas *</FormLabel>
+                        <FormControl>
+                          <Input 
+                            className="h-9"
+                            type="number" 
+                            min="1"
+                            placeholder="12" 
+                            {...field}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value);
+                              field.onChange(isNaN(value) ? undefined : value);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="installmentPaid"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Parcelas Pagas</FormLabel>
+                        <FormControl>
+                          <Input 
+                            className="h-9"
+                            type="number" 
+                            min="0"
+                            placeholder="0" 
+                            {...field}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value);
+                              field.onChange(isNaN(value) ? 0 : value);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="installmentAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Valor da Parcela *</FormLabel>
+                        <FormControl>
+                          <Input 
+                            className="h-9"
+                            type="number" 
+                            step="0.01" 
+                            min="0.01"
+                            placeholder="0,00" 
+                            {...field}
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value);
+                              field.onChange(isNaN(value) ? undefined : value);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="notas" className="space-y-4 sm:space-y-5 pt-1">
+            {/* Observações */}
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Observações (opcional)</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Observações adicionais..." 
+                      className="resize-none" 
+                      rows={2}
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </TabsContent>
+        </Tabs>
 
         {/* Botões */}
-        <div className="flex justify-end gap-3 pt-4">
+        <div className="sticky bottom-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t px-4 sm:px-6 py-1.5 flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancelar
           </Button>

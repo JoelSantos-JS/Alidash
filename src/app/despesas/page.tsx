@@ -329,7 +329,7 @@ export default function DespesasPage() {
 
       {/* Expense Form Dialog */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-xl sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {expenseToEdit ? "Editar Despesa" : "Adicionar Nova Despesa"}

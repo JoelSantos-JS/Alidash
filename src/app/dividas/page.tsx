@@ -1118,11 +1118,11 @@ export default function DebtsPage() {
 
       {/* Dialog do Formulário */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="max-w-full sm:max-w-3xl lg:max-w-5xl max-h-[95vh] overflow-hidden p-0 m-2 sm:m-6">
+        <DialogContent className="sm:max-w-2xl lg:max-w-4xl max-h-[70vh] sm:max-h-[85vh] overflow-hidden p-0 rounded-2xl">
           <DialogTitle className="sr-only">
             {selectedDebt ? "Editar Dívida" : "Nova Dívida"}
           </DialogTitle>
-          <div className="max-h-[95vh] overflow-y-auto">
+          <div className="max-h-[70vh] sm:max-h-[85vh] overflow-y-auto px-5 py-4 sm:px-6 sm:py-6">
             <DebtForm
               debt={selectedDebt || undefined}
               onSubmit={selectedDebt ? handleEditDebt : handleCreateDebt}

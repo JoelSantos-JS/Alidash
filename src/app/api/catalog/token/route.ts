@@ -87,6 +87,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await request.json()
+    const origin = new URL(request.url).origin
+    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL?.trim() || origin).replace(/\/+$/, '')
 
     if (!userId) {
       return NextResponse.json(

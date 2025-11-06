@@ -296,7 +296,7 @@ export function CategoryForm({ category, onSubmit, onCancel, isLoading = false }
               {/* Seleção de Ícone */}
               <div className="space-y-3">
                 <Label>Ícone da Categoria *</Label>
-                <div className="grid grid-cols-4 md:grid-cols-6 gap-3">
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 sm:gap-3">
                   {iconOptions.map((iconOption) => {
                     const IconComponent = iconOption.icon;
                     return (
@@ -305,7 +305,7 @@ export function CategoryForm({ category, onSubmit, onCancel, isLoading = false }
                         type="button"
                         onClick={() => setSelectedIcon(iconOption.value)}
                         className={`
-                          p-3 rounded-lg border-2 transition-all duration-200 hover:scale-105
+                          p-2 sm:p-3 w-full rounded-lg border-2 transition-all duration-200 hover:scale-105
                           ${selectedIcon === iconOption.value 
                             ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20" 
                             : "border-gray-300 dark:border-gray-600 hover:border-gray-400"
@@ -314,7 +314,7 @@ export function CategoryForm({ category, onSubmit, onCancel, isLoading = false }
                         title={iconOption.label}
                       >
                         <IconComponent className="h-6 w-6 mx-auto" />
-                        <p className="text-xs mt-1 text-center">{iconOption.label}</p>
+                        <p className="text-[10px] sm:text-xs mt-1 text-center w-full truncate">{iconOption.label}</p>
                       </button>
                     );
                   })}

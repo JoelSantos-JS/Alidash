@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Package, 
@@ -614,6 +614,8 @@ export function ProductsSidebar({
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="w-80 p-0">
+          {/* Título acessível exigido pelo Radix Dialog */}
+          <SheetTitle className="sr-only">Menu de Produtos</SheetTitle>
           {mobileSidebarContent}
         </SheetContent>
       </Sheet>

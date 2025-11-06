@@ -1,15 +1,47 @@
-// Service Worker Registration
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('/sw.js')
-      .then(function(registration) {
-        console.log('SW registrado com sucesso:', registration.scope);
-      })
-      .catch(function(error) {
-        console.log('Falha ao registrar SW:', error);
-      });
-  });
-}
+// Service Worker Registration (desativado em localhost e com ?sw=off)
+(function() {
+  const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const devPorts = ['3000', '3001', '3002'];
+  const isDevPort = devPorts.includes(location.port);
+  const disableSw = isLocalhost || location.search.includes('sw=off');
+
+  async function clearServiceWorkerCache() {
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (let registration of registrations) {
+        console.log('🔄 Desregistrando service worker...');
+        await registration.unregister();
+      }
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        for (let cacheName of cacheNames) {
+          console.log('🗑️ Removendo cache:', cacheName);
+          await caches.delete(cacheName);
+        }
+      }
+      console.log('✅ Cache SW limpo');
+    } catch (error) {
+      console.warn('⚠️ Erro ao limpar cache SW:', error);
+    }
+  }
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      if (disableSw || isDevPort) {
+        // Em desenvolvimento, não registrar SW e limpar caches se já houver
+        clearServiceWorkerCache();
+        return;
+      }
+      navigator.serviceWorker.register('/sw.js')
+        .then(function(registration) {
+          console.log('SW registrado com sucesso:', registration.scope);
+        })
+        .catch(function(error) {
+          console.log('Falha ao registrar SW:', error);
+        });
+    });
+  }
+})();
 
 // Handler global para erros de chunks
 window.addEventListener('error', function(event) {

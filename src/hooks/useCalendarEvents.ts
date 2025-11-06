@@ -187,7 +187,7 @@ export function useCalendarEvents() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: user.uid,
+          user_id: user.id,
           ...eventData
         })
       });

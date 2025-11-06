@@ -114,6 +114,16 @@ const nextConfig: NextConfig = {
     ]
   },
 
+  // Rewrites para evitar 404 do injetor de Vite do ambiente de preview
+  async rewrites() {
+    return [
+      {
+        source: '/@vite/client',
+        destination: '/@vite/client.js',
+      },
+    ]
+  },
+
   poweredByHeader: false,
   reactStrictMode: true,
 

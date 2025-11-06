@@ -559,8 +559,8 @@ export default function CategoriesPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="flex items-start sm:items-center gap-3 sm:gap-4">
           <Button 
             variant="ghost" 
             size="sm" 
@@ -575,7 +575,7 @@ export default function CategoriesPage() {
             <p className="text-muted-foreground">Organize suas transações e produtos por categorias</p>
           </div>
         </div>
-        <Button onClick={() => setIsFormOpen(true)} className="gap-2">
+        <Button onClick={() => setIsFormOpen(true)} className="gap-2 w-full sm:w-auto">
           <PlusCircle className="h-4 w-4" />
           Nova Categoria
         </Button>
@@ -583,10 +583,10 @@ export default function CategoriesPage() {
 
       {/* Dashboard com Tabs */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-          <TabsTrigger value="analytics">Análises</TabsTrigger>
-          <TabsTrigger value="budget">Orçamentos</TabsTrigger>
+        <TabsList className="w-full flex overflow-x-auto whitespace-nowrap border-b border-border rounded-none sm:grid sm:grid-cols-3">
+          <TabsTrigger value="overview" className="px-3 py-2 text-sm sm:text-base">Visão Geral</TabsTrigger>
+          <TabsTrigger value="analytics" className="px-3 py-2 text-sm sm:text-base">Análises</TabsTrigger>
+          <TabsTrigger value="budget" className="px-3 py-2 text-sm sm:text-base">Orçamentos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -870,7 +870,7 @@ export default function CategoriesPage() {
               />
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Select value={typeFilter} onValueChange={(value: "all" | "transaction" | "product") => setTypeFilter(value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Tipo" />
@@ -927,7 +927,7 @@ export default function CategoriesPage() {
         </div>
 
         {filteredCategories.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredCategories.map((category) => {
               const utilization = category.budget && category.budget > 0 
                 ? ((category.spent || 0) / category.budget) * 100 
@@ -1047,11 +1047,11 @@ export default function CategoriesPage() {
 
       {/* Dialog do Formulário */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-4xl max-w-[98vw] sm:max-h-[90vh] max-h-[88vh] overflow-y-auto">
           <DialogTitle className="sr-only">
             {selectedCategory ? "Editar Categoria" : "Nova Categoria"}
           </DialogTitle>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <div className="mb-6">
               <h3 className="text-2xl font-bold">
                 {selectedCategory ? "Editar Categoria" : "Nova Categoria"}

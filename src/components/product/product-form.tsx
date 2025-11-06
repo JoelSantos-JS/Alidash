@@ -260,29 +260,29 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <Tabs defaultValue="product" className="w-full">
-            <TabsList className="grid w-full grid-cols-6 mx-6 mb-6">
-              <TabsTrigger value="product" className="flex items-center gap-2">
-                <Package className="h-4 w-4" />
+            <TabsList className="flex w-full justify-center gap-2 sm:gap-3 px-4 mb-4 flex-wrap">
+              <TabsTrigger value="product" className="flex items-center gap-2 h-9 sm:h-10 px-3">
+                <Package className="h-5 w-5" />
                 <span className="hidden sm:inline">Produto</span>
               </TabsTrigger>
-              <TabsTrigger value="stock" className="flex items-center gap-2">
-                <Calculator className="h-4 w-4" />
+              <TabsTrigger value="stock" className="flex items-center gap-2 h-9 sm:h-10 px-3">
+                <Calculator className="h-5 w-5" />
                 <span className="hidden sm:inline">Estoque</span>
               </TabsTrigger>
-              <TabsTrigger value="images" className="flex items-center gap-2">
-                <ImageIcon className="h-4 w-4" />
+              <TabsTrigger value="images" className="flex items-center gap-2 h-9 sm:h-10 px-3">
+                <ImageIcon className="h-5 w-5" />
                 <span className="hidden sm:inline">Imagens</span>
               </TabsTrigger>
-              <TabsTrigger value="supplier" className="flex items-center gap-2">
-                <Truck className="h-4 w-4" />
+              <TabsTrigger value="supplier" className="flex items-center gap-2 h-9 sm:h-10 px-3">
+                <Truck className="h-5 w-5" />
                 <span className="hidden sm:inline">Fornecedor</span>
               </TabsTrigger>
-              <TabsTrigger value="financial" className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
+              <TabsTrigger value="financial" className="flex items-center gap-2 h-9 sm:h-10 px-3">
+                <DollarSign className="h-5 w-5" />
                 <span className="hidden sm:inline">Financeiro</span>
               </TabsTrigger>
-              <TabsTrigger value="tracking" className="flex items-center gap-2">
-                <ClipboardList className="h-4 w-4" />
+              <TabsTrigger value="tracking" className="flex items-center gap-2 h-9 sm:h-10 px-3">
+                <ClipboardList className="h-5 w-5" />
                 <span className="hidden sm:inline">Rastreio</span>
               </TabsTrigger>
             </TabsList>

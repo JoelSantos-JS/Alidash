@@ -15,10 +15,10 @@ const supabase = createClient(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { token: string } }
+  context: { params: Promise<{ token: string }> }
 ) {
   try {
-    const { token } = params
+    const { token } = await context.params
     
     if (!token || token.length !== 32) {
       return NextResponse.json(
@@ -37,10 +37,7 @@ export async function GET(
         user_id,
         is_active,
         access_count,
-        users (
-          name,
-          email
-        )
+        last_accessed
       `)
       .eq('token', token)
       .eq('is_active', true)
@@ -54,7 +51,7 @@ export async function GET(
       )
     }
 
-    console.log('✅ Token válido encontrado para usuário:', tokenData.users?.name || tokenData.users?.email)
+    console.log('✅ Token válido encontrado para usuário:', tokenData.user_id)
 
     // 2. Buscar produtos públicos do usuário
     const { data: products, error: productsError } = await supabase
@@ -85,41 +82,46 @@ export async function GET(
 
     console.log('📦 Produtos públicos encontrados:', products?.length || 0)
 
-    // 3. Transformar dados para formato público (sem informações sensíveis)
+    // 3. Transformar dados para formato público compatível com a página /catalogo/[token]
     const publicProducts = products?.map(product => ({
       id: product.id,
       name: product.name,
       category: product.category,
       imageUrl: product.image_url || '/placeholder-product.svg',
       description: product.description || '',
-      price: product.selling_price,
+      sellingPrice: Number(product.selling_price) || 0,
       status: product.status,
-      available: product.quantity - product.quantity_sold,
-      inStock: (product.quantity - product.quantity_sold) > 0
+      quantity: Number(product.quantity) || 0,
+      quantitySold: Number(product.quantity_sold) || 0
     })) || []
 
-    // 4. Atualizar contador de acessos (sem aguardar)
-    supabase
-      .from('catalog_tokens')
-      .update({ 
-        access_count: tokenData.access_count + 1,
-        last_accessed: new Date().toISOString()
-      })
-      .eq('id', tokenData.id)
-      .then(() => console.log('📊 Contador de acesso atualizado'))
-      .catch(err => console.log('⚠️ Erro ao atualizar contador:', err.message))
+    // 4. Atualizar contador de acessos (sem bloquear resposta)
+    ;(async () => {
+      try {
+        await supabase
+          .from('catalog_tokens')
+          .update({ 
+            access_count: (tokenData.access_count || 0) + 1,
+            last_accessed: new Date().toISOString()
+          })
+          .eq('id', tokenData.id)
+        console.log('📊 Contador de acesso atualizado')
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        console.log('⚠️ Erro ao atualizar contador:', msg)
+      }
+    })()
 
-    // 5. Preparar informações do catálogo
+    // 5. Preparar informações do catálogo (chave 'catalogInfo' usada pelo frontend)
     const catalogInfo = {
-      ownerName: tokenData.users?.name || 'Loja',
       totalProducts: publicProducts.length,
-      categories: [...new Set(publicProducts.map(p => p.category))],
+      categories: [...new Set(publicProducts.map(p => p.category).filter(Boolean))],
       lastUpdated: new Date().toISOString()
     }
 
     return NextResponse.json({
       success: true,
-      catalog: catalogInfo,
+      catalogInfo,
       products: publicProducts
     })
 

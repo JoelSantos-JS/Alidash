@@ -67,8 +67,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192x192.svg" />
         <link rel="mask-icon" href="/icon-192x192.svg" color="#2563eb" />
         
-        {/* Scripts externos */}
-        <script src="/init-scripts.js" defer></script>
+        {/* Scripts externos removidos temporariamente para depuração */}
 
       </head>
       <body className={`${inter.variable} font-body antialiased`}>
@@ -88,6 +87,30 @@ export default function RootLayout({
                 position="top-right"
                 richColors
                 closeButton
+              />
+              {/* Dev-only: limpar service worker e caches para evitar chunks inválidos */}
+              <script
+                dangerouslySetInnerHTML={{
+                  __html: `(() => {
+                    try {
+                      const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+                      const devPorts = ['3000','3001','3002'];
+                      const isDev = isLocal && devPorts.includes(location.port);
+                      if (!isDev) return;
+                      if ('serviceWorker' in navigator) {
+                        navigator.serviceWorker.getRegistrations().then(regs => {
+                          regs.forEach(r => r.unregister());
+                        }).catch(() => {});
+                      }
+                      if ('caches' in window) {
+                        caches.keys().then(names => {
+                          names.forEach(n => caches.delete(n));
+                        }).catch(() => {});
+                      }
+                      console.debug('[dev] SW e caches limpos');
+                    } catch {}
+                  })();`
+                }}
               />
             </DataProvider>
           </SupabaseAuthProvider>

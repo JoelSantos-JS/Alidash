@@ -22,12 +22,13 @@ export interface Product {
   category: string;
   supplier: string;
   aliexpressLink: string;
-  imageUrl: string;
+  imageUrl?: string;
   images?: ProductImage[]; // Novo campo para múltiplas imagens
   description: string;
   notes?: string;
   trackingCode?: string; // Código de rastreio
   purchaseEmail?: string; // Email usado na compra
+  isPublic?: boolean; // Visibilidade no catálogo público
   
   // Custos
   purchasePrice: number;

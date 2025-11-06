@@ -344,7 +344,6 @@ export default function ProdutosPage() {
         onStatusFilterChange={setStatusFilter}
         onSupplierFilterChange={setSupplierFilter}
         onAddProduct={handleAddProduct}
-        onSaveCompactProduct={handleProductCreated}
         onRefresh={handleRefresh}
         onExport={handleExport}
         onImport={handleImport}
@@ -386,20 +385,7 @@ export default function ProdutosPage() {
                   <h1 className="text-xl sm:text-2xl font-bold">Produtos</h1>
                 </div>
               </div>
-              {/* Botão Perfil (Topo) */}
-              <div className="flex items-center gap-2">
-                <Link href="/perfil" className="hidden sm:block">
-                  <Button variant="ghost" size="sm" className="h-8">
-                    <User className="h-4 w-4 mr-2" />
-                    Perfil
-                  </Button>
-                </Link>
-                <Link href="/perfil" className="sm:hidden">
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                    <User className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
+              {/* Removido botão Perfil do topo para evitar duplicação na página de Produtos */}
             </div>
             
             <div className="flex items-center gap-2 flex-wrap">

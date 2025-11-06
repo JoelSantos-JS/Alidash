@@ -48,6 +48,7 @@ export function CatalogManager({ products, onProductUpdate }: CatalogManagerProp
   const [catalogToken, setCatalogToken] = useState<CatalogToken | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [storeName, setStoreName] = useState('')
 
   useEffect(() => {
     if (isOpen && user?.id) {
@@ -246,27 +247,46 @@ export function CatalogManager({ products, onProductUpdate }: CatalogManagerProp
                   </div>
                 ) : catalogToken ? (
                   <div className="space-y-4">
-                    <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                    {/* Nome da loja (opcional) */}
+                    <div className="space-y-2">
+                      <Label htmlFor="store-name">Nome da loja (opcional)</Label>
                       <Input
-                        value={catalogToken.catalogUrl}
-                        readOnly
-                        className="flex-1 bg-background"
+                        id="store-name"
+                        placeholder="Ex.: Minha Loja de Importados"
+                        value={storeName}
+                        onChange={(e) => setStoreName(e.target.value)}
                       />
-                      <Button
-                        onClick={() => copyToClipboard(catalogToken.catalogUrl)}
-                        size="sm"
-                        variant="outline"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        onClick={() => window.open(catalogToken.catalogUrl, '_blank')}
-                        size="sm"
-                        variant="outline"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
+                      <p className="text-xs text-muted-foreground">Este nome aparece no topo do catálogo público.</p>
                     </div>
+
+                    {(() => {
+                      const shareUrl = storeName
+                        ? `${catalogToken.catalogUrl}?store=${encodeURIComponent(storeName)}`
+                        : catalogToken.catalogUrl
+                      return (
+                        <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                          <Input
+                            value={shareUrl}
+                            readOnly
+                            className="flex-1 bg-background"
+                          />
+                          <Button
+                            onClick={() => copyToClipboard(shareUrl)}
+                            size="sm"
+                            variant="outline"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            onClick={() => window.open(shareUrl, '_blank')}
+                            size="sm"
+                            variant="outline"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )
+                    })()}
 
                     {/* Estatísticas */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

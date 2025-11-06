@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { 
   Target, 
   Plus, 
@@ -199,7 +199,7 @@ export default function MetasPage() {
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false)
   
   // Hook de sincronização dual com prioridade no Supabase
-  const dualSync = useDualSync(user?.uid || '', 'SUPABASE_PRIORITY')
+  const dualSync = useDualSync(user?.id || '', 'SUPABASE_PRIORITY')
   
   // Filters
   const [periodFilter, setPeriodFilter] = useState<"week" | "month" | "quarter" | "year">("month")
@@ -601,6 +601,8 @@ export default function MetasPage() {
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-80 h-full">
+                  {/* Título acessível exigido pelo Radix Dialog */}
+                  <SheetTitle className="sr-only">Filtros e Configurações de Metas</SheetTitle>
                   <GoalsSidebar
                     goals={goals}
                     periodFilter={periodFilter}

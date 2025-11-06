@@ -28,6 +28,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('user_id')
+    const origin = new URL(request.url).origin
+    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL?.trim() || origin).replace(/\/+$/, '')
 
     if (!userId) {
       return NextResponse.json(
@@ -58,7 +60,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: true,
         token: tokenData.token,
-        catalogUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/catalogo/${tokenData.token}`,
+        catalogUrl: `${baseUrl}/catalogo/${tokenData.token}`,
         isActive: tokenData.is_active,
         accessCount: tokenData.access_count,
         lastAccessed: tokenData.last_accessed,
@@ -162,7 +164,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       token: newToken,
-      catalogUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/catalogo/${newToken}`,
+      catalogUrl: `${baseUrl}/catalogo/${newToken}`,
       message: 'Token criado com sucesso!'
     })
 

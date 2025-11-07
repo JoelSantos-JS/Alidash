@@ -252,7 +252,7 @@ export default function MetasPage() {
         
         toast({
           title: "Metas carregadas",
-          description: `${userGoals.length} meta${userGoals.length !== 1 ? 's' : ''} carregada${userGoals.length !== 1 ? 's' : ''} do Supabase`,
+          description: `${userGoals.length} meta${userGoals.length !== 1 ? 's' : ''} carregada${userGoals.length !== 1 ? 's' : ''}`,
           duration: 3000,
         })
         

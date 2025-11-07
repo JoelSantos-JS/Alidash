@@ -187,7 +187,7 @@ export default function DebtsPage() {
         console.error("❌ Erro ao carregar dívidas via API:", error);
         toast({
           title: "Erro",
-          description: "Não foi possível carregar as dívidas do Supabase.",
+          description: "Não foi possível carregar suas dívidas.",
           variant: "destructive",
         });
         // Em caso de erro, usar dados de exemplo

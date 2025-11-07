@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase, supabaseService } from '@/lib/supabase-service'
 import { toast } from 'sonner'
-import { LoaderCircle } from 'lucide-react'
+import { LoaderCircle, CheckCircle2 } from 'lucide-react'
 
 interface AuthContextType {
   user: User | null
@@ -106,7 +106,15 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
             }
             // Evita mostrar o toast repetidas vezes ao navegar pelo app
             if (!hasShownLoginToastRef.current) {
-              toast.success('Login realizado com sucesso!')
+              toast.success('Login realizado com sucesso!', {
+                style: {
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  border: '1px solid #1d4ed8'
+                },
+                className: 'shadow-lg',
+                icon: <CheckCircle2 size={18} className="text-white" />,
+              })
               hasShownLoginToastRef.current = true
             }
           } catch (error) {

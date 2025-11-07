@@ -324,12 +324,6 @@ export default function ProfilePage() {
                                                         </Link>
                                                     </Button>
                                                     <Button asChild variant="outline" size="sm" className="justify-start">
-                                                        <Link href="/sonhos">
-                                                            <KeyRound className="mr-2 h-4 w-4" />
-                                                            Dashboard de Sonhos
-                                                        </Link>
-                                                    </Button>
-                                                    <Button asChild variant="outline" size="sm" className="justify-start">
                                                         <Link href="/apostas">
                                                             <BarChart className="mr-2 h-4 w-4" />
                                                             Dashboard de Apostas

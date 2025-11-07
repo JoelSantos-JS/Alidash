@@ -107,12 +107,6 @@ const navigationItems: NavigationItem[] = [
     description: "Configurações pessoais"
   },
   {
-    href: "/sonhos",
-    label: "Sonhos",
-    icon: Heart,
-    description: "Objetivos de vida"
-  },
-  {
     href: "/apostas",
     label: "Apostas",
     icon: Gamepad2,

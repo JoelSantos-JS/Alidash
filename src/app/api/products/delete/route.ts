@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { DualDatabaseSync, DualSyncPresets } from '@/lib/dual-database-sync'
+import { supabaseAdminService } from '@/lib/supabase-service'
 
 export async function DELETE(request: NextRequest) {
   try {
@@ -21,18 +21,13 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    console.log('🔍 Deletando produto:', productId, 'para usuário:', userId)
+    console.log('🔍 Deletando produto (Supabase):', productId, 'para usuário:', userId)
 
-    // Usar sincronização dual para deletar produto
-    const dualSync = new DualDatabaseSync(userId, DualSyncPresets.BEST_EFFORT)
-    const result = await dualSync.deleteProduct(productId)
-
-    console.log(`✅ Produto deletado - Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
+    // Deletar produto diretamente no Supabase
+    await supabaseAdminService.deleteProduct(userId, productId)
 
     return NextResponse.json({
-      success: result.success,
-      supabaseSuccess: result.supabaseSuccess,
-      errors: result.errors
+      success: true
     })
   } catch (error) {
     return NextResponse.json({

@@ -1,12 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { DualDatabaseSync, DualSyncPresets } from '@/lib/dual-database-sync'
-
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+import { supabaseAdminService } from '@/lib/supabase-service'
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,37 +13,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    console.log('🔍 Buscando produtos para usuário ID:', userId)
+    console.log('🔍 Buscando produtos (Supabase) para usuário ID:', userId)
 
-    // Verificar se é um UUID (Supabase ID) ou Firebase UID
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)
-    
-    let user;
-    // Usar UUID do Supabase diretamente
-    console.log('📋 Usando UUID do Supabase:', userId)
-    user = { id: userId }
-
-    console.log('✅ Usuário encontrado:', user.id)
-
-    // Buscar produtos do usuário
-    const { data: products, error: productsError } = await supabase
-      .from('products')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-
-    if (productsError) {
-      console.error('❌ Erro ao buscar produtos:', productsError)
-      return NextResponse.json({ 
-        error: 'Erro ao buscar produtos',
-        details: productsError.message 
-      }, { status: 500 })
-    }
-
-    console.log('📦 Produtos encontrados:', products?.length || 0)
+    const products = await supabaseAdminService.getProducts(userId)
+    console.log('📦 Produtos encontrados:', products.length)
 
     // Transformar dados do Supabase para o formato esperado
-    const transformedProducts = products?.map(product => ({
+    const transformedProducts = products.map((product: any) => ({
       id: product.id,
       name: product.name,
       category: product.category,
@@ -78,7 +47,7 @@ export async function GET(request: NextRequest) {
       roi: product.roi || 0,
       actualProfit: product.actual_profit || 0,
       sales: [] // Por enquanto, sem vendas
-    })) || []
+    }))
 
     return NextResponse.json({ 
       success: true, 

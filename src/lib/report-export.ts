@@ -132,7 +132,7 @@ export function exportReportToPDF(data: ReportData, options: ExportOptions = {})
 /**
  * Exporta relatório para Excel
  */
-export function exportReportToExcel(data: ReportData, options: ExportOptions = {}) {
+export function exportReportToExcel(data: ReportData, _options: ExportOptions = {}) {
   const workbook = XLSX.utils.book_new();
   
   // Aba 1: Resumo

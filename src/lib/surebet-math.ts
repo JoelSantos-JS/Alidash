@@ -49,7 +49,7 @@ export function allocateStakes({
   }
 
   // Alocação teórica sem arredondamento (retorno igual bruto)
-  let rawStakes = odds.map((o, i) => (total / o) / S);
+  let rawStakes = odds.map((o) => (total / o) / S);
 
   // Aplica limites de stake (se existirem) — corrige proporcionalmente
   function applyLimits(stakes: number[]) {

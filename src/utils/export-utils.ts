@@ -46,8 +46,6 @@ export function exportToPDF(data: DataItem[]): { title: string, data: DataItem[]
     return { title: 'Relatório Financeiro', data: [], columns: [] };
   }
 
-  // Obter cabeçalhos das colunas e formatá-los
-  const headers = Object.keys(data[0]);
   const columns = ['Data', 'Descricao', 'Valor', 'Categoria'];
   
   return {

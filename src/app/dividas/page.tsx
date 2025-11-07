@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useToast } from "@/hooks/use-toast";
-import { useDualSync } from '@/lib/dual-database-sync';
 import { format, isPast, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -153,8 +152,7 @@ export default function DebtsPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [debtToDelete, setDebtToDelete] = useState<Debt | null>(null);
   
-  // Hook de sincronização dual
-  const dualSync = useDualSync(user?.id || '', 'BEST_EFFORT');
+  // Removido dual-sync: página consome dívidas via API do Supabase
 
   // Carregar dados do Supabase via API
   useEffect(() => {

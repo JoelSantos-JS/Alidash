@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { DualDatabaseSync, DualSyncPresets } from '@/lib/dual-database-sync'
+import { supabaseAdminService } from '@/lib/supabase-service'
 import { Product } from '@/types'
 
 export async function POST(request: NextRequest) {
@@ -16,27 +16,15 @@ export async function POST(request: NextRequest) {
 
     const productData: Omit<Product, 'id'> = await request.json()
 
-    console.log('🔍 Criando produto para usuário:', userId)
+    console.log('🔍 Criando produto (Supabase) para usuário:', userId)
 
-    // Usar sincronização dual para criar produto
-    const dualSync = new DualDatabaseSync(userId, DualSyncPresets.BEST_EFFORT)
-    const result = await dualSync.createProduct(productData)
+    // Criar produto diretamente no Supabase
+    await supabaseAdminService.createProduct(userId, productData)
 
-    console.log(`✅ Produto criado - Supabase: ${result.supabaseSuccess ? '✅' : '❌'}`)
-
-    if (result.success) {
-      return NextResponse.json({ 
-        success: true,
-        supabaseSuccess: result.supabaseSuccess,
-        message: 'Produto criado com sucesso'
-      })
-    } else {
-      return NextResponse.json({ 
-        success: false,
-        errors: result.errors,
-        supabaseSuccess: result.supabaseSuccess
-      }, { status: 500 })
-    }
+    return NextResponse.json({ 
+      success: true,
+      message: 'Produto criado com sucesso'
+    })
 
   } catch (error) {
     console.error('❌ Erro ao criar produto:', error)

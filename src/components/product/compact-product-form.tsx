@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Package, Sparkles, Loader2 } from "lucide-react";
+import { Package, Loader2 } from "lucide-react";
 import React, { useState } from "react";
 
 import type { Product } from "@/types";
@@ -16,9 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { suggestDescription } from "@/ai/flows/dream-planner";
-import { useToast } from "@/hooks/use-toast";
-import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+// IA removida: sem cliente de IA nem tooltips
 
 const compactProductSchema = z.object({
   name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
@@ -46,7 +44,7 @@ interface CompactProductFormProps {
 
 export function CompactProductForm({ onSave, onCancel, isOpen }: CompactProductFormProps) {
   const [isCustomCategory, setIsCustomCategory] = useState(false);
-  const [isSuggesting, setIsSuggesting] = useState(false);
+  // IA removida: sem estado de sugestão
   
   const form = useForm<z.infer<typeof compactProductSchema>>({
     resolver: zodResolver(compactProductSchema),
@@ -58,7 +56,6 @@ export function CompactProductForm({ onSave, onCancel, isOpen }: CompactProductF
   });
 
   const { formState: { isSubmitting }, watch, setValue, control } = form;
-  const { toast } = useToast();
   
   const watchedValues = watch();
   const watchedCategory = watch("category");
@@ -72,24 +69,7 @@ export function CompactProductForm({ onSave, onCancel, isOpen }: CompactProductF
     }
   }, [watchedCategory, setValue]);
 
-  const handleSuggestDescription = async () => {
-    const { name, description } = watchedValues;
-    if (!name) {
-        toast({ variant: "destructive", title: "Nome do Produto Necessário", description: "Por favor, preencha o nome do produto primeiro." });
-        return;
-    }
-    setIsSuggesting(true);
-    try {
-        const result = await suggestDescription({ productName: name, currentDescription: description });
-        setValue("description", result.suggestedDescription, { shouldValidate: true });
-        toast({ title: "Descrição Sugerida!", description: "A IA criou uma nova descrição para o seu produto." });
-    } catch (error) {
-         console.error("Error suggesting description:", error);
-        toast({ variant: "destructive", title: "Erro na Sugestão", description: "Não foi possível obter a sugestão da IA. Tente novamente." });
-    } finally {
-        setIsSuggesting(false);
-    }
-  };
+  // IA removida: sem handler de sugestão de descrição
 
   const onSubmit = (data: z.infer<typeof compactProductSchema>) => {
     // Criar um produto básico com valores padrão
@@ -212,30 +192,7 @@ export function CompactProductForm({ onSave, onCancel, isOpen }: CompactProductF
 
                       <FormField control={form.control} name="description" render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="flex items-center justify-between text-xs">
-                            <span>Descrição</span>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button 
-                                    type="button" 
-                                    variant="link" 
-                                    size="sm" 
-                                    onClick={handleSuggestDescription} 
-                                    disabled={isSuggesting} 
-                                    className="p-0 h-auto text-xs"
-                                  >
-                                    {isSuggesting ? (
-                                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                                    ) : (
-                                      <Sparkles className="mr-1 h-3 w-3 text-primary" />
-                                    )}
-                                    Sugerir com IA
-                                  </Button>
-                                </TooltipTrigger>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </FormLabel>
+                          <FormLabel className="text-xs">Descrição</FormLabel>
                           <FormControl>
                             <Textarea {...field} placeholder="Descreva as características do produto..." className="min-h-[60px] text-xs" />
                           </FormControl>

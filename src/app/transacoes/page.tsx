@@ -486,8 +486,8 @@ function TransacoesPageContent() {
     );
   }
 
-  if (!user) {
-    router.push('/login');
+  if (!user && !authLoading) {
+    router.replace('/login');
     return null;
   }
 

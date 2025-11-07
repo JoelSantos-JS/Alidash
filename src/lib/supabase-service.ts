@@ -1,17 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { 
   Product,
-  Sale, 
-  Transaction, 
-  Debt, 
-  DebtPayment, 
-  Goal, 
-  GoalMilestone, 
-  GoalReminder, 
-  Dream, 
-  Bet, 
-  Revenue,
-  Expense 
+  Goal
 } from '../types'
 
 // Environment variables validation
@@ -198,6 +188,39 @@ export class SupabaseService {
     return data || []
   }
 
+  async updateRevenue(userId: string, revenueId: string, updates: {
+    description?: string
+    amount?: number
+    category?: string
+    source?: string
+    notes?: string
+    product_id?: string | null
+    date?: Date
+  }) {
+    const updateData: Record<string, any> = {}
+    if (updates.description !== undefined) updateData.description = updates.description
+    if (updates.amount !== undefined) updateData.amount = updates.amount
+    if (updates.category !== undefined) updateData.category = updates.category
+    if (updates.source !== undefined) updateData.source = updates.source
+    if (updates.notes !== undefined) updateData.notes = updates.notes
+    if (updates.product_id !== undefined) updateData.product_id = updates.product_id
+    if (updates.date !== undefined) updateData.date = updates.date.toISOString()
+
+    const { data, error } = await this.client
+      .from('revenues')
+      .update(updateData)
+      .eq('id', revenueId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+
+    if (error) {
+      throw new Error(`Erro ao atualizar receita: ${error.message}`)
+    }
+
+    return data
+  }
+
   async deleteRevenue(userId: string, revenueId: string) {
     const { error } = await this.client
       .from('revenues')
@@ -294,6 +317,49 @@ export class SupabaseService {
     return data || []
   }
 
+  async updateTransaction(userId: string, transactionId: string, updates: {
+    description?: string
+    amount?: number
+    type?: 'revenue' | 'expense'
+    category?: string
+    subcategory?: string
+    paymentMethod?: string
+    status?: string
+    notes?: string
+    tags?: string[]
+    date?: Date
+    isInstallment?: boolean
+    installmentInfo?: any
+  }) {
+    const updateData: Record<string, any> = {}
+    if (updates.description !== undefined) updateData.description = updates.description
+    if (updates.amount !== undefined) updateData.amount = updates.amount
+    if (updates.type !== undefined) updateData.type = updates.type
+    if (updates.category !== undefined) updateData.category = updates.category
+    if (updates.subcategory !== undefined) updateData.subcategory = updates.subcategory
+    if (updates.paymentMethod !== undefined) updateData.payment_method = updates.paymentMethod
+    if (updates.status !== undefined) updateData.status = updates.status
+    if (updates.notes !== undefined) updateData.notes = updates.notes
+    if (updates.tags !== undefined) updateData.tags = updates.tags
+    if (updates.date !== undefined) updateData.date = updates.date.toISOString()
+    if (updates.isInstallment !== undefined) updateData.is_installment = updates.isInstallment
+    if (updates.installmentInfo !== undefined) updateData.installment_info = updates.installmentInfo
+
+    const { data, error } = await this.client
+      .from('transactions')
+      .update(updateData)
+      .eq('id', transactionId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+
+    if (error) {
+      throw new Error(`Erro ao atualizar transação: ${error.message}`)
+    }
+
+    return data
+  }
+
   async deleteTransaction(userId: string, transactionId: string) {
     const { error } = await this.client
       .from('transactions')
@@ -359,6 +425,41 @@ export class SupabaseService {
     return data || []
   }
 
+  async updateExpense(userId: string, expenseId: string, updates: {
+    description?: string
+    amount?: number
+    category?: string
+    type?: string
+    supplier?: string
+    notes?: string
+    product_id?: string | null
+    date?: Date
+  }) {
+    const updateData: Record<string, any> = {}
+    if (updates.description !== undefined) updateData.description = updates.description
+    if (updates.amount !== undefined) updateData.amount = updates.amount
+    if (updates.category !== undefined) updateData.category = updates.category
+    if (updates.type !== undefined) updateData.type = updates.type
+    if (updates.supplier !== undefined) updateData.supplier = updates.supplier
+    if (updates.notes !== undefined) updateData.notes = updates.notes
+    if (updates.product_id !== undefined) updateData.product_id = updates.product_id
+    if (updates.date !== undefined) updateData.date = updates.date.toISOString()
+
+    const { data, error } = await this.client
+      .from('expenses')
+      .update(updateData)
+      .eq('id', expenseId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+
+    if (error) {
+      throw new Error(`Erro ao atualizar despesa: ${error.message}`)
+    }
+
+    return data
+  }
+
   async deleteExpense(userId: string, expenseId: string) {
     const { error } = await this.client
       .from('expenses')
@@ -376,14 +477,6 @@ export class SupabaseService {
   // =====================================
 
   async createProduct(userId: string, productData: Omit<Product, 'id'>) {
-    // Calcular total_cost se não fornecido
-    const totalCost = productData.totalCost || 
-      (productData.purchasePrice || 0) + 
-      (productData.shippingCost || 0) + 
-      (productData.importTaxes || 0) + 
-      (productData.packagingCost || 0) + 
-      (productData.marketingCost || 0) + 
-      (productData.otherCosts || 0);
 
     const insertData = {
       user_id: userId,

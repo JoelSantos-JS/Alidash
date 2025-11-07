@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CalendarIcon, Loader2, Sparkles, Package, ClipboardList, DollarSign, Calculator, Truck, ImageIcon } from "lucide-react";
+import { CalendarIcon, Package, ClipboardList, DollarSign, Calculator, Truck, ImageIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import React, { useState } from "react";
@@ -21,13 +21,13 @@ import { DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/co
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle, Info } from "lucide-react";
-import { suggestPrice, suggestDescription } from "@/ai/flows/dream-planner";
+// IA removida: sem import de clientes de IA
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrackingView } from "./tracking-view";
 import { ImageGallery } from "./image-gallery";
 import { useAuth } from "@/hooks/use-supabase-auth";
-import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+// IA removida: sem tooltip de ações de IA
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -135,7 +135,6 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
   const { formState: { isSubmitting }, watch, setValue, control } = form;
   const { toast } = useToast();
   const { user } = useAuth();
-  const [isSuggesting, setIsSuggesting] = React.useState({ price: false, description: false});
   const [isCustomCategory, setIsCustomCategory] = React.useState(false);
   
 
@@ -190,57 +189,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
      });
   };
 
-  const handleSuggestPrice = async () => {
-    const { name, category } = watchedValues;
-    const { totalCost } = calculateFinancials(watchedValues);
-    
-    if (!name || totalCost <= 0) {
-        toast({
-            variant: "destructive",
-            title: "Dados Insuficientes",
-            description: "Preencha o nome e os custos do produto para obter uma sugestão."
-        })
-        return;
-    }
-    
-    setIsSuggesting(s => ({...s, price: true}));
-    try {
-        const result = await suggestPrice({ productName: name, category, totalCost });
-        setValue("sellingPrice", result.suggestedPrice, { shouldValidate: true });
-        toast({
-            title: "Preço Sugerido!",
-            description: result.justification
-        })
-    } catch(error) {
-        console.error("Error suggesting price:", error);
-        toast({
-            variant: "destructive",
-            title: "Erro na Sugestão",
-            description: "Não foi possível obter a sugestão da IA. Tente novamente."
-        })
-    } finally {
-        setIsSuggesting(s => ({...s, price: false}));
-    }
-  }
-
-  const handleSuggestDescription = async () => {
-    const { name, description } = watchedValues;
-    if (!name) {
-        toast({ variant: "destructive", title: "Nome do Produto Necessário", description: "Por favor, preencha o nome do produto primeiro." });
-        return;
-    }
-    setIsSuggesting(s => ({...s, description: true}));
-    try {
-        const result = await suggestDescription({ productName: name, currentDescription: description });
-        setValue("description", result.suggestedDescription, { shouldValidate: true });
-        toast({ title: "Descrição Sugerida!", description: "A IA criou uma nova descrição para o seu produto." });
-    } catch (error) {
-         console.error("Error suggesting description:", error);
-        toast({ variant: "destructive", title: "Erro na Sugestão", description: "Não foi possível obter a sugestão da IA. Tente novamente." });
-    } finally {
-        setIsSuggesting(s => ({...s, description: false}));
-    }
-  };
+  // IA removida: sem handlers de sugestão de preço/descrição
   
   const { totalCost, expectedProfit, profitMargin, roi } = calculateFinancials(watchedValues);
   const isLowProfit = profitMargin < 15 && profitMargin !== 0;
@@ -348,30 +297,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
 
                       <FormField control={form.control} name="description" render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="flex items-center justify-between">
-                            <span>Descrição</span>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button 
-                                    type="button" 
-                                    variant="link" 
-                                    size="sm" 
-                                    onClick={handleSuggestDescription} 
-                                    disabled={isSuggesting.description} 
-                                    className="p-0 h-auto"
-                                  >
-                                    {isSuggesting.description ? (
-                                      <Loader2 className="mr-2 animate-spin" />
-                                    ) : (
-                                      <Sparkles className="mr-2 text-primary" />
-                                    )}
-                                    Sugerir com IA
-                                  </Button>
-                                </TooltipTrigger>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </FormLabel>
+                          <FormLabel>Descrição</FormLabel>
                           <FormControl>
                             <Textarea {...field} placeholder="Descreva as características do produto..." />
                           </FormControl>
@@ -673,28 +599,8 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                           <FormLabel>Preço de Venda (R$) *</FormLabel>
                           <div className="relative">
                             <FormControl>
-                              <Input type="number" step="0.01" {...field} placeholder="0,00" className="pr-12"/>
+                              <Input type="number" step="0.01" {...field} placeholder="0,00" />
                             </FormControl>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button 
-                                    type="button" 
-                                    size="icon" 
-                                    variant="ghost" 
-                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" 
-                                    onClick={handleSuggestPrice} 
-                                    disabled={isSuggesting.price}
-                                  >
-                                    {isSuggesting.price ? (
-                                      <Loader2 className="animate-spin" />
-                                    ) : (
-                                      <Sparkles className="text-primary" />
-                                    )}
-                                  </Button>
-                                </TooltipTrigger>
-                              </Tooltip>
-                            </TooltipProvider>
                           </div>
                           <FormMessage />
                         </FormItem>

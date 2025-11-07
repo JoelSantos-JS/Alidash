@@ -6,7 +6,7 @@ export interface ExportOptions {
   includeFinancials?: boolean
 }
 
-export function exportProductsToCSV(products: Product[], options: ExportOptions = { format: 'csv' }): string {
+export function exportProductsToCSV(products: Product[], _options: ExportOptions = { format: 'csv' }): string {
   const headers = [
     'ID',
     'Nome',
@@ -54,7 +54,7 @@ export function exportProductsToCSV(products: Product[], options: ExportOptions 
   return csvContent
 }
 
-export function exportProductsToJSON(products: Product[], options: ExportOptions = { format: 'json' }): string {
+export function exportProductsToJSON(products: Product[], _options: ExportOptions = { format: 'json' }): string {
   const exportData = products.map(product => ({
     id: product.id,
     name: product.name,
@@ -170,4 +170,4 @@ export function generatePerformanceAnalysis(products: Product[]) {
   }
 
   return analysis
-} 
+}

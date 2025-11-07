@@ -36,18 +36,22 @@ export async function backupUserData(user: SupabaseUser): Promise<BackupData> {
       .eq('user_id', user.id)
 
     // Buscar apostas (se existir tabela)
-    const { data: bets } = await supabase
-      .from('bets')
-      .select('*')
-      .eq('user_id', user.id)
-      .then(result => result.data)
-      .catch(() => []) // Se tabela não existir, retorna array vazio
+    let bets: any[] = []
+    try {
+      const { data: betsData } = await supabase
+        .from('bets')
+        .select('*')
+        .eq('user_id', user.id)
+      bets = betsData || []
+    } catch {
+      bets = [] // Se tabela não existir, retorna array vazio
+    }
 
     const backupData: BackupData = {
       userId: user.id,
       products: products || [],
       dreams: dreams || [],
-      bets: bets || [],
+      bets: bets,
       lastSync: new Date()
     }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useCallback } from 'react'
+import { useCallback } from 'react'
 import { useAuth } from '@/hooks/use-supabase-auth'
 import { useNotifications } from '@/hooks/useNotifications'
 

@@ -221,8 +221,8 @@ export default function DespesasPage() {
     );
   }
 
-  if (!user) {
-    router.push('/login');
+  if (!user && !authLoading) {
+    router.replace('/login');
     return null;
   }
 

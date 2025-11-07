@@ -130,10 +130,14 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     }
 
     return () => {
-      // Em dev/StrictMode, evitamos desmontar a assinatura para não duplicar
-      console.log('🧹 Cleanup do AuthProvider (mantendo assinatura ativa)')
+      console.log('🧹 Cleanup do AuthProvider: removendo assinatura de auth')
+      try {
+        authSubscriptionRef.current?.unsubscribe()
+      } catch {}
+      authSubscriptionRef.current = null
+      hasInitializedSessionRef.current = false
     }
-  }, [router, pathname])
+  }, [router])
 
   const ensureUserInDatabase = async (authUser: User) => {
     try {

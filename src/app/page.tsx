@@ -10,7 +10,8 @@ import { ProductSearch } from "@/components/product/product-search";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductDetailView } from "@/components/product/product-detail-view";
 import { ProductEditMenu } from "@/components/product/product-edit-menu";
-import { ProductForm } from "@/components/product/product-form";
+import dynamic from 'next/dynamic'
+const ProductForm = dynamic(() => import('@/components/product/product-form').then(m => m.ProductForm), { ssr: false })
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -70,7 +71,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { useDualSync } from '@/lib/dual-database-sync';
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -146,11 +146,7 @@ export default function Home() {
     });
   }
   
-  // Hook de sincronização dual - só criar quando user existir
-  const dualSync = useMemo(() => {
-    if (!user?.id) return null;
-    return useDualSync(user.id, 'BEST_EFFORT');
-  }, [user?.id]);
+  // Removido dual-sync: operações usam APIs que já integram com Supabase
   
   // Estados do componente
   const [products, setProducts] = useState<Product[]>([]);
@@ -791,8 +787,8 @@ export default function Home() {
     return alerts;
   }, [summaryStats, products]);
 
-  // Mostrar tela de loading enquanto a autenticação está carregando ou não hidratou
-  if (!isHydrated || authLoading) {
+  // Evitar travar a UI: só bloqueia durante hidratação inicial
+  if (!isHydrated) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <div className="text-center">
@@ -803,9 +799,21 @@ export default function Home() {
     );
   }
 
-  // Redirecionar para login se não estiver autenticado (apenas após hidratação)
-  if (!user) {
-    router.push('/login');
+  // Exibir loader enquanto o estado de auth ainda está carregando
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-sm text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirecionar para login somente quando não houver usuário e não estiver carregando
+  if (!user && !authLoading) {
+    router.replace('/login');
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <div className="text-center">

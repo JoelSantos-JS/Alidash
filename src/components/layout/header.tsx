@@ -67,12 +67,6 @@ export function Header() {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/sonhos" className="flex items-center w-full">
-                        <KeyRound className="mr-2 h-4 w-4" />
-                        <span>Dashboard de Sonhos</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
                       <Link href="/apostas" className="flex items-center w-full">
                         <BarChart className="mr-2 h-4 w-4" />
                         <span>Dashboard de Apostas</span>

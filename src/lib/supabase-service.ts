@@ -27,7 +27,10 @@ if (!supabaseAnonKey) {
   throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is required')
 }
 
-// Client-side Supabase client
+// Detect environment to avoid creating multiple auth clients in the browser
+const isServer = typeof window === 'undefined'
+
+// Client-side Supabase client (singleton)
 export const supabase = createClient(
   supabaseUrl,
   supabaseAnonKey,
@@ -40,17 +43,19 @@ export const supabase = createClient(
   }
 )
 
-// Server-side Supabase client (for API routes)
-export const supabaseAdmin = createClient(
-  supabaseUrl,
-  supabaseServiceKey || supabaseAnonKey,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
+// Server-side Supabase admin client (ONLY create on server)
+export const supabaseAdmin = isServer
+  ? createClient(
+      supabaseUrl,
+      supabaseServiceKey || supabaseAnonKey,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
+  : undefined as unknown as ReturnType<typeof createClient>
 
 /**
  * Simplified Supabase Service Layer
@@ -59,7 +64,13 @@ export class SupabaseService {
   private client: typeof supabase
 
   constructor(useAdmin = false) {
-    this.client = useAdmin ? supabaseAdmin : supabase
+    // In the browser, always use the public client to avoid multiple GoTrue instances
+    // On the server, allow the admin client
+    if (useAdmin && isServer) {
+      this.client = supabaseAdmin as unknown as typeof supabase
+    } else {
+      this.client = supabase
+    }
   }
 
   // =====================================
@@ -649,4 +660,7 @@ export class SupabaseService {
 }
 
 export const supabaseService = new SupabaseService(false)
-export const supabaseAdminService = new SupabaseService(true)
+// Only create the admin service on the server to prevent browser-side duplication
+export const supabaseAdminService = isServer
+  ? new SupabaseService(true)
+  : (undefined as unknown as SupabaseService)

@@ -1,7 +1,7 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { createContext, useContext, useEffect, useState, useRef } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase, supabaseService } from '@/lib/supabase-service'
 import { toast } from 'sonner'
@@ -25,6 +25,8 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   const [loading, setLoading] = useState(true)
   const [isHydrated, setIsHydrated] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
+  const hasShownLoginToastRef = useRef(false)
 
   // Prevent hydration mismatch by ensuring consistent initial state
   useEffect(() => {
@@ -87,14 +89,23 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
           try {
             await ensureUserInDatabase(session.user)
             await supabaseService.updateUserLastLogin(session.user.id)
-            router.push('/')
-            toast.success('Login realizado com sucesso!')
+            // Redireciona apenas quando vindo de páginas de auth
+            const isAuthPage = pathname === '/login' || pathname === '/cadastro'
+            if (isAuthPage) {
+              router.push('/')
+            }
+            // Evita mostrar o toast repetidas vezes ao navegar pelo app
+            if (!hasShownLoginToastRef.current) {
+              toast.success('Login realizado com sucesso!')
+              hasShownLoginToastRef.current = true
+            }
           } catch (error) {
             console.error('Erro pós-login:', error)
             toast.error('Erro ao finalizar login')
             // Não impedir o login por causa de erros de sincronização
           }
         } else if (event === 'SIGNED_OUT') {
+          hasShownLoginToastRef.current = false
           router.push('/login')
         }
         

@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/lib/supabase-service'
 
 export interface BackupData {
   userId: string
@@ -22,12 +22,7 @@ export async function backupUserData(user: SupabaseUser): Promise<BackupData> {
   }
 
   try {
-    // Buscar dados do Supabase
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-
+    
     // Buscar produtos do usuário
     const { data: products } = await supabase
       .from('products')

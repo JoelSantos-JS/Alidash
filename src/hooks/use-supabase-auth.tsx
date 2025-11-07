@@ -27,6 +27,10 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   const router = useRouter()
   const pathname = usePathname()
   const hasShownLoginToastRef = useRef(false)
+  // Evitar rodar getSession múltiplas vezes em dev/StrictMode
+  const hasInitializedSessionRef = useRef(false)
+  // Manter uma única assinatura de auth ativa
+  const authSubscriptionRef = useRef<ReturnType<typeof supabase.auth.onAuthStateChange>['data']['subscription'] | null>(null)
 
   // Prevent hydration mismatch by ensuring consistent initial state
   useEffect(() => {
@@ -34,8 +38,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   }, [])
 
   useEffect(() => {
-    console.log('🔧 AuthProvider useEffect iniciado')
-    
+    // Inicializar sessão apenas uma vez por ciclo de vida da página
     const getInitialSession = async () => {
       try {
         console.log('🚀 Obtendo sessão inicial...')
@@ -74,11 +77,17 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
         setLoading(false)
       }
     }
+    if (!hasInitializedSessionRef.current) {
+      console.log('🔧 Inicializando sessão do AuthProvider')
+      hasInitializedSessionRef.current = true
+      getInitialSession()
+    } else {
+      console.log('⏭️ Sessão já inicializada, pulando getSession')
+    }
 
-    getInitialSession()
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    // Assinar mudanças de auth uma única vez
+    if (!authSubscriptionRef.current) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('🔄 Auth state changed:', event, session?.user?.email)
         
@@ -90,7 +99,8 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
             await ensureUserInDatabase(session.user)
             await supabaseService.updateUserLastLogin(session.user.id)
             // Redireciona apenas quando vindo de páginas de auth
-            const isAuthPage = pathname === '/login' || pathname === '/cadastro'
+            const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname
+            const isAuthPage = currentPath === '/login' || currentPath === '/cadastro'
             if (isAuthPage) {
               router.push('/')
             }
@@ -112,10 +122,18 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
         // Garantir que loading seja sempre false após mudanças de estado
         setLoading(false)
       }
-    )
+      )
+      authSubscriptionRef.current = subscription
+      console.log('🔗 Assinatura de auth criada')
+    } else {
+      console.log('🔁 Assinatura de auth já existente')
+    }
 
-    return () => subscription.unsubscribe()
-  }, [router])
+    return () => {
+      // Em dev/StrictMode, evitamos desmontar a assinatura para não duplicar
+      console.log('🧹 Cleanup do AuthProvider (mantendo assinatura ativa)')
+    }
+  }, [router, pathname])
 
   const ensureUserInDatabase = async (authUser: User) => {
     try {
@@ -323,18 +341,8 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   }
 
   // Show loading state after hydration
-  if (loading) {
-    return (
-      <AuthContext.Provider value={value}>
-        <div className="flex items-center justify-center h-screen bg-background">
-          <div className="text-center">
-            <LoaderCircle className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-            <p className="text-lg text-muted-foreground">Carregando...</p>
-          </div>
-        </div>
-      </AuthContext.Provider>
-    )
-  }
+  // Após hidratação, não bloquear a UI com overlay global.
+  // As páginas gerenciam seus próprios loaders usando `loading` do contexto.
 
   return (
     <AuthContext.Provider value={value}>

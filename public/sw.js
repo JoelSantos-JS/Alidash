@@ -82,9 +82,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Estratégia Stale While Revalidate para páginas
+  // Estratégia Network First para páginas HTML (navegação)
+  // Evita servir páginas antigas (ex.: estado "Carregando...") do cache
   if (request.mode === 'navigate') {
-    event.respondWith(staleWhileRevalidate(request));
+    event.respondWith(networkFirst(request));
     return;
   }
 
@@ -128,11 +129,17 @@ async function cacheFirst(request) {
   }
 }
 
-// Estratégia Stale While Revalidate
+// Estratégia Stale While Revalidate (apenas para recursos não-HTML)
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(DYNAMIC_CACHE);
   const cachedResponse = await cache.match(request);
   
+  const isHtml = request.headers.get('accept')?.includes('text/html');
+  if (isHtml) {
+    // Para HTML, delegar para networkFirst através do listener
+    return fetch(request);
+  }
+
   const fetchPromise = fetch(request).then(networkResponse => {
     if (networkResponse.ok) {
       cache.put(request, networkResponse.clone());

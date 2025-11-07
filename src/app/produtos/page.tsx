@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ProductsSidebar } from "@/components/product/products-sidebar"
@@ -34,6 +35,7 @@ import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 
 export default function ProdutosPage() {
+  const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const isMobile = useIsMobile()
   const [products, setProducts] = useState<Product[]>([])
@@ -374,7 +376,7 @@ export default function ProdutosPage() {
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  onClick={() => window.location.href = '/'}
+                  onClick={() => router.push('/')}
                   className="flex items-center gap-2"
                 >
                   <ArrowLeft className="h-4 w-4" />

@@ -16,10 +16,10 @@ import {
   Globe,
   Package,
   KeyRound,
-  BarChart
+  BarChart,
+  ArrowLeft
 } from "lucide-react";
 
-import { BackupStatusCard } from "@/components/layout/backup-status-card";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -246,7 +246,15 @@ export default function ProfilePage() {
                                 <p className="text-muted-foreground">Gerencie suas informações e configurações.</p>
                             </div>
                         </div>
-                        <ThemeToggle />
+                        <div className="flex items-center gap-2">
+                          <Button asChild variant="outline" size="sm">
+                            <Link href="/">
+                              <ArrowLeft className="w-4 h-4 mr-2" />
+                              Voltar ao Dashboard
+                            </Link>
+                          </Button>
+                          <ThemeToggle />
+                        </div>
                     </div>
                     
                     <Tabs defaultValue={defaultTab} className="w-full">
@@ -339,9 +347,8 @@ export default function ProfilePage() {
                                 </CardFooter>
                             </Card>
 
-                            {/* Backup Status */}
-                            <BackupStatusCard />
-                        </TabsContent>
+                            {/* Backup Status removido do perfil conforme solicitação */}
+                            </TabsContent>
 
                         <TabsContent value="settings" className="space-y-6">
                             <Card>

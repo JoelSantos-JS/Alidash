@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { useData } from "@/contexts/data-context";
 import { ExpensesSection } from "@/components/dashboard/expenses-section";
+import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowDown, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -113,13 +114,14 @@ const initialProducts: Product[] = [
 
 export default function DespesasPage() {
   const { user, loading: authLoading } = useAuth();
-  const { expenses, addExpense, isLoading: dataLoading } = useData();
+  const { expenses, addExpense, updateExpense, deleteExpense, isLoading: dataLoading } = useData();
   const router = useRouter();
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [periodFilter, setPeriodFilter] = useState<"day" | "week" | "month">("month");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [expenseToEdit, setExpenseToEdit] = useState<Expense | null>(null);
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
   
 
 
@@ -167,7 +169,10 @@ export default function DespesasPage() {
           description: "A edição de despesas será implementada em breve.",
         });
       } else {
-        // Adicionar nova despesa
+        // Atualização otimista: adiciona imediatamente na UI
+        addExpense(expenseData);
+
+        // Sincroniza com a API em background
         const response = await fetch(`/api/expenses/create?user_id=${user.id}`, {
           method: 'POST',
           headers: {
@@ -178,22 +183,34 @@ export default function DespesasPage() {
 
         if (response.ok) {
           const result = await response.json();
-          if (result.success) {
-            // Usar o contexto para adicionar a despesa
-            const newExpense: Expense = {
+          if (result.success && result.expense) {
+            // Atualiza o registro otimista com dados definitivos (ex.: transactionId)
+            const serverExpense: Expense = {
               ...expenseData,
-              id: result.expense.id,
+              id: result.expense.id, // normalmente igual ao enviado
+              transactionId: result.expense.transaction_id,
             };
-            addExpense(newExpense);
-            
+            // Se o id retornado for diferente, removemos o otimista e adicionamos o oficial
+            if (serverExpense.id !== expenseData.id) {
+              // Reverter o item otimista e adicionar o oficial para manter consistência
+              deleteExpense(expenseData.id);
+              addExpense(serverExpense);
+            } else {
+              updateExpense(serverExpense);
+            }
+
             toast({
-              title: "Despesa Adicionada!",
+              title: "Despesa adicionada!",
               description: `${expenseData.description} - Criada com sucesso`,
             });
           } else {
+            // Falha lógica da API: reverter otimista
+            deleteExpense(expenseData.id);
             throw new Error(result.error || 'Erro ao criar despesa');
           }
         } else {
+          // Falha HTTP: reverter otimista
+          deleteExpense(expenseData.id);
           throw new Error('Erro na requisição');
         }
       }
@@ -201,7 +218,7 @@ export default function DespesasPage() {
       console.error('Erro ao salvar despesa:', error);
       toast({
         variant: 'destructive',
-        title: "Erro ao Salvar",
+        title: "Erro ao salvar",
         description: error instanceof Error ? error.message : "Erro desconhecido ao salvar despesa.",
       });
     }
@@ -290,6 +307,13 @@ export default function DespesasPage() {
               </Button>
             </div>
 
+            {/* Date Navigator */}
+            <PeriodSelector 
+              currentDate={currentDate}
+              onDateChange={setCurrentDate}
+              className="ml-2 hidden sm:flex"
+            />
+
             {/* Add New Expense Button */}
             <Button
               onClick={() => {
@@ -323,6 +347,7 @@ export default function DespesasPage() {
             products={products}
             periodFilter={periodFilter}
             expenses={expenses}
+            currentDate={currentDate}
           />
         )}
       </main>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -94,6 +94,21 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
   const [showSalarySettings, setShowSalarySettings] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const CACHE_TTL_MS = 30_000; // 30 segundos
+
+  // Unificar receitas e despesas e ordenar por data desc (top-level Hook)
+  const recentTransactions = useMemo(() => {
+    const incomeItems = (recentIncomes || []).map(income => ({
+      ...income,
+      __type: 'income' as const
+    }));
+    const expenseItems = (recentExpenses || []).map(expense => ({
+      ...expense,
+      __type: 'expense' as const
+    }));
+    const merged = [...incomeItems, ...expenseItems];
+    merged.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return merged;
+  }, [recentIncomes, recentExpenses]);
 
   useEffect(() => {
     if (!user) return;
@@ -459,58 +474,61 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {/* Receitas Recentes */}
-              {recentIncomes.slice(0, 2).map((income) => (
-                <div key={income.id} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-green-100 text-green-600">
-                      <TrendingUp className="h-4 w-4" />
+              {recentTransactions.slice(0, 5).map((tx: any) => {
+                const isIncome = tx.__type === 'income';
+                if (isIncome) {
+                  return (
+                    <div key={tx.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-green-100 text-green-600">
+                          <TrendingUp className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{tx.description}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(tx.date).toLocaleDateString('pt-BR')} • {tx.source || 'Não informado'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-green-600">
+                          +{Number(tx.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </p>
+                        <Badge variant="secondary" className="text-xs">
+                          {tx.category}
+                        </Badge>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">{income.description}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(income.date).toLocaleDateString('pt-BR')} • {income.source}
+                  );
+                }
+
+                const isEssential = !!tx.is_essential;
+                const pmIcon = tx.payment_method ? getPaymentMethodIcon(tx.payment_method) : null;
+                return (
+                  <div key={tx.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${isEssential ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                        {getCategoryIcon(tx.category)}
+                      </div>
+                      <div>
+                        <p className="font-medium">{tx.description}</p>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          {new Date(tx.date).toLocaleDateString('pt-BR')}
+                          {pmIcon}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium text-red-600">
+                        -{Number(tx.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </p>
+                      <Badge variant={isEssential ? 'destructive' : 'secondary'} className="text-xs">
+                        {isEssential ? 'Essencial' : 'Opcional'}
+                      </Badge>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium text-green-600">
-                      +{income.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </p>
-                    <Badge variant="secondary" className="text-xs">
-                      {income.category}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-              
-              {/* Gastos Recentes */}
-              {recentExpenses.slice(0, 3).map((expense) => (
-                <div key={expense.id} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      expense.is_essential ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
-                    }`}>
-                      {getCategoryIcon(expense.category)}
-                    </div>
-                    <div>
-                      <p className="font-medium">{expense.description}</p>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        {new Date(expense.date).toLocaleDateString('pt-BR')}
-                        {getPaymentMethodIcon(expense.payment_method)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium text-red-600">
-                      -{expense.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </p>
-                    <Badge variant={expense.is_essential ? 'destructive' : 'secondary'} className="text-xs">
-                      {expense.is_essential ? 'Essencial' : 'Opcional'}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>

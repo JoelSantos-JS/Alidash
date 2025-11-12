@@ -74,9 +74,25 @@ Após criar a tabela:
 
 ## 🎉 Sistema Completo!
 
-Após executar o SQL, o sistema estará 100% funcional com:
+ Após executar o SQL, o sistema estará 100% funcional com:
 - Push notifications
 - Preferências personalizáveis
 - Interface moderna
 - APIs completas
 - Segurança implementada
+
+## 🚀 Envio de Email Gratuito (sem instalar SDK)
+
+Você pode habilitar envio de emails via Resend usando apenas HTTP:
+
+1. Crie uma conta gratuita em https://resend.com (plano gratuito).
+2. Gere uma API Key e configure no `.env.local`:
+
+```env
+RESEND_API_KEY=your_resend_api_key
+EMAIL_FROM="Alidash <no-reply@voxcash.app>"
+```
+
+3. Reinicie o servidor de desenvolvimento.
+
+Com essas variáveis, a rota `POST /api/notifications/email` enviará os emails via Resend automaticamente. Se também houver `N8N_WEBHOOK_URL`, o n8n será usado como prioridade.

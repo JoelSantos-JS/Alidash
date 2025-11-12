@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { Bell, Mail, Calendar, ShoppingCart, Target, CreditCard, AlertCircle } from 'lucide-react'
+import { Bell, Mail, ShoppingCart, Target, CreditCard, AlertCircle } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 interface NotificationPreferences {
@@ -256,19 +256,6 @@ export default function NotificationSettings() {
           <Label className="text-base font-medium">Tipos de Notificação</Label>
           
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="flex items-center gap-2 font-normal">
-                <Calendar className="h-4 w-4" />
-                Lembretes de Calendário
-              </Label>
-              <Switch
-                checked={preferences.calendar_reminders}
-                onCheckedChange={(checked) =>
-                  setPreferences(prev => ({ ...prev, calendar_reminders: checked }))
-                }
-              />
-            </div>
-
             <div className="flex items-center justify-between">
               <Label className="flex items-center gap-2 font-normal">
                 <ShoppingCart className="h-4 w-4" />

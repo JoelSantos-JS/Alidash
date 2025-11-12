@@ -12,6 +12,7 @@ import type { Product, Expense } from "@/types";
 interface ExpensesSectionProps {
   products: Product[];
   periodFilter: "day" | "week" | "month";
+  currentDate?: Date;
   expenses?: Expense[];
 }
 
@@ -26,9 +27,9 @@ interface ExpenseItem {
   subcategory?: string;
 }
 
-export function ExpensesSection({ products, periodFilter, expenses = [] }: ExpensesSectionProps) {
+export function ExpensesSection({ products, periodFilter, currentDate = new Date(), expenses = [] }: ExpensesSectionProps) {
   const expensesData = useMemo(() => {
-    const now = new Date();
+    const now = currentDate;
     const getPeriodStart = () => {
       switch (periodFilter) {
         case "day":
@@ -183,14 +184,14 @@ export function ExpensesSection({ products, periodFilter, expenses = [] }: Expen
       growthPercentage,
       topCategories
     };
-  }, [products, periodFilter]);
+  }, [products, periodFilter, currentDate, expenses]);
 
   const getPeriodLabel = () => {
     switch (periodFilter) {
-      case "day": return "hoje";
-      case "week": return "esta semana";
-      case "month": return "este mês";
-      default: return "este período";
+      case "day": return `no dia ${format(currentDate, 'dd/MM/yyyy', { locale: ptBR })}`;
+      case "week": return `nos últimos 7 dias até ${format(currentDate, 'dd/MM/yyyy', { locale: ptBR })}`;
+      case "month": return `de ${format(currentDate, 'MMMM yyyy', { locale: ptBR })}`;
+      default: return "no período selecionado";
     }
   };
 

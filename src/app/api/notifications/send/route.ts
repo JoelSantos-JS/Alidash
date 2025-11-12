@@ -25,7 +25,8 @@ export interface PushNotificationData {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { user_id, notification } = await request.json()
+    const body = await request.json() as { user_id: string; notification: PushNotificationData }
+    const { user_id, notification } = body
 
     if (!user_id || !notification) {
       return NextResponse.json(
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar preferências específicas por tipo
-    const typePreferences = {
+    const typePreferences: Record<PushNotificationData['type'], boolean> = {
       calendar_event: preferences?.calendar_reminders !== false,
       product_alert: preferences?.product_alerts !== false,
       transaction: preferences?.transaction_alerts !== false,
@@ -157,14 +158,15 @@ export async function POST(request: NextRequest) {
         console.error('Erro ao enviar para subscription:', error)
         
         // Se a subscription é inválida, marcar como inativa
-        if (error.statusCode === 410 || error.statusCode === 404) {
+        const err: any = error
+        if (err?.statusCode === 410 || err?.statusCode === 404) {
           await supabase
             .from('push_subscriptions')
             .update({ is_active: false })
             .eq('id', subscription.id)
         }
 
-        return { success: false, endpoint: subscription.endpoint, error: error.message }
+        return { success: false, endpoint: subscription.endpoint, error: err?.message }
       }
     })
 
@@ -173,20 +175,22 @@ export async function POST(request: NextRequest) {
     const failureCount = results.filter(r => !r.success).length
 
     // Salvar log da notificação
-    await supabase
-      .from('notification_logs')
-      .insert({
-        user_id,
-        type: notification.type,
-        title: notification.title,
-        body: notification.body,
-        success_count: successCount,
-        failure_count: failureCount,
-        sent_at: new Date().toISOString()
-      })
-      .catch(error => {
-        console.warn('Erro ao salvar log de notificação:', error)
-      })
+    {
+      const { error: logError } = await supabase
+        .from('notification_logs')
+        .insert({
+          user_id,
+          type: notification.type,
+          title: notification.title,
+          body: notification.body,
+          success_count: successCount,
+          failure_count: failureCount,
+          sent_at: new Date().toISOString()
+        })
+      if (logError) {
+        console.warn('Erro ao salvar log de notificação:', logError)
+      }
+    }
 
     return NextResponse.json({
       success: successCount > 0,

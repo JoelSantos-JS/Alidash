@@ -1301,6 +1301,7 @@ export default function Home() {
                   estimatedExpenses={summaryStats.periodExpenses || 0}
                   totalItems={products.length}
                   missingItems={products.filter(p => p.quantity - p.quantitySold <= 2 && p.status !== 'sold').length}
+                  periodRevenue={summaryStats.periodRevenue}
                   onBudgetChange={saveBudgetToDatabase}
                   isLoading={budgetLoading}
                 />

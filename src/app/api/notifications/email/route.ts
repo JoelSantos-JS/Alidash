@@ -15,7 +15,8 @@ export interface EmailNotificationData {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { user_id, email } = await request.json()
+    const body = await request.json() as { user_id: string; email: EmailNotificationData }
+    const { user_id, email } = body
 
     if (!user_id || !email) {
       return NextResponse.json(
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar preferências específicas por tipo
-    const typePreferences = {
+    const typePreferences: Record<EmailNotificationData['type'], boolean> = {
       calendar_event: preferences?.calendar_reminders !== false,
       product_alert: preferences?.product_alerts !== false,
       transaction: preferences?.transaction_alerts !== false,
@@ -104,21 +105,23 @@ export async function POST(request: NextRequest) {
         }
 
         // Salvar log da notificação
-        await supabase
-          .from('notification_logs')
-          .insert({
-            user_id,
-            type: email.type,
-            title: email.subject,
-            body: email.body,
-            channel: 'email',
-            success_count: 1,
-            failure_count: 0,
-            sent_at: new Date().toISOString()
-          })
-          .catch(error => {
-            console.warn('Erro ao salvar log de notificação:', error)
-          })
+        {
+          const { error: logError } = await supabase
+            .from('notification_logs')
+            .insert({
+              user_id,
+              type: email.type,
+              title: email.subject,
+              body: email.body,
+              channel: 'email',
+              success_count: 1,
+              failure_count: 0,
+              sent_at: new Date().toISOString()
+            })
+          if (logError) {
+            console.warn('Erro ao salvar log de notificação:', logError)
+          }
+        }
 
         return NextResponse.json({
           success: true,
@@ -129,21 +132,23 @@ export async function POST(request: NextRequest) {
         console.error('Erro ao enviar via n8n:', error)
         
         // Salvar log de falha
-        await supabase
-          .from('notification_logs')
-          .insert({
-            user_id,
-            type: email.type,
-            title: email.subject,
-            body: email.body,
-            channel: 'email',
-            success_count: 0,
-            failure_count: 1,
-            sent_at: new Date().toISOString()
-          })
-          .catch(logError => {
+        {
+          const { error: logError } = await supabase
+            .from('notification_logs')
+            .insert({
+              user_id,
+              type: email.type,
+              title: email.subject,
+              body: email.body,
+              channel: 'email',
+              success_count: 0,
+              failure_count: 1,
+              sent_at: new Date().toISOString()
+            })
+          if (logError) {
             console.warn('Erro ao salvar log de notificação:', logError)
-          })
+          }
+        }
 
         return NextResponse.json(
           { error: 'Erro ao enviar email via n8n' },
@@ -152,7 +157,84 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fallback: usar Supabase Auth para envio de email
+    // Fallback 1: usar Resend via HTTP (sem SDK)
+    if (process.env.RESEND_API_KEY) {
+      try {
+        const fromAddress = process.env.EMAIL_FROM || 'Alidash <no-reply@voxcash.app>'
+
+        const resendResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
+          },
+          body: JSON.stringify({
+            from: fromAddress,
+            to: userData.email,
+            subject: email.subject,
+            // Enviar em HTML; se vier texto puro, manter simples
+            html: email.body || '<p>Mensagem vazia</p>'
+          })
+        })
+
+        const resendData = await resendResponse.json()
+
+        if (!resendResponse.ok) {
+          throw new Error(`Resend failed: ${resendResponse.status} ${resendData?.error?.message || ''}`)
+        }
+
+        {
+          const { error: logError } = await supabase
+            .from('notification_logs')
+            .insert({
+              user_id,
+              type: email.type,
+              title: email.subject,
+              body: email.body,
+              channel: 'email',
+              success_count: 1,
+              failure_count: 0,
+              sent_at: new Date().toISOString()
+            })
+          if (logError) {
+            console.warn('Erro ao salvar log de notificação (Resend):', logError)
+          }
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: 'Email enviado com sucesso via Resend',
+          provider: 'resend',
+          data: resendData
+        })
+      } catch (error) {
+        console.error('Erro ao enviar via Resend:', error)
+        {
+          const { error: logError } = await supabase
+            .from('notification_logs')
+            .insert({
+              user_id,
+              type: email.type,
+              title: email.subject,
+              body: email.body,
+              channel: 'email',
+              success_count: 0,
+              failure_count: 1,
+              sent_at: new Date().toISOString()
+            })
+          if (logError) {
+            console.warn('Erro ao salvar log de notificação (Resend):', logError)
+          }
+        }
+
+        return NextResponse.json(
+          { error: 'Erro ao enviar email via Resend' },
+          { status: 500 }
+        )
+      }
+    }
+
+    // Fallback 2: modo desenvolvimento (logar sem envio real)
     try {
       // Nota: Esta é uma implementação básica
       // Em produção, você deve usar um serviço de email dedicado
@@ -161,6 +243,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: 'Email processado (modo desenvolvimento)',
+        provider: 'development',
         data: n8nPayload
       })
 

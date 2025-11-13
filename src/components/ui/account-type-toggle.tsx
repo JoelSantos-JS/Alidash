@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAccountTypeContext } from "@/contexts/account-type-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building, User } from "lucide-react";
@@ -71,22 +72,24 @@ export function AccountTypeToggle({
           <Button
             variant={currentType === 'personal' ? 'default' : 'ghost'}
             size="sm"
-            className="gap-1 text-xs"
+            className="h-8 w-8 p-0"
             onClick={() => !disabled && onTypeChange('personal')}
             disabled={disabled}
+            aria-label="Pessoal"
           >
             <User className="h-4 w-4" />
-            <span>Pessoal</span>
+            <span className="sr-only">Pessoal</span>
           </Button>
           <Button
             variant={currentType === 'business' ? 'default' : 'ghost'}
             size="sm"
-            className="gap-1 text-xs"
+            className="h-8 w-8 p-0"
             onClick={() => !disabled && onTypeChange('business')}
             disabled={disabled}
+            aria-label="Empresarial"
           >
             <Building className="h-4 w-4" />
-            <span>Empresarial</span>
+            <span className="sr-only">Empresarial</span>
           </Button>
         </div>
       ) : (
@@ -145,6 +148,11 @@ export function AccountTypeToggle({
 
 // Hook personalizado para gerenciar o tipo de conta
 export function useAccountType(initialType: AccountType = 'business') {
+  // Prefer global context when available
+  const AccountTypeCtx = useAccountTypeContext();
+  if (AccountTypeCtx) return AccountTypeCtx;
+
+  // Fallback to local state if provider is not present
   const [accountType, setAccountType] = useState<AccountType>(initialType);
 
   const toggleAccountType = () => {

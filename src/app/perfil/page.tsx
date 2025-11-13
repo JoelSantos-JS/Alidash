@@ -233,20 +233,20 @@ export default function ProfilePage() {
 
     return (
         <div className="min-h-screen bg-background">
-            <main className="container mx-auto px-4 py-8">
-                <div className="max-w-4xl mx-auto space-y-8">
+            <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
+                <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
                     {/* Header */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center text-white text-xl font-semibold shadow-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 sm:gap-4">
+                            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center text-white text-lg sm:text-xl font-semibold shadow-lg">
                                 {getInitials(user?.email)}
                             </div>
                             <div>
-                                <h1 className="text-3xl font-bold">Meu Perfil</h1>
-                                <p className="text-muted-foreground">Gerencie suas informações e configurações.</p>
+                                <h1 className="text-2xl sm:text-3xl font-bold">Meu Perfil</h1>
+                                <p className="text-sm sm:text-base text-muted-foreground">Gerencie suas informações e configurações.</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 sm:mt-0 mt-2">
                           <Button asChild variant="outline" size="sm">
                             <Link href="/">
                               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -258,7 +258,7 @@ export default function ProfilePage() {
                     </div>
                     
                     <Tabs defaultValue={defaultTab} className="w-full">
-                        <TabsList className="grid w-full grid-cols-3">
+                        <TabsList className="grid w-full grid-cols-3 rounded-md p-1">
                             <TabsTrigger value="account">Conta</TabsTrigger>
                             <TabsTrigger value="settings">Configurações</TabsTrigger>
                             <TabsTrigger value="notifications">Notificações</TabsTrigger>
@@ -267,14 +267,14 @@ export default function ProfilePage() {
                         <TabsContent value="account" className="space-y-6">
                             {/* Informações da Conta */}
                             <Card>
-                                <CardHeader>
+                                <CardHeader className="p-4 sm:p-6">
                                     <CardTitle className="flex items-center gap-2">
                                         <User className="w-5 h-5" />
                                         Informações da Conta
                                     </CardTitle>
                                     <CardDescription>Gerencie os detalhes da sua conta.</CardDescription>
                                 </CardHeader>
-                                <CardContent className="space-y-6">
+                                <CardContent className="p-4 sm:p-6 space-y-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-2">
                                             <Label htmlFor="email">Email</Label>
@@ -317,7 +317,7 @@ export default function ProfilePage() {
                                         </div>
                                     </div>
                                 </CardContent>
-                                <CardFooter className="flex-col items-start gap-4">
+                                <CardFooter className="p-4 sm:p-6 flex-col items-start gap-4">
                                     {/* Navegação Rápida para Dashboards - Apenas para joeltere9@gmail.com */}
                                     {user?.email === 'joeltere9@gmail.com' && (
                                         <>
@@ -352,14 +352,14 @@ export default function ProfilePage() {
 
                         <TabsContent value="settings" className="space-y-6">
                             <Card>
-                                <CardHeader>
+                                <CardHeader className="p-4 sm:p-6">
                                     <CardTitle className="flex items-center gap-2">
                                         <Settings className="w-5 h-5" />
                                         Configurações Gerais
                                     </CardTitle>
                                     <CardDescription>Personalize sua experiência na aplicação.</CardDescription>
                                 </CardHeader>
-                                <CardContent className="space-y-6">
+                                <CardContent className="p-4 sm:p-6 space-y-6">
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
                                             <div className="space-y-0.5">

@@ -742,8 +742,8 @@ export default function PersonalCategoriesPage() {
       {isFormOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-background border-border">
-            {/* Header com Menu de Navegação */}
-            <div className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border p-6 pb-4">
+            {/* Header com Menu de Navegação (não fixo) */}
+            <div className="bg-background border-b border-border p-6 pb-4">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <CardTitle className="text-2xl font-bold text-foreground">
@@ -796,7 +796,7 @@ export default function PersonalCategoriesPage() {
       {isEditFormOpen && selectedCategory && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-card border-b px-6 py-4 flex items-center justify-between">
+            <div className="bg-card border-b px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Tag className="h-4 w-4" />
@@ -900,7 +900,7 @@ export default function PersonalCategoriesPage() {
        {isChartModalOpen && chartCategory && (
          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
            <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-             <div className="sticky top-0 bg-card border-b px-6 py-4 flex items-center justify-between">
+             <div className="bg-card border-b px-6 py-4 flex items-center justify-between">
                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                  <span className="flex items-center gap-1">
                    <BarChart3 className="h-4 w-4" />

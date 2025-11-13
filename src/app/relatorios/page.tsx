@@ -314,7 +314,7 @@ export default function ReportsPage() {
     try {
       const reportData = {
         ...calculateReportStats(filteredProducts),
-        period: selectedPeriod,
+        period: periodLabel,
         generatedAt: new Date()
       };
 
@@ -394,9 +394,9 @@ export default function ReportsPage() {
       <div className="flex-1 min-w-0">
       {/* Header */}
       <div className="border-b bg-card">
-        <div className="container mx-auto px-6 py-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-            <div className="flex items-center gap-6">
+        <div className="container mx-auto px-3 sm:px-6 py-6 sm:py-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
+            <div className="flex items-center gap-4 sm:gap-6">
               <Button
                 variant="ghost"
                 size="sm"
@@ -414,23 +414,23 @@ export default function ReportsPage() {
                 <ArrowLeft className="h-4 w-4" />
                 Voltar
               </Button>
-              <div className="space-y-2">
-                <h1 className="text-3xl md:text-4xl font-bold flex items-center gap-3">
-                  <BarChart3 className="h-8 w-8 text-primary" />
+              <div className="space-y-1 sm:space-y-2">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold flex items-center gap-2 sm:gap-3">
+                  <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
                   Relatórios Avançados
                 </h1>
-                <p className="text-lg text-muted-foreground">
+                <p className="text-sm sm:text-base text-muted-foreground">
                   Análise completa dos seus produtos e desempenho
                 </p>
               </div>
             </div>
             
-            <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" className="gap-2" onClick={handleExport}>
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => handleExport('pdf')}>
                 <Download className="h-4 w-4" />
                 Exportar
               </Button>
-              <Badge variant="secondary" className="gap-2 px-3 py-1">
+              <Badge variant="secondary" className="gap-2 px-2 sm:px-3 py-1">
                 <FileText className="h-4 w-4" />
                 Produtos: {reportStats.totalProducts}
               </Badge>
@@ -440,67 +440,67 @@ export default function ReportsPage() {
       </div>
 
       {/* KPIs */}
-      <div className="container mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="container mx-auto px-3 sm:px-6 py-6 sm:py-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           <Card className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-8">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground">Investimento Total</p>
-                  <p className="text-3xl font-bold text-blue-600">
+                  <p className="text-2xl sm:text-3xl font-bold text-blue-600">
                     {reportStats.totalInvestment.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </p>
                 </div>
-                <div className="p-3 bg-blue-100 rounded-full">
-                  <DollarSign className="h-8 w-8 text-blue-600" />
+                <div className="p-2 sm:p-3 bg-blue-100 rounded-full">
+                  <DollarSign className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-8">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground">Receita Total</p>
-                  <p className="text-3xl font-bold text-green-600">
+                  <p className="text-2xl sm:text-3xl font-bold text-green-600">
                     {reportStats.totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </p>
                 </div>
-                <div className="p-3 bg-green-100 rounded-full">
-                  <TrendingUp className="h-8 w-8 text-green-600" />
+                <div className="p-2 sm:p-3 bg-green-100 rounded-full">
+                  <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-8">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground">Lucro Realizado</p>
-                  <p className="text-3xl font-bold text-purple-600">
+                  <p className="text-2xl sm:text-3xl font-bold text-purple-600">
                     {reportStats.totalProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </p>
                 </div>
-                <div className="p-3 bg-purple-100 rounded-full">
-                  <Target className="h-8 w-8 text-purple-600" />
+                <div className="p-2 sm:p-3 bg-purple-100 rounded-full">
+                  <Target className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-8">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground">ROI Médio</p>
-                  <p className="text-3xl font-bold text-orange-600">
+                  <p className="text-2xl sm:text-3xl font-bold text-orange-600">
                     {reportStats.avgROI.toFixed(1)}%
                   </p>
                 </div>
-                <div className="p-3 bg-orange-100 rounded-full">
-                  <BarChart3 className="h-8 w-8 text-orange-600" />
+                <div className="p-2 sm:p-3 bg-orange-100 rounded-full">
+                  <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
                 </div>
               </div>
             </CardContent>
@@ -509,13 +509,13 @@ export default function ReportsPage() {
       </div>
 
       {/* Gráficos */}
-      <div className="container mx-auto px-6 pb-12">
-        <Tabs defaultValue="overview" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 h-12">
-            <TabsTrigger value="overview" className="text-base">Visão Geral</TabsTrigger>
-            <TabsTrigger value="performance" className="text-base">Performance</TabsTrigger>
-            <TabsTrigger value="trends" className="text-base">Tendências</TabsTrigger>
-            <TabsTrigger value="analysis" className="text-base">Análise</TabsTrigger>
+      <div className="container mx-auto px-3 sm:px-6 pb-10 sm:pb-12">
+        <Tabs defaultValue="overview" className="space-y-6 sm:space-y-8">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 h-10 sm:h-12">
+            <TabsTrigger value="overview" className="text-sm sm:text-base">Visão Geral</TabsTrigger>
+            <TabsTrigger value="performance" className="text-sm sm:text-base">Performance</TabsTrigger>
+            <TabsTrigger value="trends" className="text-sm sm:text-base">Tendências</TabsTrigger>
+            <TabsTrigger value="analysis" className="text-sm sm:text-base">Análise</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-8">

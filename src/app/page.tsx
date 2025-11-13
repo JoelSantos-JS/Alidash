@@ -70,6 +70,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -161,6 +164,11 @@ export default function Home() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [periodFilter, setPeriodFilter] = useState<"day" | "week" | "month">("month");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Controle de visualização para Dashboard Pessoal
+  const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
+  const [personalSelectedDate, setPersonalSelectedDate] = useState<Date | null>(null);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const [monthlyBudget, setMonthlyBudget] = useState(600);
   const [budgetLoading, setBudgetLoading] = useState(false);
@@ -1050,33 +1058,127 @@ export default function Home() {
                     />
                   </div>
 
-                  {/* Period Selector */}
-                  <div className="flex items-center gap-1 bg-muted rounded-lg p-1 flex-shrink-0">
-                    <Button
-                      variant={periodFilter === "day" ? "default" : "ghost"}
-                      size="sm"
-                      className="text-xs px-2 sm:px-3 h-8 sm:h-9"
-                      onClick={() => setPeriodFilter("day")}
-                    >
-                      Dia
-                    </Button>
-                    <Button
-                      variant={periodFilter === "week" ? "default" : "ghost"}
-                      size="sm"
-                      className="text-xs px-2 sm:px-3 h-8 sm:h-9"
-                      onClick={() => setPeriodFilter("week")}
-                    >
-                      Sem
-                    </Button>
-                    <Button
-                      variant={periodFilter === "month" ? "default" : "ghost"}
-                      size="sm"
-                      className="text-xs px-2 sm:px-3 h-8 sm:h-9"
-                      onClick={() => setPeriodFilter("month")}
-                    >
-                      Mês
-                    </Button>
-                  </div>
+                  {/* Selector de visualização - Pessoal vs Empresarial */}
+                  {isPersonal ? (
+                    <>
+                      {/* Controles mobile: apenas ícones */}
+                      <div className="sm:hidden flex items-center gap-2 flex-shrink-0">
+                        <Button
+                          variant={personalViewMode === 'all' ? 'default' : 'ghost'}
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          aria-label="Todos os meses"
+                          onClick={() => setPersonalViewMode('all')}
+                        >
+                          <BarChart3 className="h-4 w-4" />
+                        </Button>
+
+                        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={personalViewMode === 'day' ? 'default' : 'ghost'}
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              aria-label="Dia específico"
+                              onClick={() => {
+                                setPersonalViewMode('day');
+                                setIsCalendarOpen(true);
+                              }}
+                            >
+                              <CalendarIcon className="h-4 w-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <CalendarComponent
+                              mode="single"
+                              selected={personalSelectedDate || undefined}
+                              onSelect={(date: Date | undefined) => {
+                                if (date) {
+                                  setPersonalSelectedDate(date);
+                                  setIsCalendarOpen(false);
+                                }
+                              }}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+
+                      {/* Controles desktop: seletor com texto */}
+                      <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+                        <Select value={personalViewMode} onValueChange={(v) => {
+                          const val = v as any;
+                          setPersonalViewMode(val);
+                          if (val === 'day') {
+                            setIsCalendarOpen(true);
+                          } else {
+                            setIsCalendarOpen(false);
+                          }
+                        }}>
+                          <SelectTrigger className="h-8 sm:h-9 w-[160px] text-xs sm:text-sm">
+                            <SelectValue placeholder="Ver" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todos os meses</SelectItem>
+                            <SelectItem value="day">Dia específico</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        {personalViewMode === "day" && (
+                          <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" size="sm" className="text-xs px-2 sm:px-3 h-8 sm:h-9">
+                                <CalendarIcon className="h-3.5 w-3.5 mr-1.5" />
+                                {personalSelectedDate
+                                  ? format(personalSelectedDate, 'dd/MM/yyyy', { locale: ptBR })
+                                  : 'Selecionar data'}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <CalendarComponent
+                                mode="single"
+                                selected={personalSelectedDate || undefined}
+                                onSelect={(date: Date | undefined) => {
+                                  if (date) {
+                                    setPersonalSelectedDate(date);
+                                    setIsCalendarOpen(false);
+                                  }
+                                }}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-1 bg-muted rounded-lg p-1 flex-shrink-0">
+                      <Button
+                        variant={periodFilter === "day" ? "default" : "ghost"}
+                        size="sm"
+                        className="text-xs px-2 sm:px-3 h-8 sm:h-9"
+                        onClick={() => setPeriodFilter("day")}
+                      >
+                        Dia
+                      </Button>
+                      <Button
+                        variant={periodFilter === "week" ? "default" : "ghost"}
+                        size="sm"
+                        className="text-xs px-2 sm:px-3 h-8 sm:h-9"
+                        onClick={() => setPeriodFilter("week")}
+                      >
+                        Sem
+                      </Button>
+                      <Button
+                        variant={periodFilter === "month" ? "default" : "ghost"}
+                        size="sm"
+                        className="text-xs px-2 sm:px-3 h-8 sm:h-9"
+                        onClick={() => setPeriodFilter("month")}
+                      >
+                        Mês
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Ações fixas à direita: Avatar */}
@@ -1329,6 +1431,8 @@ export default function Home() {
                 user={user}
                 periodFilter={periodFilter}
                 isLoading={isLoading}
+                viewMode={personalViewMode}
+                selectedDate={personalSelectedDate}
               />
             ) : (
               <BusinessDashboard

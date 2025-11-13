@@ -207,7 +207,7 @@ export function PersonalCategoryForm({ category, onSubmit, onCancel, isLoading =
   const availableCategories = watchType === "income" ? incomeCategories : expenseCategories;
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6 pb-20 sm:pb-24">
       <Tabs defaultValue="basic" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="basic" className="flex items-center gap-2">
@@ -361,14 +361,14 @@ export function PersonalCategoryForm({ category, onSubmit, onCancel, isLoading =
               {/* Seleção de Cor */}
               <div className="space-y-3">
                 <Label>Cor da Categoria *</Label>
-                <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
+                <div className="grid grid-cols-4 xs:grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-2">
                   {colorOptions.map((color) => (
                     <button
                       key={color.value}
                       type="button"
                       onClick={() => setSelectedColor(color.value)}
                       className={`
-                        w-12 h-12 rounded-lg border-2 transition-all duration-200 hover:scale-110
+                        w-10 h-10 sm:w-12 sm:h-12 rounded-lg border-2 transition-all duration-200 hover:scale-110
                         ${selectedColor === color.value 
                           ? "border-gray-900 dark:border-white shadow-lg" 
                           : "border-gray-300 dark:border-gray-600 hover:border-gray-400"
@@ -387,7 +387,7 @@ export function PersonalCategoryForm({ category, onSubmit, onCancel, isLoading =
               {/* Seleção de Ícone */}
               <div className="space-y-3">
                 <Label>Ícone da Categoria *</Label>
-                <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 sm:gap-3">
                   {iconOptions.map((iconOption) => {
                     const IconComponent = iconOption.icon;
                     return (
@@ -396,7 +396,7 @@ export function PersonalCategoryForm({ category, onSubmit, onCancel, isLoading =
                         type="button"
                         onClick={() => setSelectedIcon(iconOption.value)}
                         className={`
-                          p-3 rounded-lg border-2 transition-all duration-200 hover:scale-105
+                          p-2 sm:p-3 w-full rounded-lg border-2 transition-all duration-200 hover:scale-105
                           ${selectedIcon === iconOption.value 
                             ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20" 
                             : "border-gray-300 dark:border-gray-600 hover:border-gray-400"
@@ -405,7 +405,7 @@ export function PersonalCategoryForm({ category, onSubmit, onCancel, isLoading =
                         title={iconOption.label}
                       >
                         <IconComponent className="h-6 w-6 mx-auto" />
-                        <p className="text-xs mt-1 text-center">{iconOption.label}</p>
+                        <p className="text-[10px] sm:text-xs mt-1 text-center w-full truncate">{iconOption.label}</p>
                       </button>
                     );
                   })}
@@ -479,8 +479,8 @@ export function PersonalCategoryForm({ category, onSubmit, onCancel, isLoading =
         </TabsContent>
       </Tabs>
 
-      {/* Botões de Ação */}
-      <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+      {/* Botões de Ação (fixos ao fundo durante a rolagem) */}
+      <div className="mt-2 sticky bottom-0 z-10 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-3 sm:p-4 flex items-center justify-end gap-3">
         <Button
           type="button"
           variant="outline"

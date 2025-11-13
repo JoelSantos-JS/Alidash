@@ -7,6 +7,7 @@ import { Toaster as SonnerToaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SupabaseAuthProvider } from "@/hooks/use-supabase-auth";
 import { DataProvider } from "@/contexts/data-context";
+import { AccountTypeProvider } from "@/contexts/account-type-context";
 
 
 const inter = Inter({ 
@@ -79,17 +80,19 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SupabaseAuthProvider>
-            <DataProvider>
-              {children}
-              <Toaster />
-              <SonnerToaster 
-                theme="dark"
-                position="top-right"
-                richColors
-                closeButton
-              />
-              {/* Script inline de limpeza removido temporariamente para depuração do erro */}
-            </DataProvider>
+            <AccountTypeProvider>
+              <DataProvider>
+                {children}
+                <Toaster />
+                <SonnerToaster 
+                  theme="dark"
+                  position="top-right"
+                  richColors
+                  closeButton
+                />
+                {/* Script inline de limpeza removido temporariamente para depuração do erro */}
+              </DataProvider>
+            </AccountTypeProvider>
           </SupabaseAuthProvider>
         </ThemeProvider>
       </body>

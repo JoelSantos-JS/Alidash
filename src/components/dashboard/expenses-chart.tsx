@@ -288,15 +288,24 @@ export function ExpensesChart({
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={comparisonData} layout="horizontal">
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" />
-              <YAxis dataKey="name" type="category" width={80} />
-              <Tooltip 
+              <XAxis
+                type="number"
+                dataKey="value"
+                domain={[0, 'dataMax']}
+                tickFormatter={(v: number) => v.toLocaleString('pt-BR')}
+              />
+              <YAxis dataKey="name" type="category" width={90} />
+              <Tooltip
                 formatter={(value: any) => [
-                  value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                  Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
                   'Valor'
                 ]}
               />
-              <Bar dataKey="value" fill={(entry: any) => entry.color} />
+              <Bar dataKey="value">
+                {comparisonData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -307,27 +316,27 @@ export function ExpensesChart({
             <h4 className="text-sm font-medium">Relação Renda vs Gastos</h4>
             
             {/* Indicadores Visuais */}
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="p-3 rounded-lg bg-green-50 border border-green-200">
-                <div className="text-lg font-bold text-green-600">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-center">
+              <div className="min-w-0 p-3 rounded-lg bg-green-50 border border-green-200">
+                <div className="text-base sm:text-lg font-bold leading-tight text-green-600">
                   {totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </div>
                 <div className="text-xs text-green-600">Renda Total</div>
               </div>
               
-              <div className="p-3 rounded-lg bg-red-50 border border-red-200">
-                <div className="text-lg font-bold text-red-600">
+              <div className="min-w-0 p-3 rounded-lg bg-red-50 border border-red-200">
+                <div className="text-base sm:text-lg font-bold leading-tight text-red-600">
                   {totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </div>
                 <div className="text-xs text-red-600">Gastos Total</div>
               </div>
               
-              <div className={`p-3 rounded-lg border ${
+              <div className={`min-w-0 p-3 rounded-lg border ${
                 (totalIncome - totalExpenses) >= 0 
                   ? 'bg-blue-50 border-blue-200' 
                   : 'bg-orange-50 border-orange-200'
               }`}>
-                <div className={`text-lg font-bold ${
+                <div className={`text-base sm:text-lg font-bold leading-tight ${
                   (totalIncome - totalExpenses) >= 0 ? 'text-blue-600' : 'text-orange-600'
                 }`}>
                   {(totalIncome - totalExpenses).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}

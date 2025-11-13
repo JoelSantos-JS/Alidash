@@ -71,9 +71,11 @@ interface PersonalDashboardSectionProps {
   user: any;
   periodFilter: string;
   isLoading: boolean;
+  viewMode?: "all" | "day";
+  selectedDate?: Date | null;
 }
 
-export function PersonalDashboardSection({ user, periodFilter, isLoading }: PersonalDashboardSectionProps) {
+export function PersonalDashboardSection({ user, periodFilter, isLoading, viewMode = "all", selectedDate = null }: PersonalDashboardSectionProps) {
   const [personalSummary, setPersonalSummary] = useState<PersonalSummary>({
     totalIncome: 0,
     totalExpenses: 0,
@@ -84,6 +86,7 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
   });
   const [recentExpenses, setRecentExpenses] = useState<PersonalExpense[]>([]);
   const [recentIncomes, setRecentIncomes] = useState<PersonalIncome[]>([]);
+  const [monthlyIncomes, setMonthlyIncomes] = useState<PersonalIncome[]>([]);
   const [expensesByCategory, setExpensesByCategory] = useState<any[]>([]);
   const [monthlyExpenses, setMonthlyExpenses] = useState<PersonalExpense[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -113,7 +116,7 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
   useEffect(() => {
     if (!user) return;
     loadPersonalData();
-  }, [user, periodFilter]);
+  }, [user, periodFilter, viewMode, selectedDate]);
 
   // Cancelar requisições ao desmontar
   useEffect(() => {
@@ -145,6 +148,7 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
       const incomesKey = `personal:incomes:${supabaseUserId}:recent:4`;
       const goalsKey = `personal:goals:${supabaseUserId}`;
       const monthlyExpensesKey = `personal:expenses:${supabaseUserId}:monthly:${currentMonth}:${currentYear}`;
+      const monthlyIncomesKey = `personal:incomes:${supabaseUserId}:monthly:${currentMonth}:${currentYear}`;
 
       // Aplicar cache imediato quando disponível
       const cachedSummary = getCache<PersonalSummary>(summaryKey, CACHE_TTL_MS);
@@ -155,6 +159,8 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
       if (cachedMonthlyExpenses) setMonthlyExpenses(cachedMonthlyExpenses);
       const cachedIncomes = getCache<PersonalIncome[]>(incomesKey, CACHE_TTL_MS);
       if (cachedIncomes) setRecentIncomes(cachedIncomes);
+      const cachedMonthlyIncomes = getCache<PersonalIncome[]>(monthlyIncomesKey, CACHE_TTL_MS);
+      if (cachedMonthlyIncomes) setMonthlyIncomes(cachedMonthlyIncomes);
       const cachedGoals = getCache<Goal[]>(goalsKey, CACHE_TTL_MS);
       if (cachedGoals) setGoals(cachedGoals);
 
@@ -205,6 +211,18 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
               return list;
             });
 
+      // Receitas do mês (lista ampla para permitir filtragem por dia)
+      const monthlyIncomesPromise = cachedMonthlyIncomes
+        ? Promise.resolve(cachedMonthlyIncomes)
+        : fetch(`/api/personal/incomes?user_id=${supabaseUserId}&limit=1000`, { signal })
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              const list = (data?.incomes || []) as PersonalIncome[];
+              setMonthlyIncomes(list);
+              setCache(monthlyIncomesKey, list);
+              return list;
+            });
+
       const goalsPromise = cachedGoals
         ? Promise.resolve(cachedGoals)
         : fetch(`/api/personal/goals?user_id=${supabaseUserId}`, { signal })
@@ -234,7 +252,7 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
               return [] as Goal[];
             });
 
-      await Promise.allSettled([summaryPromise, expensesPromise, monthlyExpensesPromise, incomesPromise, goalsPromise]);
+      await Promise.allSettled([summaryPromise, expensesPromise, monthlyExpensesPromise, incomesPromise, monthlyIncomesPromise, goalsPromise]);
     } catch (error: any) {
       if (error?.name === 'AbortError') {
         // Troca rápida de modo; ignorar erros abortados
@@ -291,21 +309,54 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
     other: '#6b7280'
   };
 
-  // Recalcular dados por categoria sempre que despesas do mês ou totais mudarem
+  // Utilitários e dados derivados para modo "Dia específico"
+  const isSameDay = (dateStr: string, dateObj: Date | null) => {
+    if (!dateObj) return false;
+    const d = new Date(dateStr);
+    return d.getFullYear() === dateObj.getFullYear() && d.getMonth() === dateObj.getMonth() && d.getDate() === dateObj.getDate();
+  };
+
+  const displayExpenses = useMemo<PersonalExpense[]>(() => {
+    if (viewMode === 'day' && selectedDate) {
+      return (monthlyExpenses || []).filter(e => isSameDay(e.date, selectedDate));
+    }
+    return monthlyExpenses || [];
+  }, [monthlyExpenses, viewMode, selectedDate]);
+
+  const displayIncomes = useMemo<PersonalIncome[]>(() => {
+    if (viewMode === 'day' && selectedDate) {
+      return (monthlyIncomes || []).filter(i => isSameDay(i.date, selectedDate));
+    }
+    return monthlyIncomes && monthlyIncomes.length > 0 ? monthlyIncomes : recentIncomes;
+  }, [monthlyIncomes, recentIncomes, viewMode, selectedDate]);
+
+  const summaryForDisplay = useMemo<PersonalSummary>(() => {
+    if (viewMode === 'day' && selectedDate) {
+      const totalExpenses = displayExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+      const essentialExpenses = displayExpenses.filter(e => !!e.is_essential).reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+      const nonEssentialExpenses = totalExpenses - essentialExpenses;
+      const totalIncome = displayIncomes.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+      const balance = totalIncome - totalExpenses;
+      const savingsRate = totalIncome > 0 ? (balance / totalIncome) * 100 : 0;
+      return { totalIncome, totalExpenses, balance, savingsRate, essentialExpenses, nonEssentialExpenses };
+    }
+    return personalSummary;
+  }, [viewMode, selectedDate, displayExpenses, displayIncomes, personalSummary]);
+
+  // Recalcular dados por categoria com base nas despesas exibidas
   useEffect(() => {
-    const total = personalSummary.totalExpenses || 0;
-    if (!monthlyExpenses || monthlyExpenses.length === 0 || total <= 0) {
+    const total = summaryForDisplay.totalExpenses || 0;
+    if (!displayExpenses || displayExpenses.length === 0 || total <= 0) {
       setExpensesByCategory([]);
       return;
     }
 
-    const grouped = monthlyExpenses.reduce((acc: Record<string, { amount: number; isEssential: boolean }>, exp) => {
+    const grouped = displayExpenses.reduce((acc: Record<string, { amount: number; isEssential: boolean }>, exp) => {
       const key = exp.category || 'other';
       if (!acc[key]) {
         acc[key] = { amount: 0, isEssential: !!exp.is_essential };
       }
       acc[key].amount += Number(exp.amount) || 0;
-      // Se qualquer despesa da categoria for essencial, mantemos essencial true
       acc[key].isEssential = acc[key].isEssential || !!exp.is_essential;
       return acc;
     }, {});
@@ -319,10 +370,9 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
       isEssential: info.isEssential
     }));
 
-    // Ordenar por valor desc para exibição consistente
     result.sort((a, b) => b.amount - a.amount);
     setExpensesByCategory(result);
-  }, [monthlyExpenses, personalSummary.totalExpenses]);
+  }, [displayExpenses, summaryForDisplay.totalExpenses]);
 
   const getCategoryIcon = (category: string) => {
     const icons: Record<string, any> = {
@@ -388,7 +438,7 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
         {/* Receitas/Ganhos */}
         <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ganhos do Mês</CardTitle>
+            <CardTitle className="text-sm font-medium">{viewMode === 'day' ? 'Ganhos do Dia' : 'Ganhos do Mês'}</CardTitle>
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
@@ -413,7 +463,7 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {personalSummary.totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              {summaryForDisplay.totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
             <p className="text-xs text-muted-foreground">Salário + extras</p>
           </CardContent>
@@ -422,12 +472,12 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
         {/* Gastos */}
         <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Gastos do Mês</CardTitle>
+            <CardTitle className="text-sm font-medium">{viewMode === 'day' ? 'Gastos do Dia' : 'Gastos do Mês'}</CardTitle>
             <TrendingDown className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {personalSummary.totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              {summaryForDisplay.totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
             <p className="text-xs text-muted-foreground">Contas + despesas</p>
           </CardContent>
@@ -441,12 +491,12 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${
-              personalSummary.balance >= 0 ? 'text-green-600' : 'text-red-600'
+              summaryForDisplay.balance >= 0 ? 'text-green-600' : 'text-red-600'
             }`}>
-              {personalSummary.balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              {summaryForDisplay.balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
             <p className="text-xs text-muted-foreground">
-              {personalSummary.savingsRate.toFixed(1)}% do ganho
+              {summaryForDisplay.savingsRate.toFixed(1)}% do ganho
             </p>
           </CardContent>
         </Card>
@@ -456,10 +506,10 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
       <div className="grid gap-6 md:grid-cols-2">
         {/* Gráfico de Gastos e Despesas */}
         <ExpensesChart 
-          totalExpenses={personalSummary.totalExpenses}
-          essentialExpenses={personalSummary.essentialExpenses}
-          nonEssentialExpenses={personalSummary.nonEssentialExpenses}
-          totalIncome={personalSummary.totalIncome}
+          totalExpenses={summaryForDisplay.totalExpenses}
+          essentialExpenses={summaryForDisplay.essentialExpenses}
+          nonEssentialExpenses={summaryForDisplay.nonEssentialExpenses}
+          totalIncome={summaryForDisplay.totalIncome}
           expensesByCategory={expensesByCategory}
         />
 
@@ -474,7 +524,12 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentTransactions.slice(0, 5).map((tx: any) => {
+              {(
+                viewMode === 'day' && selectedDate
+                  ? [...(displayIncomes || []).map((i: PersonalIncome) => ({ ...i, __type: 'income' as const })), ...(displayExpenses || []).map((e: PersonalExpense) => ({ ...e, __type: 'expense' as const }))]
+                      .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                  : recentTransactions
+                ).slice(0, 5).map((tx: any) => {
                 const isIncome = tx.__type === 'income';
                 if (isIncome) {
                   return (
@@ -550,19 +605,19 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading }: Pers
           <div className="grid gap-6 md:grid-cols-3">
             <div className="text-center p-4 bg-muted/30 border rounded-lg">
               <div className="text-2xl font-bold text-purple-600 mb-1">
-                {(personalSummary.totalIncome * 0.6).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                {(summaryForDisplay.totalIncome * 0.6).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
               <p className="text-sm text-muted-foreground">Orçamento Mensal</p>
             </div>
             <div className="text-center p-4 bg-muted/30 border rounded-lg">
               <div className="text-2xl font-bold text-red-600 mb-1">
-                {personalSummary.totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                {summaryForDisplay.totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
               <p className="text-sm text-muted-foreground">Gastos Realizados</p>
             </div>
             <div className="text-center p-4 bg-muted/30 border rounded-lg">
               <div className="text-2xl font-bold text-green-600 mb-1">
-                {((personalSummary.totalIncome * 0.6) - personalSummary.totalExpenses).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                {((summaryForDisplay.totalIncome * 0.6) - summaryForDisplay.totalExpenses).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
               <p className="text-sm text-muted-foreground">Disponível</p>
             </div>

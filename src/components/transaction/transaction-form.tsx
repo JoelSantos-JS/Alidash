@@ -189,14 +189,14 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Descrição</FormLabel>
+                  <FormLabel className="text-sm">Descrição</FormLabel>
                   <FormControl>
                     <Input placeholder="Ex: Venda de produto" {...field} />
                   </FormControl>
@@ -210,7 +210,7 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Valor (R$)</FormLabel>
+                  <FormLabel className="text-sm">Valor (R$)</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -232,7 +232,7 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
               name="type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tipo</FormLabel>
+                  <FormLabel className="text-sm">Tipo</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -254,7 +254,7 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
               name="status"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Status</FormLabel>
+                  <FormLabel className="text-sm">Status</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -281,7 +281,7 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
               name="category"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Categoria</FormLabel>
+                  <FormLabel className="text-sm">Categoria</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -314,7 +314,7 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
               name="paymentMethod"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Método de Pagamento</FormLabel>
+                  <FormLabel className="text-sm">Método de Pagamento</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -340,7 +340,7 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
             name="subcategory"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Subcategoria (opcional)</FormLabel>
+                <FormLabel className="text-sm">Subcategoria (opcional)</FormLabel>
                 <FormControl>
                   <Input placeholder="Ex: Eletrônicos, Marketing Digital" {...field} />
                 </FormControl>
@@ -354,7 +354,7 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
             name="date"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>Data</FormLabel>
+                <FormLabel className="text-sm">Data</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
@@ -374,7 +374,7 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1rem)] sm:max-w-none" align="start" side="bottom">
                     <Calendar
                       mode="single"
                       selected={field.value}
@@ -397,11 +397,11 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
             name="notes"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Observações (opcional)</FormLabel>
+                <FormLabel className="text-sm">Observações (opcional)</FormLabel>
                 <FormControl>
                   <Textarea
                     placeholder="Adicione observações sobre esta transação..."
-                    className="resize-none"
+                    className="resize-none min-h-[90px]"
                     {...field}
                   />
                 </FormControl>
@@ -509,7 +509,7 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="sticky bottom-0 bg-background/80 backdrop-blur border-t mt-4 px-3 py-3 flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancelar
             </Button>

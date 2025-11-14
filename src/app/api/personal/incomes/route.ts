@@ -11,24 +11,50 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('user_id');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limitParam = searchParams.get('limit');
+    const limit = limitParam ? parseInt(limitParam) : undefined;
     const category = searchParams.get('category');
+    const monthParam = searchParams.get('month');
+    const yearParam = searchParams.get('year');
 
     if (!userId) {
       return NextResponse.json({ error: 'user_id é obrigatório' }, { status: 400 });
     }
 
-    console.log('🔍 Buscando receitas pessoais:', { userId, limit, category });
+    console.log('🔍 Buscando receitas pessoais:', { userId, limit, category, month: monthParam, year: yearParam });
 
     let query = supabase
       .from('personal_incomes')
       .select('*')
       .eq('user_id', userId)
-      .order('date', { ascending: false })
-      .limit(limit);
+      .order('date', { ascending: false });
 
     if (category) {
       query = query.eq('category', category);
+    }
+
+    // Filtro por mês/ano quando informado
+    if (monthParam && yearParam) {
+      const month = parseInt(monthParam);
+      const year = parseInt(yearParam);
+      if (!isNaN(month) && !isNaN(year) && month >= 1 && month <= 12) {
+        const lastDay = new Date(year, month, 0).getDate();
+        const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
+        const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
+        query = query.gte('date', startDate).lte('date', endDate);
+      }
+    } else if (yearParam && !monthParam) {
+      const year = parseInt(yearParam);
+      if (!isNaN(year)) {
+        const startDate = `${year}-01-01`;
+        const endDate = `${year}-12-31`;
+        query = query.gte('date', startDate).lte('date', endDate);
+      }
+    }
+
+    // Aplicar limite apenas quando informado
+    if (typeof limit === 'number' && !isNaN(limit)) {
+      query = query.limit(limit);
     }
 
     const { data: incomes, error } = await query;

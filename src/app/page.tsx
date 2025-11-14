@@ -166,9 +166,13 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Controle de visualização para Dashboard Pessoal
-  const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
+const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
   const [personalSelectedDate, setPersonalSelectedDate] = useState<Date | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  
+  // Controle de data para Dashboard Empresarial
+  const [businessSelectedDate, setBusinessSelectedDate] = useState<Date | null>(null);
+  const [isBusinessCalendarOpen, setIsBusinessCalendarOpen] = useState(false);
 
   const [monthlyBudget, setMonthlyBudget] = useState(600);
   const [budgetLoading, setBudgetLoading] = useState(false);
@@ -414,16 +418,18 @@ export default function Home() {
 
     // Calcular receitas e despesas do período
     const now = new Date();
+    // Para o empresarial, usar a data selecionada como referência
+    const anchorDate = (!isPersonal && businessSelectedDate) ? new Date(businessSelectedDate) : now;
     const getPeriodStart = () => {
       switch (periodFilter) {
         case "day":
-          return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          return new Date(anchorDate.getFullYear(), anchorDate.getMonth(), anchorDate.getDate());
         case "week":
-          return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          return new Date(anchorDate.getTime() - 7 * 24 * 60 * 60 * 1000);
         case "month":
-          return new Date(now.getFullYear(), now.getMonth(), 1);
+          return new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
         default:
-          return new Date(now.getFullYear(), now.getMonth(), 1);
+          return new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
       }
     };
 
@@ -468,7 +474,7 @@ export default function Home() {
       financialHealth,
       healthColor
     };
-  }, [products, revenues, expenses, periodFilter]);
+  }, [products, revenues, expenses, periodFilter, businessSelectedDate, isPersonal]);
 
   const handleSearch = (query: string) => {
     setSearchTerm(query);
@@ -745,19 +751,20 @@ export default function Home() {
   }, [periodFilter]);
 
   const periodDateRange = useMemo(() => {
-    const now = new Date();
+    // Para o empresarial, usar a data selecionada; para pessoal, usar data atual
+    const anchor = isPersonal ? new Date() : (businessSelectedDate || new Date());
     switch (periodFilter) {
       case "day":
-        return `${format(now, 'dd/MM/yyyy', { locale: ptBR })}`;
+        return `${format(anchor, 'dd/MM/yyyy', { locale: ptBR })}`;
       case "week":
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        return `${format(weekAgo, 'dd/MM/yyyy', { locale: ptBR })} a ${format(now, 'dd/MM/yyyy', { locale: ptBR })}`;
+        const weekAgo = new Date(anchor.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return `${format(weekAgo, 'dd/MM/yyyy', { locale: ptBR })} a ${format(anchor, 'dd/MM/yyyy', { locale: ptBR })}`;
       case "month":
-        return `${format(now, 'dd/MM/yyyy', { locale: ptBR }).substring(3)}`;
+        return `${format(anchor, 'dd/MM/yyyy', { locale: ptBR }).substring(3)}`;
       default:
-        return `${format(now, 'dd/MM/yyyy', { locale: ptBR }).substring(3)}`;
+        return `${format(anchor, 'dd/MM/yyyy', { locale: ptBR }).substring(3)}`;
     }
-  }, [periodFilter]);
+  }, [periodFilter, isPersonal, businessSelectedDate]);
 
   // Alertas do sistema
   const systemAlerts = useMemo(() => {
@@ -1061,40 +1068,31 @@ export default function Home() {
                   {/* Selector de visualização - Pessoal vs Empresarial */}
                   {isPersonal ? (
                     <>
-                      {/* Controles mobile: apenas ícones */}
+                      {/* Controles mobile: apenas ícone de calendário */}
                       <div className="sm:hidden flex items-center gap-2 flex-shrink-0">
-                        <Button
-                          variant={personalViewMode === 'all' ? 'default' : 'ghost'}
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          aria-label="Todos os meses"
-                          onClick={() => setPersonalViewMode('all')}
-                        >
-                          <BarChart3 className="h-4 w-4" />
-                        </Button>
-
-                        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                        <Popover>
                           <PopoverTrigger asChild>
                             <Button
                               variant={personalViewMode === 'day' ? 'default' : 'ghost'}
                               size="sm"
-                              className="h-8 w-8 p-0"
+                              className="h-8 px-2 gap-1"
                               aria-label="Dia específico"
                               onClick={() => {
-                                setPersonalViewMode('day');
                                 setIsCalendarOpen(true);
                               }}
                             >
                               <CalendarIcon className="h-4 w-4" />
+                              <span className="text-xs">Selecionar data específica</span>
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
+                          <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1rem)] sm:max-w-none" align="start" side="bottom">
                             <CalendarComponent
                               mode="single"
                               selected={personalSelectedDate || undefined}
                               onSelect={(date: Date | undefined) => {
                                 if (date) {
                                   setPersonalSelectedDate(date);
+                                  setPersonalViewMode('day');
                                   setIsCalendarOpen(false);
                                 }
                               }}
@@ -1104,80 +1102,111 @@ export default function Home() {
                         </Popover>
                       </div>
 
-                      {/* Controles desktop: seletor com texto */}
+                      {/* Controles desktop: apenas botão de calendário */}
                       <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
-                        <Select value={personalViewMode} onValueChange={(v) => {
-                          const val = v as any;
-                          setPersonalViewMode(val);
-                          if (val === 'day') {
-                            setIsCalendarOpen(true);
-                          } else {
-                            setIsCalendarOpen(false);
-                          }
-                        }}>
-                          <SelectTrigger className="h-8 sm:h-9 w-[160px] text-xs sm:text-sm">
-                            <SelectValue placeholder="Ver" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Todos os meses</SelectItem>
-                            <SelectItem value="day">Dia específico</SelectItem>
-                          </SelectContent>
-                        </Select>
-
-                        {personalViewMode === "day" && (
-                          <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                            <PopoverTrigger asChild>
-                              <Button variant="outline" size="sm" className="text-xs px-2 sm:px-3 h-8 sm:h-9">
-                                <CalendarIcon className="h-3.5 w-3.5 mr-1.5" />
-                                {personalSelectedDate
-                                  ? format(personalSelectedDate, 'dd/MM/yyyy', { locale: ptBR })
-                                  : 'Selecionar data'}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <CalendarComponent
-                                mode="single"
-                                selected={personalSelectedDate || undefined}
-                                onSelect={(date: Date | undefined) => {
-                                  if (date) {
-                                    setPersonalSelectedDate(date);
-                                    setIsCalendarOpen(false);
-                                  }
-                                }}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        )}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-xs px-2 sm:px-3 h-8 sm:h-9"
+                              onClick={() => {
+                                setIsCalendarOpen(true);
+                              }}
+                            >
+                              <CalendarIcon className="h-3.5 w-3.5 mr-1.5" />
+                              {personalSelectedDate
+                                ? format(personalSelectedDate, 'dd/MM/yyyy', { locale: ptBR })
+                                : 'Selecionar data'}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1rem)] sm:max-w-none" align="start" side="bottom">
+                            <CalendarComponent
+                              mode="single"
+                              selected={personalSelectedDate || undefined}
+                              onSelect={(date: Date | undefined) => {
+                                if (date) {
+                                  setPersonalSelectedDate(date);
+                                  setPersonalViewMode('day');
+                                  setIsCalendarOpen(false);
+                                }
+                              }}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
                       </div>
                     </>
                   ) : (
-                    <div className="flex items-center gap-1 bg-muted rounded-lg p-1 flex-shrink-0">
-                      <Button
-                        variant={periodFilter === "day" ? "default" : "ghost"}
-                        size="sm"
-                        className="text-xs px-2 sm:px-3 h-8 sm:h-9"
-                        onClick={() => setPeriodFilter("day")}
-                      >
-                        Dia
-                      </Button>
-                      <Button
-                        variant={periodFilter === "week" ? "default" : "ghost"}
-                        size="sm"
-                        className="text-xs px-2 sm:px-3 h-8 sm:h-9"
-                        onClick={() => setPeriodFilter("week")}
-                      >
-                        Sem
-                      </Button>
-                      <Button
-                        variant={periodFilter === "month" ? "default" : "ghost"}
-                        size="sm"
-                        className="text-xs px-2 sm:px-3 h-8 sm:h-9"
-                        onClick={() => setPeriodFilter("month")}
-                      >
-                        Mês
-                      </Button>
-                    </div>
+                    <>
+                      {/* Controles empresariais: apenas calendário no mobile */}
+                      <div className="sm:hidden flex items-center gap-2 flex-shrink-0">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={periodFilter === 'day' ? 'default' : 'ghost'}
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              aria-label="Dia específico"
+                              onClick={() => {
+                                setIsBusinessCalendarOpen(true);
+                              }}
+                            >
+                              <CalendarIcon className="h-4 w-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1rem)] sm:max-w-none" align="start" side="bottom">
+                            <CalendarComponent
+                              mode="single"
+                              selected={businessSelectedDate || undefined}
+                              onSelect={(date: Date | undefined) => {
+                                if (date) {
+                                  setBusinessSelectedDate(date);
+                                  setPeriodFilter('day');
+                                  setIsBusinessCalendarOpen(false);
+                                }
+                              }}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+
+                      {/* Controles empresariais: apenas botão de calendário no desktop */}
+                      <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-xs px-2 sm:px-3 h-8 sm:h-9"
+                              onClick={() => {
+                                setIsBusinessCalendarOpen(true);
+                              }}
+                            >
+                              <CalendarIcon className="h-3.5 w-3.5 mr-1.5" />
+                              {businessSelectedDate
+                                ? format(businessSelectedDate, 'dd/MM/yyyy', { locale: ptBR })
+                                : 'Selecionar data'}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1rem)] sm:max-w-none" align="start" side="bottom">
+                            <CalendarComponent
+                              mode="single"
+                              selected={businessSelectedDate || undefined}
+                              onSelect={(date: Date | undefined) => {
+                                if (date) {
+                                  setBusinessSelectedDate(date);
+                                  setPeriodFilter('day');
+                                  setIsBusinessCalendarOpen(false);
+                                }
+                              }}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </>
                   )}
                 </div>
 
@@ -1444,6 +1473,7 @@ export default function Home() {
                 revenues={revenues}
                 expenses={expenses}
                 transactions={transactions}
+                currentDate={businessSelectedDate || new Date()}
                 onOpenForm={() => handleOpenForm()}
                 onSearch={handleSearch}
                 onProductClick={(product) => {

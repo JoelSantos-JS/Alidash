@@ -30,6 +30,7 @@ import type { Product, Transaction as TransactionType } from "@/types";
 interface TransactionsSectionProps {
   products: Product[];
   periodFilter: "day" | "week" | "month";
+  currentDate?: Date;
   transactions?: TransactionType[];
 }
 
@@ -45,7 +46,7 @@ interface DisplayTransaction {
   balance?: number;
 }
 
-export function TransactionsSection({ products, periodFilter, transactions = [] }: TransactionsSectionProps) {
+export function TransactionsSection({ products, periodFilter, currentDate = new Date(), transactions = [] }: TransactionsSectionProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
@@ -66,11 +67,19 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
         transactions.map(t => ({id: t.id, description: t.description, amount: t.amount})));
     }
     
-    // Função para determinar o início do período baseado no filtro
+    // Função para determinar o início do período baseado no filtro e data âncora
     const getPeriodStart = () => {
-      // Não aplicamos filtro de período aqui, pois as transações já vêm filtradas da API
-      // Apenas retornamos uma data antiga para garantir que todas as transações sejam exibidas
-      return new Date(2000, 0, 1); // 1 de janeiro de 2000
+      const now = currentDate;
+      switch (periodFilter) {
+        case "day":
+          return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        case "week":
+          return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        case "month":
+          return new Date(now.getFullYear(), now.getMonth(), 1);
+        default:
+          return new Date(now.getFullYear(), now.getMonth(), 1);
+      }
     };
 
     const periodStart = getPeriodStart();
@@ -205,8 +214,8 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
     //   return transactionDate >= periodStart;
     // });
     
-    // Mostrar todas as transações independente do período para debug
-    const filteredByPeriod = processedTransactions;
+    // Filtrar transações pelo período selecionado
+    const filteredByPeriod = processedTransactions.filter(t => t.date >= periodStart);
 
     // Calcular estatísticas
     const totalIncome = processedTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
@@ -227,14 +236,14 @@ export function TransactionsSection({ products, periodFilter, transactions = [] 
     }
 
     return {
-      transactions: processedTransactions,
+      transactions: filteredByPeriod,
       totalIncome,
       totalExpenses,
       netBalance,
       totalTransactions,
       categories
     };
-  }, [products, transactions, periodFilter, sortOrder]);
+  }, [products, transactions, periodFilter, sortOrder, currentDate]);
 
   // Filtrar transações
   const filteredTransactions = useMemo(() => {

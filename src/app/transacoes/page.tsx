@@ -624,9 +624,8 @@ function TransacoesPageContent() {
         )}
       </main>
 
-      {/* Transaction Form Dialog */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-[95vw] sm:w-auto sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {transactionToEdit ? "Editar Transação" : "Nova Transação"}

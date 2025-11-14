@@ -211,10 +211,10 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading, viewMo
               return list;
             });
 
-      // Receitas do mês (lista ampla para permitir filtragem por dia)
+      // Receitas do mês (consulta por mês/ano)
       const monthlyIncomesPromise = cachedMonthlyIncomes
         ? Promise.resolve(cachedMonthlyIncomes)
-        : fetch(`/api/personal/incomes?user_id=${supabaseUserId}&limit=1000`, { signal })
+        : fetch(`/api/personal/incomes?user_id=${supabaseUserId}&month=${currentMonth}&year=${currentYear}`, { signal })
             .then(res => res.ok ? res.json() : null)
             .then(data => {
               const list = (data?.incomes || []) as PersonalIncome[];

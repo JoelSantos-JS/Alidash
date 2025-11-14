@@ -44,6 +44,14 @@ export async function GET(request: NextRequest) {
         const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
         query = query.gte('date', startDate).lte('date', endDate);
       }
+    } else if (yearParam && !monthParam) {
+      // Permitir filtro por ano isolado
+      const year = parseInt(yearParam);
+      if (!isNaN(year)) {
+        const startDate = `${year}-01-01`;
+        const endDate = `${year}-12-31`;
+        query = query.gte('date', startDate).lte('date', endDate);
+      }
     }
 
     // Aplicar limite somente quando informado

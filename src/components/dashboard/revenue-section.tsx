@@ -12,6 +12,7 @@ import type { Product, Revenue } from "@/types";
 interface RevenueSectionProps {
   products: Product[];
   periodFilter: "day" | "week" | "month";
+  currentDate?: Date;
   revenues?: Revenue[];
 }
 
@@ -26,9 +27,9 @@ interface RevenueItem {
   source?: string;
 }
 
-export function RevenueSection({ products, periodFilter, revenues = [] }: RevenueSectionProps) {
+export function RevenueSection({ products, periodFilter, currentDate = new Date(), revenues = [] }: RevenueSectionProps) {
   const revenueData = useMemo(() => {
-    const now = new Date();
+    const now = currentDate;
     const getPeriodStart = () => {
       switch (periodFilter) {
         case "day":
@@ -133,14 +134,14 @@ export function RevenueSection({ products, periodFilter, revenues = [] }: Revenu
       totalTransactions,
       growthPercentage
     };
-  }, [products, periodFilter, revenues]);
+  }, [products, periodFilter, currentDate, revenues]);
 
   const getPeriodLabel = () => {
     switch (periodFilter) {
-      case "day": return "hoje";
-      case "week": return "esta semana";
-      case "month": return "este mês";
-      default: return "este período";
+      case "day": return `no dia ${format(currentDate, 'dd/MM/yyyy', { locale: ptBR })}`;
+      case "week": return `nos últimos 7 dias até ${format(currentDate, 'dd/MM/yyyy', { locale: ptBR })}`;
+      case "month": return `de ${format(currentDate, 'MMMM yyyy', { locale: ptBR })}`;
+      default: return "no período selecionado";
     }
   };
 

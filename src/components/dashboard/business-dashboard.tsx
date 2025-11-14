@@ -45,6 +45,7 @@ interface BusinessDashboardProps {
   revenues: any[];
   expenses: any[];
   transactions: any[];
+  currentDate?: Date;
   onOpenForm: () => void;
   onSearch: (term: string) => void;
   onProductClick: (product: Product) => void;
@@ -63,6 +64,7 @@ export function BusinessDashboard({
   revenues,
   expenses,
   transactions,
+  currentDate: currentDateProp,
   onOpenForm,
   onSearch,
   onProductClick,
@@ -74,6 +76,7 @@ export function BusinessDashboard({
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [currentDate, setCurrentDate] = useState(new Date());
+  const anchorDate = currentDateProp || currentDate;
   
   // Carregar dados do período selecionado
   
@@ -272,6 +275,7 @@ export function BusinessDashboard({
         <RevenueSection 
           products={products}
           periodFilter={periodFilter}
+          currentDate={anchorDate}
           revenues={revenues}
         />
       </TabsContent>
@@ -280,6 +284,7 @@ export function BusinessDashboard({
         <ExpensesSection 
           products={products}
           periodFilter={periodFilter}
+          currentDate={anchorDate}
           expenses={expenses}
         />
       </TabsContent>
@@ -288,6 +293,7 @@ export function BusinessDashboard({
         <TransactionsSection 
           products={products}
           periodFilter={periodFilter}
+          currentDate={anchorDate}
           transactions={transactions}
         />
       </TabsContent>

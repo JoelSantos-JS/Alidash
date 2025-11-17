@@ -9,11 +9,33 @@ export async function POST(request: NextRequest) {
       try {
         payload = await request.json()
       } catch {}
+    } else if (ct.includes('application/x-www-form-urlencoded')) {
+      try {
+        const textBody = await request.text()
+        const params = new URLSearchParams(textBody)
+        payload = Object.fromEntries(params.entries())
+        if (payload.payload) {
+          try { payload = JSON.parse(payload.payload as string) } catch {}
+        }
+      } catch {}
+    } else if (ct.includes('multipart/form-data')) {
+      try {
+        const fd = await request.formData()
+        payload = Object.fromEntries(fd.entries())
+        if (payload.payload && typeof payload.payload === 'string') {
+          try { payload = JSON.parse(payload.payload) } catch {}
+        }
+      } catch {}
     } else {
       try {
         const textBody = await request.text()
         payload = JSON.parse(textBody)
       } catch {}
+    }
+
+    const configuredSecret = process.env.CAKTO_WEBHOOK_SECRET
+    if (configuredSecret && payload?.secret !== configuredSecret) {
+      return NextResponse.json({ success: false, error: 'invalid_secret' }, { status: 401 })
     }
 
     const event = String(payload?.event || '')
@@ -24,11 +46,21 @@ export async function POST(request: NextRequest) {
 
     if (event === 'pix_gerado') {
       console.log('cakto pix_gerado', { headers: Object.fromEntries(request.headers), payload })
+      const data = payload?.data ?? payload
+      const pixData: any = data?.pix ?? null
       const pix = {
-        qrCode: payload?.pix?.qrCode ?? payload?.qrCode ?? null,
-        expirationDate: payload?.pix?.expirationDate ?? payload?.expirationDate ?? null
+        qrCode: pixData?.qrCode ?? pixData?.qr_code ?? pixData?.qrCodeBase64 ?? pixData?.base64 ?? null,
+        copyPaste: pixData?.copyPaste ?? pixData?.payload ?? pixData?.copy_paste ?? null,
+        expirationDate: pixData?.expirationDate ?? data?.due_date ?? null
       }
-      return NextResponse.json({ success: true, event, pix, payload })
+      const summary = {
+        refId: data?.refId ?? data?.ref_id ?? null,
+        status: data?.status ?? null,
+        amount: data?.amount ?? data?.baseAmount ?? null,
+        dueDate: data?.due_date ?? null,
+        paymentMethod: data?.paymentMethod ?? null
+      }
+      return NextResponse.json({ success: true, event, pix, summary, payload })
     }
 
     const email = payload?.email ?? payload?.customer?.email ?? payload?.buyer?.email

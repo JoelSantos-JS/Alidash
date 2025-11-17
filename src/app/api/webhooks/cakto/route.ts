@@ -3,16 +3,22 @@ import { supabaseAdminService } from '@/lib/supabase-service'
 
 export async function POST(request: NextRequest) {
   try {
-    const payload = await request.json()
-    const event = payload?.event
-    if (event === 'pix_gerado') {
-      const pix = {
-        qrCode: payload?.pix?.qrCode ?? payload?.qrCode ?? null,
-        expirationDate: payload?.pix?.expirationDate ?? payload?.expirationDate ?? null
-      }
-      return NextResponse.json({ success: true, event: 'pix_gerado', pix })
+    const ct = request.headers.get('content-type') || ''
+    let payload: any = {}
+    if (ct.includes('application/json')) {
+      try {
+        payload = await request.json()
+      } catch {}
+    } else {
+      try {
+        const textBody = await request.text()
+        payload = JSON.parse(textBody)
+      } catch {}
     }
-    if (event !== 'purchase_approved') {
+
+    const event = String(payload?.event || '')
+    const allowed = new Set(['purchase_approved', 'assinatura_criada', 'subscription_created'])
+    if (!allowed.has(event)) {
       return NextResponse.json({ success: true, ignored: true })
     }
 
@@ -36,8 +42,16 @@ export async function POST(request: NextRequest) {
     }
 
     const updated = await supabaseAdminService.updateUserAccountType(user.id, 'pro')
-    return NextResponse.json({ success: true, user: { id: updated.id, account_type: updated.account_type } })
+    return NextResponse.json({ success: true, user: { id: updated.id, account_type: updated.account_type }, event })
   } catch (error) {
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
+}
+
+export async function GET() {
+  return NextResponse.json({ ok: true })
+}
+
+export async function HEAD() {
+  return new NextResponse(null)
 }

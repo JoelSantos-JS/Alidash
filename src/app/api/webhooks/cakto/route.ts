@@ -45,21 +45,23 @@ export async function POST(request: NextRequest) {
     }
 
     if (event === 'pix_gerado') {
-      console.log('cakto pix_gerado', { headers: Object.fromEntries(request.headers), payload })
+      const headersObj = Object.fromEntries(request.headers)
       const data = payload?.data ?? payload
       const pixData: any = data?.pix ?? null
       const pix = {
-        qrCode: pixData?.qrCode ?? pixData?.qr_code ?? pixData?.qrCodeBase64 ?? pixData?.base64 ?? null,
-        copyPaste: pixData?.copyPaste ?? pixData?.payload ?? pixData?.copy_paste ?? null,
-        expirationDate: pixData?.expirationDate ?? data?.due_date ?? null
+        qrCode: pixData?.qrCode ?? pixData?.qrcode ?? pixData?.qr_code ?? pixData?.qrCodeBase64 ?? pixData?.qr_code_base64 ?? pixData?.qrImage ?? pixData?.base64 ?? null,
+        copyPaste: pixData?.copyPaste ?? pixData?.copy_and_paste ?? pixData?.payload ?? pixData?.emv ?? null,
+        expirationDate: pixData?.expirationDate ?? pixData?.expires_at ?? data?.due_date ?? null
       }
       const summary = {
         refId: data?.refId ?? data?.ref_id ?? null,
         status: data?.status ?? null,
         amount: data?.amount ?? data?.baseAmount ?? null,
         dueDate: data?.due_date ?? null,
-        paymentMethod: data?.paymentMethod ?? null
+        paymentMethod: data?.paymentMethod ?? data?.paymentMethodName ?? null
       }
+      const logPayload = JSON.parse(JSON.stringify({ headers: headersObj, event, pixData, summaryCandidate: summary, raw: payload }))
+      console.log('cakto pix_gerado', JSON.stringify(logPayload))
       return NextResponse.json({ success: true, event, pix, summary, payload })
     }
 

@@ -18,7 +18,18 @@ type CategoryChartProps = {
     isLoading?: boolean;
 }
 
-const COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff8042", "#0088FE", "#00C49F"];
+const COLORS = [
+  "#3b82f6",
+  "#10b981",
+  "#8b5cf6",
+  "#f59e0b",
+  "#f43f5e",
+  "#06b6d4",
+  "#84cc16",
+  "#d946ef",
+  "#14b8a6",
+  "#6366f1"
+];
 
 export function CategoryChart({ data, isLoading }: CategoryChartProps) {
   const chartData = React.useMemo(() => {
@@ -62,19 +73,22 @@ export function CategoryChart({ data, isLoading }: CategoryChartProps) {
                             borderRadius: 'var(--radius)',
                             fontSize: '12px'
                         }}
+                        itemStyle={{ color: 'hsl(var(--foreground))' }}
+                        labelStyle={{ color: 'hsl(var(--foreground))' }}
                     />
                     <Pie
                         data={chartData}
                         dataKey="value"
                         nameKey="name"
-                        innerRadius={40}
-                        outerRadius={80}
-                        strokeWidth={3}
+                        innerRadius={50}
+                        outerRadius={90}
+                        stroke="hsl(var(--border))"
+                        strokeWidth={2}
                         cx="50%"
                         cy="50%"
                     >
                         {chartData.map((entry) => (
-                            <Cell key={`cell-${entry.name}`} fill={entry.fill} />
+                            <Cell key={`cell-${entry.name}`} fill={entry.fill} fillOpacity={0.9} />
                         ))}
                     </Pie>
                 </PieChart>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -93,13 +93,13 @@ export function BusinessDashboard({
     // loadDashboardData(userId, 'business', month, year);
   };
   
-  // Função para scroll das tabs
+  // Função para scroll das tabs com ref local (mais confiável)
+  const tabsScrollRef = useRef<HTMLDivElement | null>(null);
   const handleTabScroll = (direction: 'left' | 'right') => {
-    const tabsList = document.querySelector('.responsive-tabs');
-    if (tabsList) {
-      const scrollAmount = direction === 'left' ? -200 : 200;
-      tabsList.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-    }
+    const el = tabsScrollRef.current;
+    if (!el) return;
+    const scrollAmount = direction === 'left' ? -240 : 240;
+    el.scrollBy({ left: scrollAmount, behavior: 'smooth' });
   };
 
   return (
@@ -120,7 +120,7 @@ export function BusinessDashboard({
           <ChevronRight className="h-4 w-4" />
         </button>
         
-        <TabsList className="mb-4 sm:mb-6 overflow-x-auto flex-wrap gap-1 responsive-tabs scrollbar-hide px-8">
+        <TabsList ref={tabsScrollRef} className="mb-4 sm:mb-6 overflow-x-auto flex-nowrap gap-1 responsive-tabs scrollbar-hide px-8">
           <TabsTrigger value="dashboard" className="text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
             <span className="hidden sm:inline">Dashboard Geral</span>
             <span className="sm:hidden">Dashboard</span>

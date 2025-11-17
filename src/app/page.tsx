@@ -1042,13 +1042,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                    </div>
                    <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
                      <span className="truncate">{isPersonal ? 'Controle completo das suas finanças pessoais' : 'Visão geral das suas finanças empresariais'}</span>
-                    {products.length > 0 && !products.every(p => initialProducts.some(ip => ip.id === p.id)) && (
-                      <span className="hidden sm:inline-flex items-center gap-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex-shrink-0">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        Dados Reais
-                      </span>
-                    )}
-                  </div>
+                   </div>
                 </div>
               </div>
 

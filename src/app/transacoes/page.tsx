@@ -517,13 +517,6 @@ function TransacoesPageContent() {
                 <p className="text-xs md:text-sm text-muted-foreground truncate">
                   <span className="hidden sm:inline">Histórico completo de todas as transações financeiras</span>
                   <span className="sm:hidden">Histórico de transações</span>
-                  {products.length > 0 && products !== initialProducts && (
-                    <span className="ml-2 inline-flex items-center gap-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                      <span className="w-2 h-2 bg-green-500 rounded-full block"></span>
-                      <span className="hidden sm:inline">Dados Reais</span>
-                      <span className="sm:hidden">Real</span>
-                    </span>
-                  )}
                 </p>
               </div>
             </div>

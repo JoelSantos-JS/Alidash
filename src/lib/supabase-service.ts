@@ -137,6 +137,21 @@ export class SupabaseService {
     }
   }
 
+  async updateUserAccountType(userId: string, accountType: string) {
+    const { data, error } = await this.client
+      .from('users')
+      .update({ account_type: accountType, updated_at: new Date().toISOString() })
+      .eq('id', userId)
+      .select()
+      .single()
+
+    if (error) {
+      throw new Error(`Erro ao atualizar usuário: ${error.message}`)
+    }
+
+    return data
+  }
+
   // =====================================
   // REVENUE OPERATIONS
   // =====================================

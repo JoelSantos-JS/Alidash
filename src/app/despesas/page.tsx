@@ -267,13 +267,6 @@ export default function DespesasPage() {
               <p className="text-xs md:text-sm text-muted-foreground">
                 <span className="hidden sm:inline">Controle detalhado das suas despesas de produtos</span>
                 <span className="sm:hidden">Suas despesas de produtos</span>
-                {products.length > 0 && products !== initialProducts && (
-                  <span className="ml-2 inline-flex items-center gap-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                    <span className="w-2 h-2 bg-green-500 rounded-full block"></span>
-                    <span className="hidden sm:inline">Dados Reais</span>
-                    <span className="sm:hidden">Real</span>
-                  </span>
-                )}
               </p>
             </div>
           </div>

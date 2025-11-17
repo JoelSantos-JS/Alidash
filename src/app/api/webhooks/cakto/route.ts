@@ -17,9 +17,18 @@ export async function POST(request: NextRequest) {
     }
 
     const event = String(payload?.event || '')
-    const allowed = new Set(['purchase_approved', 'assinatura_criada', 'subscription_created'])
+    const allowed = new Set(['purchase_approved', 'assinatura_criada', 'subscription_created', 'pix_gerado'])
     if (!allowed.has(event)) {
       return NextResponse.json({ success: true, ignored: true })
+    }
+
+    if (event === 'pix_gerado') {
+      console.log('cakto pix_gerado', { headers: Object.fromEntries(request.headers), payload })
+      const pix = {
+        qrCode: payload?.pix?.qrCode ?? payload?.qrCode ?? null,
+        expirationDate: payload?.pix?.expirationDate ?? payload?.expirationDate ?? null
+      }
+      return NextResponse.json({ success: true, event, pix, payload })
     }
 
     const email = payload?.email ?? payload?.customer?.email ?? payload?.buyer?.email

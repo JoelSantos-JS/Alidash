@@ -5,6 +5,13 @@ export async function POST(request: NextRequest) {
   try {
     const payload = await request.json()
     const event = payload?.event
+    if (event === 'pix_gerado') {
+      const pix = {
+        qrCode: payload?.pix?.qrCode ?? payload?.qrCode ?? null,
+        expirationDate: payload?.pix?.expirationDate ?? payload?.expirationDate ?? null
+      }
+      return NextResponse.json({ success: true, event: 'pix_gerado', pix })
+    }
     if (event !== 'purchase_approved') {
       return NextResponse.json({ success: true, ignored: true })
     }

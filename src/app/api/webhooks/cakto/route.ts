@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdminService } from '@/lib/supabase-service'
+import { supabaseAdmin, supabaseAdminService } from '@/lib/supabase-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -65,8 +65,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, event, pix, summary, payload })
     }
 
-    const email = payload?.email ?? payload?.customer?.email ?? payload?.buyer?.email
-    const rawUserId = payload?.user_id ?? payload?.userId ?? payload?.customer?.id
+    const data = payload?.data ?? {}
+    const email = payload?.email ?? payload?.customer?.email ?? payload?.buyer?.email ?? data?.customer?.email ?? data?.subscription?.customer?.email
+    const rawUserId = payload?.user_id ?? payload?.userId ?? payload?.customer?.id ?? data?.customer?.id ?? data?.customer?.uuid ?? data?.subscription?.id
 
     let user: any = null
     if (email) {
@@ -81,7 +82,24 @@ export async function POST(request: NextRequest) {
     }
 
     if (!user) {
-      return NextResponse.json({ success: true, processed: false })
+      if (!email) {
+        return NextResponse.json({ success: true, processed: false })
+      }
+      let authCreated: any = null
+      try {
+        authCreated = await supabaseAdmin.auth.admin.createUser({
+          email,
+          password: 'dash123',
+          email_confirm: true
+        })
+      } catch {}
+      const created = await supabaseAdminService.createUser({
+        email,
+        name: data?.customer?.name ?? null,
+        avatar_url: null,
+        account_type: 'pro'
+      })
+      return NextResponse.json({ success: true, user: { id: created.id, account_type: created.account_type }, event, created: true })
     }
 
     const updated = await supabaseAdminService.updateUserAccountType(user.id, 'pro')

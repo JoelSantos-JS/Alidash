@@ -6,22 +6,31 @@ async function main() {
   const emailArg = process.argv[4] || 'cliente@example.com'
 
   const url = urlArg.replace(/\/+$/, '')
-  const payload = eventArg === 'purchase_approved'
-    ? {
-        event: 'purchase_approved',
-        email: emailArg,
-        orderId: 'ORD-TEST-123',
-        amount: 19990,
-        currency: 'BRL'
+  let payload
+  if (eventArg === 'purchase_approved') {
+    payload = {
+      event: 'purchase_approved',
+      email: emailArg,
+      orderId: 'ORD-TEST-123',
+      amount: 19990,
+      currency: 'BRL'
+    }
+  } else if (eventArg === 'assinatura_criada' || eventArg === 'subscription_created') {
+    payload = {
+      event: eventArg,
+      customer: { email: emailArg },
+      data: { subscription: { status: 'active', customer: { email: emailArg } } }
+    }
+  } else {
+    payload = {
+      event: 'pix_gerado',
+      email: emailArg,
+      pix: {
+        qrCode: 'data:image/png;base64,TESTE',
+        expirationDate: '2025-12-31T23:59:59Z'
       }
-    : {
-        event: 'pix_gerado',
-        email: emailArg,
-        pix: {
-          qrCode: 'data:image/png;base64,TESTE',
-          expirationDate: '2025-12-31T23:59:59Z'
-        }
-      }
+    }
+  }
 
   try {
     const res = await fetch(url, {

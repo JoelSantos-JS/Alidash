@@ -67,6 +67,10 @@ export async function POST(request: NextRequest) {
 
     const data = payload?.data ?? {}
     const email = payload?.email ?? payload?.customer?.email ?? payload?.buyer?.email ?? data?.customer?.email ?? data?.subscription?.customer?.email
+    const planName = (data?.offer?.name || '').toLowerCase()
+    const amount = Number(data?.amount ?? data?.subscription?.amount ?? 0)
+    const isBasic = planName.includes('básico') || planName.includes('basico') || amount === 19 || amount === 19.0 || amount === 19.99
+    const targetAccountType = isBasic ? 'basic' : 'pro'
     const rawUserId = payload?.user_id ?? payload?.userId ?? payload?.customer?.id ?? data?.customer?.id ?? data?.customer?.uuid ?? data?.subscription?.id
 
     let user: any = null
@@ -94,16 +98,17 @@ export async function POST(request: NextRequest) {
         })
       } catch {}
       const created = await supabaseAdminService.createUser({
+        id: authCreated?.data?.user?.id,
         email,
         name: data?.customer?.name ?? null,
         avatar_url: null,
-        account_type: 'pro'
+        account_type: targetAccountType
       })
-      return NextResponse.json({ success: true, user: { id: created.id, account_type: created.account_type }, event, created: true })
+      return NextResponse.json({ success: true, user: { id: created.id, account_type: created.account_type }, event, created: true, plan: targetAccountType })
     }
 
-    const updated = await supabaseAdminService.updateUserAccountType(user.id, 'pro')
-    return NextResponse.json({ success: true, user: { id: updated.id, account_type: updated.account_type }, event })
+    const updated = await supabaseAdminService.updateUserAccountType(user.id, targetAccountType)
+    return NextResponse.json({ success: true, user: { id: updated.id, account_type: updated.account_type }, event, plan: targetAccountType })
   } catch (error) {
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }

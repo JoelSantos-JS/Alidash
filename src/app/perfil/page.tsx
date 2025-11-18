@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { backupUserData } from "@/lib/backup-client";
+import { supabase } from "@/lib/supabase-service";
 import NotificationSettings from "@/components/notifications/notification-settings";
 
 export default function ProfilePage() {
@@ -45,6 +46,8 @@ export default function ProfilePage() {
     const [userName, setUserName] = useState('');
     const [isUpdatingName, setIsUpdatingName] = useState(false);
     const [isLoadingUserData, setIsLoadingUserData] = useState(false);
+    const [monthlyUsage, setMonthlyUsage] = useState<number | null>(null);
+    const [isLoadingUsage, setIsLoadingUsage] = useState(false);
 
     // Função para buscar dados do usuário
     const fetchUserData = async () => {
@@ -58,7 +61,8 @@ export default function ProfilePage() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    user_id: user.id
+                    user_id: user.id,
+                    email: user.email
                 })
             });
 
@@ -74,9 +78,33 @@ export default function ProfilePage() {
         }
     };
 
+    const fetchMonthlyUsage = async () => {
+        if (!user?.id) return;
+        setIsLoadingUsage(true);
+        try {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), now.getMonth(), 1);
+            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+            const { count, error } = await supabase
+                .from('transactions')
+                .select('id', { count: 'exact', head: true })
+                .eq('user_id', user.id)
+                .gte('date', start.toISOString())
+                .lte('date', end.toISOString());
+            if (error) {
+                setMonthlyUsage(null);
+            } else {
+                setMonthlyUsage(count ?? 0);
+            }
+        } finally {
+            setIsLoadingUsage(false);
+        }
+    };
+
     // Carregar dados do usuário quando disponível
     useEffect(() => {
         fetchUserData();
+        fetchMonthlyUsage();
     }, [user?.id]);
 
     // Função para atualizar o nome do usuário
@@ -231,6 +259,25 @@ export default function ProfilePage() {
         return email.substring(0, 2).toUpperCase();
     };
 
+    const getDaysRemaining = () => {
+        const type = userData?.account_type
+        if (type !== 'pro' && type !== 'basic') return '—'
+        const nextRenewal = userData?.plan_next_renewal_at
+        if (nextRenewal) {
+            const diff = Math.ceil((new Date(nextRenewal).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+            return `${Math.max(0, diff)} dias`
+        }
+        const updatedAt = userData?.updated_at
+        if (updatedAt) {
+            const end = new Date(new Date(updatedAt).getTime() + 30 * 24 * 60 * 60 * 1000)
+            const diff = Math.ceil((end.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+            return `${Math.max(0, diff)} dias`
+        }
+        return '—'
+    }
+
+    
+
     return (
         <div className="min-h-screen bg-background">
             <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
@@ -313,8 +360,35 @@ export default function ProfilePage() {
                                     <div className="space-y-4">
                                         <div className="flex justify-between items-center">
                                             <span className="font-medium">Plano Atual</span>
-                                            <Badge variant="secondary">Gratuito</Badge>
+                                            <Badge variant="secondary">
+                                                {userData?.account_type === 'pro' ? 'Premium' : userData?.account_type === 'basic' ? 'Básico' : 'Gratuito'}
+                                            </Badge>
                                         </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm text-muted-foreground">Ciclo</span>
+                                                <span className="text-sm">{userData?.account_type === 'pro' || userData?.account_type === 'basic' ? 'Mensal (30 dias)' : '—'}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm text-muted-foreground">Valor</span>
+                                                <span className="text-sm">{userData?.account_type === 'pro' ? 'R$ 27/mês' : userData?.account_type === 'basic' ? 'R$ 19/mês' : 'R$ 0'}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm text-muted-foreground">Dias restantes</span>
+                                                <span className="text-sm">{getDaysRemaining()}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm text-muted-foreground">Uso do mês</span>
+                                                <span className="text-sm">{isLoadingUsage ? '...' : (monthlyUsage === null ? '—' : (userData?.account_type === 'basic' ? `${monthlyUsage}/1000` : String(monthlyUsage)))}</span>
+                                            </div>
+                                        </div>
+                                        {userData?.account_type !== 'pro' && (
+                                            <div className="flex justify-end pt-2">
+                                                <Button asChild size="sm">
+                                                    <a href="https://pay.cakto.com.br/tbbbzbh" target="_blank" rel="noopener noreferrer">Upgrade para Premium</a>
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
                                 </CardContent>
                                 <CardFooter className="p-4 sm:p-6 flex-col items-start gap-4">

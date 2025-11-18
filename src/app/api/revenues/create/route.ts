@@ -8,14 +8,48 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 export async function POST(request: NextRequest) {
   try {
     const revenueData = await request.json();
+    const userId = revenueData.user_id
     
     console.log('💰 Criando receita via API:', revenueData);
 
     // Validar dados obrigatórios
-    if (!revenueData.user_id) {
+    if (!userId) {
       return NextResponse.json({ 
         error: 'user_id é obrigatório' 
       }, { status: 400 });
+    }
+
+    const { data: userRow, error: userError } = await supabase
+      .from('users')
+      .select('account_type')
+      .eq('id', userId)
+      .single()
+
+    if (userError) {
+      return NextResponse.json({ error: 'Erro ao validar usuário' }, { status: 500 })
+    }
+
+    if (userRow?.account_type === 'basic') {
+      const now = new Date()
+      const start = new Date(now.getFullYear(), now.getMonth(), 1)
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      const startIso = start.toISOString()
+      const endIso = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59, 999).toISOString()
+
+      const { count, error: countError } = await supabase
+        .from('transactions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('date', startIso)
+        .lte('date', endIso)
+
+      if (countError) {
+        return NextResponse.json({ error: 'Erro ao validar limite do plano' }, { status: 500 })
+      }
+
+      if ((count ?? 0) >= 1000) {
+        return NextResponse.json({ error: 'Limite mensal de transações do plano Básico atingido' }, { status: 403 })
+      }
     }
 
     if (!revenueData.description) {
@@ -51,14 +85,14 @@ export async function POST(request: NextRequest) {
       notes: revenueData.notes || '',
       product_id: revenueData.product_id || null,
       date: typeof revenueData.date === 'string' ? new Date(revenueData.date) : new Date(revenueData.date),
-      user_id: revenueData.user_id
+      user_id: userId
     };
 
     console.log('📋 Dados processados da receita:', processedRevenueData);
 
     // 1. Primeiro criar a transação
     const transactionData = {
-      user_id: revenueData.user_id,
+      user_id: userId,
       date: processedRevenueData.date,
       description: processedRevenueData.description,
       amount: processedRevenueData.amount,

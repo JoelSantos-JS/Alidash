@@ -3,7 +3,7 @@ import { supabaseAdminService } from '@/lib/supabase-service'
 
 export async function POST(request: NextRequest) {
   try {
-    const { user_id } = await request.json()
+    const { user_id, email } = await request.json()
 
     if (!user_id || typeof user_id !== 'string') {
       return NextResponse.json(
@@ -13,8 +13,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Buscar usuário pelo ID
-    const user = await supabaseAdminService.getUserById(user_id)
+    let user = await supabaseAdminService.getUserById(user_id)
     
+    // Fallback: buscar por email se não encontrado
+    if (!user && email) {
+      try {
+        user = await supabaseAdminService.getUserByEmail(email)
+      } catch {}
+    }
+
     if (!user) {
       return NextResponse.json(
         { error: 'Usuário não encontrado' },
@@ -34,7 +41,11 @@ export async function POST(request: NextRequest) {
         created_at: user.created_at,
         updated_at: user.updated_at,
         last_login: user.last_login,
-        is_active: user.is_active
+        is_active: user.is_active,
+        plan_next_renewal_at: user.plan_next_renewal_at || null,
+        plan_started_at: user.plan_started_at || null,
+        plan_status: user.plan_status || null,
+        plan_price_brl: user.plan_price_brl || null
       }
     })
 

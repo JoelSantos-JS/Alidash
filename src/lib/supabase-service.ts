@@ -74,17 +74,35 @@ export class SupabaseService {
     avatar_url?: string | null
     account_type?: string
   }) {
+    const { data: existing, error: existingError } = await this.client
+      .from('users')
+      .select('*')
+      .eq('email', userData.email)
+      .single()
+
+    if (!existingError && existing) {
+      if (userData.account_type && existing.account_type !== userData.account_type) {
+        const { data: updated } = await this.client
+          .from('users')
+          .update({ account_type: userData.account_type, updated_at: new Date().toISOString() })
+          .eq('id', existing.id)
+          .select()
+          .single()
+        return updated || existing
+      }
+      return existing
+    }
+
     const insertData: any = {
       email: userData.email,
       name: userData.name,
       avatar_url: userData.avatar_url,
       account_type: userData.account_type || 'personal'
     }
-    
     if (userData.id) {
       insertData.id = userData.id
     }
-    
+
     const { data, error } = await this.client
       .from('users')
       .insert(insertData)
@@ -92,9 +110,26 @@ export class SupabaseService {
       .single()
 
     if (error) {
+      const msg = String(error.message || '')
+      if (msg.includes('duplicate key value') || msg.includes('users_email_key')) {
+        const { data: fetched } = await this.client
+          .from('users')
+          .select('*')
+          .eq('email', userData.email)
+          .single()
+        if (fetched && userData.account_type && fetched.account_type !== userData.account_type) {
+          const { data: updated } = await this.client
+            .from('users')
+            .update({ account_type: userData.account_type, updated_at: new Date().toISOString() })
+            .eq('id', fetched.id)
+            .select()
+            .single()
+          return updated || fetched
+        }
+        return fetched
+      }
       throw new Error(`Erro ao criar usuário: ${error.message}`)
     }
-    
     return data
   }
 

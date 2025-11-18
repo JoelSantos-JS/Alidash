@@ -20,6 +20,7 @@ import { SummaryCard } from "@/components/dashboard/summary-card";
 import { CategoryChart } from "@/components/dashboard/category-chart";
 import { ProfitChart } from "@/components/dashboard/profit-chart";
 import { SupplierChart } from "@/components/dashboard/supplier-chart";
+import { SalesTrendsChart } from "@/components/reports/sales-trends-chart";
 import { ProductSearch } from "@/components/product/product-search";
 import { ProductCard } from "@/components/product/product-card";
 import { RevenueSection } from "@/components/dashboard/revenue-section";
@@ -133,12 +134,7 @@ export function BusinessDashboard({
             <span className="hidden sm:inline">Histórico de Vendas</span>
             <span className="sm:hidden">Vendas</span>
           </TabsTrigger>
-          <TabsTrigger value="revenue" className="text-xs sm:text-sm whitespace-nowrap flex-shrink-0">Receitas</TabsTrigger>
-          <TabsTrigger value="expenses" className="text-xs sm:text-sm whitespace-nowrap flex-shrink-0">Despesas</TabsTrigger>
-          <TabsTrigger value="transactions" className="text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
-            <span className="hidden sm:inline">Transações</span>
-            <span className="sm:hidden">Trans.</span>
-          </TabsTrigger>
+          
         </TabsList>
       </div>
       
@@ -188,12 +184,15 @@ export function BusinessDashboard({
           </div>
         )}
         
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6 mb-6 sm:mb-8">
-          <div className="lg:col-span-3">
+        <div className="grid grid-cols-1 lg:grid-cols-5 xl:grid-cols-12 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="lg:col-span-3 xl:col-span-6">
             <ProfitChart data={products} isLoading={isLoading}/>
           </div>
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 xl:col-span-3">
             <CategoryChart data={products} isLoading={isLoading}/>
+          </div>
+          <div className="lg:col-span-5 xl:col-span-3">
+            <SalesTrendsChart data={products} isLoading={isLoading} />
           </div>
         </div>
 
@@ -268,35 +267,10 @@ export function BusinessDashboard({
       </TabsContent>
       
       <TabsContent value="sales">
-        <SalesHistorySection periodFilter={periodFilter} />
+        <SalesTrendsChart data={products} isLoading={isLoading} />
       </TabsContent>
       
-      <TabsContent value="revenue">
-        <RevenueSection 
-          products={products}
-          periodFilter={periodFilter}
-          currentDate={anchorDate}
-          revenues={revenues}
-        />
-      </TabsContent>
       
-      <TabsContent value="expenses">
-        <ExpensesSection 
-          products={products}
-          periodFilter={periodFilter}
-          currentDate={anchorDate}
-          expenses={expenses}
-        />
-      </TabsContent>
-      
-      <TabsContent value="transactions">
-        <TransactionsSection 
-          products={products}
-          periodFilter={periodFilter}
-          currentDate={anchorDate}
-          transactions={transactions}
-        />
-      </TabsContent>
     </Tabs>
   );
 }

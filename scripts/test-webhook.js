@@ -4,6 +4,7 @@ async function main() {
   const urlArg = process.argv[2] || process.env.TEST_URL || 'http://localhost:3001/api/webhooks/cakto'
   const eventArg = process.argv[3] || 'pix_gerado'
   const emailArg = process.argv[4] || 'cliente@example.com'
+  const planArg = (process.argv[5] || '').toLowerCase()
 
   const url = urlArg.replace(/\/+$/, '')
   let payload
@@ -16,10 +17,16 @@ async function main() {
       currency: 'BRL'
     }
   } else if (eventArg === 'assinatura_criada' || eventArg === 'subscription_created') {
+    const isBasic = planArg.includes('basic')
+    const amount = isBasic ? 19 : 27
     payload = {
       event: eventArg,
       customer: { email: emailArg },
-      data: { subscription: { status: 'active', customer: { email: emailArg } } }
+      data: {
+        amount,
+        offer: { name: isBasic ? 'Plano Básico' : 'Plano Premium' },
+        subscription: { status: 'active', amount, customer: { email: emailArg } }
+      }
     }
   } else {
     payload = {

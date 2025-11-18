@@ -35,6 +35,7 @@ import {
   BarChart3,
   Calendar as CalendarIcon,
   Tag,
+  MessageCircle,
   FileText,
   Target as TargetIcon,
   User,
@@ -180,6 +181,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
   const [transactions, setTransactions] = useState<any[]>([]);
   const { toast } = useToast();
   const router = useRouter();
+  const voxWhatsappUrl = process.env.NEXT_PUBLIC_VOX_WHATSAPP_URL || 'https://wa.me';
 
   // Função para carregar dados iniciais apenas para usuários novos
   const loadInitialDataForNewUser = async () => {
@@ -967,6 +969,18 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 <TargetIcon className="h-4 w-4" />
                 <span className="text-sm sm:text-base">Metas</span>
               </Button>
+
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start gap-2 sm:gap-3" 
+                size="lg"
+                asChild
+              >
+                <a href={voxWhatsappUrl} target="_blank" rel="noopener noreferrer">
+                  <MessageCircle className="h-4 w-4" />
+                  <span className="text-sm sm:text-base">WhatsApp</span>
+                </a>
+              </Button>
               
               {/* Agenda temporariamente oculta */}
               {/* <Button 
@@ -1079,7 +1093,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                               <span className="text-xs">Selecionar data específica</span>
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1rem)] sm:max-w-none" align="start" side="bottom">
+                          <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1rem)] sm:max-w-none" align="center" side="bottom" sideOffset={8}>
                             <CalendarComponent
                               mode="single"
                               selected={personalSelectedDate || undefined}
@@ -1114,7 +1128,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                                 : 'Selecionar data'}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1rem)] sm:max-w-none" align="start" side="bottom">
+                          <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1rem)] sm:max-w-none" align="center" side="bottom" sideOffset={8}>
                             <CalendarComponent
                               mode="single"
                               selected={personalSelectedDate || undefined}
@@ -1142,6 +1156,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                               size="sm"
                               className="h-8 w-8 p-0"
                               aria-label="Dia específico"
+                              title="Selecionar data"
                               onClick={() => {
                                 setIsBusinessCalendarOpen(true);
                               }}
@@ -1149,7 +1164,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                               <CalendarIcon className="h-4 w-4" />
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1rem)] sm:max-w-none" align="start" side="bottom">
+                          <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1rem)] sm:max-w-none" align="center" side="bottom" sideOffset={8}>
                             <CalendarComponent
                               mode="single"
                               selected={businessSelectedDate || undefined}
@@ -1164,6 +1179,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                             />
                           </PopoverContent>
                         </Popover>
+                        <span className="text-xs text-muted-foreground">Selecione a data</span>
                       </div>
 
                       {/* Controles empresariais: apenas botão de calendário no desktop */}
@@ -1174,6 +1190,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                               variant="outline" 
                               size="sm" 
                               className="text-xs px-2 sm:px-3 h-8 sm:h-9"
+                              title="Selecionar data"
                               onClick={() => {
                                 setIsBusinessCalendarOpen(true);
                               }}
@@ -1184,7 +1201,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                                 : 'Selecionar data'}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1rem)] sm:max-w-none" align="start" side="bottom">
+                          <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1rem)] sm:max-w-none" align="center" side="bottom" sideOffset={8}>
                             <CalendarComponent
                               mode="single"
                               selected={businessSelectedDate || undefined}

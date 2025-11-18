@@ -14,6 +14,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'user_id é obrigatório' }, { status: 400 });
     }
 
+    const { data: userRow, error: userError } = await supabase
+      .from('users')
+      .select('account_type')
+      .eq('id', userId)
+      .single()
+
+    if (userError) {
+      return NextResponse.json({ error: 'Erro ao validar usuário' }, { status: 500 })
+    }
+
+    if (userRow?.account_type === 'basic') {
+      const now = new Date()
+      const start = new Date(now.getFullYear(), now.getMonth(), 1)
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      const startIso = start.toISOString()
+      const endIso = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59, 999).toISOString()
+
+      const { count, error: countError } = await supabase
+        .from('transactions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('date', startIso)
+        .lte('date', endIso)
+
+      if (countError) {
+        return NextResponse.json({ error: 'Erro ao validar limite do plano' }, { status: 500 })
+      }
+
+      if ((count ?? 0) >= 1000) {
+        return NextResponse.json({ error: 'Limite mensal de transações do plano Básico atingido' }, { status: 403 })
+      }
+    }
+
     const expenseData = await request.json();
 
     console.log('💰 Criando despesa via API:', { userId, expenseData });

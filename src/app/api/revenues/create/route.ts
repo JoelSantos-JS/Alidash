@@ -6,8 +6,11 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function POST(request: NextRequest) {
+  const routeStart = Date.now()
   try {
     const revenueData = await request.json();
+    const parseEnd = Date.now()
+    const timings: Record<string, number> = { parse: parseEnd - routeStart }
     const userId = revenueData.user_id
     
     console.log('💰 Criando receita via API:', revenueData);
@@ -19,11 +22,13 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    const userQueryStart = Date.now()
     const { data: userRow, error: userError } = await supabase
       .from('users')
       .select('account_type')
       .eq('id', userId)
       .single()
+    timings.userQuery = Date.now() - userQueryStart
 
     if (userError) {
       return NextResponse.json({ error: 'Erro ao validar usuário' }, { status: 500 })
@@ -36,12 +41,14 @@ export async function POST(request: NextRequest) {
       const startIso = start.toISOString()
       const endIso = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59, 999).toISOString()
 
+      const planCountStart = Date.now()
       const { count, error: countError } = await supabase
         .from('transactions')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
         .gte('date', startIso)
         .lte('date', endIso)
+      timings.planCount = Date.now() - planCountStart
 
       if (countError) {
         return NextResponse.json({ error: 'Erro ao validar limite do plano' }, { status: 500 })
@@ -109,11 +116,13 @@ export async function POST(request: NextRequest) {
 
     console.log('🔄 Criando transação para receita:', transactionData);
 
+    const txInsertStart = Date.now()
     const { data: transaction, error: transactionError } = await supabase
       .from('transactions')
       .insert(transactionData)
       .select()
       .single();
+    timings.txInsert = Date.now() - txInsertStart
 
     if (transactionError) {
       console.error('❌ Erro ao criar transação:', transactionError);
@@ -131,11 +140,13 @@ export async function POST(request: NextRequest) {
       transaction_id: transaction.id
     };
 
+    const revInsertStart = Date.now()
     const { data: revenue, error } = await supabase
       .from('revenues')
       .insert(revenueWithTransaction)
       .select()
       .single();
+    timings.revInsert = Date.now() - revInsertStart
 
     if (error) {
       console.error('❌ Erro ao criar receita:', error);
@@ -155,18 +166,15 @@ export async function POST(request: NextRequest) {
     console.log('✅ Receita criada com sucesso:', revenue);
 
     // Retornar a receita criada
-    return NextResponse.json({
-      success: true,
-      revenue,
-      transaction
-    });
+    const total = Date.now() - routeStart
+    const serverTiming = Object.entries({ ...timings, total }).map(([k, v]) => `${k};dur=${Math.round(v)}`).join(', ')
+    return NextResponse.json({ success: true, revenue, transaction }, { headers: { 'Server-Timing': serverTiming } })
 
   } catch (error) {
     console.error('❌ Erro ao criar receita:', error);
     
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Erro interno do servidor'
-    }, { status: 500 });
+    const total = Date.now() - routeStart
+    const serverTiming = `total;dur=${Math.round(total)}`
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Erro interno do servidor' }, { status: 500, headers: { 'Server-Timing': serverTiming } })
   }
 }

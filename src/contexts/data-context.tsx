@@ -97,17 +97,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     console.log('🔄 useEffect do DataContext - user.id:', user?.id, 'authLoading:', loading);
+    if (loading) {
+      setIsLoading(true);
+      return;
+    }
     if (user?.id) {
       refreshData().catch(error => {
         console.error('❌ Erro no useEffect ao chamar refreshData:', error);
       });
     } else {
-      console.log('🧹 Limpando dados - usuário não disponível');
+      console.log('🧹 Limpando dados - usuário não disponível após auth');
       setExpenses([]);
       setRevenues([]);
       setIsLoading(false);
     }
-  }, [user?.id, refreshData]); // Adicionar refreshData de volta às dependências já que está memoizado
+  }, [loading, user?.id, refreshData]);
 
   const addExpense = (expense: Expense) => {
     setExpenses(prev => [expense, ...prev]);

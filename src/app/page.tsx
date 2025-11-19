@@ -188,26 +188,15 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
     if (!user) return;
     
     try {
-      // Verificar se o usuário já tem produtos
-      const userResponse = await fetch(`/api/auth/get-user?email=${user.email}`);
-      
-      if (userResponse.ok) {
-        const userResult = await userResponse.json();
-        const supabaseUser = userResult.user;
-        
-        // Verificar se já tem produtos
-        const productsResponse = await fetch(`/api/products/list?user_id=${supabaseUser.id}`);
-        if (productsResponse.ok) {
-          const productsResult = await productsResponse.json();
-          
-          // Se não tem produtos, é um usuário novo - carregar dados de exemplo
-          if (productsResult.products.length === 0) {
-            setProducts(initialProducts);
-            toast({
-              title: "Bem-vindo!",
-              description: "Carregamos alguns produtos de exemplo para você começar.",
-            });
-          }
+      const productsResponse = await fetch(`/api/products/list?user_id=${user.id}`);
+      if (productsResponse.ok) {
+        const productsResult = await productsResponse.json();
+        if (productsResult.products.length === 0) {
+          setProducts(initialProducts);
+          toast({
+            title: "Bem-vindo!",
+            description: "Carregamos alguns produtos de exemplo para você começar.",
+          });
         }
       }
     } catch (error) {
@@ -301,7 +290,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
   // Remover redirecionamento automático - dashboard pessoal será integrado
 
   useEffect(() => {
-    if (authLoading || !user) {
+    if (!user?.id) {
       return;
     }
 
@@ -370,7 +359,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
     }
     
     fetchData();
-  }, [user, authLoading]); // Removed refreshData from dependencies
+  }, [user?.id]);
 
   // Remover useEffect problemático que causava loop infinito
   // Este useEffect estava causando chamadas infinitas de API devido aos event listeners
@@ -816,17 +805,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
     );
   }
 
-  // Exibir loader enquanto o estado de auth ainda está carregando
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-sm text-muted-foreground">Carregando...</p>
-        </div>
-      </div>
-    );
-  }
+  
 
   // Redirecionar para login somente quando não houver usuário e não estiver carregando
   if (!user && !authLoading) {

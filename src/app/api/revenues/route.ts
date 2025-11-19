@@ -7,6 +7,7 @@ const supabase = createClient(
 );
 
 export async function GET(request: NextRequest) {
+  const routeStart = Date.now();
   try {
     const { searchParams } = new URL(request.url);
     const userIdParam = searchParams.get('user_id');
@@ -21,11 +22,13 @@ export async function GET(request: NextRequest) {
     console.log('🔍 Buscando receitas para user_id:', userIdParam);
 
     // Buscar receitas do usuário usando o UUID do Supabase
+    const dbStart = Date.now();
     const { data: revenues, error: revenuesError } = await supabase
       .from('revenues')
       .select('*')
       .eq('user_id', userIdParam)
       .order('date', { ascending: false });
+    const dbDur = Date.now() - dbStart;
 
     if (revenuesError) {
       console.error('❌ Erro ao buscar receitas:', revenuesError);
@@ -37,17 +40,15 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ ${revenues?.length || 0} receitas encontradas`);
     
-    return NextResponse.json({
-      success: true,
-      revenues: revenues || []
-    });
+    const total = Date.now() - routeStart;
+    const serverTiming = `db;dur=${Math.round(dbDur)}, total;dur=${Math.round(total)}`;
+    return NextResponse.json({ success: true, revenues: revenues || [] }, { headers: { 'Server-Timing': serverTiming } });
 
   } catch (error) {
     console.error('❌ Erro geral ao buscar receitas:', error);
-    return NextResponse.json(
-      { error: 'Erro interno do servidor' },
-      { status: 500 }
-    );
+    const total = Date.now() - routeStart;
+    const serverTiming = `total;dur=${Math.round(total)}`;
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500, headers: { 'Server-Timing': serverTiming } });
   }
 }
 

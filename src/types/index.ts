@@ -14,6 +14,7 @@ export interface ProductImage {
   alt: string;
   created_at: string;
   order?: number;
+  path?: string;
 }
 
 export interface Product {

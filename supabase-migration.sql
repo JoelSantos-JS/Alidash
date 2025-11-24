@@ -190,6 +190,22 @@ CREATE TABLE IF NOT EXISTS goals (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+DO $$ BEGIN
+  CREATE TYPE product_image_type AS ENUM ('main','gallery','thumbnail');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE TABLE IF NOT EXISTS product_images (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+    url TEXT NOT NULL,
+    alt TEXT,
+    type product_image_type DEFAULT 'gallery',
+    "order" INTEGER DEFAULT 0,
+    path TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- =====================================
 -- GOAL MILESTONES TABLE
 -- =====================================

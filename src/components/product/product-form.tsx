@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CalendarIcon, Package, ClipboardList, DollarSign, Calculator, Truck, ImageIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Package, ClipboardList, DollarSign, Calculator, Truck, ImageIcon, Loader2, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import React, { useState } from "react";
@@ -136,6 +136,8 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
   const { toast } = useToast();
   const { user } = useAuth();
   const [isCustomCategory, setIsCustomCategory] = React.useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   
 
   const watchedValues = watch();
@@ -434,7 +436,77 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
                         <ImageGallery 
                           images={watchedValues.images || []}
                           onChange={(images) => setValue('images', images)}
+                          userId={user?.id}
+                          productId={productToEdit?.id}
                         />
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                          />
+                          <Select onValueChange={(value: any) => setValue('imageUrlType' as any, value)} defaultValue={'gallery'}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Tipo" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="main">Principal</SelectItem>
+                              <SelectItem value="gallery">Galeria</SelectItem>
+                              <SelectItem value="thumbnail">Miniatura</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={!selectedFile || isUploading || !user?.id}
+                            onClick={async () => {
+                              if (!selectedFile || !user?.id) return
+                              try {
+                                setIsUploading(true)
+                                const fd = new FormData()
+                                fd.append('file', selectedFile)
+                                const t = (watchedValues as any).imageUrlType || 'gallery'
+                                fd.append('type', t)
+                                const params = new URLSearchParams({ user_id: user.id })
+                                if (productToEdit?.id) params.set('product_id', productToEdit.id)
+                                const res = await fetch(`/api/products/images/upload?${params.toString()}`, {
+                                  method: 'POST',
+                                  body: fd
+                                })
+                                if (!res.ok) {
+                                  const t = await res.text()
+                                  throw new Error(t)
+                                }
+                                const data = await res.json()
+                                const url = data.url as string
+                                const current = watchedValues.images || []
+                                const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`
+                                const uploadedType = t as 'main' | 'gallery' | 'thumbnail'
+                                if (uploadedType === 'main') {
+                                  setValue('imageUrl', url)
+                                }
+                                const newImage = { id, url, type: uploadedType, alt: 'Imagem do produto', created_at: new Date().toISOString(), order: (current.length || 0) + 1 }
+                                let nextImages = [newImage, ...current]
+                                if (uploadedType === 'main') {
+                                  nextImages = nextImages.map(i => ({ ...i, type: i.id === newImage.id ? 'main' as const : (i.type === 'main' ? 'gallery' as const : i.type) }))
+                                }
+                                setValue('images', nextImages)
+                                toast({ title: 'Imagem enviada', description: 'A imagem foi salva e vinculada ao produto.' })
+                                setSelectedFile(null)
+                              } catch (err) {
+                                toast({ variant: 'destructive', title: 'Erro no upload', description: err instanceof Error ? err.message : 'Falha ao enviar a imagem' })
+                              } finally {
+                                setIsUploading(false)
+                              }
+                            }}
+                            className="flex items-center gap-2"
+                          >
+                            {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                            Enviar
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, X, Upload, Image as ImageIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, X, Upload, Image as ImageIcon, ArrowUp, ArrowDown } from "lucide-react";
 import { SafeImage } from "@/components/ui/safe-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,60 +16,161 @@ interface ImageGalleryProps {
   images: ProductImage[];
   onChange: (images: ProductImage[]) => void;
   maxImages?: number;
+  userId?: string;
+  productId?: string;
 }
 
-export function ImageGallery({ images, onChange, maxImages = 5 }: ImageGalleryProps) {
+export function ImageGallery({ images, onChange, maxImages = 5, userId, productId }: ImageGalleryProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newImageUrl, setNewImageUrl] = useState("");
   const [newImageType, setNewImageType] = useState<"main" | "gallery" | "thumbnail">("gallery");
   const [newImageAlt, setNewImageAlt] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(6);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  const handleAddImage = () => {
-    if (!newImageUrl.trim()) return;
-
-    // Generate a consistent ID based on URL and length to avoid hydration issues
-    const generateId = (url: string, length: number) => {
-      let hash = 0;
-      for (let i = 0; i < url.length; i++) {
-        const char = url.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash; // Convert to 32bit integer
+  useEffect(() => {
+    if (!userId || !productId) return;
+    const load = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/products/images/list?user_id=${userId}&product_id=${productId}&page=${page}&page_size=${pageSize}`)
+        if (res.ok) {
+          const data = await res.json()
+          onChange(data.images || [])
+          setTotal(data.total || 0)
+        }
+      } finally {
+        setLoading(false)
       }
-      return `img_${Math.abs(hash)}_${length}`;
-    };
+    }
+    load()
+  }, [userId, productId, page, pageSize])
 
-    const newImage: ProductImage = {
-      id: generateId(newImageUrl.trim(), images.length),
-      url: newImageUrl.trim(),
-      type: newImageType,
-      alt: newImageAlt.trim() || "Imagem do produto",
-      created_at: new Date().toISOString(),
-      order: images.length + 1
-    };
-
-    onChange([...images, newImage]);
+  const handleAddImage = async () => {
+    if (!newImageUrl.trim()) return;
+    if (userId && productId) {
+      try {
+        const res = await fetch(`/api/products/images/create?user_id=${userId}&product_id=${productId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: newImageUrl.trim(), type: newImageType, alt: newImageAlt.trim() || 'Imagem do produto' })
+        })
+        if (res.ok) {
+          const data = await res.json()
+          const created: ProductImage = data.image
+          onChange([...images, created])
+        } else {
+          const created: ProductImage = {
+            id: `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+            url: newImageUrl.trim(),
+            type: newImageType,
+            alt: newImageAlt.trim() || 'Imagem do produto',
+            created_at: new Date().toISOString(),
+            order: images.length + 1
+          }
+          onChange([...images, created])
+        }
+      } catch {
+        const created: ProductImage = {
+          id: `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+          url: newImageUrl.trim(),
+          type: newImageType,
+          alt: newImageAlt.trim() || 'Imagem do produto',
+          created_at: new Date().toISOString(),
+          order: images.length + 1
+        }
+        onChange([...images, created])
+      }
+    } else {
+      const created: ProductImage = {
+        id: `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        url: newImageUrl.trim(),
+        type: newImageType,
+        alt: newImageAlt.trim() || 'Imagem do produto',
+        created_at: new Date().toISOString(),
+        order: images.length + 1
+      }
+      onChange([...images, created])
+    }
     setNewImageUrl("");
     setNewImageAlt("");
     setIsAddDialogOpen(false);
   };
 
-  const handleRemoveImage = (imageId: string) => {
+  const handleRemoveImage = async (imageId: string) => {
+    if (userId && productId) {
+      try {
+        await fetch(`/api/products/images/delete?user_id=${userId}&product_id=${productId}&image_id=${imageId}`, { method: 'DELETE' })
+      } catch {}
+    }
     const updatedImages = images.filter(img => img.id !== imageId);
-    // Reordenar as imagens
-    const reorderedImages = updatedImages.map((img, index) => ({
-      ...img,
-      order: index + 1
-    }));
+    const reorderedImages = updatedImages.map((img, index) => ({ ...img, order: baseOrder + index + 1 }));
     onChange(reorderedImages);
+    if (userId && productId) {
+      try {
+        const items = reorderedImages.map(img => ({ id: img.id, order: img.order || baseOrder + 1 }))
+        await fetch(`/api/products/images/reorder?user_id=${userId}&product_id=${productId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items })
+        })
+      } catch {}
+    }
   };
 
-  const handleSetAsMain = (imageId: string) => {
-    const updatedImages = images.map(img => ({
-      ...img,
-      type: img.id === imageId ? "main" as const : (img.type === "main" ? "gallery" as const : img.type)
-    }));
+  const handleSetAsMain = async (imageId: string) => {
+    if (userId && productId) {
+      try {
+        await fetch(`/api/products/images/set-main?user_id=${userId}&product_id=${productId}&image_id=${imageId}`, { method: 'PUT' })
+      } catch {}
+    }
+    const updatedImages = images.map(img => ({ ...img, type: img.id === imageId ? 'main' as const : (img.type === 'main' ? 'gallery' as const : img.type) }));
     onChange(updatedImages);
   };
+
+  const baseOrder = useMemo(() => (page - 1) * pageSize, [page, pageSize])
+
+  const handleMoveUp = async (index: number) => {
+    if (index <= 0) return
+    const swapped = [...images]
+    const tmp = swapped[index - 1]
+    swapped[index - 1] = swapped[index]
+    swapped[index] = tmp
+    const withOrders = swapped.map((img, i) => ({ ...img, order: baseOrder + i + 1 }))
+    onChange(withOrders)
+    if (userId && productId) {
+      try {
+        const items = withOrders.map(img => ({ id: img.id, order: img.order || baseOrder + 1 }))
+        await fetch(`/api/products/images/reorder?user_id=${userId}&product_id=${productId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items })
+        })
+      } catch {}
+    }
+  }
+
+  const handleMoveDown = async (index: number) => {
+    if (index >= images.length - 1) return
+    const swapped = [...images]
+    const tmp = swapped[index + 1]
+    swapped[index + 1] = swapped[index]
+    swapped[index] = tmp
+    const withOrders = swapped.map((img, i) => ({ ...img, order: baseOrder + i + 1 }))
+    onChange(withOrders)
+    if (userId && productId) {
+      try {
+        const items = withOrders.map(img => ({ id: img.id, order: img.order || baseOrder + 1 }))
+        await fetch(`/api/products/images/reorder?user_id=${userId}&product_id=${productId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items })
+        })
+      } catch {}
+    }
+  }
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -182,7 +283,7 @@ export function ImageGallery({ images, onChange, maxImages = 5 }: ImageGalleryPr
         </Card>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {images.map((image) => (
+          {images.map((image, idx) => (
             <Card key={image.id} className="relative group">
               <CardContent className="p-2">
                 <div className="relative aspect-square">
@@ -217,6 +318,26 @@ export function ImageGallery({ images, onChange, maxImages = 5 }: ImageGalleryPr
                     <Button
                       type="button"
                       size="sm"
+                      variant="outline"
+                      className="h-6 w-6 p-0"
+                      onClick={() => handleMoveUp(idx)}
+                      title="Mover para cima"
+                    >
+                      <ArrowUp className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-6 w-6 p-0"
+                      onClick={() => handleMoveDown(idx)}
+                      title="Mover para baixo"
+                    >
+                      <ArrowDown className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
                       variant="destructive"
                       className="h-6 w-6 p-0"
                       onClick={() => handleRemoveImage(image.id)}
@@ -237,11 +358,15 @@ export function ImageGallery({ images, onChange, maxImages = 5 }: ImageGalleryPr
         </div>
       )}
       
-      {images.length > 0 && (
-        <p className="text-xs text-muted-foreground text-center">
-          {images.length} de {maxImages} imagens adicionadas
+      <div className="flex items-center justify-between mt-2">
+        <p className="text-xs text-muted-foreground">
+          Página {page} de {Math.max(1, Math.ceil(total / pageSize))}
         </p>
-      )}
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" size="sm" disabled={loading || page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Anterior</Button>
+          <Button type="button" variant="outline" size="sm" disabled={loading || page >= Math.ceil(total / pageSize)} onClick={() => setPage(p => p + 1)}>Próxima</Button>
+        </div>
+      </div>
     </div>
   );
 }

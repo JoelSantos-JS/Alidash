@@ -251,8 +251,14 @@ export default function ProdutosPage() {
           description: "Produto atualizado com sucesso!",
         })
       } else {
-        const errorText = await updateResponse.text()
-        console.error('❌ Erro ao atualizar produto:', errorText)
+        let errorDetails = ''
+        try {
+          const err = await updateResponse.json()
+          errorDetails = err?.details || ''
+        } catch {
+          errorDetails = await updateResponse.text()
+        }
+        console.error('❌ Erro ao atualizar produto:', errorDetails)
         toast({
           title: "Erro",
           description: "Não foi possível atualizar o produto. Tente novamente.",

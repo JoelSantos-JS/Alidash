@@ -33,10 +33,12 @@ export async function PUT(request: NextRequest) {
       success: true
     })
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erro desconhecido'
+    console.error('Erro ao atualizar produto:', message)
     return NextResponse.json({
       success: false,
-      supabaseSuccess: false,
-      errors: [error instanceof Error ? error.message : 'Erro desconhecido']
+      error: 'Erro ao atualizar produto',
+      details: message
     }, { status: 500 })
   }
 }

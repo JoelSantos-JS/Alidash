@@ -603,7 +603,6 @@ export class SupabaseService {
     if (updates.packagingCost !== undefined) updateData.packaging_cost = updates.packagingCost
     if (updates.marketingCost !== undefined) updateData.marketing_cost = updates.marketingCost
     if (updates.otherCosts !== undefined) updateData.other_costs = updates.otherCosts
-    if (updates.totalCost !== undefined) updateData.total_cost = updates.totalCost
     if (updates.sellingPrice !== undefined) updateData.selling_price = updates.sellingPrice
     if (updates.expectedProfit !== undefined) updateData.expected_profit = updates.expectedProfit
     if (updates.profitMargin !== undefined) updateData.profit_margin = updates.profitMargin

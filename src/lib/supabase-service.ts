@@ -604,8 +604,7 @@ export class SupabaseService {
     if (updates.marketingCost !== undefined) updateData.marketing_cost = updates.marketingCost
     if (updates.otherCosts !== undefined) updateData.other_costs = updates.otherCosts
     if (updates.sellingPrice !== undefined) updateData.selling_price = updates.sellingPrice
-    if (updates.expectedProfit !== undefined) updateData.expected_profit = updates.expectedProfit
-    if (updates.profitMargin !== undefined) updateData.profit_margin = updates.profitMargin
+    // expected_profit e profit_margin são calculados por trigger no banco
     if (updates.quantity !== undefined) updateData.quantity = updates.quantity
     if (updates.quantitySold !== undefined) updateData.quantity_sold = updates.quantitySold
     if (updates.status !== undefined) updateData.status = updates.status

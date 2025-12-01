@@ -165,6 +165,7 @@ export default function Home() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [periodFilter, setPeriodFilter] = useState<"day" | "week" | "month">("month");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [animatingMetric, setAnimatingMetric] = useState<null | 'revenue' | 'expenses'>(null);
 
   // Controle de visualização para Dashboard Pessoal
 const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
@@ -1069,7 +1070,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                               }}
                             >
                               <CalendarIcon className="h-4 w-4" />
-                              <span className="text-xs">Selecionar data específica</span>
+                              <span className="text-xs">Selecione a data</span>
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1rem)] sm:max-w-none" align="center" side="bottom" sideOffset={8}>
@@ -1351,7 +1352,30 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
             {/* Metrics Cards - Apenas para modo empresarial */}
             {!isPersonal && (
               <div className="responsive-grid responsive-grid-4 mb-6 md:mb-8">
-              <Card className="transform-gpu">
+              <Card
+                className={cn(
+                  "transform-gpu cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95",
+                  animatingMetric === 'revenue' ? "animate-pulse ring-2 ring-green-500" : ""
+                )}
+                onClick={() => {
+                  setSidebarOpen(true);
+                  setAnimatingMetric('revenue');
+                  setTimeout(() => {
+                    router.push(isPersonal ? '/pessoal/receitas' : '/receitas');
+                  }, 180);
+                }}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSidebarOpen(true);
+                    setAnimatingMetric('revenue');
+                    setTimeout(() => {
+                      router.push(isPersonal ? '/pessoal/receitas' : '/receitas');
+                    }, 180);
+                  }
+                }}
+              >
                 <CardContent className="p-3 sm:p-4 md:p-6">
                   <div className="flex items-center justify-between mb-2 sm:mb-4">
                     <h3 className="text-xs sm:text-sm font-medium text-muted-foreground">
@@ -1368,7 +1392,30 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 </CardContent>
               </Card>
 
-              <Card className="transform-gpu">
+              <Card
+                className={cn(
+                  "transform-gpu cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95",
+                  animatingMetric === 'expenses' ? "animate-pulse ring-2 ring-red-500" : ""
+                )}
+                onClick={() => {
+                  setSidebarOpen(true);
+                  setAnimatingMetric('expenses');
+                  setTimeout(() => {
+                    router.push(isPersonal ? '/pessoal/despesas' : '/despesas');
+                  }, 180);
+                }}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSidebarOpen(true);
+                    setAnimatingMetric('expenses');
+                    setTimeout(() => {
+                      router.push(isPersonal ? '/pessoal/despesas' : '/despesas');
+                    }, 180);
+                  }
+                }}
+              >
                 <CardContent className="p-3 sm:p-4 md:p-6">
                   <div className="flex items-center justify-between mb-2 sm:mb-4">
                     <h3 className="text-xs sm:text-sm font-medium text-muted-foreground">

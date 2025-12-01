@@ -64,6 +64,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Dia de pagamento deve estar entre 1 e 31' }, { status: 400 });
     }
 
+    // Bloqueio para plano gratuito após 3 dias
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabaseUsers = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    const { data: userRow } = await supabaseUsers
+      .from('users')
+      .select('account_type, created_at, plan_started_at')
+      .eq('id', user_id)
+      .single()
+    const isPaid = userRow?.account_type === 'pro' || userRow?.account_type === 'basic'
+    if (!isPaid) {
+      const startAt = userRow?.plan_started_at ? new Date(userRow.plan_started_at) : (userRow?.created_at ? new Date(userRow.created_at) : new Date())
+      const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
+      if (diffDays >= 3) {
+        return NextResponse.json({ error: 'Período gratuito de 3 dias expirado' }, { status: 403 })
+      }
+    }
+
     // Verificar se já existe configuração para este usuário
     const { data: existingSettings } = await supabase
       .from('personal_salary_settings')

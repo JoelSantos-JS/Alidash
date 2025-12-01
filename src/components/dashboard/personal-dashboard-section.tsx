@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -76,6 +78,7 @@ interface PersonalDashboardSectionProps {
 }
 
 export function PersonalDashboardSection({ user, periodFilter, isLoading, viewMode = "all", selectedDate = null }: PersonalDashboardSectionProps) {
+  const router = useRouter();
   const [personalSummary, setPersonalSummary] = useState<PersonalSummary>({
     totalIncome: 0,
     totalExpenses: 0,
@@ -97,6 +100,7 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading, viewMo
   const [showSalarySettings, setShowSalarySettings] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const CACHE_TTL_MS = 30_000; // 30 segundos
+  const [animatingCard, setAnimatingCard] = useState<null | 'income' | 'expenses'>(null);
 
   // Unificar receitas e despesas e ordenar por data desc (top-level Hook)
   const recentTransactions = useMemo(() => {
@@ -435,8 +439,24 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading, viewMo
     <div className="space-y-6">
       {/* Cards de Resumo Financeiro Pessoal */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* Receitas/Ganhos */}
-        <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+        <Card
+          className={cn(
+            "transform-gpu hover:scale-105 transition-transform duration-200 cursor-pointer active:scale-95",
+            animatingCard === 'income' ? "animate-pulse ring-2 ring-green-500" : ""
+          )}
+          onClick={() => {
+            setAnimatingCard('income');
+            setTimeout(() => router.push('/pessoal/receitas'), 180);
+          }}
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setAnimatingCard('income');
+              setTimeout(() => router.push('/pessoal/receitas'), 180);
+            }
+          }}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{viewMode === 'day' ? 'Ganhos do Dia' : 'Ganhos do Mês'}</CardTitle>
             <div className="flex items-center gap-2">
@@ -469,8 +489,24 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading, viewMo
           </CardContent>
         </Card>
 
-        {/* Gastos */}
-        <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
+        <Card
+          className={cn(
+            "transform-gpu hover:scale-105 transition-transform duration-200 cursor-pointer active:scale-95",
+            animatingCard === 'expenses' ? "animate-pulse ring-2 ring-red-500" : ""
+          )}
+          onClick={() => {
+            setAnimatingCard('expenses');
+            setTimeout(() => router.push('/pessoal/despesas'), 180);
+          }}
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setAnimatingCard('expenses');
+              setTimeout(() => router.push('/pessoal/despesas'), 180);
+            }
+          }}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{viewMode === 'day' ? 'Gastos do Dia' : 'Gastos do Mês'}</CardTitle>
             <TrendingDown className="h-4 w-4 text-red-600" />

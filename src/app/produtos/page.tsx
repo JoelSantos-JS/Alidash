@@ -299,23 +299,45 @@ export default function ProdutosPage() {
     })
   }
 
-  const handleSaleCreated = (sale: any) => {
-    // Update the product with new sale data
-    setProducts(prev => prev.map(p => {
-      if (p.id === sale.productId) {
-        return {
-          ...p,
-          quantitySold: p.quantitySold + sale.quantity,
-          status: p.quantitySold + sale.quantity >= p.quantity ? 'sold' : p.status
-        }
+  const handleSaleCreated = async (sale: any) => {
+    if (!user?.id || !selectedProduct) return
+    try {
+      const response = await fetch(`/api/sales/create?user_id=${user.id}&product_id=${selectedProduct.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quantity: sale.quantity,
+          buyerName: sale.buyerName,
+          date: sale.date
+        })
+      })
+      if (!response.ok) {
+        const errText = await response.text()
+        throw new Error(errText)
       }
-      return p
-    }))
-    setIsSaleFormOpen(false)
-    toast({
-      title: "Sucesso",
-      description: "Venda registrada com sucesso!",
-    })
+      setProducts(prev => prev.map(p => {
+        if (p.id === selectedProduct.id) {
+          const updatedQtySold = p.quantitySold + sale.quantity
+          return {
+            ...p,
+            quantitySold: updatedQtySold,
+            status: updatedQtySold >= p.quantity ? 'sold' : p.status
+          }
+        }
+        return p
+      }))
+      setIsSaleFormOpen(false)
+      toast({
+        title: 'Sucesso',
+        description: 'Venda registrada com sucesso!'
+      })
+    } catch (e) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível registrar a venda.',
+        variant: 'destructive'
+      })
+    }
   }
 
   const handleRefresh = () => {

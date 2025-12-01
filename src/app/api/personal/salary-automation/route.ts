@@ -42,6 +42,25 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
+      const { data: userRow } = await supabase
+        .from('users')
+        .select('account_type, created_at, plan_started_at')
+        .eq('id', user_id)
+        .single()
+      const isPaid = userRow?.account_type === 'pro' || userRow?.account_type === 'basic'
+      if (!isPaid) {
+        const startAt = userRow?.plan_started_at ? new Date(userRow.plan_started_at) : (userRow?.created_at ? new Date(userRow.created_at) : new Date())
+        const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
+        if (diffDays >= 3) {
+          return NextResponse.json({ error: 'Período gratuito de 3 dias expirado' }, { status: 403 })
+        }
+      }
+
       result = await applyUserFixedSalary(user_id, month, year);
     }
 

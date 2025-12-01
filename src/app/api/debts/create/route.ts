@@ -28,6 +28,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { data: userRow } = await supabase
+      .from('users')
+      .select('account_type, created_at, plan_started_at')
+      .eq('id', supabaseUserId)
+      .single()
+    const isPaid = userRow?.account_type === 'pro' || userRow?.account_type === 'basic'
+    if (!isPaid) {
+      const startAt = userRow?.plan_started_at ? new Date(userRow.plan_started_at) : (userRow?.created_at ? new Date(userRow.created_at) : new Date())
+      const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
+      if (diffDays >= 3) {
+        return NextResponse.json({ error: 'Período gratuito de 3 dias expirado' }, { status: 403 })
+      }
+    }
+
     // Converter dados do frontend para o formato do Supabase
     const debtData: any = {
       user_id: supabaseUserId,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdminService } from '@/lib/supabase-service'
+import { createClient } from '@supabase/supabase-js'
 
 export async function GET(request: NextRequest) {
   try {
@@ -46,8 +47,27 @@ export async function GET(request: NextRequest) {
       purchaseDate: new Date(product.purchase_date || product.created_at),
       roi: product.roi || 0,
       actualProfit: product.actual_profit || 0,
-      sales: [] // Por enquanto, sem vendas
+      sales: []
     }))
+
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+    const { data: sales } = await supabase
+      .from('sales')
+      .select('id, product_id, quantity, buyer_name, date')
+      .eq('user_id', userId)
+
+    if (sales && sales.length > 0) {
+      const byProduct = new Map<string, any[]>()
+      for (const s of sales) {
+        const arr = byProduct.get(s.product_id) || []
+        arr.push({ id: s.id, date: new Date(s.date), quantity: s.quantity, buyerName: s.buyer_name || undefined, productId: s.product_id })
+        byProduct.set(s.product_id, arr)
+      }
+      for (let i = 0; i < transformedProducts.length; i++) {
+        const p = transformedProducts[i]
+        p.sales = byProduct.get(p.id) || []
+      }
+    }
 
     return NextResponse.json({ 
       success: true, 

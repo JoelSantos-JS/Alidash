@@ -15,6 +15,16 @@ export async function POST(request: NextRequest) {
     }
 
     const productData: Omit<Product, 'id'> = await request.json()
+    const userRow = await supabaseAdminService.getUserById(userId)
+    const accountType = userRow?.account_type
+    const isPaid = accountType === 'pro' || accountType === 'basic'
+    if (!isPaid) {
+      const startAt = userRow?.plan_started_at ? new Date(userRow.plan_started_at) : (userRow?.created_at ? new Date(userRow.created_at) : new Date())
+      const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
+      if (diffDays >= 3) {
+        return NextResponse.json({ error: 'Período gratuito de 3 dias expirado' }, { status: 403 })
+      }
+    }
 
     console.log('🔍 Criando produto (Supabase) para usuário:', userId)
 

@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     const { data: userRow, error: userError } = await supabase
       .from('users')
-      .select('account_type')
+      .select('account_type, created_at, plan_started_at')
       .eq('id', userId)
       .single()
 
@@ -24,6 +24,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Erro ao validar usuário' }, { status: 500 })
     }
 
+    const isPaid = userRow?.account_type === 'pro' || userRow?.account_type === 'basic'
+    if (!isPaid) {
+      const startAt = userRow?.plan_started_at ? new Date(userRow.plan_started_at) : (userRow?.created_at ? new Date(userRow.created_at) : new Date())
+      const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
+      if (diffDays >= 3) {
+        return NextResponse.json({ error: 'Período gratuito de 3 dias expirado' }, { status: 403 })
+      }
+    }
     if (userRow?.account_type === 'basic') {
       const now = new Date()
       const start = new Date(now.getFullYear(), now.getMonth(), 1)

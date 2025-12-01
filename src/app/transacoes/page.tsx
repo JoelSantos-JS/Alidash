@@ -171,7 +171,7 @@ function TransacoesPageContent() {
 
         // Carregar transações do Supabase
         try {
-          const transactionsResponse = await fetch(`/api/transactions/get?user_id=${user.id}`);
+          const transactionsResponse = await fetch(`/api/transactions/get?user_id=${user.id}&_=${Date.now()}`);
             
           if (transactionsResponse.ok) {
             const transactionsResult = await transactionsResponse.json();
@@ -293,7 +293,7 @@ function TransacoesPageContent() {
       console.log("Usuário autenticado:", user.id);
       
       // Buscar transações do período
-      const transactionsResponse = await fetch(`/api/transactions/get?user_id=${user.id}&start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}`);
+      const transactionsResponse = await fetch(`/api/transactions/get?user_id=${user.id}&start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}&_=${Date.now()}`);
         
       if (transactionsResponse.ok) {
         const transactionsResult = await transactionsResponse.json();

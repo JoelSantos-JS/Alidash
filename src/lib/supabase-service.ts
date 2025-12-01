@@ -649,6 +649,7 @@ export class SupabaseService {
     unitPrice: number
     totalAmount: number
     date: Date
+    buyerName?: string
     notes?: string
     productId: string
   }) {
@@ -659,6 +660,7 @@ export class SupabaseService {
       unit_price: saleData.unitPrice,
       total_amount: saleData.totalAmount,
       date: saleData.date.toISOString(),
+      buyer_name: saleData.buyerName || null,
       notes: saleData.notes || ''
     }
 

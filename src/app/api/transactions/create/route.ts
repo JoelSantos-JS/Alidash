@@ -51,6 +51,16 @@ export async function POST(request: NextRequest) {
       installmentInfo: transaction.installmentInfo || null
     };
 
+    const userRow = await supabaseAdminService.getUserById(user_id)
+    const accountType = userRow?.account_type
+    const isPaid = accountType === 'pro' || accountType === 'basic'
+    if (!isPaid) {
+      const startAt = userRow?.plan_started_at ? new Date(userRow.plan_started_at) : (userRow?.created_at ? new Date(userRow.created_at) : new Date())
+      const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
+      if (diffDays >= 3) {
+        return NextResponse.json({ error: 'Período gratuito de 3 dias expirado' }, { status: 403 })
+      }
+    }
     console.log('🔧 Criando transação usando SupabaseService...');
     
     // Usar o método createTransaction do SupabaseService que tem a lógica de criação automática

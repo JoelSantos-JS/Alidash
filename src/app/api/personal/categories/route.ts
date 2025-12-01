@@ -84,6 +84,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Bloqueio para plano gratuito após 3 dias
+    const { data: userRow } = await supabaseAdminService.client
+      .from('users')
+      .select('account_type, created_at, plan_started_at')
+      .eq('id', user_id)
+      .single()
+    const isPaid = userRow?.account_type === 'pro' || userRow?.account_type === 'basic'
+    if (!isPaid) {
+      const startAt = userRow?.plan_started_at ? new Date(userRow.plan_started_at) : (userRow?.created_at ? new Date(userRow.created_at) : new Date())
+      const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
+      if (diffDays >= 3) {
+        return NextResponse.json({ success: false, error: 'Período gratuito de 3 dias expirado' }, { status: 403 })
+      }
+    }
+
     // Validar dados obrigatórios
     if (!categoryData.name || !categoryData.type || !categoryData.category || !categoryData.color || !categoryData.icon) {
       return NextResponse.json(
@@ -238,3 +253,17 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+    // Bloqueio para plano gratuito após 3 dias
+    const { data: userRow } = await supabaseAdminService.client
+      .from('users')
+      .select('account_type, created_at, plan_started_at')
+      .eq('id', user_id)
+      .single()
+    const isPaid = userRow?.account_type === 'pro' || userRow?.account_type === 'basic'
+    if (!isPaid) {
+      const startAt = userRow?.plan_started_at ? new Date(userRow.plan_started_at) : (userRow?.created_at ? new Date(userRow.created_at) : new Date())
+      const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
+      if (diffDays >= 3) {
+        return NextResponse.json({ success: false, error: 'Período gratuito de 3 dias expirado' }, { status: 403 })
+      }
+    }

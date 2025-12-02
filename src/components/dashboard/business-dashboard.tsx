@@ -26,7 +26,7 @@ import { ProductCard } from "@/components/product/product-card";
 import { RevenueSection } from "@/components/dashboard/revenue-section";
 import { ExpensesSection } from "@/components/dashboard/expenses-section";
 import { TransactionsSection } from "@/components/dashboard/transactions-section";
-import { SalesHistorySection } from "@/components/dashboard/sales-history-section";
+ 
 import { useAuth } from "@/hooks/use-supabase-auth";
 import type { Product } from "@/types";
 
@@ -190,9 +190,6 @@ export function BusinessDashboard({
           </div>
           <div className="lg:col-span-2 xl:col-span-3">
             <CategoryChart data={products} isLoading={isLoading}/>
-          </div>
-          <div className="lg:col-span-5 xl:col-span-3">
-            <SalesTrendsChart data={products} isLoading={isLoading} />
           </div>
         </div>
 

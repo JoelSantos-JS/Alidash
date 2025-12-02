@@ -297,18 +297,22 @@ export function SalesTrendsChart({ data, isLoading }: SalesTrendsChartProps) {
               Análise temporal de vendas, receita e performance
             </CardDescription>
           </div>
-          {stats.bestDay && (
-            <div className="text-right">
-              <div className="flex items-center gap-1 text-sm font-medium">
+        </div>
+
+        {stats.bestDay && (
+          <div className="mt-3">
+            <div className="p-3 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950">
+              <div className="flex items-center gap-2 mb-1">
                 <Calendar className="h-4 w-4 text-purple-600" />
-                Melhor dia: {stats.bestDay.displayDate}
+                <span className="text-sm font-medium">Melhor dia</span>
               </div>
-              <div className="text-xs text-muted-foreground">
-                {stats.bestDay.vendas} vendas
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold">{stats.bestDay.displayDate}</div>
+                <div className="text-xs text-muted-foreground">{stats.bestDay.vendas} vendas</div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
         
         {/* Stats Cards */}
         <div className="grid grid-cols-2 gap-2 mt-4">

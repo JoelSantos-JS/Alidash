@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json(
       { 
+        success: false,
         error: 'Erro interno do servidor',
         details: error instanceof Error ? error.message : String(error)
       },
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
     
     if (!user) {
       return NextResponse.json(
-        { error: `Usuário não encontrado no Supabase para user_id: ${user_id}` },
+        { success: false, error: `Usuário não encontrado no Supabase para user_id: ${user_id}` },
         { status: 404 }
       )
     }
@@ -100,6 +101,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json(
       { 
+        success: false,
         error: 'Erro interno do servidor',
         details: error instanceof Error ? error.message : String(error)
       },
@@ -127,13 +129,14 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Atualizar categoria
+    const updatePayload: Record<string, any> = {}
+    if (typeof updates?.name === 'string') updatePayload.name = updates.name
+    if (typeof updates?.description === 'string') updatePayload.description = updates.description
+    if (typeof updates?.type === 'string') updatePayload.type = updates.type
+
     const { data, error } = await supabaseAdminService.client
       .from('categories')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq('id', categoryId)
       .select()
       .single()
@@ -150,6 +153,7 @@ export async function PUT(request: NextRequest) {
     
     return NextResponse.json(
       { 
+        success: false,
         error: 'Erro interno do servidor',
         details: error instanceof Error ? error.message : String(error)
       },
@@ -188,6 +192,7 @@ export async function DELETE(request: NextRequest) {
     
     return NextResponse.json(
       { 
+        success: false,
         error: 'Erro interno do servidor',
         details: error instanceof Error ? error.message : String(error)
       },

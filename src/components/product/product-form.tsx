@@ -107,7 +107,18 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
         trackingCode: productToEdit.trackingCode || '',
         description: productToEdit.description || '',
         aliexpressLink: productToEdit.aliexpressLink || '',
-        images: productToEdit.images || [],
+        images: (productToEdit.images && productToEdit.images.length > 0)
+          ? productToEdit.images
+          : (productToEdit.imageUrl
+              ? [{
+                  id: (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+                  url: productToEdit.imageUrl,
+                  type: 'main',
+                  alt: 'Imagem principal do produto',
+                  created_at: new Date().toISOString(),
+                  order: 1,
+                }]
+              : []),
      } : {
         name: "",
         category: undefined,
@@ -144,7 +155,7 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
   const watchedCategory = watch("category");
 
   React.useEffect(() => {
-    if (productToEdit && !categoryOptions.includes(productToEdit.category)) {
+    if(productToEdit && !categoryOptions.includes(productToEdit.category)) {
         setIsCustomCategory(true);
     }
   }, [productToEdit]);
@@ -177,9 +188,9 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
     return { totalCost, expectedProfit, profitMargin, roi, actualProfit };
   }, []);
 
-  const onSubmit = (data: z.infer<typeof productSchema>) => {
+  const onSubmit = async (data: z.infer<typeof productSchema>) => {
     const financials = calculateFinancials(data);
-    onSave({ 
+    await onSave({ 
         ...data, 
         ...financials, 
         id: productToEdit?.id || '',
@@ -190,6 +201,22 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
         trackingCode: data.trackingCode || '',
      });
   };
+
+  React.useEffect(() => {
+    const imgs = watchedValues.images || []
+    const mainUrl = watchedValues.imageUrl
+    if (productToEdit && imgs.length === 0 && mainUrl && mainUrl.trim() !== '') {
+      const synthesized = [{
+        id: (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        url: mainUrl,
+        type: 'main' as const,
+        alt: 'Imagem principal do produto',
+        created_at: new Date().toISOString(),
+        order: 1,
+      }]
+      setValue('images', synthesized)
+    }
+  }, [productToEdit, watchedValues.imageUrl])
 
   // IA removida: sem handlers de sugestão de preço/descrição
   

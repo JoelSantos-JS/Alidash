@@ -47,7 +47,8 @@ export async function GET(request: NextRequest) {
       purchaseDate: new Date(product.purchase_date || product.created_at),
       roi: product.roi || 0,
       actualProfit: product.actual_profit || 0,
-      sales: []
+      sales: [],
+      images: []
     }))
 
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
@@ -66,6 +67,38 @@ export async function GET(request: NextRequest) {
       for (let i = 0; i < transformedProducts.length; i++) {
         const p = transformedProducts[i]
         p.sales = byProduct.get(p.id) || []
+      }
+    }
+
+    const { data: allImages } = await supabase
+      .from('product_images')
+      .select('id, product_id, url, type, alt, created_at, order')
+      .eq('user_id', userId)
+
+    if (allImages && allImages.length > 0) {
+      const imgsByProduct = new Map<string, any[]>()
+      for (const img of allImages) {
+        const arr = imgsByProduct.get(img.product_id) || []
+        arr.push({
+          id: img.id,
+          url: img.url,
+          type: img.type || 'gallery',
+          alt: img.alt || '',
+          created_at: img.created_at,
+          order: img.order || 0,
+        })
+        imgsByProduct.set(img.product_id, arr)
+      }
+      for (let i = 0; i < transformedProducts.length; i++) {
+        const p = transformedProducts[i]
+        const imgs = imgsByProduct.get(p.id) || []
+        transformedProducts[i] = { ...p, images: imgs.length > 0 ? imgs.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) : (p.imageUrl ? [{ id: `${p.id}-main`, url: p.imageUrl, type: 'main', alt: 'Imagem principal', created_at: new Date().toISOString(), order: 1 }] : []) }
+      }
+    } else {
+      // Fallback: criar imagem principal a partir de imageUrl
+      for (let i = 0; i < transformedProducts.length; i++) {
+        const p = transformedProducts[i]
+        transformedProducts[i] = { ...p, images: p.imageUrl ? [{ id: `${p.id}-main`, url: p.imageUrl, type: 'main', alt: 'Imagem principal', created_at: new Date().toISOString(), order: 1 }] : [] }
       }
     }
 

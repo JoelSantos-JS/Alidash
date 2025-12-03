@@ -17,6 +17,8 @@ export async function GET(request: NextRequest) {
     
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('user_id');
+    const startDateParam = searchParams.get('start_date');
+    const endDateParam = searchParams.get('end_date');
 
     console.log('🔍 Buscando transações para usuário:', userId);
 
@@ -28,13 +30,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Query simples para testar
-    console.log('🔧 Executando query simples...');
-    const { data: transactions, error } = await supabase
+    // Montar query com filtros opcionais de data
+    console.log('🔧 Executando query com filtros de data...');
+    let query = supabase
       .from('transactions')
       .select('*')
-      .eq('user_id', userId)
-      .order('date', { ascending: false });
+      .eq('user_id', userId);
+
+    if (startDateParam) {
+      const startDate = new Date(startDateParam);
+      if (!isNaN(startDate.getTime())) {
+        query = query.gte('date', startDate.toISOString());
+      }
+    }
+
+    if (endDateParam) {
+      const endDate = new Date(endDateParam);
+      if (!isNaN(endDate.getTime())) {
+        query = query.lte('date', endDate.toISOString());
+      }
+    }
+
+    query = query.order('date', { ascending: false });
+
+    const { data: transactions, error } = await query;
 
     if (error) {
       console.error('❌ Erro ao buscar transações:', error);

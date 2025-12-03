@@ -32,6 +32,12 @@ interface TransactionsSectionProps {
   periodFilter: "day" | "week" | "month";
   currentDate?: Date;
   transactions?: TransactionType[];
+  previousMonthSummary?: {
+    totalIncome: number;
+    totalExpenses: number;
+    netBalance: number;
+    totalTransactions: number;
+  };
 }
 
 interface DisplayTransaction {
@@ -46,7 +52,7 @@ interface DisplayTransaction {
   balance?: number;
 }
 
-export function TransactionsSection({ products, periodFilter, currentDate = new Date(), transactions = [] }: TransactionsSectionProps) {
+export function TransactionsSection({ products, periodFilter, currentDate = new Date(), transactions = [], previousMonthSummary }: TransactionsSectionProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
@@ -68,21 +74,38 @@ export function TransactionsSection({ products, periodFilter, currentDate = new 
     }
     
     // Função para determinar o início do período baseado no filtro e data âncora
-    const getPeriodStart = () => {
-      const now = currentDate;
+    const getPeriodRange = () => {
+      const anchor = currentDate;
       switch (periodFilter) {
-        case "day":
-          return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        case "week":
-          return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        case "month":
-          return new Date(now.getFullYear(), now.getMonth(), 1);
-        default:
-          return new Date(now.getFullYear(), now.getMonth(), 1);
+        case "day": {
+          const start = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 0, 0, 0, 0);
+          const end = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 23, 59, 59, 999);
+          return { start, end };
+        }
+        case "week": {
+          const dayOfWeek = (anchor.getDay() + 6) % 7; // segunda=0
+          const start = new Date(anchor);
+          start.setDate(anchor.getDate() - dayOfWeek);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(start);
+          end.setDate(start.getDate() + 6);
+          end.setHours(23, 59, 59, 999);
+          return { start, end };
+        }
+        case "month": {
+          const start = new Date(anchor.getFullYear(), anchor.getMonth(), 1, 0, 0, 0, 0);
+          const end = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0, 23, 59, 59, 999);
+          return { start, end };
+        }
+        default: {
+          const start = new Date(anchor.getFullYear(), anchor.getMonth(), 1, 0, 0, 0, 0);
+          const end = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0, 23, 59, 59, 999);
+          return { start, end };
+        }
       }
     };
 
-    const periodStart = getPeriodStart();
+    const { start: periodStart, end: periodEnd } = getPeriodRange();
     const processedTransactions: DisplayTransaction[] = [];
     const usedIds = new Set<string>(); // Para garantir IDs únicos
     const transactionKeyMap = new Map<string, DisplayTransaction>(); // Para detectar duplicatas por chave única
@@ -214,14 +237,14 @@ export function TransactionsSection({ products, periodFilter, currentDate = new 
     //   return transactionDate >= periodStart;
     // });
     
-    // Filtrar transações pelo período selecionado
-    const filteredByPeriod = processedTransactions.filter(t => t.date >= periodStart);
+    // Filtrar transações pelo período selecionado (limites inclusivos)
+    const filteredByPeriod = processedTransactions.filter(t => t.date >= periodStart && t.date <= periodEnd);
 
     // Calcular estatísticas
-    const totalIncome = processedTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-    const totalExpenses = processedTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+    const totalIncome = filteredByPeriod.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+    const totalExpenses = filteredByPeriod.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
     const netBalance = totalIncome - totalExpenses;
-    const totalTransactions = processedTransactions.length;
+    const totalTransactions = filteredByPeriod.length;
 
     // Obter categorias únicas para filtro
     const categories = Array.from(new Set(processedTransactions.map(t => t.category))).sort();
@@ -287,6 +310,41 @@ export function TransactionsSection({ products, periodFilter, currentDate = new 
 
   return (
     <div className="space-y-4 md:space-y-6">
+      {/* Snapshot do mês anterior (quando disponível) */}
+      {previousMonthSummary && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Resumo mês anterior</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
+              <div>
+                <div className="text-xs text-muted-foreground">Saldo</div>
+                <div className={`text-lg font-semibold ${getBalanceColor(previousMonthSummary.netBalance)}`}>
+                  {previousMonthSummary.netBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Receitas</div>
+                <div className="text-lg font-semibold text-green-600">
+                  {previousMonthSummary.totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Despesas</div>
+                <div className="text-lg font-semibold text-red-600">
+                  {previousMonthSummary.totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Transações</div>
+                <div className="text-lg font-semibold">{previousMonthSummary.totalTransactions}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       {/* Cards de Resumo */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <Card>

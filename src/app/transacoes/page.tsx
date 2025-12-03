@@ -125,6 +125,7 @@ function TransacoesPageContent() {
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
   const [activeTab, setActiveTab] = useState("transactions");
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [previousMonthSummary, setPreviousMonthSummary] = useState<{ totalIncome: number; totalExpenses: number; netBalance: number; totalTransactions: number } | null>(null);
   
 
 
@@ -280,14 +281,32 @@ function TransacoesPageContent() {
     
     setIsLoading(true);
     try {
-      const month = date.getMonth() + 1; // Mês começa em 0, então adicionamos 1
-      const year = date.getFullYear();
-      
-      console.log(`Carregando transações para ${month}/${year}`);
-      
-      // Definir o primeiro e último dia do mês
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0);
+      const anchor = date;
+      const year = anchor.getFullYear();
+      const month = anchor.getMonth() + 1;
+      console.log(`Carregando transações para período ${periodFilter} em ${month}/${year}`);
+
+      const getRange = () => {
+        if (periodFilter === 'day') {
+          const start = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 0, 0, 0, 0);
+          const end = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 23, 59, 59, 999);
+          return { start, end };
+        }
+        if (periodFilter === 'week') {
+          const dayOfWeek = (anchor.getDay() + 6) % 7;
+          const start = new Date(anchor);
+          start.setDate(anchor.getDate() - dayOfWeek);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(start);
+          end.setDate(start.getDate() + 6);
+          end.setHours(23, 59, 59, 999);
+          return { start, end };
+        }
+        const start = new Date(anchor.getFullYear(), anchor.getMonth(), 1, 0, 0, 0, 0);
+        const end = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0, 23, 59, 59, 999);
+        return { start, end };
+      };
+      const { start: startDate, end: endDate } = getRange();
       
       // Log adicional para debug
       console.log("Usuário autenticado:", user.id);
@@ -313,6 +332,38 @@ function TransacoesPageContent() {
           title: "Transações carregadas",
           description: `${periodTransactions.length} transações encontradas para ${month}/${year}`,
         });
+
+        if (periodFilter === 'month') {
+          const prev = new Date(anchor.getFullYear(), anchor.getMonth() - 1, 1);
+          const prevStart = new Date(prev.getFullYear(), prev.getMonth(), 1, 0, 0, 0, 0);
+          const prevEnd = new Date(prev.getFullYear(), prev.getMonth() + 1, 0, 23, 59, 59, 999);
+          try {
+            const prevResp = await fetch(`/api/transactions/get?user_id=${user.id}&start_date=${prevStart.toISOString()}&end_date=${prevEnd.toISOString()}&_=${Date.now()}`);
+            if (prevResp.ok) {
+              const prevResult = await prevResp.json();
+              const prevTransactions = (prevResult.transactions || []).map((t: any) => ({
+                ...t,
+                date: new Date(t.date),
+                amount: parseFloat(t.amount)
+              }));
+              const totalIncome = prevTransactions.filter((t: any) => (t.type === 'income' || t.type === 'revenue')).reduce((acc: number, t: any) => acc + t.amount, 0);
+              const totalExpenses = prevTransactions.filter((t: any) => (t.type === 'expense')).reduce((acc: number, t: any) => acc + t.amount, 0);
+              const netBalance = totalIncome - totalExpenses;
+              setPreviousMonthSummary({
+                totalIncome,
+                totalExpenses,
+                netBalance,
+                totalTransactions: prevTransactions.length
+              });
+            } else {
+              setPreviousMonthSummary({ totalIncome: 0, totalExpenses: 0, netBalance: 0, totalTransactions: 0 });
+            }
+          } catch (_) {
+            setPreviousMonthSummary({ totalIncome: 0, totalExpenses: 0, netBalance: 0, totalTransactions: 0 });
+          }
+        } else {
+          setPreviousMonthSummary(null);
+        }
       } else if (transactionsResponse.status === 404) {
         // Sem transações no período: tratar silenciosamente em produção
         setTransactions([]);
@@ -335,10 +386,10 @@ function TransacoesPageContent() {
         description: "Não foi possível carregar as transações para o período selecionado.",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  } finally {
+    setIsLoading(false);
+  }
+};
   
   // Carregar transações do período atual quando o componente montar ou a data mudar
   useEffect(() => {
@@ -347,6 +398,12 @@ function TransacoesPageContent() {
       loadTransactionsForPeriod(currentDate);
     }
   }, [user, authLoading, currentDate]);
+
+  useEffect(() => {
+    if (user && !authLoading) {
+      loadTransactionsForPeriod(currentDate);
+    }
+  }, [periodFilter]);
   
   // Adicionar log para verificar se as transações estão sendo carregadas corretamente
   useEffect(() => {
@@ -601,7 +658,9 @@ function TransacoesPageContent() {
               <TransactionsSection 
                 products={products}
                 periodFilter={periodFilter}
+                currentDate={currentDate}
                 transactions={transactions}
+                previousMonthSummary={previousMonthSummary || undefined}
               />
             </TabsContent>
 

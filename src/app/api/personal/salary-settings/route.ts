@@ -72,15 +72,15 @@ export async function POST(request: NextRequest) {
     )
     const { data: userRow } = await supabaseUsers
       .from('users')
-      .select('account_type, created_at, plan_started_at')
+      .select('account_type, created_at')
       .eq('id', user_id)
       .single()
     const isPaid = userRow?.account_type === 'pro' || userRow?.account_type === 'basic'
     if (!isPaid) {
-      const startAt = userRow?.plan_started_at ? new Date(userRow.plan_started_at) : (userRow?.created_at ? new Date(userRow.created_at) : new Date())
+      const startAt = userRow?.created_at ? new Date(userRow.created_at) : new Date()
       const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
-      if (diffDays >= 3) {
-        return NextResponse.json({ error: 'Período gratuito de 3 dias expirado' }, { status: 403 })
+      if (diffDays >= 5) {
+        return NextResponse.json({ error: 'Período gratuito de 5 dias expirado' }, { status: 403 })
       }
     }
 
@@ -93,12 +93,12 @@ export async function POST(request: NextRequest) {
 
     const settingsData = {
       user_id,
-      amount: parseFloat(amount),
+      amount: typeof amount === 'number' ? amount : parseFloat(String(amount)),
       description,
-      payment_day: parseInt(payment_day),
-      is_active: Boolean(is_active),
-      is_taxable: Boolean(is_taxable),
-      tax_withheld: parseFloat(tax_withheld) || 0,
+      payment_day: typeof payment_day === 'number' ? payment_day : parseInt(String(payment_day)),
+      is_active: typeof is_active === 'boolean' ? is_active : String(is_active).toLowerCase() === 'true',
+      is_taxable: typeof is_taxable === 'boolean' ? is_taxable : String(is_taxable).toLowerCase() === 'true',
+      tax_withheld: typeof tax_withheld === 'number' ? tax_withheld : (parseFloat(String(tax_withheld)) || 0),
       source,
       notes: notes || null,
       updated_at: new Date().toISOString()
@@ -121,11 +121,10 @@ export async function POST(request: NextRequest) {
       result = data;
     } else {
       // Criar nova configuração
-      settingsData.created_at = new Date().toISOString();
-      
+      const insertData = { ...settingsData, created_at: new Date().toISOString() };
       const { data, error } = await supabase
         .from('personal_salary_settings')
-        .insert([settingsData])
+        .insert([insertData])
         .select()
         .single();
 

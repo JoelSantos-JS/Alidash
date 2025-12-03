@@ -123,15 +123,15 @@ export async function POST(request: NextRequest) {
 
     const { data: userRow } = await supabase
       .from('users')
-      .select('account_type, created_at, plan_started_at')
+      .select('account_type, created_at')
       .eq('id', user_id)
       .single()
     const isPaid = userRow?.account_type === 'pro' || userRow?.account_type === 'basic'
     if (!isPaid) {
-      const startAt = userRow?.plan_started_at ? new Date(userRow.plan_started_at) : (userRow?.created_at ? new Date(userRow.created_at) : new Date())
+      const startAt = userRow?.created_at ? new Date(userRow.created_at) : new Date()
       const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
-      if (diffDays >= 3) {
-        return NextResponse.json({ error: 'Período gratuito de 3 dias expirado' }, { status: 403 })
+      if (diffDays >= 5) {
+        return NextResponse.json({ error: 'Período gratuito de 5 dias expirado' }, { status: 403 })
       }
     }
     console.log('💸 Criando nova despesa pessoal:', { user_id, description, amount, category });

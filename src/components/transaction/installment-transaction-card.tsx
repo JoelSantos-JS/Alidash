@@ -18,12 +18,14 @@ interface InstallmentTransactionCardProps {
   transaction: Transaction;
   onEdit?: (transaction: Transaction) => void;
   onDelete?: (id: string) => void;
+  onConfirmPayment?: (transaction: Transaction) => void;
 }
 
 export function InstallmentTransactionCard({ 
   transaction, 
   onEdit, 
-  onDelete 
+  onDelete,
+  onConfirmPayment
 }: InstallmentTransactionCardProps) {
   if (!isInstallmentTransaction(transaction) || !transaction.installmentInfo) {
     return null;
@@ -155,6 +157,14 @@ export function InstallmentTransactionCard({
           </div>
 
           <div className="flex gap-2">
+            {transaction.status === 'pending' && onConfirmPayment && (
+              <button
+                onClick={() => onConfirmPayment(transaction)}
+                className="text-sm text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 font-medium"
+              >
+                Confirmar pagamento
+              </button>
+            )}
             {onEdit && (
               <button
                 onClick={() => onEdit(transaction)}

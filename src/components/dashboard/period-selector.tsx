@@ -63,6 +63,8 @@ export function PeriodSelector({
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="center">
           <CalendarComponent
+            mode="single"
+            selected={currentDate}
             defaultMonth={currentDate}
             onSelect={handleCalendarSelect}
             initialFocus

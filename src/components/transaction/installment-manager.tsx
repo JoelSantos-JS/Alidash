@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, CreditCard, AlertTriangle, CheckCircle } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { TransactionForm } from "./transaction-form";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { isInstallmentTransaction } from "@/lib/utils";
 import type { Transaction } from "@/types";
+import { useToast } from "@/hooks/use-toast";
 
 interface InstallmentManagerProps {
   transactions: Transaction[];
@@ -28,6 +29,7 @@ export function InstallmentManager({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [activeTab, setActiveTab] = useState("all");
+  const { toast } = useToast();
 
   // Filtrar transações parceladas
   console.log('🔍 InstallmentManager - Transações recebidas:', {
@@ -41,6 +43,29 @@ export function InstallmentManager({
   });
 
   const installmentTransactions = transactions.filter(isInstallmentTransaction);
+  const dueToday = useMemo(() => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = today.getMonth();
+    const d = today.getDate();
+    return installmentTransactions.filter(t => {
+      const due = t.installmentInfo?.nextDueDate ? new Date(t.installmentInfo.nextDueDate) : new Date(t.date);
+      return due.getFullYear() === y && due.getMonth() === m && due.getDate() === d && t.status === 'pending';
+    });
+  }, [installmentTransactions]);
+
+  useEffect(() => {
+    if (dueToday.length > 0) {
+      const messages = [1, 2, 3];
+      const timers = messages.map((_, i) => setTimeout(() => {
+        toast({
+          title: "Parcela vence hoje",
+          description: `${dueToday.length} compra${dueToday.length > 1 ? 's' : ''} parcelada${dueToday.length > 1 ? 's' : ''} com vencimento hoje`,
+        });
+      }, i * 1200));
+      return () => timers.forEach(t => clearTimeout(t));
+    }
+  }, [dueToday, toast]);
   
   console.log('🔍 InstallmentManager - Transações parceladas filtradas:', {
     total: installmentTransactions.length,
@@ -91,6 +116,32 @@ export function InstallmentManager({
       default:
         return installmentTransactions;
     }
+  };
+
+  const handleConfirmPayment = (transaction: Transaction) => {
+    if (!transaction.installmentInfo) return;
+    const info = transaction.installmentInfo;
+    const current = Math.min(info.currentInstallment + 1, info.totalInstallments);
+    const remaining = Math.max(0, (info.remainingAmount ?? Math.max(0, info.totalAmount - info.installmentAmount * info.currentInstallment)) - info.installmentAmount);
+    const nextDate = new Date(transaction.date);
+    nextDate.setMonth(nextDate.getMonth() + 1);
+    const completed = current >= info.totalInstallments;
+    const updated: Transaction = {
+      ...transaction,
+      status: completed ? 'completed' : 'pending',
+      date: completed ? transaction.date : nextDate,
+      installmentInfo: {
+        ...info,
+        currentInstallment: current,
+        remainingAmount: remaining,
+        nextDueDate: completed ? undefined : nextDate,
+      }
+    };
+    onUpdateTransaction(updated);
+    toast({
+      title: completed ? 'Parcelamento concluído' : 'Pagamento confirmado',
+      description: completed ? 'Todas as parcelas foram pagas' : `Parcela ${current}/${info.totalInstallments} confirmada`,
+    });
   };
 
   // Se não há transações parceladas, mostrar mensagem
@@ -231,6 +282,7 @@ export function InstallmentManager({
                       transaction={transaction}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
+                      onConfirmPayment={handleConfirmPayment}
                     />
                   ))}
                 </div>

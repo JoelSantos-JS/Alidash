@@ -56,12 +56,6 @@ function Calendar({
       components={{
         IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" {...props} />,
         IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" {...props} />,
-        Button: ({ className, ...props }) => (
-          <div className={cn(className)} {...props} />
-        ),
-        DayButton: ({ className, ...props }) => (
-          <div className={cn(className)} {...props} />
-        ),
       }}
       {...props}
     />

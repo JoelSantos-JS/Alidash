@@ -15,6 +15,8 @@ import { InstallmentManager } from "@/components/transaction/installment-manager
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const initialProducts: Product[] = [
   {
@@ -307,6 +309,13 @@ function TransacoesPageContent() {
         return { start, end };
       };
       const { start: startDate, end: endDate } = getRange();
+      const periodDescription = (
+        periodFilter === 'day'
+          ? format(anchor, 'dd/MM/yyyy', { locale: ptBR })
+          : periodFilter === 'week'
+          ? `${format(startDate, 'dd/MM/yyyy', { locale: ptBR })} a ${format(endDate, 'dd/MM/yyyy', { locale: ptBR })}`
+          : format(anchor, 'MM/yyyy', { locale: ptBR })
+      );
       
       // Log adicional para debug
       console.log("Usuário autenticado:", user.id);
@@ -330,7 +339,7 @@ function TransacoesPageContent() {
         
         toast({
           title: "Transações carregadas",
-          description: `${periodTransactions.length} transações encontradas para ${month}/${year}`,
+          description: `${periodTransactions.length} transações encontradas para ${periodDescription}`,
         });
 
         if (periodFilter === 'month') {
@@ -372,7 +381,7 @@ function TransacoesPageContent() {
         }
         toast({
           title: "Sem transações",
-          description: `Nenhuma transação registrada em ${month}/${year}`,
+          description: `Nenhuma transação registrada em ${periodDescription}`,
         });
       } else {
         throw new Error("Falha ao buscar transações do período");
@@ -628,6 +637,7 @@ function TransacoesPageContent() {
               currentDate={currentDate}
               onDateChange={(date) => {
                 setCurrentDate(date);
+                setPeriodFilter("day");
                 loadTransactionsForPeriod(date);
               }}
               className="ml-0"

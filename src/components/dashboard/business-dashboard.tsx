@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,8 +12,7 @@ import {
   ShoppingCart, 
   Target, 
   Archive,
-  ChevronLeft,
-  ChevronRight
+  BarChart3
 } from "lucide-react";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { SummaryCard } from "@/components/dashboard/summary-card";
@@ -94,47 +93,34 @@ export function BusinessDashboard({
     // loadDashboardData(userId, 'business', month, year);
   };
   
-  // Função para scroll das tabs com ref local (mais confiável)
-  const tabsScrollRef = useRef<HTMLDivElement | null>(null);
-  const handleTabScroll = (direction: 'left' | 'right') => {
-    const el = tabsScrollRef.current;
-    if (!el) return;
-    const scrollAmount = direction === 'left' ? -240 : 240;
-    el.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-  };
-
   return (
     <Tabs defaultValue="dashboard" className="w-full">
-      <div className="relative tabs-container">
-        {/* Botões de navegação */}
-        <button 
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-background/80 hover:bg-background border rounded-l-md p-1 text-muted-foreground hover:text-foreground transition-colors nav-button"
-          onClick={() => handleTabScroll('left')}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-        
-        <button 
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-background/80 hover:bg-background border rounded-r-md p-1 text-muted-foreground hover:text-foreground transition-colors nav-button"
-          onClick={() => handleTabScroll('right')}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
-        
-        <TabsList ref={tabsScrollRef} className="mb-4 sm:mb-6 overflow-x-auto flex-nowrap gap-1 responsive-tabs scrollbar-hide px-8">
-          <TabsTrigger value="dashboard" className="text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
+      <div>
+        <TabsList className="mb-4 sm:mb-6 grid w-full grid-cols-3 gap-2 bg-transparent p-0">
+          <TabsTrigger 
+            value="dashboard" 
+            className="w-full h-10 sm:h-12 text-sm sm:text-base rounded-none font-medium transition-colors hover:text-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
+          >
+            <BarChart3 className="h-4 w-4 mr-2" />
             <span className="hidden sm:inline">Dashboard Geral</span>
             <span className="sm:hidden">Dashboard</span>
           </TabsTrigger>
-          <TabsTrigger value="suppliers" className="text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
+          <TabsTrigger 
+            value="suppliers" 
+            className="w-full h-10 sm:h-12 text-sm sm:text-base rounded-none font-medium transition-colors hover:text-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
+          >
+            <Package className="h-4 w-4 mr-2" />
             <span className="hidden sm:inline">Análise de Fornecedores</span>
             <span className="sm:hidden">Fornecedores</span>
           </TabsTrigger>
-          <TabsTrigger value="sales" className="text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
+          <TabsTrigger 
+            value="sales" 
+            className="w-full h-10 sm:h-12 text-sm sm:text-base rounded-none font-medium transition-colors hover:text-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
+          >
+            <ShoppingCart className="h-4 w-4 mr-2" />
             <span className="hidden sm:inline">Histórico de Vendas</span>
             <span className="sm:hidden">Vendas</span>
           </TabsTrigger>
-          
         </TabsList>
       </div>
       

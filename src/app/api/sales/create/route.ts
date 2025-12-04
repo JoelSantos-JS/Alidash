@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     const { data: product, error: productError } = await supabase
       .from('products')
-      .select('id, selling_price')
+      .select('id, selling_price, quantity, quantity_sold, status')
       .eq('id', productId)
       .eq('user_id', userId)
       .single()
@@ -65,6 +65,22 @@ export async function POST(request: NextRequest) {
       buyerName,
       productId
     })
+
+    try {
+      const currentSold = Number(product.quantity_sold || 0)
+      const currentQty = Number(product.quantity || 0)
+      const updatedSold = currentSold + quantity
+      const newStatus = updatedSold >= currentQty && currentQty > 0 ? 'sold' : (product.status || 'selling')
+
+      await supabaseAdminService.updateProduct(userId, productId, {
+        quantitySold: updatedSold,
+        status: newStatus
+      })
+    } catch (_) {
+      // atualização do produto é opcional; não falhar a criação da venda
+    }
+
+    
 
     return NextResponse.json({ success: true, sale })
   } catch (error) {

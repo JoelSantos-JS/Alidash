@@ -61,7 +61,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (response.ok) {
         const data = await response.json();
         console.log('✅ Receitas carregadas:', data.revenues?.length || 0);
-        return data.revenues || [];
+        const mapped = (data.revenues || []).map((rev: any) => ({
+          id: rev.id,
+          date: new Date(rev.date),
+          time: rev.time || undefined,
+          description: rev.description,
+          amount: typeof rev.amount === 'number' ? rev.amount : parseFloat(rev.amount),
+          category: rev.category,
+          source: rev.source,
+          notes: rev.notes || undefined,
+          productId: rev.product_id || undefined,
+          transactionId: rev.transaction_id || undefined,
+        })) as Revenue[];
+        return mapped;
       } else {
         console.error('❌ Erro na resposta da API de receitas:', response.status, response.statusText);
       }

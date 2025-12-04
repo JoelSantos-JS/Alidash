@@ -236,6 +236,14 @@ export default function ReceitasPage() {
             id: result.revenue.id,
           };
           addRevenue(newRevenue);
+
+          try {
+            const productsResponse = await fetch(`/api/products/get?user_id=${user.id}`);
+            if (productsResponse.ok) {
+              const productsData = await productsResponse.json();
+              setProducts(productsData.products || []);
+            }
+          } catch (_) {}
           
           toast({
             title: "Receita Adicionada!",
@@ -388,6 +396,7 @@ export default function ReceitasPage() {
               setRevenueToEdit(null);
             }}
             revenueToEdit={revenueToEdit}
+            products={products}
           />
         </DialogContent>
       </Dialog>

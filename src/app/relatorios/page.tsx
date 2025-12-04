@@ -269,10 +269,34 @@ export default function ReportsPage() {
   const reportStats = useMemo(() => {
     const totalProducts = filteredProducts.length;
     const totalInvestment = filteredProducts.reduce((acc, p) => acc + (p.totalCost * p.quantity), 0);
+    const now = new Date();
+    const periodStart = (() => {
+      switch (periodFilter) {
+        case "week":
+          return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        case "month":
+          return new Date(now.getFullYear(), now.getMonth(), 1);
+        case "quarter":
+          const quarter = Math.floor(now.getMonth() / 3);
+          return new Date(now.getFullYear(), quarter * 3, 1);
+        case "year":
+          return new Date(now.getFullYear(), 0, 1);
+        default:
+          return new Date(now.getFullYear(), now.getMonth(), 1);
+      }
+    })();
     const totalRevenue = filteredProducts.reduce((acc, p) => {
-      return acc + (p.sellingPrice * p.quantitySold);
+      const revenueFromSales = (p.sales || [])
+        .filter(sale => new Date(sale.date) >= periodStart)
+        .reduce((sum, sale) => sum + (p.sellingPrice * sale.quantity), 0);
+      return acc + revenueFromSales;
     }, 0);
-    const totalProfit = filteredProducts.reduce((acc, p) => acc + p.actualProfit, 0);
+    const totalProfit = filteredProducts.reduce((acc, p) => {
+      const profitFromSales = (p.sales || [])
+        .filter(sale => new Date(sale.date) >= periodStart)
+        .reduce((sum, sale) => sum + ((p.sellingPrice - p.totalCost) * sale.quantity), 0);
+      return acc + profitFromSales;
+    }, 0);
     const avgROI = totalProducts > 0 ? filteredProducts.reduce((acc, p) => acc + p.roi, 0) / totalProducts : 0;
 
     return {
@@ -282,7 +306,7 @@ export default function ReportsPage() {
       totalProfit,
       avgROI
     };
-  }, [filteredProducts]);
+  }, [filteredProducts, periodFilter]);
 
   // Categorias únicas para o filtro
   const categories = useMemo(() => {
@@ -344,10 +368,39 @@ export default function ReportsPage() {
   const handleRefresh = async () => {
     setIsLoading(true);
     try {
-      // Simulate refresh delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Here you could re-fetch data
+      const response = await fetch(`/api/products/get?user_id=${user?.id}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        throw new Error(`Erro HTTP: ${response.status}`);
+      }
+      const data = await response.json();
+      const supabaseProducts = data.products || [];
+      const processedProducts = supabaseProducts.map((product: any) => ({
+        ...product,
+        purchasePrice: Number(product.purchasePrice) || 0,
+        shippingCost: Number(product.shippingCost) || 0,
+        importTaxes: Number(product.importTaxes) || 0,
+        packagingCost: Number(product.packagingCost) || 0,
+        marketingCost: Number(product.marketingCost) || 0,
+        otherCosts: Number(product.otherCosts) || 0,
+        totalCost: Number(product.totalCost) || 0,
+        sellingPrice: Number(product.sellingPrice) || 0,
+        expectedProfit: Number(product.expectedProfit) || 0,
+        actualProfit: Number(product.actualProfit) || 0,
+        profitMargin: Number(product.profitMargin) || 0,
+        roi: Number(product.roi) || 0,
+        quantity: Number(product.quantity) || 0,
+        quantitySold: Number(product.quantitySold) || 0,
+        purchaseDate: product.purchaseDate ? new Date(product.purchaseDate) : new Date(),
+        sales: product.sales ? product.sales.map((sale: any) => ({
+          ...sale,
+          date: new Date(sale.date),
+          quantity: Number(sale.quantity) || 1
+        })) : []
+      }));
+      setProducts(processedProducts);
       toast({
         title: "Dados Atualizados",
         description: "Os relatórios foram atualizados com sucesso.",
@@ -511,11 +564,11 @@ export default function ReportsPage() {
       {/* Gráficos */}
       <div className="container mx-auto px-3 sm:px-6 pb-10 sm:pb-12">
         <Tabs defaultValue="overview" className="space-y-6 sm:space-y-8">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 h-10 sm:h-12">
-            <TabsTrigger value="overview" className="text-sm sm:text-base">Visão Geral</TabsTrigger>
-            <TabsTrigger value="performance" className="text-sm sm:text-base">Performance</TabsTrigger>
-            <TabsTrigger value="trends" className="text-sm sm:text-base">Tendências</TabsTrigger>
-            <TabsTrigger value="analysis" className="text-sm sm:text-base">Análise</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 h-10 sm:h-12 bg-transparent p-0">
+            <TabsTrigger value="overview" className="text-sm sm:text-base rounded-none transition-colors hover:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary">Visão Geral</TabsTrigger>
+            <TabsTrigger value="performance" className="text-sm sm:text-base rounded-none transition-colors hover:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary">Performance</TabsTrigger>
+            <TabsTrigger value="trends" className="text-sm sm:text-base rounded-none transition-colors hover:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary">Tendências</TabsTrigger>
+            <TabsTrigger value="analysis" className="text-sm sm:text-base rounded-none transition-colors hover:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary">Análise</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-8">

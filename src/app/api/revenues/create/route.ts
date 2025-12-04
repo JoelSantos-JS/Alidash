@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { notifyProductSold } from '@/lib/n8n-events';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -172,6 +173,74 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ Receita criada com sucesso:', revenue);
+
+    // 3. Se for receita de venda vinculada a produto, registrar venda
+    if (processedRevenueData.product_id && processedRevenueData.source === 'sale') {
+      try {
+        console.log('🛒 Receita vinculada a produto. Registrando venda...');
+        const { data: product, error: productError } = await supabase
+          .from('products')
+          .select('id, name, category, selling_price, quantity, quantity_sold, status')
+          .eq('id', processedRevenueData.product_id)
+          .eq('user_id', userId)
+          .single();
+
+        if (productError || !product) {
+          console.warn('⚠️ Produto não encontrado para registrar venda:', productError);
+        } else {
+          const unitPrice = Number(product.selling_price) || Number(processedRevenueData.amount) || 0;
+          let quantity = Math.round(Number(processedRevenueData.amount) / (unitPrice || 1));
+          if (!quantity || quantity <= 0) quantity = 1;
+          const totalAmount = unitPrice * quantity;
+
+          console.log('🧮 Dados calculados da venda:', { unitPrice, quantity, totalAmount });
+
+          const { data: sale, error: saleError } = await supabase
+            .from('sales')
+            .insert({
+              user_id: userId,
+              product_id: product.id,
+              quantity,
+              unit_price: unitPrice,
+              total_amount: totalAmount,
+              date: processedRevenueData.date.toISOString(),
+              buyer_name: null,
+              notes: processedRevenueData.notes || ''
+            })
+            .select()
+            .single();
+
+          if (saleError) {
+            console.error('❌ Erro ao registrar venda vinculada à receita:', saleError);
+          } else {
+            console.log('✅ Venda registrada com sucesso:', sale.id);
+            const currentSold = Number(product.quantity_sold || 0);
+            const currentQty = Number(product.quantity || 0);
+            const updatedSold = currentSold + quantity;
+            const newStatus = updatedSold >= currentQty && currentQty > 0 ? 'sold' : (product.status || 'selling');
+
+            await supabase
+              .from('products')
+              .update({ quantity_sold: updatedSold, status: newStatus })
+              .eq('id', product.id)
+              .eq('user_id', userId);
+
+            try {
+              await notifyProductSold(userId, product as any, {
+                id: sale.id,
+                quantity,
+                date: processedRevenueData.date.toISOString(),
+                buyerName: null
+              });
+            } catch (_) {
+              // notificar é opcional
+            }
+          }
+        }
+      } catch (err) {
+        console.error('❌ Erro ao processar venda vinculada à receita:', err);
+      }
+    }
 
     // Retornar a receita criada
     const total = Date.now() - routeStart

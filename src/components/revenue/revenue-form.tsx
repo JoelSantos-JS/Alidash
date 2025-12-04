@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import type { Revenue } from "@/types";
+import type { Revenue, Product } from "@/types";
 
 const revenueSchema = z.object({
   description: z.string().min(1, "Descrição é obrigatória"),
@@ -26,6 +26,7 @@ const revenueSchema = z.object({
   source: z.enum(['sale', 'commission', 'bonus', 'other']),
   date: z.date(),
   notes: z.string().optional(),
+  productId: z.string().optional(),
 });
 
 type RevenueFormData = z.infer<typeof revenueSchema>;
@@ -34,6 +35,7 @@ interface RevenueFormProps {
   onSave: (data: Revenue) => void;
   onCancel: () => void;
   revenueToEdit?: Revenue | null;
+  products?: Product[];
 }
 
 const revenueCategories = [
@@ -52,7 +54,7 @@ const revenueSources = [
   { value: 'other', label: 'Outro' },
 ];
 
-export function RevenueForm({ onSave, onCancel, revenueToEdit }: RevenueFormProps) {
+export function RevenueForm({ onSave, onCancel, revenueToEdit, products = [] }: RevenueFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<RevenueFormData>({
@@ -64,6 +66,7 @@ export function RevenueForm({ onSave, onCancel, revenueToEdit }: RevenueFormProp
       source: revenueToEdit?.source || "sale",
       date: revenueToEdit?.date || new Date(),
       notes: revenueToEdit?.notes || "",
+      productId: revenueToEdit?.productId || undefined,
     },
   });
 
@@ -150,31 +153,62 @@ export function RevenueForm({ onSave, onCancel, revenueToEdit }: RevenueFormProp
               )}
             />
 
+          <FormField
+            control={form.control}
+            name="source"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Fonte</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a fonte" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {revenueSources.map((source) => (
+                      <SelectItem key={source.value} value={source.value}>
+                        {source.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          </div>
+
+          {form.watch('source') === 'sale' && (
             <FormField
               control={form.control}
-              name="source"
+              name="productId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Fonte</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormLabel>Produto (opcional)</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione a fonte" />
+                        <SelectValue placeholder="Selecione um produto" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {revenueSources.map((source) => (
-                        <SelectItem key={source.value} value={source.value}>
-                          {source.label}
-                        </SelectItem>
-                      ))}
+                      {products && products.length > 0 ? (
+                        products.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="">Sem produtos disponíveis</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
-          </div>
+          )}
 
           <FormField
             control={form.control}

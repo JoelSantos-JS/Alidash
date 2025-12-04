@@ -64,9 +64,9 @@ export function RevenueSection({ products, periodFilter, currentDate = new Date(
       }
     });
 
-    // Adicionar receitas independentes
+    // Adicionar receitas independentes (evitar duplicar vendas já contabilizadas nos produtos)
     revenues.forEach(revenue => {
-      if (new Date(revenue.date) >= periodStart) {
+      if (new Date(revenue.date) >= periodStart && !revenue.productId) {
         allRevenues.push({
           id: `revenue-${revenue.id}`,
           date: new Date(revenue.date),

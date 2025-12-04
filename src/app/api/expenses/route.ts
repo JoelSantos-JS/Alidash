@@ -28,6 +28,15 @@ export async function GET(request: NextRequest) {
       .select('*')
       .eq('user_id', userIdParam)
       .order('date', { ascending: false });
+
+    // Buscar transações parceladas de despesa
+    const { data: installmentTransactions, error: installmentError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', userIdParam)
+      .eq('type', 'expense')
+      .eq('is_installment', true)
+      .order('date', { ascending: false });
     const dbDur = Date.now() - dbStart;
 
     if (expensesError) {
@@ -39,10 +48,24 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(`✅ ${expenses?.length || 0} despesas encontradas`);
+    if (installmentError) {
+      console.error('❌ Erro ao buscar transações parceladas:', installmentError);
+      return NextResponse.json({ 
+        error: 'Erro ao buscar transações parceladas',
+        details: installmentError.message 
+      }, { status: 500 });
+    }
+    console.log(`✅ ${installmentTransactions?.length || 0} transações parceladas encontradas`);
+
+    // Combinar despesas regulares e transações parceladas
+    const allExpenses = [
+      ...(expenses || []),
+      ...(installmentTransactions || [])
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
     const total = Date.now() - routeStart;
     const serverTiming = `db;dur=${Math.round(dbDur)}, total;dur=${Math.round(total)}`;
-    return NextResponse.json({ success: true, expenses: expenses || [] }, { headers: { 'Server-Timing': serverTiming } });
+    return NextResponse.json({ success: true, expenses: allExpenses || [] }, { headers: { 'Server-Timing': serverTiming } });
 
   } catch (error) {
     console.error('❌ Erro geral ao buscar despesas:', error);

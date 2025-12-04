@@ -9,9 +9,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InstallmentTransactionCard } from "./installment-transaction-card";
 import { TransactionForm } from "./transaction-form";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { isInstallmentTransaction } from "@/lib/utils";
+import { isInstallmentTransaction, formatCurrency } from "@/lib/utils";
 import type { Transaction } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-supabase-auth";
+import { supabaseService } from "@/lib/supabase-service";
 
 interface InstallmentManagerProps {
   transactions: Transaction[];
@@ -30,6 +32,7 @@ export function InstallmentManager({
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [activeTab, setActiveTab] = useState("all");
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Filtrar transações parceladas
   console.log('🔍 InstallmentManager - Transações recebidas:', {
@@ -118,7 +121,7 @@ export function InstallmentManager({
     }
   };
 
-  const handleConfirmPayment = (transaction: Transaction) => {
+  const handleConfirmPayment = async (transaction: Transaction) => {
     if (!transaction.installmentInfo) return;
     const info = transaction.installmentInfo;
     const current = Math.min(info.currentInstallment + 1, info.totalInstallments);
@@ -138,10 +141,28 @@ export function InstallmentManager({
       }
     };
     onUpdateTransaction(updated);
-    toast({
-      title: completed ? 'Parcelamento concluído' : 'Pagamento confirmado',
-      description: completed ? 'Todas as parcelas foram pagas' : `Parcela ${current}/${info.totalInstallments} confirmada`,
-    });
+    try {
+      if (!user?.id) {
+        throw new Error('Sessão expirada');
+      }
+      await supabaseService.updateTransaction(user.id, transaction.id, {
+        status: updated.status,
+        date: updated.date,
+        isInstallment: updated.isInstallment,
+        installmentInfo: updated.installmentInfo,
+      });
+      toast({
+        title: completed ? 'Parcelamento concluído' : 'Pagamento confirmado',
+        description: completed ? 'Todas as parcelas foram pagas' : `Parcela ${current}/${info.totalInstallments} confirmada`,
+      });
+    } catch (error) {
+      onUpdateTransaction(transaction);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao confirmar pagamento',
+        description: 'Não foi possível salvar no servidor. Tente novamente.',
+      });
+    }
   };
 
   // Se não há transações parceladas, mostrar mensagem
@@ -202,7 +223,7 @@ export function InstallmentManager({
               <div>
                 <p className="text-sm font-semibold text-gray-700">Total Parcelado</p>
                 <p className="text-2xl font-bold text-red-700">
-                  R$ {totalInstallmentAmount.toFixed(2)}
+                  {formatCurrency(totalInstallmentAmount)}
                 </p>
               </div>
               <CreditCard className="h-8 w-8 text-red-600" />
@@ -216,7 +237,7 @@ export function InstallmentManager({
               <div>
                 <p className="text-sm font-semibold text-gray-700">Restante a Pagar</p>
                 <p className="text-2xl font-bold text-orange-700">
-                  R$ {totalRemainingAmount.toFixed(2)}
+                  {formatCurrency(totalRemainingAmount)}
                 </p>
               </div>
               <AlertTriangle className="h-8 w-8 text-orange-600" />
@@ -230,7 +251,7 @@ export function InstallmentManager({
               <div>
                 <p className="text-sm font-semibold text-gray-700">Já Pago</p>
                 <p className="text-2xl font-bold text-green-700">
-                  R$ {totalPaidAmount.toFixed(2)}
+                  {formatCurrency(totalPaidAmount)}
                 </p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-600" />
@@ -304,6 +325,7 @@ export function InstallmentManager({
                       transaction={transaction}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
+                      onConfirmPayment={handleConfirmPayment}
                     />
                   ))}
                 </div>

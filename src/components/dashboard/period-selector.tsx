@@ -61,7 +61,7 @@ export function PeriodSelector({
             {format(currentDate, "MMMM yyyy", { locale: ptBR })}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="center">
+        <PopoverContent className="w-auto p-0 max-w-[calc(100vw-1rem)] sm:max-w-none" align="center" side="bottom" sideOffset={8}>
           <CalendarComponent
             mode="single"
             selected={currentDate}

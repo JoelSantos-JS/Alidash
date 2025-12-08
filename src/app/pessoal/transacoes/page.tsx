@@ -30,6 +30,7 @@ import Link from "next/link";
 import PersonalTransactionForm from "@/components/forms/personal-transaction-form";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { PeriodSelector } from "@/components/dashboard/period-selector";
 
 interface PersonalTransaction {
   id: string;
@@ -59,6 +60,7 @@ export default function PersonalTransactionsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<PersonalTransaction | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -221,22 +223,24 @@ export default function PersonalTransactionsPage() {
     let matchesPeriod = true;
     if (selectedPeriod !== 'all') {
       const transactionDate = new Date(transaction.date);
-      const now = new Date();
-      
+      const anchor = currentDate;
       switch (selectedPeriod) {
         case 'today':
-          matchesPeriod = transactionDate.toDateString() === now.toDateString();
+          matchesPeriod = transactionDate.getFullYear() === anchor.getFullYear() &&
+            transactionDate.getMonth() === anchor.getMonth() &&
+            transactionDate.getDate() === anchor.getDate();
           break;
-        case 'week':
-          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          matchesPeriod = transactionDate >= weekAgo;
+        case 'week': {
+          const weekAgo = new Date(anchor.getTime() - 7 * 24 * 60 * 60 * 1000);
+          matchesPeriod = transactionDate >= weekAgo && transactionDate <= anchor;
           break;
+        }
         case 'month':
-          matchesPeriod = transactionDate.getMonth() === now.getMonth() && 
-                         transactionDate.getFullYear() === now.getFullYear();
+          matchesPeriod = transactionDate.getMonth() === anchor.getMonth() &&
+            transactionDate.getFullYear() === anchor.getFullYear();
           break;
         case 'year':
-          matchesPeriod = transactionDate.getFullYear() === now.getFullYear();
+          matchesPeriod = transactionDate.getFullYear() === anchor.getFullYear();
           break;
       }
     }
@@ -416,6 +420,16 @@ export default function PersonalTransactionsPage() {
                   <option value="month">Este mês</option>
                   <option value="year">Este ano</option>
                 </select>
+              </div>
+              <div className="w-full sm:w-auto">
+                <PeriodSelector
+                  currentDate={currentDate}
+                  onDateChange={(date) => {
+                    setCurrentDate(date);
+                    setSelectedPeriod('today');
+                  }}
+                  className="ml-0"
+                />
               </div>
             </div>
           </CardContent>

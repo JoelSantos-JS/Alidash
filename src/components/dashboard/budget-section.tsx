@@ -360,9 +360,12 @@ export function BudgetSection({
                 )}
               </div>
               <div className={cn("mt-1 text-xl font-bold", plannedBalance >= 0 ? "text-green-600" : "text-orange-600")}> 
-                {plannedBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                {Math.abs(plannedBalance).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
               <div className="text-xs text-muted-foreground">Receitas ({periodRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}) - Orçamento ({monthlyBudget.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})</div>
+              <div className={cn("mt-1 text-xs font-medium", plannedBalance >= 0 ? "text-green-600" : "text-orange-600")}> 
+                {plannedBalance >= 0 ? 'Margem sobre o orçamento' : 'Falta para cobrir o orçamento'}
+              </div>
             </div>
 
             {/* Desvio do Plano: Despesas - Orçamento */}
@@ -376,9 +379,12 @@ export function BudgetSection({
                 )}
               </div>
               <div className={cn("mt-1 text-xl font-bold", planDeviation <= 0 ? "text-green-600" : "text-red-600")}> 
-                {planDeviation.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                {Math.abs(planDeviation).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
               <div className="text-xs text-muted-foreground">Despesas ({estimatedExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}) - Orçamento ({monthlyBudget.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})</div>
+              <div className={cn("mt-1 text-xs font-medium", planDeviation <= 0 ? "text-green-600" : "text-red-600")}> 
+                {planDeviation <= 0 ? 'Economia vs orçamento' : 'Acima do orçamento'}
+              </div>
             </div>
           </div>
 

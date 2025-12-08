@@ -463,7 +463,8 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading, viewMo
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setShowIncomeForm(true)}
+                onClick={(e) => { e.stopPropagation(); setShowIncomeForm(true) }}
+                onKeyDown={(e) => e.stopPropagation()}
                 className="h-6 px-2 text-xs"
               >
                 <Plus className="h-3 w-3 mr-1" />
@@ -472,7 +473,8 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading, viewMo
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setShowSalarySettings(true)}
+                onClick={(e) => { e.stopPropagation(); setShowSalarySettings(true) }}
+                onKeyDown={(e) => e.stopPropagation()}
                 className="h-6 px-2 text-xs"
                 title="Configurar Salário Fixo"
               >

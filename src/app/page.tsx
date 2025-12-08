@@ -752,9 +752,9 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
         const weekAgo = new Date(anchor.getTime() - 7 * 24 * 60 * 60 * 1000);
         return `${format(weekAgo, 'dd/MM/yyyy', { locale: ptBR })} a ${format(anchor, 'dd/MM/yyyy', { locale: ptBR })}`;
       case "month":
-        return `${format(anchor, 'dd/MM/yyyy', { locale: ptBR }).substring(3)}`;
+        return `${format(anchor, 'MMMM yyyy', { locale: ptBR })}`;
       default:
-        return `${format(anchor, 'dd/MM/yyyy', { locale: ptBR }).substring(3)}`;
+        return `${format(anchor, 'MMMM yyyy', { locale: ptBR })}`;
     }
   }, [periodFilter, isPersonal, businessSelectedDate]);
 
@@ -1283,10 +1283,10 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                       )}
                     </div>
                     <div>
-                      <h2 className="text-base sm:text-lg font-semibold">
+                      <h2 className="text_base sm:text-lg font-semibold">
                         {isPersonal 
                           ? `Resumo Financeiro Pessoal: ${periodLabel}/${format(new Date(), 'yyyy')}`
-                          : `Resumo Financeiro Empresarial: ${periodLabel}/${format(new Date(), 'yyyy')}`
+                          : `Resumo Financeiro Empresarial: ${periodLabel}/${format(businessSelectedDate || new Date(), 'yyyy')}`
                         }
                       </h2>
                       <p className="text-xs sm:text-sm text-muted-foreground">
@@ -1528,6 +1528,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 }}
 
                 onLoadExampleData={handleLoadExampleData}
+                onDateChange={(date) => setBusinessSelectedDate(date)}
               />
             )}
           </main>

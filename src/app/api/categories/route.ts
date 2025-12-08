@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdminService } from '@/lib/supabase-service'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     console.log('🔍 Buscando categorias globais do sistema')
 
@@ -18,8 +18,8 @@ export async function GET(request: NextRequest) {
       name: cat.name,
       description: cat.description,
       type: cat.type,
-      color: '#6B7280', // Cor padrão
-      icon: 'tag', // Ícone padrão
+      color: (cat as any).color ?? '#6B7280',
+      icon: (cat as any).icon ?? 'tag',
       budget: 0,
       spent: 0,
       transactions: 0,
@@ -78,13 +78,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Criar categoria usando o UUID do Supabase (apenas campos existentes)
+    
     const { data, error } = await supabaseAdminService.client
       .from('categories')
       .insert({
         name: categoryData.name,
         description: categoryData.description || '',
-        type: categoryData.type || 'transaction'
+        type: categoryData.type || 'transaction',
+        color: categoryData.color ?? null,
+        icon: categoryData.icon ?? null
       })
       .select()
       .single()
@@ -133,6 +135,8 @@ export async function PUT(request: NextRequest) {
     if (typeof updates?.name === 'string') updatePayload.name = updates.name
     if (typeof updates?.description === 'string') updatePayload.description = updates.description
     if (typeof updates?.type === 'string') updatePayload.type = updates.type
+    if (typeof (updates as any)?.color === 'string') updatePayload.color = (updates as any).color
+    if (typeof (updates as any)?.icon === 'string') updatePayload.icon = (updates as any).icon
 
     const { data, error } = await supabaseAdminService.client
       .from('categories')

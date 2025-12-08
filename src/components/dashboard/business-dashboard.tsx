@@ -53,6 +53,7 @@ interface BusinessDashboardProps {
   onDeleteProduct: (product: Product) => void;
   onSellProduct: (product: Product) => void;
   onLoadExampleData?: () => void;
+  onDateChange?: (date: Date) => void;
 }
 
 export function BusinessDashboard({
@@ -71,7 +72,8 @@ export function BusinessDashboard({
   onEditProduct,
   onDeleteProduct,
   onSellProduct,
-  onLoadExampleData
+  onLoadExampleData,
+  onDateChange
 }: BusinessDashboardProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -82,6 +84,7 @@ export function BusinessDashboard({
   
   const handlePeriodChange = (date: Date) => {
     setCurrentDate(date);
+    if (onDateChange) onDateChange(date);
     
     // Aqui implementaríamos a chamada para API com os parâmetros de mês e ano
     const month = date.getMonth() + 1; // Mês em JavaScript é 0-indexed
@@ -92,6 +95,12 @@ export function BusinessDashboard({
     // Exemplo de como seria a chamada para API
     // loadDashboardData(userId, 'business', month, year);
   };
+  
+  useEffect(() => {
+    if (currentDateProp) {
+      setCurrentDate(currentDateProp);
+    }
+  }, [currentDateProp]);
   
   return (
     <Tabs defaultValue="dashboard" className="w-full">

@@ -83,19 +83,19 @@ describe('API de Categorias', () => {
     const updatedCategory = { name: 'Alimentação e Restaurantes', color: '#FF5733' };
 
     // Chamada para a API
-    const response = await fetch(`/api/categories/${categoryId}`, {
+    const response = await fetch(`/api/categories`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedCategory)
+      body: JSON.stringify({ categoryId, updates: updatedCategory })
     });
     const data = await response.json();
 
     // Verificações
     expect(global.fetch).toHaveBeenCalledTimes(1);
-    expect(global.fetch).toHaveBeenCalledWith(`/api/categories/${categoryId}`, {
+    expect(global.fetch).toHaveBeenCalledWith(`/api/categories`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedCategory)
+      body: JSON.stringify({ categoryId, updates: updatedCategory })
     });
     expect(data.success).toBe(true);
     expect(data.category.name).toBe('Alimentação e Restaurantes');

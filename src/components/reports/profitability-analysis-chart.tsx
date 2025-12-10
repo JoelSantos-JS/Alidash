@@ -22,36 +22,55 @@ import { useMemo } from "react"
 type ProfitabilityAnalysisChartProps = {
   data: Product[];
   isLoading?: boolean;
+  periodFilter?: "week" | "month" | "quarter" | "year";
 }
 
-export function ProfitabilityAnalysisChart({ data, isLoading }: ProfitabilityAnalysisChartProps) {
+export function ProfitabilityAnalysisChart({ data, isLoading, periodFilter = "month" }: ProfitabilityAnalysisChartProps) {
   
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return [];
+    const now = new Date();
+    const periodStart = (() => {
+      switch (periodFilter) {
+        case "week":
+          return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        case "month":
+          return new Date(now.getFullYear(), now.getMonth(), 1);
+        case "quarter":
+          const quarter = Math.floor(now.getMonth() / 3);
+          return new Date(now.getFullYear(), quarter * 3, 1);
+        case "year":
+          return new Date(now.getFullYear(), 0, 1);
+        default:
+          return new Date(now.getFullYear(), now.getMonth(), 1);
+      }
+    })();
     
     return data
-      .filter(product => product.quantitySold > 0) // Apenas produtos vendidos
+      .filter(product => product.sales && product.sales.some(sale => new Date(sale.date) >= periodStart))
       .map(product => {
-        const totalRevenue = product.sellingPrice * product.quantitySold;
-        const totalCost = product.totalCost * product.quantitySold;
-        const profitMargin = ((totalRevenue - totalCost) / totalRevenue) * 100;
-        
+        const soldQtyInPeriod = (product.sales || [])
+          .filter(sale => new Date(sale.date) >= periodStart)
+          .reduce((sum, sale) => sum + (Number(sale.quantity) || 0), 0);
+        const totalRevenue = product.sellingPrice * soldQtyInPeriod;
+        const totalCost = product.totalCost * soldQtyInPeriod;
+        const profitMargin = totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0;
+
         return {
           name: product.name.split(" ").slice(0, 2).join(" "),
           fullName: product.name,
           receita: totalRevenue,
           custo: totalCost,
-          lucro: product.actualProfit,
+          lucro: totalRevenue - totalCost,
           margemLucro: profitMargin,
           roi: product.roi,
           categoria: product.category,
-          vendidos: product.quantitySold,
+          vendidos: soldQtyInPeriod,
           estoque: product.quantity - product.quantitySold
         };
       })
-      .sort((a, b) => b.lucro - a.lucro)
-      .slice(0, 10); // Top 10 mais lucrativos
-  }, [data]);
+      .sort((a, b) => b.lucro - a.lucro);
+  }, [data, periodFilter]);
 
   const stats = useMemo(() => {
     if (chartData.length === 0) return { avgMargin: 0, totalProfit: 0, bestPerformer: null };
@@ -125,7 +144,7 @@ export function ProfitabilityAnalysisChart({ data, isLoading }: ProfitabilityAna
               Análise de Lucratividade
             </CardTitle>
             <CardDescription>
-              Receita vs Custo vs Margem de Lucro (Top 10 produtos)
+              Receita vs Custo vs Margem de Lucro
             </CardDescription>
           </div>
           {stats.bestPerformer && (

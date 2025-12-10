@@ -58,8 +58,15 @@ export function SalesTrendsChart({ data, revenues = [], sales = [], isLoading }:
       });
     });
 
-    // Chaves para deduplicação de vendas (productId|date)
     const saleKeys = new Set<string>();
+    const exactSaleKeys = new Set<string>();
+    const salesAmountsByDay = new Map<string, Set<number>>();
+    const normalizedProducts = data.map(p => ({
+      id: p.id,
+      nameLower: String(p.name || '').toLowerCase(),
+      sellingPrice: Number(p.sellingPrice) || 0,
+      totalCost: Number(p.totalCost) || 0
+    }));
 
     // Adicionar vendas vindas do endpoint de vendas
     sales.forEach((sale: any) => {
@@ -73,6 +80,12 @@ export function SalesTrendsChart({ data, revenues = [], sales = [], isLoading }:
         const qty = Number(sale.quantity) || 0;
         const unit = Number(sale.unitPrice) || 0;
         const total = typeof sale.totalAmount === 'number' && !isNaN(sale.totalAmount) ? sale.totalAmount : unit * qty;
+        const normalizedTotal = Number(Number(total || 0).toFixed(2));
+        if (!salesAmountsByDay.has(dateKey)) salesAmountsByDay.set(dateKey, new Set());
+        salesAmountsByDay.get(dateKey)!.add(normalizedTotal);
+        if (sale.productId) {
+          exactSaleKeys.add(`${sale.productId}|${dateKey}|${normalizedTotal}`);
+        }
 
         dayData.vendas += qty;
         dayData.receita += total || 0;
@@ -106,8 +119,13 @@ export function SalesTrendsChart({ data, revenues = [], sales = [], isLoading }:
             const dayData = dailyData.get(dateKey);
             const qty = Number(sale.quantity) || 0;
             dayData.vendas += qty;
-            dayData.receita += (Number(product.sellingPrice) || 0) * qty;
+            const revenue = (Number(product.sellingPrice) || 0) * qty;
+            dayData.receita += revenue;
             dayData.lucro += (Number(product.sellingPrice) - Number(product.totalCost)) * qty;
+            const normalizedRevenue = Number(Number(revenue || 0).toFixed(2));
+            if (!salesAmountsByDay.has(dateKey)) salesAmountsByDay.set(dateKey, new Set());
+            salesAmountsByDay.get(dateKey)!.add(normalizedRevenue);
+            exactSaleKeys.add(`${product.id}|${dateKey}|${normalizedRevenue}`);
             dayData.produtos++;
             dayData.produtosVendidos.push({
               name: product.name,
@@ -129,25 +147,36 @@ export function SalesTrendsChart({ data, revenues = [], sales = [], isLoading }:
 
       const revDate = startOfDay(new Date(rev.date));
       const dateKey = format(revDate, 'yyyy-MM-dd');
+      const amount = Number(rev.amount) || 0;
+      const normalizedAmount = Number(Number(amount).toFixed(2));
       const key = rev.productId ? `${rev.productId}|${dateKey}` : '';
-      if (key && saleKeys.has(key)) return;
+      if (key && (saleKeys.has(key) || exactSaleKeys.has(`${rev.productId}|${dateKey}|${normalizedAmount}`))) return;
+      if (!rev.productId) {
+        const set = salesAmountsByDay.get(dateKey);
+        if (set && set.has(normalizedAmount)) return;
+      }
 
       if (dailyData.has(dateKey)) {
         const dayData = dailyData.get(dateKey);
-        const amount = Number(rev.amount) || 0;
+        let matchedProduct: { id: string; sellingPrice: number; totalCost: number } | null = null;
+        if (!rev.productId) {
+          const desc = String(rev?.description || '').toLowerCase();
+          if (desc) {
+            const found = normalizedProducts.find(p => desc.includes(p.nameLower));
+            if (found && exactSaleKeys.has(`${found.id}|${dateKey}|${normalizedAmount}`)) return;
+            matchedProduct = found || null;
+          }
+        }
         dayData.receita += amount;
 
-        if (rev.productId) {
-          const product = data.find(p => p.id === rev.productId);
-          if (product) {
-            // Sem quantidade exata na receita: estimar lucro apenas se possível
-            // Mantemos vendas como está (não incrementa), apenas receita/lucro
-            const unitProfit = Number(product.sellingPrice) - Number(product.totalCost);
-            if (unitProfit > 0) {
-              // Aproxima uma quantidade com base na receita / sellingPrice
-              const qtyApprox = product.sellingPrice ? Math.round(amount / Number(product.sellingPrice)) : 0;
-              dayData.lucro += unitProfit * qtyApprox;
-            }
+        const product = rev.productId
+          ? normalizedProducts.find(p => p.id === rev.productId)
+          : matchedProduct;
+        if (product) {
+          const unitProfit = Number(product.sellingPrice) - Number(product.totalCost);
+          if (unitProfit > 0) {
+            const qtyApprox = product.sellingPrice ? Math.round(amount / Number(product.sellingPrice)) : 0;
+            dayData.lucro += unitProfit * qtyApprox;
           }
         }
       }
@@ -260,8 +289,10 @@ export function SalesTrendsChart({ data, revenues = [], sales = [], isLoading }:
       const isSale = src === 'sale' || catStr.includes('venda');
       if (!isSale) return;
       const dateStr = format(new Date(rev.date), 'yyyy-MM-dd');
+      const amount = Number(rev.amount) || 0;
+      const normalizedAmount = Number(Number(amount).toFixed(2));
       const key = rev.productId ? `${rev.productId}|${dateStr}` : '';
-      if (key && saleKeys.has(key)) return;
+      if (key && (saleKeys.has(key) || exactSaleKeys.has(`${rev.productId}|${dateStr}|${normalizedAmount}`))) return;
       const product = rev.productId ? data.find(p => p.id === rev.productId) : null;
       if (!product) return;
       const category = product.category;
@@ -274,7 +305,6 @@ export function SalesTrendsChart({ data, revenues = [], sales = [], isLoading }:
           avgDailySales: 0
         };
       }
-      const amount = Number(rev.amount) || 0;
       categoryTrends[category].sales.push({
         date: dateStr,
         quantity: 0,
@@ -292,7 +322,7 @@ export function SalesTrendsChart({ data, revenues = [], sales = [], isLoading }:
     const monthlyTrends = Object.values(categoryTrends);
 
     return { dailyTrends, weeklyTrends, monthlyTrends };
-  }, [data]);
+  }, [data, revenues, sales]);
 
   const stats = useMemo(() => {
     if (chartData.dailyTrends.length === 0) return { 

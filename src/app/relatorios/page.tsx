@@ -574,7 +574,7 @@ export default function ReportsPage() {
 
           <TabsContent value="overview" className="space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <ProfitabilityAnalysisChart data={filteredProducts} isLoading={isLoading} />
+              <ProfitabilityAnalysisChart data={filteredProducts} isLoading={isLoading} periodFilter={periodFilter} />
               <CategoryPerformanceChart data={filteredProducts} isLoading={isLoading} />
               <SalesVelocityChart data={filteredProducts} isLoading={isLoading} />
               <ROIComparisonChart data={filteredProducts} isLoading={isLoading} />

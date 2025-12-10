@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from 'next/navigation';
 import type { Product, Sale } from "@/types";
 import { useData } from "@/contexts/data-context";
@@ -11,7 +11,7 @@ import { ProductCard } from "@/components/product/product-card";
 import { ProductDetailView } from "@/components/product/product-detail-view";
 import { ProductEditMenu } from "@/components/product/product-edit-menu";
 import dynamic from 'next/dynamic'
-const ProductForm = dynamic(() => import('@/components/product/product-form').then(m => m.ProductForm), { ssr: false })
+const ProductForm = dynamic(() => import('@/components/product/product-form'), { ssr: false })
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ import {
   Calendar as CalendarIcon,
   Tag,
   MessageCircle,
+  HelpCircle,
   FileText,
   Target as TargetIcon,
   User,
@@ -183,6 +184,8 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
   const { toast } = useToast();
   const router = useRouter();
   const voxWhatsappUrl = process.env.NEXT_PUBLIC_VOX_WHATSAPP_URL || 'https://wa.me';
+  const salesSyncRunning = useRef(false);
+  const salesSyncAttemptedKeys = useRef<Set<string>>(new Set());
 
   // Função para carregar dados iniciais apenas para usuários novos
   const loadInitialDataForNewUser = async () => {
@@ -362,6 +365,147 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
     fetchData();
   }, [user?.id]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    if (salesSyncRunning.current) return;
+    if (!products || products.length === 0) return;
+    if (!revenues || revenues.length === 0) return;
+
+    if (typeof window !== 'undefined') {
+      try {
+        const persisted = JSON.parse(localStorage.getItem('salesSyncAttemptedKeys') || '[]');
+        if (Array.isArray(persisted)) {
+          for (const k of persisted) salesSyncAttemptedKeys.current.add(k);
+        }
+      } catch {}
+    }
+
+    const saleKeys = new Set<string>((sales || []).map((s: any) => {
+      const d = new Date(s.date);
+      const total = typeof s.totalAmount === 'number' && !isNaN(s.totalAmount)
+        ? s.totalAmount
+        : (Number(s.unitPrice) || 0) * (Number(s.quantity) || 0);
+      return `${s.productId || ''}|${d.toISOString().slice(0,10)}|${total || 0}`;
+    }));
+
+    const normalizedProducts = (products || []).map((p: any) => ({
+      id: p.id,
+      nameLower: String(p.name || '').toLowerCase(),
+      sellingPrice: typeof p.sellingPrice === 'number' ? Number(p.sellingPrice) : 0
+    }));
+
+    const productById = new Map<string, any>((products || []).map((p: any) => [p.id, p]));
+    const normalizeAmount = (v: any) => Number(Number(v || 0).toFixed(2));
+
+    const directMatches = revenues.filter((r: any) => {
+      const src = String(r?.source || '').toLowerCase();
+      const cat = String(r?.category || '').toLowerCase();
+      const isSale = src === 'sale' || cat.includes('venda');
+      if (!isSale) return false;
+      if (!r.productId) return false;
+      const d = new Date(r.date);
+      const key = `${r.productId}|${d.toISOString().slice(0,10)}|${normalizeAmount(r.amount)}`;
+      return !saleKeys.has(key) && !salesSyncAttemptedKeys.current.has(key);
+    });
+
+    const inferredMatches = revenues
+      .filter((r: any) => {
+        const src = String(r?.source || '').toLowerCase();
+        const cat = String(r?.category || '').toLowerCase();
+        const isSale = src === 'sale' || cat.includes('venda');
+        if (!isSale) return false;
+        if (r.productId) return false;
+        const desc = String(r?.description || '').toLowerCase();
+        return desc.length > 0;
+      })
+      .map((r: any) => {
+        const desc = String(r?.description || '').toLowerCase();
+        const matched = normalizedProducts.find(p => desc.includes(p.nameLower));
+        if (!matched) return null as any;
+        const d = new Date(r.date);
+        const total = normalizeAmount(r.amount);
+        const key = `${matched.id}|${d.toISOString().slice(0,10)}|${total}`;
+        if (saleKeys.has(key) || salesSyncAttemptedKeys.current.has(key)) return null as any;
+        return { ...r, productId: matched.id };
+      })
+      .filter(Boolean);
+
+    const toCreateCandidates = [...directMatches, ...inferredMatches];
+    const soldOutToUpdate = new Set<string>();
+    const toCreate = toCreateCandidates.filter((r: any) => {
+      const p = productById.get(r.productId);
+      if (!p) return false;
+      const available = Math.max(0, Number(p.quantity || 0) - Number(p.quantitySold || 0));
+      if (available <= 0) {
+        const k = `${r.productId}|${new Date(r.date).toISOString().slice(0,10)}|${normalizeAmount(r.amount)}`;
+        salesSyncAttemptedKeys.current.add(k);
+        if (p.status !== 'sold' && Number(p.quantity || 0) > 0 && Number(p.quantitySold || 0) >= Number(p.quantity || 0)) {
+          soldOutToUpdate.add(p.id);
+        }
+        return false;
+      }
+      return true;
+    });
+
+    if (toCreate.length === 0) return;
+
+    salesSyncRunning.current = true;
+
+    const persistAttempts = () => {
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('salesSyncAttemptedKeys', JSON.stringify([...salesSyncAttemptedKeys.current])); } catch {}
+      }
+    };
+
+    const updateSoldStatus = Promise.allSettled([...soldOutToUpdate].map(async (pid) => {
+      const p = productById.get(pid);
+      if (!p) return;
+      await fetch(`/api/products/update?user_id=${user.id}&product_id=${pid}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'sold' })
+      });
+    }));
+
+    updateSoldStatus.then(() => {
+      Promise.allSettled(toCreate.map(async (r: any) => {
+        const p = products.find((pp: any) => pp.id === r.productId);
+        const unit = p && typeof p.sellingPrice === 'number' ? Number(p.sellingPrice) : 0;
+        let qty = 1;
+        if (unit > 0 && typeof r.amount === 'number') {
+          qty = Math.max(1, Math.round(Number(r.amount) / unit));
+        }
+        const attemptKey = `${r.productId}|${new Date(r.date).toISOString().slice(0,10)}|${normalizeAmount(r.amount)}`;
+        salesSyncAttemptedKeys.current.add(attemptKey);
+        const body = {
+          quantity: qty,
+          date: new Date(r.date).toISOString()
+        };
+        const url = `/api/sales/create?user_id=${user.id}&product_id=${r.productId}`;
+        const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        return res.ok;
+      })).then(async () => {
+        persistAttempts();
+        const [salesRes, productsRes] = await Promise.all([
+          fetch(`/api/sales/get?user_id=${user.id}`),
+          fetch(`/api/products/get?user_id=${user.id}`)
+        ]);
+
+        if (salesRes.ok) {
+          const sdata = await salesRes.json();
+          setSales(sdata.sales || []);
+        }
+
+        if (productsRes.ok) {
+          const pdata = await productsRes.json();
+          setProducts(pdata.products || []);
+        }
+      }).finally(() => {
+        salesSyncRunning.current = false;
+      });
+    });
+  }, [user?.id, products, revenues, sales]);
+
   // Remover useEffect problemático que causava loop infinito
   // Este useEffect estava causando chamadas infinitas de API devido aos event listeners
   // de visibilitychange, focus, pageshow e popstate que chamavam refreshData() constantemente
@@ -427,9 +571,69 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
 
     const periodStart = getPeriodStart();
     
-    const periodRevenue = revenues
-      .filter(r => new Date(r.date) >= periodStart)
+    // Unificar cálculo de receita do período: receitas NÃO-venda + vendas de produtos
+    const periodNonSaleRevenue = revenues
+      .filter(r => {
+        const d = new Date(r.date);
+        const src = String((r as any).source || '').toLowerCase();
+        const cat = String((r as any).category || '').toLowerCase();
+        return d >= periodStart && src !== 'sale' && !cat.includes('venda');
+      })
       .reduce((acc, revenue) => acc + (revenue.amount || 0), 0);
+
+    const periodSales = sales.filter(s => new Date(s.date) >= periodStart);
+    const saleKeys = new Set<string>(
+      periodSales
+        .filter(s => s.productId)
+        .map(s => `${s.productId}|${new Date(s.date).toISOString().slice(0,10)}`)
+    );
+
+    const normalize = (s: string) => s
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+    const productNames = (products || []).map(p => ({ id: p.id, name: normalize(String(p.name || '')) }));
+    const findProductByDescription = (desc?: string) => {
+      if (!desc) return null as any;
+      const withoutPrefix = desc.replace(/^\s*venda\s*:\s*/i, '');
+      const text = normalize(withoutPrefix);
+      const match = productNames.find(p => p.name && (text.includes(p.name) || p.name.includes(text)));
+      return match ? match : null;
+    };
+
+    const periodSalesFromSales = periodSales.reduce((acc, sale) => {
+      const unit = typeof sale.unitPrice === 'number' ? sale.unitPrice : 0;
+      const qty = typeof sale.quantity === 'number' ? sale.quantity : 0;
+      const total = typeof sale.totalAmount === 'number' ? sale.totalAmount : unit * qty;
+      return acc + (typeof total === 'number' ? total : 0);
+    }, 0);
+
+    const periodSalesFromRevenues = revenues
+      .filter(r => {
+        const d = new Date(r.date);
+        const src = String((r as any).source || '').toLowerCase();
+        const cat = String((r as any).category || '').toLowerCase();
+        const isSale = src === 'sale' || cat.includes('venda');
+        if (!isSale) return false;
+        if (d < periodStart) return false;
+        if (r.productId) {
+          const key = `${r.productId}|${d.toISOString().slice(0,10)}`;
+          if (saleKeys.has(key)) return false;
+        } else {
+          const match = findProductByDescription((r as any).description);
+          if (match) {
+            const key = `${match.id}|${d.toISOString().slice(0,10)}`;
+            if (saleKeys.has(key)) return false;
+          }
+        }
+        return true;
+      })
+      .reduce((acc, r) => acc + (r.amount || 0), 0);
+
+    const periodSalesRevenue = periodSalesFromSales + periodSalesFromRevenues;
+
+    const periodRevenue = periodNonSaleRevenue + periodSalesRevenue;
 
     const periodExpenses = expenses
       .filter(e => new Date(e.date) >= periodStart)
@@ -961,7 +1165,17 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                   <span className="text-sm sm:text-base">WhatsApp</span>
                 </a>
               </Button>
-              
+
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start gap-2 sm:gap-3" 
+                size="lg"
+                onClick={() => router.push('/duvidas')}
+              >
+                <HelpCircle className="h-4 w-4" />
+                <span className="text-sm sm:text-base">Dúvidas/Sugestões</span>
+              </Button>
+
               {/* Agenda temporariamente oculta */}
               {/* <Button 
                 variant="ghost" 
@@ -1482,6 +1696,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                    products={products}
                    revenues={revenues}
                    expenses={expenses}
+                   sales={sales}
                  />
                  
                  <InventoryControlSection 
@@ -1510,6 +1725,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 revenues={revenues}
                 expenses={expenses}
                 transactions={transactions}
+                sales={sales}
                 currentDate={businessSelectedDate || new Date()}
                 onOpenForm={() => handleOpenForm()}
                 onSearch={handleSearch}

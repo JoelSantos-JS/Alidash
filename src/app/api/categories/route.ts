@@ -6,7 +6,7 @@ export async function GET() {
     console.log('🔍 Buscando categorias globais do sistema')
 
     // Buscar todas as categorias do sistema (são globais, não por usuário)
-    const { data, error } = await supabaseAdminService.client
+    const { data, error } = await supabaseAdminService.getClient()
       .from('categories')
       .select('*')
       .order('name', { ascending: true })
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     
-    const { data, error } = await supabaseAdminService.client
+    const { data, error } = await supabaseAdminService.getClient()
       .from('categories')
       .insert({
         name: categoryData.name,
@@ -138,7 +138,7 @@ export async function PUT(request: NextRequest) {
     if (typeof (updates as any)?.color === 'string') updatePayload.color = (updates as any).color
     if (typeof (updates as any)?.icon === 'string') updatePayload.icon = (updates as any).icon
 
-    const { data, error } = await supabaseAdminService.client
+    const { data, error } = await supabaseAdminService.getClient()
       .from('categories')
       .update(updatePayload)
       .eq('id', categoryId)
@@ -179,7 +179,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Deletar categoria diretamente (hard delete)
-    const { error } = await supabaseAdminService.client
+    const { error } = await supabaseAdminService.getClient()
       .from('categories')
       .delete()
       .eq('id', categoryId)

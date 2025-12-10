@@ -213,18 +213,10 @@ export default function MetasPage() {
       try {
         console.log('🎯 Carregando metas do Supabase para usuário:', user.id)
         
-        // Carregar metas diretamente da API do Supabase
         const response = await fetch(`/api/goals?user_id=${user.id}`)
         const data = await response.json()
-        
-        let userGoals: Goal[] = []
-        
-        if (data.success && data.goals) {
-          userGoals = data.goals
-          console.log('✅ Metas carregadas do Supabase:', userGoals.length)
-        } else {
-          console.log('⚠️ Nenhuma meta encontrada no Supabase')
-        }
+        const userGoals: Goal[] = data.success && Array.isArray(data.goals) ? data.goals : []
+        console.log(`✅ Metas gerais carregadas: ${userGoals.length}`)
         
         // Carregar produtos do Supabase
         const productsResponse = await fetch(`/api/products/get?user_id=${user.id}`)
@@ -264,9 +256,7 @@ export default function MetasPage() {
           variant: "destructive",
         })
         
-        // Usar metas de exemplo em caso de erro
-        const fallbackGoals = generateGoalsFromProducts([])
-        setGoals(fallbackGoals)
+        // Evitar dados mock: não usar fallback automático
       } finally {
         setIsLoading(false)
       }

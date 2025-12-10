@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
       purchaseDate: new Date(product.purchase_date || product.created_at),
       roi: product.roi || 0,
       actualProfit: product.actual_profit || 0,
+      daysToSell: product.days_to_sell ?? null,
       sales: [],
       images: []
     }))

@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Clock, Zap, AlertTriangle, CheckCircle } from "lucide-react"
 import type { Product } from "@/types"
 import { useMemo } from "react"
-import { format, subDays, startOfDay } from "date-fns"
+import { format, subDays, startOfDay, differenceInCalendarDays } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
 type SalesVelocityChartProps = {
@@ -35,20 +35,27 @@ export function SalesVelocityChart({ data, isLoading }: SalesVelocityChartProps)
     
     // Análise de velocidade de vendas (dias para vender)
     const velocityData = data
-      .filter(product => product.quantitySold > 0 && product.daysToSell)
-      .map(product => ({
-        name: product.name.split(" ").slice(0, 2).join(" "),
-        fullName: product.name,
-        diasParaVender: product.daysToSell || 0,
-        categoria: product.category,
-        quantidadeVendida: product.quantitySold,
-        estoque: product.quantity - product.quantitySold,
-        lucroRealizado: product.actualProfit,
-        status: product.status,
-        velocidade: product.daysToSell ? 
-          (product.daysToSell <= 7 ? 'Rápida' : 
-           product.daysToSell <= 30 ? 'Média' : 'Lenta') : 'N/A'
-      }))
+      .filter(product => product.quantitySold > 0)
+      .map(product => {
+        const purchase = startOfDay(new Date(product.purchaseDate))
+        const salesDates = (product.sales || []).map(s => startOfDay(new Date(s.date)).getTime())
+        const lastSale = salesDates.length > 0 ? new Date(Math.max(...salesDates)) : null
+        const computedDays = lastSale ? differenceInCalendarDays(startOfDay(lastSale), purchase) : null
+        const days = typeof product.daysToSell === 'number' ? product.daysToSell : (computedDays ?? null)
+        const d = typeof days === 'number' && Number.isFinite(days) ? Math.max(0, days) : null
+        return {
+          name: product.name.split(" ").slice(0, 2).join(" "),
+          fullName: product.name,
+          diasParaVender: d ?? 0,
+          categoria: product.category,
+          quantidadeVendida: product.quantitySold,
+          estoque: product.quantity - product.quantitySold,
+          lucroRealizado: product.actualProfit,
+          status: product.status,
+          velocidade: d !== null ? (d <= 7 ? 'Rápida' : d <= 30 ? 'Média' : 'Lenta') : 'N/A'
+        }
+      })
+      .filter(item => item.velocidade !== 'N/A')
       .sort((a, b) => a.diasParaVender - b.diasParaVender);
 
     // Análise de vendas por dia (últimos 30 dias)

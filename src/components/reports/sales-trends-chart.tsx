@@ -25,10 +25,12 @@ import { ptBR } from "date-fns/locale"
 
 type SalesTrendsChartProps = {
   data: Product[];
+  revenues?: any[];
+  sales?: any[];
   isLoading?: boolean;
 }
 
-export function SalesTrendsChart({ data, isLoading }: SalesTrendsChartProps) {
+export function SalesTrendsChart({ data, revenues = [], sales = [], isLoading }: SalesTrendsChartProps) {
   
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return { dailyTrends: [], weeklyTrends: [], monthlyTrends: [] };
@@ -56,27 +58,98 @@ export function SalesTrendsChart({ data, isLoading }: SalesTrendsChartProps) {
       });
     });
 
-    // Processar vendas reais
+    // Chaves para deduplicação de vendas (productId|date)
+    const saleKeys = new Set<string>();
+
+    // Adicionar vendas vindas do endpoint de vendas
+    sales.forEach((sale: any) => {
+      const saleDate = startOfDay(new Date(sale.date));
+      const dateKey = format(saleDate, 'yyyy-MM-dd');
+      const key = sale.productId ? `${sale.productId}|${dateKey}` : `${dateKey}|no-product`;
+      saleKeys.add(key);
+
+      if (dailyData.has(dateKey)) {
+        const dayData = dailyData.get(dateKey);
+        const qty = Number(sale.quantity) || 0;
+        const unit = Number(sale.unitPrice) || 0;
+        const total = typeof sale.totalAmount === 'number' && !isNaN(sale.totalAmount) ? sale.totalAmount : unit * qty;
+
+        dayData.vendas += qty;
+        dayData.receita += total || 0;
+
+        if (sale.productId) {
+          const product = data.find(p => p.id === sale.productId);
+          if (product) {
+            dayData.lucro += (Number(product.sellingPrice) - Number(product.totalCost)) * qty;
+            dayData.produtos++;
+            dayData.produtosVendidos.push({
+              name: product.name,
+              category: product.category,
+              quantity: qty,
+              revenue: (Number(product.sellingPrice) || 0) * qty
+            });
+          }
+        }
+      }
+    });
+
+    // Adicionar vendas vindas dos produtos, evitando duplicatas com sales
     data.forEach(product => {
       if (product.sales && product.sales.length > 0) {
         product.sales.forEach(sale => {
           const saleDate = startOfDay(new Date(sale.date));
           const dateKey = format(saleDate, 'yyyy-MM-dd');
-          
+          const key = `${product.id}|${dateKey}`;
+          if (saleKeys.has(key)) return;
+
           if (dailyData.has(dateKey)) {
             const dayData = dailyData.get(dateKey);
-            dayData.vendas += sale.quantity;
-            dayData.receita += product.sellingPrice * sale.quantity;
-            dayData.lucro += (product.sellingPrice - product.totalCost) * sale.quantity;
+            const qty = Number(sale.quantity) || 0;
+            dayData.vendas += qty;
+            dayData.receita += (Number(product.sellingPrice) || 0) * qty;
+            dayData.lucro += (Number(product.sellingPrice) - Number(product.totalCost)) * qty;
             dayData.produtos++;
             dayData.produtosVendidos.push({
               name: product.name,
               category: product.category,
-              quantity: sale.quantity,
-              revenue: product.sellingPrice * sale.quantity
+              quantity: qty,
+              revenue: (Number(product.sellingPrice) || 0) * qty
             });
           }
         });
+      }
+    });
+
+    // Adicionar receitas marcadas como venda que não estão nas sales
+    revenues.forEach((rev: any) => {
+      const src = String(rev?.source || '').toLowerCase();
+      const cat = String(rev?.category || '').toLowerCase();
+      const isSale = src === 'sale' || cat.includes('venda');
+      if (!isSale) return;
+
+      const revDate = startOfDay(new Date(rev.date));
+      const dateKey = format(revDate, 'yyyy-MM-dd');
+      const key = rev.productId ? `${rev.productId}|${dateKey}` : '';
+      if (key && saleKeys.has(key)) return;
+
+      if (dailyData.has(dateKey)) {
+        const dayData = dailyData.get(dateKey);
+        const amount = Number(rev.amount) || 0;
+        dayData.receita += amount;
+
+        if (rev.productId) {
+          const product = data.find(p => p.id === rev.productId);
+          if (product) {
+            // Sem quantidade exata na receita: estimar lucro apenas se possível
+            // Mantemos vendas como está (não incrementa), apenas receita/lucro
+            const unitProfit = Number(product.sellingPrice) - Number(product.totalCost);
+            if (unitProfit > 0) {
+              // Aproxima uma quantidade com base na receita / sellingPrice
+              const qtyApprox = product.sellingPrice ? Math.round(amount / Number(product.sellingPrice)) : 0;
+              dayData.lucro += unitProfit * qtyApprox;
+            }
+          }
+        }
       }
     });
 
@@ -123,7 +196,7 @@ export function SalesTrendsChart({ data, isLoading }: SalesTrendsChartProps) {
 
     const weeklyTrends = Array.from(weeklyData.values());
 
-    // Análise por categoria ao longo do tempo
+    // Análise por categoria ao longo do tempo (unificada)
     const categoryTrends = data.reduce((acc, product) => {
       const category = product.category;
       if (!acc[category]) {
@@ -135,22 +208,80 @@ export function SalesTrendsChart({ data, isLoading }: SalesTrendsChartProps) {
           avgDailySales: 0
         };
       }
-      
+
+      // Vendas do produto (evitar duplicatas com sales)
       if (product.sales && product.sales.length > 0) {
         product.sales.forEach(sale => {
-          const saleDate = format(new Date(sale.date), 'yyyy-MM-dd');
+          const saleDateStr = format(new Date(sale.date), 'yyyy-MM-dd');
+          const key = `${product.id}|${saleDateStr}`;
+          if (saleKeys.has(key)) return;
           acc[category].sales.push({
-            date: saleDate,
+            date: saleDateStr,
             quantity: sale.quantity,
-            revenue: product.sellingPrice * sale.quantity
+            revenue: (Number(product.sellingPrice) || 0) * (Number(sale.quantity) || 0)
           });
-          acc[category].totalRevenue += product.sellingPrice * sale.quantity;
-          acc[category].totalUnits += sale.quantity;
+          acc[category].totalRevenue += (Number(product.sellingPrice) || 0) * (Number(sale.quantity) || 0);
+          acc[category].totalUnits += Number(sale.quantity) || 0;
         });
       }
-      
+
       return acc;
     }, {} as Record<string, any>);
+
+    // Vendas do endpoint de sales
+    sales.forEach(sale => {
+      const dateStr = format(new Date(sale.date), 'yyyy-MM-dd');
+      const product = data.find(p => p.id === sale.productId);
+      if (!product) return;
+      const category = product.category;
+      if (!categoryTrends[category]) {
+        categoryTrends[category] = {
+          category,
+          sales: [],
+          totalRevenue: 0,
+          totalUnits: 0,
+          avgDailySales: 0
+        };
+      }
+      categoryTrends[category].sales.push({
+        date: dateStr,
+        quantity: Number(sale.quantity) || 0,
+        revenue: (Number(sale.totalAmount) && !isNaN(sale.totalAmount)) ? Number(sale.totalAmount) : (Number(sale.unitPrice) || 0) * (Number(sale.quantity) || 0)
+      });
+      const rev = (Number(sale.totalAmount) && !isNaN(sale.totalAmount)) ? Number(sale.totalAmount) : (Number(sale.unitPrice) || 0) * (Number(sale.quantity) || 0);
+      categoryTrends[category].totalRevenue += rev;
+      categoryTrends[category].totalUnits += Number(sale.quantity) || 0;
+    });
+
+    // Receitas de venda que não estão nas sales
+    revenues.forEach((rev: any) => {
+      const src = String(rev?.source || '').toLowerCase();
+      const catStr = String(rev?.category || '').toLowerCase();
+      const isSale = src === 'sale' || catStr.includes('venda');
+      if (!isSale) return;
+      const dateStr = format(new Date(rev.date), 'yyyy-MM-dd');
+      const key = rev.productId ? `${rev.productId}|${dateStr}` : '';
+      if (key && saleKeys.has(key)) return;
+      const product = rev.productId ? data.find(p => p.id === rev.productId) : null;
+      if (!product) return;
+      const category = product.category;
+      if (!categoryTrends[category]) {
+        categoryTrends[category] = {
+          category,
+          sales: [],
+          totalRevenue: 0,
+          totalUnits: 0,
+          avgDailySales: 0
+        };
+      }
+      const amount = Number(rev.amount) || 0;
+      categoryTrends[category].sales.push({
+        date: dateStr,
+        quantity: 0,
+        revenue: amount
+      });
+      categoryTrends[category].totalRevenue += amount;
+    });
 
     // Calcular médias diárias por categoria
     Object.keys(categoryTrends).forEach(category => {

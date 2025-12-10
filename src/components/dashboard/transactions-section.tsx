@@ -220,15 +220,12 @@ export function TransactionsSection({ products, periodFilter, currentDate = new 
       }
     });
 
-    // Calcular saldo acumulado
+    // Calcular saldo acumulado em ordem cronológica
+    const ascForBalance = [...processedTransactions].sort((a, b) => a.date.getTime() - b.date.getTime());
     let runningBalance = 0;
-    processedTransactions.forEach(transaction => {
-      if (transaction.type === 'income') {
-        runningBalance += transaction.amount;
-      } else {
-        runningBalance -= transaction.amount;
-      }
-      transaction.balance = runningBalance;
+    ascForBalance.forEach(t => {
+      runningBalance += t.type === 'income' ? t.amount : -t.amount;
+      t.balance = runningBalance;
     });
     
     // Filtrar transações pelo período - DESATIVADO TEMPORARIAMENTE PARA MOSTRAR TODAS AS TRANSAÇÕES

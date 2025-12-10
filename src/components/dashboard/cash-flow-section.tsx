@@ -13,6 +13,7 @@ interface CashFlowSectionProps {
   products?: any[];
   revenues?: any[];
   expenses?: any[];
+  sales?: any[];
 }
 
 export function CashFlowSection({ 
@@ -22,7 +23,8 @@ export function CashFlowSection({
   periodBalance = 0,
   products = [],
   revenues = [],
-  expenses = []
+  expenses = [],
+  sales = []
 }: CashFlowSectionProps) {
   
   // Gerar dados reais baseados nos dados do Supabase
@@ -42,11 +44,35 @@ export function CashFlowSection({
       let monthRevenue = 0;
       let monthExpenses = 0;
       
-      // Calcular receitas do mês
+      const monthSaleKeys = new Set<string>();
+
+      sales.forEach((sale: any) => {
+        const saleDate = new Date(sale.date);
+        if (saleDate >= monthDate && saleDate <= monthEnd) {
+          if (sale.productId) {
+            monthSaleKeys.add(`${sale.productId}|${saleDate.toISOString().slice(0,10)}`);
+          }
+          const total = typeof sale.totalAmount === 'number' && !isNaN(sale.totalAmount)
+            ? sale.totalAmount
+            : (sale.unitPrice || 0) * (sale.quantity || 0);
+          monthRevenue += total || 0;
+        }
+      });
+
       revenues.forEach((revenue: any) => {
         const revenueDate = new Date(revenue.date);
+        const src = String(revenue?.source || '').toLowerCase();
+        const cat = String(revenue?.category || '').toLowerCase();
+        const isSale = src === 'sale' || cat.includes('venda');
         if (revenueDate >= monthDate && revenueDate <= monthEnd) {
-          monthRevenue += revenue.amount || 0;
+          if (isSale) {
+            const key = revenue.productId ? `${revenue.productId}|${revenueDate.toISOString().slice(0,10)}` : '';
+            if (key && monthSaleKeys.has(key)) return; // já somado via sales
+            const amount = revenue.amount || 0;
+            monthRevenue += amount;
+          } else {
+            monthRevenue += revenue.amount || 0;
+          }
         }
       });
       
@@ -66,7 +92,7 @@ export function CashFlowSection({
     }
     
     return monthlyData;
-  }, [revenues, expenses, periodRevenue, periodExpenses]);
+  }, [revenues, expenses, sales, periodRevenue, periodExpenses]);
 
   const maxValue = useMemo(() => {
     const max = Math.max(...cashFlowData.map(d => Math.max(d.revenue, d.expenses)));

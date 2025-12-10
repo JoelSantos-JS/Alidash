@@ -45,6 +45,7 @@ interface BusinessDashboardProps {
   revenues: any[];
   expenses: any[];
   transactions: any[];
+  sales: any[];
   currentDate?: Date;
   onOpenForm: () => void;
   onSearch: (term: string) => void;
@@ -65,6 +66,7 @@ export function BusinessDashboard({
   revenues,
   expenses,
   transactions,
+  sales,
   currentDate: currentDateProp,
   onOpenForm,
   onSearch,
@@ -152,6 +154,12 @@ export function BusinessDashboard({
               title="Lucro Realizado"
               value={summaryStats.totalActualProfit}
               icon={TrendingUp}
+              isCurrency
+            />
+            <SummaryCard 
+              title="Saldo do Período"
+              value={(summaryStats as any).periodBalance ?? 0}
+              icon={DollarSign}
               isCurrency
             />
             <SummaryCard 
@@ -259,7 +267,7 @@ export function BusinessDashboard({
       </TabsContent>
       
       <TabsContent value="sales">
-        <SalesTrendsChart data={products} isLoading={isLoading} />
+        <SalesTrendsChart data={products} revenues={revenues} sales={sales} isLoading={isLoading} />
       </TabsContent>
       
       

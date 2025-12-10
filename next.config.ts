@@ -115,14 +115,7 @@ const nextConfig: NextConfig = {
   },
 
   // Rewrites para evitar 404 do injetor de Vite do ambiente de preview
-  async rewrites() {
-    return [
-      {
-        source: '/@vite/client',
-        destination: '/@vite/client.js',
-      },
-    ]
-  },
+  
 
   poweredByHeader: false,
   reactStrictMode: true,
@@ -131,28 +124,11 @@ const nextConfig: NextConfig = {
 
   compress: true,
 
-  modularizeImports: {
-    '@mui/icons-material': {
-      transform: '@mui/icons-material/{{member}}',
-    },
-    'lodash': {
-      transform: 'lodash/{{member}}',
-    },
-  },
+  
 
-  experimental: {
-    optimizeCss: true,
-    optimizePackageImports: ['@mui/material', '@mui/icons-material', 'lucide-react'],
-  },
+  experimental: {},
 
-  turbopack: {
-    rules: {
-      '*.svg': {
-        loaders: ['@svgr/webpack'],
-        as: '*.js',
-      },
-    },
-  },
+  
 
   images: {
     remotePatterns: [

@@ -63,6 +63,10 @@ export class SupabaseService {
     }
   }
 
+  public getClient() {
+    return this.client
+  }
+
   // =====================================
   // USER OPERATIONS
   // =====================================
@@ -648,20 +652,22 @@ export class SupabaseService {
     quantity: number
     unitPrice: number
     totalAmount: number
-    date: Date
+    date: Date | string
     buyerName?: string
     notes?: string
     productId: string
   }) {
+    const safeQuantity = Number.isFinite(saleData.quantity) ? Math.max(1, Math.floor(Number(saleData.quantity))) : 1
+    let safeUnit = Number(saleData.unitPrice)
+    if (!Number.isFinite(safeUnit) || safeUnit < 0) safeUnit = 0
+    safeUnit = Math.min(999999.99, Number(safeUnit.toFixed(2)))
     const insertData = {
       user_id: userId,
       product_id: productId,
-      quantity: saleData.quantity,
-      unit_price: saleData.unitPrice,
-      total_amount: saleData.totalAmount,
-      date: saleData.date.toISOString(),
-      buyer_name: saleData.buyerName || null,
-      notes: saleData.notes || ''
+      quantity: safeQuantity,
+      unit_price: safeUnit,
+      date: (saleData.date instanceof Date ? saleData.date : new Date(saleData.date)).toISOString(),
+      buyer_name: saleData.buyerName || null
     }
 
     const { data, error } = await this.client
@@ -671,6 +677,29 @@ export class SupabaseService {
       .single()
 
     if (error) {
+      if (String(error.message || '').toLowerCase().includes('numeric field overflow')) {
+        const retryUnit = Math.min(safeUnit, 999999.99)
+        const retryData = {
+          user_id: userId,
+          product_id: productId,
+          quantity: safeQuantity,
+          unit_price: retryUnit,
+          date: (saleData.date instanceof Date ? saleData.date : new Date(saleData.date)).toISOString(),
+          buyer_name: saleData.buyerName || null
+        }
+        const retry = await this.client
+          .from('sales')
+          .insert(retryData)
+          .select()
+          .single()
+        if (retry.error) {
+          throw new Error('Erro ao criar venda: valores excedem limites permitidos')
+        }
+        return retry.data
+      }
+      if (String(error.message || '').toLowerCase().includes('cannot insert a non-default value into column')) {
+        throw new Error('Erro ao criar venda: coluna gerada não aceita valor manual')
+      }
       throw new Error(`Erro ao criar venda: ${error.message}`)
     }
 

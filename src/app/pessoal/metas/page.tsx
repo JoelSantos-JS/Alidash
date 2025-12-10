@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,9 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { GoalsOverview } from "@/components/goals/goals-overview";
+import type { Goal } from "@/types";
 import {
   Plus,
   Search,
@@ -97,6 +100,7 @@ export default function PersonalGoalsPage() {
   const [goalToDelete, setGoalToDelete] = useState<PersonalGoal | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<PersonalGoal>>({});
   const [isEditLoading, setIsEditLoading] = useState(false);
+  const [periodFilter, setPeriodFilter] = useState<"week" | "month" | "quarter" | "year">("month");
 
   useEffect(() => {
     if (user) {
@@ -108,14 +112,7 @@ export default function PersonalGoalsPage() {
     try {
       setLoading(true);
       
-      // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.id}&email=${user?.email}`);
-      if (!userResponse.ok) {
-        throw new Error('Usuário não encontrado');
-      }
-      
-      const userResult = await userResponse.json();
-      const supabaseUserId = userResult.user.id;
+      const supabaseUserId = user!.id;
       
       // Buscar metas pessoais da API real
       const goalsResponse = await fetch(`/api/personal/goals?user_id=${supabaseUserId}`);
@@ -185,14 +182,7 @@ export default function PersonalGoalsPage() {
      try {
        setIsEditLoading(true);
        
-       // Buscar usuário Supabase para obter o ID
-       const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.id}&email=${user?.email}`);
-       if (!userResponse.ok) {
-         throw new Error('Usuário não encontrado');
-       }
-       
-       const userResult = await userResponse.json();
-       const supabaseUserId = userResult.user.id;
+       const supabaseUserId = user.id;
        
        // Atualizar via API real
        const updateResponse = await fetch(`/api/personal/goals`, {
@@ -268,14 +258,7 @@ export default function PersonalGoalsPage() {
     if (!goalToDelete || !user) return;
     
     try {
-      // Buscar usuário Supabase para obter o ID
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.id}&email=${user?.email}`);
-      if (!userResponse.ok) {
-        throw new Error('Usuário não encontrado');
-      }
-      
-      const userResult = await userResponse.json();
-      const supabaseUserId = userResult.user.id;
+      const supabaseUserId = user.id;
       
       // Deletar via API real
       const deleteResponse = await fetch(`/api/personal/goals?id=${goalToDelete.id}&user_id=${supabaseUserId}`, {
@@ -310,14 +293,7 @@ export default function PersonalGoalsPage() {
     if (!user) return;
     
     try {
-      // Buscar usuário Supabase para obter o ID
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.id}&email=${user?.email}`);
-      if (!userResponse.ok) {
-        throw new Error('Usuário não encontrado');
-      }
-      
-      const userResult = await userResponse.json();
-      const supabaseUserId = userResult.user.id;
+      const supabaseUserId = user.id;
       
       // Mapear campos do formulário para a API
       const apiData = {
@@ -391,6 +367,46 @@ export default function PersonalGoalsPage() {
     const matchesStatus = !selectedStatus || goal.status === selectedStatus;
     return matchesSearch && matchesCategory && matchesStatus;
   });
+
+  const mapCategory = (category: string): Goal["category"] => {
+    switch (category) {
+      case "emergency_fund":
+      case "investment":
+      case "retirement":
+      case "debt_payoff":
+        return "financial";
+      case "health":
+        return "health";
+      case "education":
+        return "education";
+      case "house":
+      case "car":
+      case "travel":
+      case "gift":
+      case "other":
+      default:
+        return "personal";
+    }
+  };
+
+  const overviewGoals: Goal[] = useMemo(() => {
+    return goals.map(g => ({
+      id: g.id,
+      name: g.title,
+      description: g.description,
+      category: mapCategory(g.category),
+      type: "savings",
+      targetValue: g.target_amount,
+      currentValue: g.current_amount,
+      unit: "BRL",
+      deadline: new Date(g.target_date),
+      createdDate: new Date(g.created_at),
+      priority: g.priority,
+      status: g.status,
+      notes: g.notes,
+      tags: []
+    }));
+  }, [goals]);
 
   const totalTargetAmount = filteredGoals.reduce((sum, goal) => sum + goal.target_amount, 0);
   const totalCurrentAmount = filteredGoals.reduce((sum, goal) => sum + goal.current_amount, 0);
@@ -544,6 +560,19 @@ export default function PersonalGoalsPage() {
             </CardContent>
           </Card>
         </div>
+
+        <Tabs value={periodFilter} onValueChange={(value) => setPeriodFilter(value as any)} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="week">Semana</TabsTrigger>
+            <TabsTrigger value="month">Mês</TabsTrigger>
+            <TabsTrigger value="quarter">Trimestre</TabsTrigger>
+            <TabsTrigger value="year">Ano</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value={periodFilter} className="space-y-6">
+            <GoalsOverview goals={overviewGoals} />
+          </TabsContent>
+        </Tabs>
 
         {/* Filtros */}
         <Card>

@@ -60,7 +60,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Atualizar nome do usuário
-    const { data: updatedUser, error } = await supabaseAdminService.client
+    const { data: updatedUser, error } = await supabaseAdminService.getClient()
       .from('users')
       .update({ 
         name: sanitizedName,

@@ -202,7 +202,6 @@ export async function POST(request: NextRequest) {
               product_id: product.id,
               quantity,
               unit_price: unitPrice,
-              total_amount: totalAmount,
               date: processedRevenueData.date.toISOString(),
               buyer_name: null,
               notes: processedRevenueData.notes || ''

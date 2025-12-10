@@ -40,6 +40,7 @@ import { InventoryStatusChart } from "@/components/reports/inventory-status-char
 import { SupplierPerformanceChart } from "@/components/reports/supplier-performance-chart";
 import { SalesTrendsChart } from "@/components/reports/sales-trends-chart";
 import { ProfitMarginAnalysisChart } from "@/components/reports/profit-margin-analysis-chart";
+import { CustomerSalesTimelineChart } from "@/components/reports/customer-sales-timeline-chart";
 // Sidebar component
 import { ReportsSidebar } from '@/components/reports/reports-sidebar';
 
@@ -592,6 +593,7 @@ export default function ReportsPage() {
           <TabsContent value="trends" className="space-y-8">
             <div className="grid grid-cols-1 gap-8">
               <SalesTrendsChart data={filteredProducts} isLoading={isLoading} />
+              <CustomerSalesTimelineChart data={filteredProducts} isLoading={isLoading} />
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <CategoryPerformanceChart data={filteredProducts} isLoading={isLoading} />
                 <ROIComparisonChart data={filteredProducts} isLoading={isLoading} />

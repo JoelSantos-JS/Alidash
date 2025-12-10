@@ -20,6 +20,7 @@ import {
   User,
   Heart,
   Gamepad2,
+  HelpCircle,
   ChevronLeft,
   ChevronRight,
   MoreHorizontal
@@ -111,6 +112,13 @@ const navigationItems: NavigationItem[] = [
     label: "Apostas",
     icon: Gamepad2,
     description: "Gestão de apostas"
+  }
+  ,
+  {
+    href: "/duvidas",
+    label: "Dúvidas/Sugestões",
+    icon: HelpCircle,
+    description: "Suporte e feedback"
   }
 ];
 

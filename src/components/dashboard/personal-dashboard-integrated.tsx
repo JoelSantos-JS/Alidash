@@ -87,15 +87,7 @@ export function PersonalDashboard({ summaryStats, isLoading, periodFilter }: Per
     try {
       setLoading(true);
       
-      // Buscar usuário Supabase
-      const userResponse = await fetch(`/api/auth/get-user?firebase_uid=${user?.id}&email=${user?.email}`);
-      if (!userResponse.ok) {
-        console.log('⚠️ Usuário não encontrado no Supabase');
-        return;
-      }
-      
-      const userResult = await userResponse.json();
-      const supabaseUserId = userResult.user.id;
+      const supabaseUserId = user!.id;
       
       // Carregar dados pessoais em paralelo
       const [summaryResult, goalsResult] = await Promise.allSettled([

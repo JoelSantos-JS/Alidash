@@ -25,6 +25,7 @@ interface RevenueItem {
   type: 'sale' | 'revenue';
   category: string;
   source?: string;
+  quantity?: number;
 }
 
 export function RevenueSection({ products, periodFilter, currentDate = new Date(), revenues = [] }: RevenueSectionProps) {
@@ -45,6 +46,23 @@ export function RevenueSection({ products, periodFilter, currentDate = new Date(
 
     const periodStart = getPeriodStart();
     const allRevenues: RevenueItem[] = [];
+    const saleKeys = new Set<string>();
+    const normalize = (s: string) => s
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+    const findProductByDescription = (desc?: string) => {
+      if (!desc) return null;
+      const withoutPrefix = desc.replace(/^\s*venda\s*:\s*/i, '');
+      const text = normalize(withoutPrefix);
+      for (const p of products) {
+        const name = normalize(p.name || '');
+        if (!name) continue;
+        if (text.includes(name) || name.includes(text)) return p;
+      }
+      return null;
+    };
 
     // Receitas de vendas de produtos
     products.forEach(product => {
@@ -52,30 +70,56 @@ export function RevenueSection({ products, periodFilter, currentDate = new Date(
         product.sales
           .filter(sale => new Date(sale.date) >= periodStart)
           .forEach(sale => {
+            const key = `${product.id}|${new Date(sale.date).toISOString().slice(0,10)}`;
+            saleKeys.add(key);
             allRevenues.push({
               id: `sale-${sale.id}`,
               date: new Date(sale.date),
               description: `Venda: ${product.name} (${sale.quantity}x)`,
               amount: product.sellingPrice * sale.quantity,
               type: 'sale',
-              category: product.category
+              category: product.category,
+              quantity: sale.quantity
             });
           });
       }
     });
 
-    // Adicionar receitas independentes (evitar duplicar vendas já contabilizadas nos produtos)
     revenues.forEach(revenue => {
-      if (new Date(revenue.date) >= periodStart && !revenue.productId) {
-        allRevenues.push({
-          id: `revenue-${revenue.id}`,
-          date: new Date(revenue.date),
-          time: revenue.time,
-          description: revenue.description,
-          amount: revenue.amount,
-          type: 'revenue',
-          category: revenue.category
-        });
+      if (new Date(revenue.date) >= periodStart) {
+        const isSale = String(revenue.source).toLowerCase() === 'sale' || String(revenue.category).toLowerCase().includes('venda');
+        if (isSale) {
+          let product = revenue.productId ? products.find(p => p.id === revenue.productId) : null;
+          if (!product) {
+            product = findProductByDescription(revenue.description);
+          }
+          const dateKey = new Date(revenue.date).toISOString().slice(0,10);
+          const dedupeKey = product ? `${product.id}|${dateKey}` : '';
+          if (dedupeKey && saleKeys.has(dedupeKey)) return;
+          const unit = product && typeof product.sellingPrice === 'number' ? Number(product.sellingPrice) : 0;
+          const amt = typeof revenue.amount === 'number' ? revenue.amount : 0;
+          const qty = unit > 0 && amt > 0 ? Math.max(1, Math.round(amt / unit)) : 1;
+          allRevenues.push({
+            id: `rev-sale-${revenue.id}`,
+            date: new Date(revenue.date),
+            time: revenue.time,
+            description: product ? `Venda: ${product.name}` : (revenue.description?.toLowerCase().startsWith('venda') ? revenue.description : `Venda: ${revenue.description}`),
+            amount: revenue.amount,
+            type: 'sale',
+            category: revenue.category,
+            quantity: qty
+          });
+        } else {
+          allRevenues.push({
+            id: `revenue-${revenue.id}`,
+            date: new Date(revenue.date),
+            time: revenue.time,
+            description: revenue.description,
+            amount: revenue.amount,
+            type: 'revenue',
+            category: revenue.category
+          });
+        }
       }
     });
 
@@ -86,6 +130,9 @@ export function RevenueSection({ products, periodFilter, currentDate = new Date(
     const totalRevenue = allRevenues.reduce((acc, item) => acc + item.amount, 0);
     const salesRevenue = allRevenues.filter(r => r.type === 'sale').reduce((acc, item) => acc + item.amount, 0);
     const totalTransactions = allRevenues.length;
+    const totalUnitsSold = allRevenues
+      .filter(r => r.type === 'sale')
+      .reduce((acc, item) => acc + (typeof item.quantity === 'number' ? item.quantity : 1), 0);
 
     // Calcular crescimento (comparar com período anterior)
     const previousPeriodStart = new Date(periodStart);
@@ -132,6 +179,7 @@ export function RevenueSection({ products, periodFilter, currentDate = new Date(
       totalRevenue,
       salesRevenue,
       totalTransactions,
+      totalUnitsSold,
       growthPercentage
     };
   }, [products, periodFilter, currentDate, revenues]);
@@ -189,15 +237,13 @@ export function RevenueSection({ products, periodFilter, currentDate = new Date(
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Produtos Vendidos</CardTitle>
+            <CardTitle className="text-sm font-medium">Unidades Vendidas</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {revenueData.revenues.filter(r => r.type === 'sale').length}
-            </div>
+            <div className="text-2xl font-bold">{revenueData.totalUnitsSold}</div>
             <p className="text-xs text-muted-foreground">
-              Unidades vendidas
+              Total no período
             </p>
           </CardContent>
         </Card>

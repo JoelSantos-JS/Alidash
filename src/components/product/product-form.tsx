@@ -837,3 +837,5 @@ export function ProductForm({ onSave, productToEdit, onCancel }: ProductFormProp
     </>
   );
 }
+
+export default ProductForm

@@ -18,7 +18,8 @@ export default function DuvidasPage() {
   const [assunto, setAssunto] = useState("");
   const [mensagem, setMensagem] = useState("");
 
-  const voxWhatsappUrl = process.env.NEXT_PUBLIC_VOX_WHATSAPP_URL || "https://wa.me";
+  const voxWhatsappUrl = process.env.NEXT_PUBLIC_VOX_WHATSAPP_URL || "https://api.whatsapp.com/send/";
+  const whatsappNumber = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "5573982458991").replace(/[^0-9]/g, "");
   const suporteEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "joeltere8@gmail.com";
 
   const texto = useMemo(() => {
@@ -37,13 +38,15 @@ export default function DuvidasPage() {
     try {
       const url = new URL(voxWhatsappUrl);
       if (url.host.includes("wa.me") || url.host.includes("whatsapp")) {
-        url.searchParams.set("text", decodeURIComponent(text));
-        return url.toString();
+        return `https://api.whatsapp.com/send/?phone=${whatsappNumber}&text=${decodeURIComponent(text)}&type=phone_number&app_absent=0`;
       }
+      url.searchParams.set("phone", whatsappNumber);
       url.searchParams.set("text", decodeURIComponent(text));
+      url.searchParams.set("type", "phone_number");
+      url.searchParams.set("app_absent", "0");
       return url.toString();
     } catch {
-      return `${voxWhatsappUrl}?text=${text}`;
+      return `https://api.whatsapp.com/send/?phone=${whatsappNumber}&text=${text}&type=phone_number&app_absent=0`;
     }
   };
 

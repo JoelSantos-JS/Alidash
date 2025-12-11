@@ -183,7 +183,11 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
   const [transactions, setTransactions] = useState<any[]>([]);
   const { toast } = useToast();
   const router = useRouter();
-  const voxWhatsappUrl = process.env.NEXT_PUBLIC_VOX_WHATSAPP_URL || 'https://wa.me';
+  const voxWhatsappUrl = process.env.NEXT_PUBLIC_VOX_WHATSAPP_URL || 'https://api.whatsapp.com/send/';
+  const whatsappNumber = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '5573982458991').replace(/[^0-9]/g, '')
+  const clientName = (user?.user_metadata?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Cliente').toString()
+  const whatsappDefaultText = encodeURIComponent(`Olá, sou ${clientName} e tenho uma dúvida/sugestão sobre o VoxCash.`)
+  const whatsappLink = `${voxWhatsappUrl}?phone=${whatsappNumber}&text=${whatsappDefaultText}&type=phone_number&app_absent=0`
   const salesSyncRunning = useRef(false);
   const salesSyncAttemptedKeys = useRef<Set<string>>(new Set());
 
@@ -1067,7 +1071,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 size="lg"
                 onClick={() => router.push('/')}
               >
-                <Clock className="h-4 w-4" />
+                <Clock className="h-4 w-4 flex-shrink-0" />
                 <span className="text-sm sm:text-base">Dashboard</span>
               </Button>
               
@@ -1077,7 +1081,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 size="lg"
                 onClick={() => router.push(isPersonal ? '/pessoal/receitas' : '/receitas')}
               >
-                <ArrowUp className="h-4 w-4" />
+                <ArrowUp className="h-4 w-4 flex-shrink-0" />
                 <span className="text-sm sm:text-base">{isPersonal ? 'Ganhos' : 'Receitas'}</span>
               </Button>
               
@@ -1087,7 +1091,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 size="lg"
                 onClick={() => router.push(isPersonal ? '/pessoal/despesas' : '/despesas')}
               >
-                <ArrowDown className="h-4 w-4" />
+                <ArrowDown className="h-4 w-4 flex-shrink-0" />
                 <span className="text-sm sm:text-base">{isPersonal ? 'Gastos' : 'Despesas'}</span>
               </Button>
               
@@ -1097,7 +1101,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 size="lg"
                 onClick={() => router.push(isPersonal ? '/pessoal/transacoes' : '/transacoes')}
               >
-                <BarChart3 className="h-4 w-4" />
+                <BarChart3 className="h-4 w-4 flex-shrink-0" />
                 <span className="text-sm sm:text-base">Transações</span>
               </Button>
               
@@ -1107,7 +1111,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 size="lg"
                 onClick={() => router.push(isPersonal ? '/pessoal/dividas' : '/dividas')}
               >
-                <FileText className="h-4 w-4" />
+                <FileText className="h-4 w-4 flex-shrink-0" />
                 <span className="text-sm sm:text-base">Dívidas</span>
               </Button>
               
@@ -1117,7 +1121,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 size="lg"
                 onClick={() => router.push(isPersonal ? '/pessoal/categorias' : '/categorias')}
               >
-                <Tag className="h-4 w-4" />
+                <Tag className="h-4 w-4 flex-shrink-0" />
                 <span className="text-sm sm:text-base">Categorias</span>
               </Button>
               
@@ -1129,7 +1133,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                   size="lg"
                   onClick={() => router.push('/produtos')}
                 >
-                  <Package className="h-4 w-4" />
+                  <Package className="h-4 w-4 flex-shrink-0" />
                   <span className="text-sm sm:text-base">Produtos</span>
                 </Button>
               )}
@@ -1140,7 +1144,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 size="lg"
                 onClick={() => router.push(isPersonal ? '/pessoal/relatorios' : '/relatorios')}
               >
-                <BarChart3 className="h-4 w-4" />
+                <BarChart3 className="h-4 w-4 flex-shrink-0" />
                 <span className="text-sm sm:text-base">Relatórios</span>
               </Button>
               
@@ -1150,7 +1154,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 size="lg"
                 onClick={() => router.push(isPersonal ? '/pessoal/metas' : '/metas')}
               >
-                <TargetIcon className="h-4 w-4" />
+                <TargetIcon className="h-4 w-4 flex-shrink-0" />
                 <span className="text-sm sm:text-base">Metas</span>
               </Button>
 
@@ -1160,8 +1164,8 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 size="lg"
                 asChild
               >
-                <a href={voxWhatsappUrl} target="_blank" rel="noopener noreferrer">
-                  <MessageCircle className="h-4 w-4" />
+                <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+                  <MessageCircle className="h-4 w-4 flex-shrink-0" />
                   <span className="text-sm sm:text-base">WhatsApp</span>
                 </a>
               </Button>
@@ -1172,7 +1176,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 size="lg"
                 onClick={() => router.push('/duvidas')}
               >
-                <HelpCircle className="h-4 w-4" />
+                <HelpCircle className="h-4 w-4 flex-shrink-0" />
                 <span className="text-sm sm:text-base">Dúvidas/Sugestões</span>
               </Button>
 

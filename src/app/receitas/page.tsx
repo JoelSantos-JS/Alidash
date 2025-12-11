@@ -123,7 +123,7 @@ export default function ReceitasPage() {
   const [revenueToEdit, setRevenueToEdit] = useState<Revenue | null>(null);
 
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (!user?.id) return;
 
     const fetchProducts = async () => {
       if (!user?.id) return;
@@ -150,7 +150,7 @@ export default function ReceitasPage() {
     };
 
     fetchProducts();
-  }, [user?.id, authLoading]);
+  }, [user?.id]);
 
 
 
@@ -271,7 +271,7 @@ export default function ReceitasPage() {
     setRevenueToEdit(null);
   };
 
-  if (authLoading) {
+  if (authLoading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

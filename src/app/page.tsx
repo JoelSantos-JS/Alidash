@@ -158,6 +158,7 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [initialLoaded, setInitialLoaded] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showEditMenu, setShowEditMenu] = useState(true); // true = menu de edição, false = detalhes completos
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -299,6 +300,27 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
   // Remover redirecionamento automático - dashboard pessoal será integrado
 
   useEffect(() => {
+    try {
+      const lastUserId = typeof window !== 'undefined' ? sessionStorage.getItem('last_user_id') : null;
+      if (lastUserId && !user?.id) {
+        const productsKey = `cache:products:${lastUserId}`;
+        const salesKey = `cache:sales:${lastUserId}`;
+        const transactionsKey = `cache:transactions:${lastUserId}`;
+        const cachedProducts = getStorageCache<Product[]>(productsKey, 30000);
+        const cachedSales = getStorageCache<any[]>(salesKey, 30000);
+        const cachedTransactions = getStorageCache<any[]>(transactionsKey, 30000);
+        if (cachedProducts) setProducts(cachedProducts);
+        if (cachedSales) setSales(cachedSales);
+        if (cachedTransactions) setTransactions(cachedTransactions);
+        if (cachedProducts || cachedSales || cachedTransactions) {
+          setIsLoading(false);
+          setInitialLoaded(true);
+        }
+      }
+    } catch {}
+  }, [user?.id]);
+
+  useEffect(() => {
     if (!user?.id) {
       return;
     }
@@ -361,6 +383,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
         setStorageCache(productsKey, finalProducts);
         setStorageCache(salesKey, supabaseSales);
         setStorageCache(transactionsKey, supabaseTransactions);
+        setInitialLoaded(true);
         
         // Remover chamada para refreshData() que causava loop infinito
         // Os dados de expenses e revenues já são carregados automaticamente pelo DataContext
@@ -1712,7 +1735,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
             {/* Seções Condicionais */}
             {!isPersonal && (
               <div className="space-y-6 mb-6 md:mb-8">
-                {isLoading || dataLoading ? (
+                {!initialLoaded && (isLoading || dataLoading) ? (
                   <div className="space-y-4">
                     <Skeleton className="h-[120px] w-full" />
                     <Skeleton className="h-[240px] w-full" />
@@ -1763,7 +1786,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
             ) : (
               <BusinessDashboard
                 products={products}
-                isLoading={isLoading || dataLoading}
+                isLoading={!initialLoaded && (isLoading || dataLoading)}
                 summaryStats={summaryStats}
                 filteredProducts={filteredProducts}
                 periodFilter={periodFilter}

@@ -113,6 +113,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     console.log('🔄 useEffect do DataContext - user.id:', user?.id, 'authLoading:', loading);
     if (loading) {
+      try {
+        const lastUserId = typeof window !== 'undefined' ? sessionStorage.getItem('last_user_id') : null;
+        if (lastUserId) {
+          const cachedExpenses = getStorageCache<Expense[]>(`cache:expenses:${lastUserId}`, 30000);
+          const cachedRevenues = getStorageCache<Revenue[]>(`cache:revenues:${lastUserId}`, 30000);
+          if (cachedExpenses) setExpenses(cachedExpenses);
+          if (cachedRevenues) setRevenues(cachedRevenues);
+          if (cachedExpenses || cachedRevenues) setIsLoading(false);
+        }
+      } catch {}
       return;
     }
     if (user?.id) {

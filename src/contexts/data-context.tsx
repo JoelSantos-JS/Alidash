@@ -113,7 +113,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     console.log('🔄 useEffect do DataContext - user.id:', user?.id, 'authLoading:', loading);
     if (loading) {
-      setIsLoading(true);
       return;
     }
     if (user?.id) {

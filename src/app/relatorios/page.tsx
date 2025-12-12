@@ -155,7 +155,7 @@ export default function ReportsPage() {
 
   // Carregar dados dos produtos do Supabase
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (!user) return;
 
     const fetchData = async () => {
       try {
@@ -228,7 +228,7 @@ export default function ReportsPage() {
     };
 
     fetchData();
-  }, [user, authLoading, toast]);
+  }, [user, toast]);
 
   // Filtros de dados
   const filteredProducts = useMemo(() => {

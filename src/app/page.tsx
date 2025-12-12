@@ -1570,6 +1570,21 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
             {/* Metrics Cards - Apenas para modo empresarial */}
             {!isPersonal && (
               <div className="responsive-grid responsive-grid-4 mb-6 md:mb-8">
+              {isLoading || dataLoading ? (
+                <>
+                  {[...Array(4)].map((_, i) => (
+                    <Card key={i}>
+                      <CardContent className="p-3 sm:p-4 md:p-6">
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-8 w-32" />
+                          <Skeleton className="h-3 w-20" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </>
+              ) : (<> 
               <Card
                 className={cn(
                   "transform-gpu cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95",
@@ -1675,38 +1690,50 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
               </Card>
 
               <FinancialHealthIndicator expenseRatio={summaryStats.expenseRatio} isPersonal={isPersonal} />
+              </>
+              )}
               </div>
             )}
 
             {/* Seções Condicionais */}
             {!isPersonal && (
               <div className="space-y-6 mb-6 md:mb-8">
-                <BudgetSection 
-                  className=""
-                  monthlyBudget={monthlyBudget}
-                  estimatedExpenses={summaryStats.periodExpenses || 0}
-                  totalItems={products.length}
-                  missingItems={products.filter(p => p.quantity - p.quantitySold <= 2 && p.status !== 'sold').length}
-                  periodRevenue={summaryStats.periodRevenue}
-                  onBudgetChange={saveBudgetToDatabase}
-                  isLoading={budgetLoading}
-                />
-                
-                <CashFlowSection 
-                   className=""
-                   periodRevenue={summaryStats.periodRevenue}
-                   periodExpenses={summaryStats.periodExpenses}
-                   periodBalance={summaryStats.periodBalance}
-                   products={products}
-                   revenues={revenues}
-                   expenses={expenses}
-                   sales={sales}
-                 />
-                 
-                 <InventoryControlSection 
-                   products={products}
-                   className=""
-                 />
+                {isLoading || dataLoading ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-[120px] w-full" />
+                    <Skeleton className="h-[240px] w-full" />
+                    <Skeleton className="h-[160px] w-full" />
+                  </div>
+                ) : (
+                  <>
+                    <BudgetSection 
+                      className=""
+                      monthlyBudget={monthlyBudget}
+                      estimatedExpenses={summaryStats.periodExpenses || 0}
+                      totalItems={products.length}
+                      missingItems={products.filter(p => p.quantity - p.quantitySold <= 2 && p.status !== 'sold').length}
+                      periodRevenue={summaryStats.periodRevenue}
+                      onBudgetChange={saveBudgetToDatabase}
+                      isLoading={budgetLoading}
+                    />
+                    
+                    <CashFlowSection 
+                       className=""
+                       periodRevenue={summaryStats.periodRevenue}
+                       periodExpenses={summaryStats.periodExpenses}
+                       periodBalance={summaryStats.periodBalance}
+                       products={products}
+                       revenues={revenues}
+                       expenses={expenses}
+                       sales={sales}
+                     />
+                     
+                     <InventoryControlSection 
+                       products={products}
+                       className=""
+                     />
+                  </>
+                )}
                </div>
             )}
 
@@ -1722,7 +1749,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
             ) : (
               <BusinessDashboard
                 products={products}
-                isLoading={isLoading}
+                isLoading={isLoading || dataLoading}
                 summaryStats={summaryStats}
                 filteredProducts={filteredProducts}
                 periodFilter={periodFilter}

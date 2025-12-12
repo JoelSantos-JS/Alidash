@@ -207,7 +207,7 @@ export default function MetasPage() {
 
   // Carregar dados reais do Supabase
   useEffect(() => {
-    if (authLoading || !user) return
+    if (!user) return
 
     const fetchData = async () => {
       try {
@@ -263,7 +263,7 @@ export default function MetasPage() {
     }
 
     fetchData()
-  }, [authLoading, user, toast])
+  }, [user, toast])
 
   const filteredAndSortedGoals = useMemo(() => {
     let filtered = goals.filter(goal => {
@@ -537,7 +537,7 @@ export default function MetasPage() {
     }
   }
 
-  if (authLoading) {
+  if (authLoading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

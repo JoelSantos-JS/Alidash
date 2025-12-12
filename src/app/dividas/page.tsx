@@ -197,10 +197,10 @@ export default function DebtsPage() {
       }
     };
 
-    if (!authLoading) {
+    if (user) {
       loadDebts();
     }
-  }, [user, authLoading, toast]);
+  }, [user, toast]);
 
 
 
@@ -627,7 +627,7 @@ export default function DebtsPage() {
     }
   };
 
-  if (authLoading || isLoading) {
+  if ((authLoading && !user) || isLoading) {
     return (
       <div className="container mx-auto p-6 space-y-6">
         <div className="flex items-center gap-4 mb-6">

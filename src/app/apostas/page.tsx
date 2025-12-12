@@ -48,8 +48,8 @@ export default function BetsPage() {
     const [summaryPeriod, setSummaryPeriod] = useState<Period>('day');
     const { toast } = useToast();
     
-     useEffect(() => {
-        if (authLoading || !user) return;
+    useEffect(() => {
+        if (!user) return;
 
         const fetchData = async () => {
             setIsLoading(true);
@@ -78,7 +78,7 @@ export default function BetsPage() {
             }
         }
         fetchData();
-    }, [user, authLoading]);
+    }, [user]);
 
 
 

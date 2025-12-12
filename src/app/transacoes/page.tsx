@@ -132,7 +132,7 @@ function TransacoesPageContent() {
 
 
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (!user) return;
 
     const fetchData = async () => {
       try {
@@ -272,7 +272,7 @@ function TransacoesPageContent() {
     }
     
     fetchData();
-  }, [user, authLoading]);
+  }, [user]);
 
   // Removido o useEffect que salvava automaticamente as transações
   // para evitar loops e duplicação de dados
@@ -402,14 +402,14 @@ function TransacoesPageContent() {
   
   // Carregar transações do período atual quando o componente montar ou a data mudar
   useEffect(() => {
-    if (user && !authLoading) {
+    if (user) {
       console.log('🔄 Carregando transações para o período:', currentDate);
       loadTransactionsForPeriod(currentDate);
     }
-  }, [user, authLoading, currentDate]);
+  }, [user, currentDate]);
 
   useEffect(() => {
-    if (user && !authLoading) {
+    if (user) {
       loadTransactionsForPeriod(currentDate);
     }
   }, [periodFilter]);
@@ -541,7 +541,7 @@ function TransacoesPageContent() {
     setTransactions(prev => prev.filter(t => t.id !== id));
   };
 
-  if (authLoading) {
+  if (authLoading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

@@ -118,6 +118,7 @@ export default function ReceitasPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
   const [periodFilter, setPeriodFilter] = useState<"day" | "week" | "month">("month");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [revenueToEdit, setRevenueToEdit] = useState<Revenue | null>(null);
@@ -139,13 +140,16 @@ export default function ReceitasPage() {
           const supabaseProducts = productsData.products || [];
           console.log('📦 Produtos do Supabase:', supabaseProducts.length);
           setProducts(supabaseProducts.length > 0 ? supabaseProducts : initialProducts);
+          setProductsLoading(false);
         } else {
           console.log('❌ Erro ao buscar produtos do Supabase, usando produtos iniciais');
           setProducts(initialProducts);
+          setProductsLoading(false);
         }
       } catch (error) {
         console.error('❌ Erro ao buscar produtos:', error);
         setProducts(initialProducts);
+        setProductsLoading(false);
       }
     };
 
@@ -363,7 +367,7 @@ export default function ReceitasPage() {
 
       {/* Main Content */}
       <main className="p-3 md:p-6">
-        {dataLoading ? (
+        {dataLoading || productsLoading ? (
           <div className="space-y-4 md:space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
               {Array.from({ length: 4 }).map((_, i) => (

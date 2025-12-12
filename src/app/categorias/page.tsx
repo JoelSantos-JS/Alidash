@@ -267,7 +267,7 @@ export default function CategoriesPage() {
 
   // Carregar categorias do Supabase
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (!user) return;
 
     const fetchCategories = async () => {
       try {
@@ -312,7 +312,7 @@ export default function CategoriesPage() {
     };
 
     fetchCategories();
-  }, [user, authLoading]);
+  }, [user]);
 
   // Salvar categoria no Supabase
    const saveCategory = async (category: Category, isUpdate: boolean = false) => {
@@ -535,7 +535,7 @@ export default function CategoriesPage() {
     }
   };
 
-  if (authLoading || isLoading) {
+  if ((authLoading && !user) || isLoading) {
     return (
       <div className="container mx-auto p-6 space-y-6">
         <div className="flex items-center gap-4 mb-6">

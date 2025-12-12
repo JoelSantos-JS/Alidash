@@ -56,9 +56,9 @@ export default function ProdutosPage() {
 
   // Fetch products on component mount
   useEffect(() => {
-    if (authLoading || !user) return
+    if (!user) return
     fetchProducts()
-  }, [authLoading, user])
+  }, [user])
 
   // Filter products based on search and filters
   useEffect(() => {

@@ -67,10 +67,10 @@ export default function PersonalDashboard() {
   const [currentYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (!user) return;
     
     loadPersonalData();
-  }, [user, authLoading]);
+  }, [user]);
 
   const loadPersonalData = async () => {
     try {
@@ -172,7 +172,7 @@ export default function PersonalDashboard() {
     }
   };
 
-  if (authLoading) {
+  if (authLoading && !user) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">

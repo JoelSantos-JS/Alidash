@@ -96,6 +96,7 @@ import { isFeatureEnabled } from "@/config/features";
 import Link from "next/link";
 import { notifyProductCreated, notifyProductSold } from '@/lib/n8n-events';
 import { initialProducts } from '@/data/initial-products';
+import { getStorageCache, setStorageCache } from '@/lib/client-cache';
 
 interface ExtendedSale extends Sale {
   productName?: string;
@@ -304,19 +305,29 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
 
     const fetchData = async () => {
       try {
+        const supabaseUserId = user.id;
+        const productsKey = `cache:products:${supabaseUserId}`;
+        const salesKey = `cache:sales:${supabaseUserId}`;
+        const transactionsKey = `cache:transactions:${supabaseUserId}`;
+        const cachedProducts = getStorageCache<Product[]>(productsKey, 30000);
+        const cachedSales = getStorageCache<any[]>(salesKey, 30000);
+        const cachedTransactions = getStorageCache<any[]>(transactionsKey, 30000);
+        if (cachedProducts) setProducts(cachedProducts);
+        if (cachedSales) setSales(cachedSales);
+        if (cachedTransactions) setTransactions(cachedTransactions);
+        if (cachedProducts || cachedSales || cachedTransactions) setIsLoading(false);
         if (process.env.NODE_ENV === 'development') {
           console.log('🔄 Carregando dados do Supabase para usuário:', user.id);
         }
 
-        // O usuário já é do Supabase, então podemos usar o ID diretamente
-        const supabaseUserId = user.id;
+        const supabaseUserIdDirect = supabaseUserId;
         
         if (process.env.NODE_ENV === 'development') {
           console.log('✅ Usuário Supabase ID:', supabaseUserId);
         }
 
         // Carregar orçamento do banco de dados
-        await loadBudgetFromDatabase(supabaseUserId);
+        await loadBudgetFromDatabase(supabaseUserIdDirect);
 
         // Fazer todas as chamadas de API em paralelo para melhor performance
         const [
@@ -347,6 +358,9 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
         setProducts(finalProducts);
         setSales(supabaseSales);
         setTransactions(supabaseTransactions);
+        setStorageCache(productsKey, finalProducts);
+        setStorageCache(salesKey, supabaseSales);
+        setStorageCache(transactionsKey, supabaseTransactions);
         
         // Remover chamada para refreshData() que causava loop infinito
         // Os dados de expenses e revenues já são carregados automaticamente pelo DataContext

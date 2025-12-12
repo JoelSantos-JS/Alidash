@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import type { Expense, Revenue } from '@/types';
+import { getStorageCache, setStorageCache } from '@/lib/client-cache';
 
 interface DataContextType {
   expenses: Expense[];
@@ -13,7 +14,7 @@ interface DataContextType {
   updateRevenue: (revenue: Revenue) => void;
   deleteExpense: (id: string) => void;
   deleteRevenue: (id: string) => void;
-  refreshData: () => Promise<void>;
+  refreshData: (forceLoading?: boolean) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -83,14 +84,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return [];
   }, [user?.id]);
 
-  const refreshData = useCallback(async () => {
+  const refreshData = useCallback(async (forceLoading: boolean = false) => {
     if (!user?.id) {
       console.log('🚫 refreshData: user.id não disponível');
       return;
     }
     
     console.log('🔄 Iniciando refreshData para user:', user.id);
-    setIsLoading(true);
+    if (forceLoading) setIsLoading(true);
     try {
       const [expensesData, revenuesData] = await Promise.all([
         fetchExpenses(),
@@ -100,6 +101,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       console.log('📊 Dados carregados - Despesas:', expensesData.length, 'Receitas:', revenuesData.length);
       setExpenses(expensesData);
       setRevenues(revenuesData);
+      setStorageCache(`cache:expenses:${user.id}`, expensesData);
+      setStorageCache(`cache:revenues:${user.id}`, revenuesData);
     } catch (error) {
       console.error('❌ Erro ao atualizar dados:', error);
     } finally {
@@ -114,7 +117,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return;
     }
     if (user?.id) {
-      refreshData().catch(error => {
+      const expensesKey = `cache:expenses:${user.id}`;
+      const revenuesKey = `cache:revenues:${user.id}`;
+      const cachedExpenses = getStorageCache<Expense[]>(expensesKey, 30000);
+      const cachedRevenues = getStorageCache<Revenue[]>(revenuesKey, 30000);
+      if (cachedExpenses) setExpenses(cachedExpenses);
+      if (cachedRevenues) setRevenues(cachedRevenues);
+      if (cachedExpenses || cachedRevenues) setIsLoading(false);
+      refreshData(cachedExpenses || cachedRevenues ? false : true).catch(error => {
         console.error('❌ Erro no useEffect ao chamar refreshData:', error);
       });
     } else {

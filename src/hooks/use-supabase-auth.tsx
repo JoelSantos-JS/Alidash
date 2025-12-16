@@ -31,6 +31,9 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   const hasInitializedSessionRef = useRef(false)
   // Manter uma única assinatura de auth ativa
   const authSubscriptionRef = useRef<ReturnType<typeof supabase.auth.onAuthStateChange>['data']['subscription'] | null>(null)
+  // Guardas de proteção contra múltiplos cadastros
+  const signUpInProgressRef = useRef(false)
+  const lastSignUpAttemptRef = useRef<{ email: string; at: number } | null>(null)
 
   // Prevent hydration mismatch by ensuring consistent initial state
   useEffect(() => {
@@ -225,6 +228,21 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
 
   const signUp = async (email: string, password: string, name?: string) => {
     try {
+      // Evitar chamadas concorrentes
+      if (signUpInProgressRef.current) {
+        toast.error('Cadastro já está em andamento. Aguarde alguns segundos')
+        return
+      }
+      // Evitar estouro de limite: bloquear nova tentativa do mesmo email por 60s
+      const now = Date.now()
+      if (lastSignUpAttemptRef.current && lastSignUpAttemptRef.current.email === email.trim()) {
+        const elapsedMs = now - lastSignUpAttemptRef.current.at
+        if (elapsedMs < 60_000) {
+          toast.error('Muitas tentativas com este email. Tente novamente em 1 minuto')
+          return
+        }
+      }
+      signUpInProgressRef.current = true
       setLoading(true)
 
       const baseUrl = typeof window !== 'undefined'
@@ -246,6 +264,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       if (error) {
         throw error
       }
+      lastSignUpAttemptRef.current = { email: email.trim(), at: now }
 
       if (data.user && !data.session) {
         toast.success('Cadastro realizado com sucesso!')
@@ -302,7 +321,10 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       console.error('Erro no cadastro:', error)
       
       if (error instanceof Error) {
-        if (error.message.includes('User already registered')) {
+        const msg = error.message.toLowerCase()
+        if (msg.includes('rate limit') || msg.includes('too many requests')) {
+          toast.error('Muitas tentativas de envio de email. Aguarde alguns minutos e tente novamente')
+        } else if (error.message.includes('User already registered')) {
           toast.error('Este email já está cadastrado')
         } else if (error.message.includes('Password should be at least')) {
           toast.error('A senha deve ter pelo menos 6 caracteres')
@@ -317,6 +339,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       
       throw error
     } finally {
+      signUpInProgressRef.current = false
       setLoading(false)
     }
   }

@@ -262,8 +262,35 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       })
 
       if (error) {
-        throw error
+        // Fallback: se limite de email foi excedido, criar usuário via Admin API (sem enviar email)
+        const isRateLimit = String(error.message || '').toLowerCase().includes('rate limit') || String(error.status || '').includes('429')
+        if (isRateLimit) {
+          try {
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+            const adminKey = process.env.NEXT_PUBLIC_ADMIN_SIGNUP_KEY
+            if (adminKey) headers['x-api-key'] = adminKey
+            const resp = await fetch('/api/auth/admin-signup', {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ email: email.trim(), password, name })
+            })
+            if (!resp.ok) {
+              const data = await resp.json().catch(() => ({}))
+              throw new Error(data?.error || 'Falha no cadastro admin')
+            }
+            const resJson = await resp.json()
+            // Login após criar com admin
+            await supabase.auth.signInWithPassword({ email: email.trim(), password })
+            toast.success('Cadastro realizado com sucesso!')
+            return
+          } catch (fallbackErr) {
+            throw fallbackErr
+          }
+        } else {
+          throw error
+        }
       }
+
       lastSignUpAttemptRef.current = { email: email.trim(), at: now }
 
       if (data.user && !data.session) {

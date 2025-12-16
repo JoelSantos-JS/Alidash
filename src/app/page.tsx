@@ -1158,6 +1158,18 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 <TargetIcon className="h-4 w-4 flex-shrink-0" />
                 <span className="text-sm sm:text-base">Metas</span>
               </Button>
+              
+              {isPersonal && (
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start gap-2 sm:gap-3" 
+                  size="lg"
+                  onClick={() => router.push('/pessoal/investimentos')}
+                >
+                  <TrendingUp className="h-4 w-4 flex-shrink-0" />
+                  <span className="text-sm sm:text-base">Investimentos</span>
+                </Button>
+              )}
 
               <Button 
                 variant="ghost" 

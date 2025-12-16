@@ -20,6 +20,7 @@ import {
   User,
   Heart,
   Gamepad2,
+  LineChart,
   HelpCircle,
   ChevronLeft,
   ChevronRight,
@@ -82,6 +83,12 @@ const navigationItems: NavigationItem[] = [
     label: "Metas",
     icon: Target,
     description: "Objetivos financeiros"
+  },
+  {
+    href: "/pessoal/investimentos",
+    label: "Investimentos",
+    icon: LineChart,
+    description: "Carteira e aportes"
   },
   {
     href: "/relatorios",

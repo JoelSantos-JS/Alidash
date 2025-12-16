@@ -696,13 +696,22 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading, viewMo
             Orçamento Pessoal
           </CardTitle>
           <p className="text-sm text-muted-foreground">Controle suas despesas pessoais</p>
-          {budgetTotal <= 0 && (
-            <div className="mt-2">
-              <Button size="sm" variant="outline" onClick={() => setShowBudgetDialog(true)}>
-                Definir Orçamento
-              </Button>
-            </div>
-          )}
+          <div className="mt-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (budgetTotal > 0) {
+                  setBudgetInput((budgetTotal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+                } else {
+                  setBudgetInput('');
+                }
+                setShowBudgetDialog(true);
+              }}
+            >
+              {budgetTotal > 0 ? 'Editar Orçamento' : 'Definir Orçamento'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-6 md:grid-cols-3">

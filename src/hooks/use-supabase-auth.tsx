@@ -248,10 +248,10 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       }
 
       if (data.user && !data.session) {
-        toast.success('Cadastro realizado! Verifique seu email para confirmar a conta')
+        toast.success('Cadastro realizado com sucesso!')
         try {
           const subject = 'Bem-vindo ao Alidash'
-          const body = `<h1>Bem-vindo${name ? `, ${name}` : ''}</h1><p>Seu cadastro foi iniciado. Confirme seu email para acessar o Alidash.</p>`
+          const body = `<h1>Bem-vindo${name ? `, ${name}` : ''}</h1><p>Sua conta foi criada com sucesso. Aproveite o Alidash.</p>`
           await fetch('/api/notifications/email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -266,7 +266,17 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
             })
           })
         } catch {}
-        router.push('/login')
+        try {
+          const { data: sessionData } = await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password
+          })
+          if (!sessionData?.session) {
+            router.push('/login')
+          }
+        } catch {
+          router.push('/login')
+        }
       } else if (data.session) {
         toast.success('Cadastro realizado com sucesso!')
         try {

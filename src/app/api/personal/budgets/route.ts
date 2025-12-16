@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'month deve estar entre 1 e 12' }, { status: 400 })
     }
     const tb = typeof total_budget === 'number' ? total_budget : Number(total_budget || 0)
-    const cats = categories && typeof categories === 'object' ? categories : null
+    const cats = categories && typeof categories === 'object' ? categories : {}
 
     const { data: existing } = await supabase
       .from('personal_budgets')
@@ -139,11 +139,13 @@ export async function PUT(request: NextRequest) {
 
     const payload: any = {
       total_budget: typeof total_budget === 'number' ? total_budget : Number(total_budget || 0),
-      categories: categories && typeof categories === 'object' ? categories : null,
       name: name || `Orçamento ${month}/${year}`,
       notes: notes || null,
       status: status || 'active',
       updated_at: new Date().toISOString()
+    }
+    if (categories && typeof categories === 'object') {
+      payload.categories = categories
     }
 
     const { data, error } = await supabase

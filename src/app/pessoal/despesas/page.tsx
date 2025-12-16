@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import PersonalExpenseForm from "@/components/forms/personal-expense-form";
+import { Edit, Trash2 } from "lucide-react";
 
 interface PersonalExpense {
   id: string;
@@ -115,11 +116,40 @@ export default function PersonalExpensesPage() {
       console.error('Erro ao carregar despesas:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar as despesas pessoais.",
+        description: "Não foi possível carregar as saídas pessoais.",
         variant: "destructive"
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEditExpense = (expense: PersonalExpense) => {
+    setEditingExpense(expense);
+    setIsFormOpen(true);
+  };
+
+  const handleDeleteExpense = async (expense: PersonalExpense) => {
+    try {
+      if (!user?.id) return;
+      const response = await fetch(`/api/personal/expenses?id=${expense.id}&user_id=${user.id}`, {
+        method: 'DELETE'
+      });
+      const result = await response.json();
+      if (!response.ok || result.success === false) {
+        throw new Error(result.error || 'Erro ao excluir saída pessoal');
+      }
+      setExpenses(prev => prev.filter(e => e.id !== expense.id));
+      toast({
+        title: "Saída excluída!",
+        description: `Saída "${expense.description}" removida com sucesso.`,
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: "Erro ao excluir",
+        description: error instanceof Error ? error.message : "Falha ao excluir a saída.",
+      });
     }
   };
 
@@ -182,7 +212,7 @@ export default function PersonalExpensesPage() {
             <div>
               <h1 className="text-lg md:text-2xl font-bold text-foreground flex items-center gap-2">
                 <TrendingDown className="h-5 w-5 md:h-6 md:w-6 text-red-500" />
-                Despesas Pessoais
+                Saídas Pessoais
               </h1>
               <p className="text-xs md:text-sm text-muted-foreground">
                 <span className="hidden sm:inline">Controle seus gastos pessoais</span>
@@ -192,7 +222,7 @@ export default function PersonalExpensesPage() {
           </div>
           <Button onClick={() => setIsFormOpen(true)} className="w-full md:w-auto">
             <Plus className="h-4 w-4 mr-2" />
-            <span className="hidden xs:inline">Nova Despesa</span>
+            <span className="hidden xs:inline">Nova Saída</span>
             <span className="xs:hidden">Nova</span>
           </Button>
         </div>
@@ -204,7 +234,7 @@ export default function PersonalExpensesPage() {
         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">Total de Gastos</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Total de Saídas</CardTitle>
               <TrendingDown className="h-4 w-4 text-red-600" />
             </CardHeader>
             <CardContent className="p-3 sm:p-6">
@@ -212,14 +242,14 @@ export default function PersonalExpensesPage() {
                 {totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {filteredExpenses.length} despesa(s) registrada(s)
+                {filteredExpenses.length} saída(s) registrada(s)
               </p>
             </CardContent>
           </Card>
 
           <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">Gastos Essenciais</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Saídas Essenciais</CardTitle>
               <AlertTriangle className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent className="p-3 sm:p-6">
@@ -234,7 +264,7 @@ export default function PersonalExpensesPage() {
 
           <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">Gastos Opcionais</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Saídas Opcionais</CardTitle>
               <Gamepad2 className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent className="p-3 sm:p-6">
@@ -249,7 +279,7 @@ export default function PersonalExpensesPage() {
 
           <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">Gastos Recorrentes</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Saídas Recorrentes</CardTitle>
               <PiggyBank className="h-4 w-4 text-purple-600" />
             </CardHeader>
             <CardContent className="p-3 sm:p-6">
@@ -257,7 +287,7 @@ export default function PersonalExpensesPage() {
                 {recurringExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Gastos mensais fixos
+                Saídas mensais fixas
               </p>
             </CardContent>
           </Card>
@@ -305,21 +335,21 @@ export default function PersonalExpensesPage() {
           </CardContent>
         </Card>
 
-        {/* Lista de Despesas */}
+        {/* Lista de Saídas */}
         <Card>
           <CardHeader className="p-3 sm:p-6">
-            <CardTitle className="text-lg sm:text-xl">Histórico de Despesas</CardTitle>
+            <CardTitle className="text-lg sm:text-xl">Histórico de Saídas</CardTitle>
           </CardHeader>
           <CardContent className="p-3 sm:p-6">
             {filteredExpenses.length === 0 ? (
               <div className="text-center py-6 sm:py-8">
                 <TrendingDown className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-muted-foreground mb-3 sm:mb-4" />
                 <p className="text-sm sm:text-base text-muted-foreground mb-3 sm:mb-4 px-4">
-                  {searchTerm || selectedCategory || filterEssential ? 'Nenhuma despesa encontrada com os filtros aplicados.' : 'Nenhuma despesa pessoal cadastrada ainda.'}
+                  {searchTerm || selectedCategory || filterEssential ? 'Nenhuma saída encontrada com os filtros aplicados.' : 'Nenhuma saída pessoal cadastrada ainda.'}
                 </p>
                 <Button onClick={() => setIsFormOpen(true)} className="w-full sm:w-auto">
                   <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Primeira Despesa
+                  Adicionar Primeira Saída
                 </Button>
               </div>
             ) : (
@@ -374,9 +404,31 @@ export default function PersonalExpensesPage() {
                           )}
                         </div>
                       </div>
-                      <div className="text-right sm:text-right flex-shrink-0">
-                        <div className="text-base sm:text-lg font-bold text-red-600 break-words">
-                          -{expense.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      <div className="flex items-center justify-between sm:justify-end gap-2 flex-shrink-0">
+                        <div className="text-right">
+                          <div className="text-base sm:text-lg font-bold text-red-600 break-words">
+                            -{expense.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            title="Editar saída"
+                            onClick={() => handleEditExpense(expense)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            title="Excluir saída"
+                            onClick={() => handleDeleteExpense(expense)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     </div>

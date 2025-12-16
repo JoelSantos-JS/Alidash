@@ -16,7 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency, formatCurrencyInputBRL, parseCurrencyInputBRL } from "@/lib/utils";
 import type { Revenue, Product } from "@/types";
 
 const revenueSchema = z.object({
@@ -56,6 +56,7 @@ const revenueSources = [
 
 export function RevenueForm({ onSave, onCancel, revenueToEdit, products = [] }: RevenueFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [amountInput, setAmountInput] = useState<string>(revenueToEdit?.amount != null ? formatCurrency(revenueToEdit.amount) : '');
 
   const form = useForm<RevenueFormData>({
     resolver: zodResolver(revenueSchema),
@@ -91,7 +92,7 @@ export function RevenueForm({ onSave, onCancel, revenueToEdit, products = [] }: 
     <>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 md:space-y-5 max-h-[70vh] overflow-y-auto pr-1">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FormField
               control={form.control}
               name="description"
@@ -114,11 +115,16 @@ export function RevenueForm({ onSave, onCancel, revenueToEdit, products = [] }: 
                   <FormLabel>Valor (R$)</FormLabel>
                   <FormControl>
                     <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0,00"
-                      {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
+                      value={amountInput}
+                      onChange={(e) => {
+                        const formatted = formatCurrencyInputBRL(e.target.value);
+                        setAmountInput(formatted);
+                        const parsed = parseCurrencyInputBRL(formatted);
+                        field.onChange(parsed || 0);
+                      }}
                     />
                   </FormControl>
                   <FormMessage />
@@ -127,7 +133,7 @@ export function RevenueForm({ onSave, onCancel, revenueToEdit, products = [] }: 
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FormField
               control={form.control}
               name="category"
@@ -261,7 +267,7 @@ export function RevenueForm({ onSave, onCancel, revenueToEdit, products = [] }: 
                 <FormLabel>Observações (opcional)</FormLabel>
                 <FormControl>
                   <Textarea
-                    placeholder="Adicione observações sobre esta receita..."
+                    placeholder="Adicione observações sobre esta entrada..."
                     className="resize-none"
                     rows={3}
                     {...field}
@@ -272,13 +278,15 @@ export function RevenueForm({ onSave, onCancel, revenueToEdit, products = [] }: 
             )}
           />
 
-          <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={onCancel}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Salvando..." : revenueToEdit ? "Atualizar" : "Adicionar"}
-            </Button>
+          <div className="sticky bottom-0 border-t bg-card/80 backdrop-blur p-3">
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={onCancel}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Salvando..." : revenueToEdit ? "Atualizar" : "Adicionar"}
+              </Button>
+            </div>
           </div>
         </form>
       </Form>

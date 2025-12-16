@@ -255,10 +255,10 @@ export default function PersonalDashboard() {
           <div className="space-y-6">
             {/* Cards de Resumo */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {/* Receitas */}
+              {/* Entradas */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Receitas</CardTitle>
+                  <CardTitle className="text-sm font-medium">Entradas</CardTitle>
                   <TrendingUp className="h-4 w-4 text-green-600" />
                 </CardHeader>
                 <CardContent>
@@ -269,10 +269,10 @@ export default function PersonalDashboard() {
                 </CardContent>
               </Card>
 
-              {/* Gastos */}
+              {/* Saídas */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Gastos</CardTitle>
+                  <CardTitle className="text-sm font-medium">Saídas</CardTitle>
                   <TrendingDown className="h-4 w-4 text-red-600" />
                 </CardHeader>
                 <CardContent>
@@ -366,17 +366,17 @@ export default function PersonalDashboard() {
               </CardContent>
             </Card>
 
-            {/* Gastos Essenciais vs Não Essenciais */}
+            {/* Saídas Essenciais vs Não Essenciais */}
             <div className="grid gap-6 md:grid-cols-2">
               <Card>
                 <CardHeader>
-                  <CardTitle>Distribuição de Gastos</CardTitle>
+                  <CardTitle>Distribuição de Saídas</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     <div>
                       <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium">Gastos Essenciais</span>
+                        <span className="text-sm font-medium">Saídas Essenciais</span>
                         <span className="text-sm text-muted-foreground">
                           {summary.essentialExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </span>
@@ -388,7 +388,7 @@ export default function PersonalDashboard() {
                     </div>
                     <div>
                       <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium">Gastos Não Essenciais</span>
+                        <span className="text-sm font-medium">Saídas Não Essenciais</span>
                         <span className="text-sm text-muted-foreground">
                           {summary.nonEssentialExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </span>
@@ -409,13 +409,13 @@ export default function PersonalDashboard() {
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Total de Receitas:</span>
+                      <span className="text-sm text-muted-foreground">Total de Entradas:</span>
                       <span className="font-medium text-green-600">
                         {summary.totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Total de Gastos:</span>
+                      <span className="text-sm text-muted-foreground">Total de Saídas:</span>
                       <span className="font-medium text-red-600">
                         {summary.totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </span>

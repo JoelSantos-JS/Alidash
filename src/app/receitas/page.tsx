@@ -114,11 +114,10 @@ const initialProducts: Product[] = [
 
 export default function ReceitasPage() {
   const { user, loading: authLoading } = useAuth();
-  const { revenues, addRevenue, refreshData, isLoading: dataLoading } = useData();
+  const { revenues, addRevenue, deleteRevenue, refreshData, isLoading: dataLoading } = useData();
   const router = useRouter();
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
-  const [productsLoading, setProductsLoading] = useState(true);
   const [periodFilter, setPeriodFilter] = useState<"day" | "week" | "month">("month");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [revenueToEdit, setRevenueToEdit] = useState<Revenue | null>(null);
@@ -140,16 +139,13 @@ export default function ReceitasPage() {
           const supabaseProducts = productsData.products || [];
           console.log('📦 Produtos do Supabase:', supabaseProducts.length);
           setProducts(supabaseProducts.length > 0 ? supabaseProducts : initialProducts);
-          setProductsLoading(false);
         } else {
           console.log('❌ Erro ao buscar produtos do Supabase, usando produtos iniciais');
           setProducts(initialProducts);
-          setProductsLoading(false);
         }
       } catch (error) {
         console.error('❌ Erro ao buscar produtos:', error);
         setProducts(initialProducts);
-        setProductsLoading(false);
       }
     };
 
@@ -194,14 +190,14 @@ export default function ReceitasPage() {
           refreshData();
           
           toast({
-            title: "Receita Atualizada!",
-            description: `${revenueData.description} - Atualizada com sucesso`,
+            title: "Entrada atualizada!",
+            description: `${revenueData.description} - atualizada com sucesso`,
           });
         } else {
           const errorData = await response.text();
           toast({
             variant: 'destructive',
-            title: "Erro ao Atualizar Receita",
+            title: "Erro ao Atualizar Entrada",
             description: `Falha na atualização: ${errorData}`,
           });
         }
@@ -209,8 +205,8 @@ export default function ReceitasPage() {
         console.error('Erro ao atualizar receita:', error);
         toast({
           variant: 'destructive',
-          title: "Erro ao Atualizar Receita",
-          description: "Não foi possível atualizar a receita.",
+          title: "Erro ao Atualizar Entrada",
+          description: "Não foi possível atualizar a entrada.",
         });
       }
     } else {
@@ -250,14 +246,14 @@ export default function ReceitasPage() {
           } catch (_) {}
           
           toast({
-            title: "Receita Adicionada!",
-            description: `${revenueData.description} - Criada com sucesso`,
+            title: "Entrada adicionada!",
+            description: `${revenueData.description} - criada com sucesso`,
           });
         } else {
           const errorData = await response.text();
           toast({
             variant: 'destructive',
-            title: "Erro ao Criar Receita",
+            title: "Erro ao Criar Entrada",
             description: `Falha na criação: ${errorData}`,
           });
         }
@@ -265,8 +261,8 @@ export default function ReceitasPage() {
         console.error('Erro ao criar receita:', error);
         toast({
           variant: 'destructive',
-          title: "Erro ao Criar Receita",
-          description: "Não foi possível criar a receita.",
+          title: "Erro ao Criar Entrada",
+          description: "Não foi possível criar a entrada.",
         });
       }
     }
@@ -310,11 +306,11 @@ export default function ReceitasPage() {
             <div>
               <h1 className="text-lg md:text-2xl font-bold flex items-center gap-2">
                 <ArrowUp className="h-5 w-5 md:h-6 md:w-6 text-green-500" />
-                Receitas
+                Entradas
               </h1>
               <p className="text-xs md:text-sm text-muted-foreground">
-                <span className="hidden sm:inline">Análise completa das suas receitas de produtos</span>
-                <span className="sm:hidden">Suas receitas de produtos</span>
+                <span className="hidden sm:inline">Análise completa das suas entradas de produtos</span>
+                <span className="sm:hidden">Suas entradas de produtos</span>
               </p>
             </div>
           </div>
@@ -358,7 +354,7 @@ export default function ReceitasPage() {
               className="flex items-center gap-1 md:gap-2 text-xs md:text-sm"
             >
               <Plus className="h-3 w-3 md:h-4 md:w-4" />
-              <span className="hidden sm:inline">Adicionar Nova Receita</span>
+              <span className="hidden sm:inline">Adicionar Nova Entrada</span>
               <span className="sm:hidden">Nova</span>
             </Button>
           </div>
@@ -367,7 +363,7 @@ export default function ReceitasPage() {
 
       {/* Main Content */}
       <main className="p-3 md:p-6">
-        {dataLoading || productsLoading ? (
+        {dataLoading ? (
           <div className="space-y-4 md:space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -381,6 +377,40 @@ export default function ReceitasPage() {
             products={products}
             periodFilter={periodFilter}
             revenues={revenues}
+            onEditRevenue={(item) => {
+              const isIndependent = String(item.id).startsWith('revenue-');
+              if (!isIndependent) return;
+              const realId = String(item.id).replace('revenue-', '');
+              const original = revenues.find(r => r.id === realId);
+              if (original) {
+                setRevenueToEdit(original);
+                setIsFormOpen(true);
+              }
+            }}
+            onDeleteRevenue={async (item) => {
+              if (!user?.id) return;
+              const isIndependent = String(item.id).startsWith('revenue-');
+              if (!isIndependent) return;
+              const realId = String(item.id).replace('revenue-', '');
+              try {
+                const response = await fetch(`/api/revenues/delete?id=${realId}&user_id=${user.id}`, { method: 'DELETE' });
+                const result = await response.json();
+                if (!response.ok || result.success === false) {
+                  throw new Error(result.error || 'Erro ao excluir entrada');
+                }
+                deleteRevenue(realId);
+                toast({
+                  title: "Entrada excluída!",
+                  description: `Entrada "${item.description}" removida com sucesso.`,
+                });
+              } catch (error) {
+                toast({
+                  variant: 'destructive',
+                  title: "Erro ao excluir",
+                  description: error instanceof Error ? error.message : "Falha ao excluir a entrada.",
+                });
+              }
+            }}
           />
         )}
       </main>
@@ -390,7 +420,7 @@ export default function ReceitasPage() {
         <DialogContent className="max-w-xl sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {revenueToEdit ? "Editar Receita" : "Nova Receita"}
+              {revenueToEdit ? "Editar Entrada" : "Nova Entrada"}
             </DialogTitle>
           </DialogHeader>
           <RevenueForm 

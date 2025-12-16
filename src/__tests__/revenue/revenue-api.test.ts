@@ -3,19 +3,19 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 // Mock do fetch global
 global.fetch = jest.fn();
 
-describe('API de Receitas', () => {
+describe('API de Entradas', () => {
   beforeEach(() => {
     jest.resetAllMocks();
   });
 
-  it('deve criar uma nova receita com sucesso', async () => {
+  it('deve criar uma nova entrada com sucesso', async () => {
     // Mock da resposta de sucesso
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ success: true, revenue: { id: '123', description: 'Salário', amount: 3000 } }),
     });
 
-    // Dados da receita para teste
+    // Dados da entrada para teste
     const revenueData = {
       description: 'Salário',
       amount: 3000,
@@ -41,7 +41,7 @@ describe('API de Receitas', () => {
     expect(data.revenue.amount).toBe(3000);
   });
 
-  it('deve listar receitas do usuário', async () => {
+  it('deve listar entradas do usuário', async () => {
     // Mock da resposta de sucesso com lista de receitas
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,

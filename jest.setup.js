@@ -19,20 +19,6 @@ jest.mock('next/router', () => ({
   }),
 }));
 
-jest.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: jest.fn(),
-    replace: jest.fn(),
-    prefetch: jest.fn(),
-    back: jest.fn(),
-    pathname: '/',
-  }),
-  usePathname: () => '/',
-  useSearchParams: () => ({ get: () => null }),
-}));
-
-jest.mock('lucide-react', () => new Proxy({}, { get: () => () => null }));
-
 // Mock para o localStorage
 Object.defineProperty(window, 'localStorage', {
   value: {

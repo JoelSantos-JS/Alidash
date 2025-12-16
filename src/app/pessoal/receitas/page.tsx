@@ -23,7 +23,9 @@ import {
   GraduationCap,
   Heart,
   Building,
-  ArrowLeft
+  ArrowLeft,
+  Edit,
+  Trash2
 } from "lucide-react";
 import Link from "next/link";
 import PersonalIncomeForm from "@/components/forms/personal-income-form";
@@ -91,14 +93,43 @@ export default function PersonalIncomesPage() {
       }
       
     } catch (error) {
-      console.error('Erro ao carregar receitas:', error);
+      console.error('Erro ao carregar entradas:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar as receitas pessoais.",
+        description: "Não foi possível carregar as entradas pessoais.",
         variant: "destructive"
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEditIncome = (income: PersonalIncome) => {
+    setEditingIncome(income);
+    setIsFormOpen(true);
+  };
+
+  const handleDeleteIncome = async (income: PersonalIncome) => {
+    try {
+      if (!user?.id) return;
+      const response = await fetch(`/api/personal/incomes?id=${income.id}&user_id=${user.id}`, {
+        method: 'DELETE'
+      });
+      const result = await response.json();
+      if (!response.ok || result.success === false) {
+        throw new Error(result.error || 'Erro ao excluir entrada pessoal');
+      }
+      setIncomes(prev => prev.filter(i => i.id !== income.id));
+      toast({
+        title: "Entrada excluída!",
+        description: `Entrada "${income.description}" removida com sucesso.`,
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: "Erro ao excluir",
+        description: error instanceof Error ? error.message : "Falha ao excluir a entrada.",
+      });
     }
   };
 
@@ -153,17 +184,17 @@ export default function PersonalIncomesPage() {
             <div>
               <h1 className="text-lg md:text-2xl font-bold text-foreground flex items-center gap-2">
                 <DollarSign className="h-5 w-5 md:h-6 md:w-6 text-green-500" />
-                Receitas Pessoais
+                Entradas Pessoais
               </h1>
               <p className="text-xs md:text-sm text-muted-foreground">
                 <span className="hidden sm:inline">Gerencie suas fontes de renda pessoal</span>
-                <span className="sm:hidden">Suas receitas pessoais</span>
+                <span className="sm:hidden">Suas entradas pessoais</span>
               </p>
             </div>
           </div>
           <Button onClick={() => setIsFormOpen(true)} className="w-full md:w-auto">
             <Plus className="h-4 w-4 mr-2" />
-            <span className="hidden xs:inline">Nova Receita</span>
+            <span className="hidden xs:inline">Nova Entrada</span>
             <span className="xs:hidden">Nova</span>
           </Button>
         </div>
@@ -175,7 +206,7 @@ export default function PersonalIncomesPage() {
         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">Total de Receitas</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Total de Entradas</CardTitle>
               <DollarSign className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent className="p-3 sm:p-6">
@@ -183,14 +214,14 @@ export default function PersonalIncomesPage() {
                 {totalIncomes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {filteredIncomes.length} receita(s) registrada(s)
+                {filteredIncomes.length} entrada(s) registrada(s)
               </p>
             </CardContent>
           </Card>
 
           <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">Receitas Recorrentes</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Entradas Recorrentes</CardTitle>
               <TrendingUp className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent className="p-3 sm:p-6">
@@ -198,14 +229,14 @@ export default function PersonalIncomesPage() {
                 {monthlyRecurring.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Receitas mensais fixas
+                Entradas mensais fixas
               </p>
             </CardContent>
           </Card>
 
           <Card className="transform-gpu hover:scale-105 transition-transform duration-200 sm:col-span-2 lg:col-span-1">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">Receitas Tributáveis</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Entradas Tributáveis</CardTitle>
               <Building className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent className="p-3 sm:p-6">
@@ -250,21 +281,21 @@ export default function PersonalIncomesPage() {
           </CardContent>
         </Card>
 
-        {/* Lista de Receitas */}
+        {/* Lista de Entradas */}
         <Card>
           <CardHeader className="p-3 sm:p-6">
-            <CardTitle className="text-lg sm:text-xl">Histórico de Receitas</CardTitle>
+            <CardTitle className="text-lg sm:text-xl">Histórico de Entradas</CardTitle>
           </CardHeader>
           <CardContent className="p-3 sm:p-6">
             {filteredIncomes.length === 0 ? (
               <div className="text-center py-6 sm:py-8">
                 <DollarSign className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-muted-foreground mb-3 sm:mb-4" />
                 <p className="text-sm sm:text-base text-muted-foreground mb-3 sm:mb-4 px-4">
-                  {searchTerm || selectedCategory ? 'Nenhuma receita encontrada com os filtros aplicados.' : 'Nenhuma receita pessoal cadastrada ainda.'}
+                  {searchTerm || selectedCategory ? 'Nenhuma entrada encontrada com os filtros aplicados.' : 'Nenhuma entrada pessoal cadastrada ainda.'}
                 </p>
                 <Button onClick={() => setIsFormOpen(true)} className="w-full sm:w-auto">
                   <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Primeira Receita
+                  Adicionar Primeira Entrada
                 </Button>
               </div>
             ) : (
@@ -308,23 +339,45 @@ export default function PersonalIncomesPage() {
                           {income.notes && (
                             <p className="text-xs sm:text-sm text-muted-foreground mt-2 line-clamp-2">{income.notes}</p>
                           )}
-                        </div>
                       </div>
-                      <div className="text-right sm:text-right flex-shrink-0">
+                    </div>
+                    <div className="flex items-center justify-between sm:justify-end gap-2 flex-shrink-0">
+                      <div className="text-right">
                         <div className="text-base sm:text-lg font-bold text-green-600 break-words">
                           +{income.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </div>
-                        {income.tax_withheld && income.tax_withheld > 0 && (
+                        {Number(income.tax_withheld) > 0 ? (
                           <div className="text-xs sm:text-sm text-muted-foreground">
-                            IR: -{income.tax_withheld.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            IR: -{Number(income.tax_withheld).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </div>
-                        )}
+                        ) : null}
+                      </div>
+                      <div className="flex gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          title="Editar entrada"
+                          onClick={() => handleEditIncome(income)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          title="Excluir entrada"
+                          onClick={() => handleDeleteIncome(income)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
           </CardContent>
         </Card>
 

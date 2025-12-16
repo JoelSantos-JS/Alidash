@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import { X, CreditCard, Calendar, DollarSign, Tag, FileText, Building, Percent } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatCurrency, formatCurrencyInputBRL, parseCurrencyInputBRL } from "@/lib/utils";
 
 interface PersonalDebt {
   id: string;
@@ -71,10 +72,10 @@ export default function PersonalDebtForm({ isOpen, onClose, onSuccess, editingDe
   const [formData, setFormData] = useState({
     name: editingDebt?.name || '',
     description: editingDebt?.description || '',
-    total_amount: editingDebt?.total_amount?.toString() || '',
-    current_amount: editingDebt?.paid_amount?.toString() || '0',
+    total_amount: editingDebt?.total_amount != null ? formatCurrency(editingDebt.total_amount) : '',
+    current_amount: editingDebt?.paid_amount != null ? formatCurrency(editingDebt.paid_amount) : 'R$ 0,00',
     interest_rate: editingDebt?.interest_rate?.toString() || '0',
-    monthly_payment: editingDebt?.monthly_payment?.toString() || '',
+    monthly_payment: editingDebt?.monthly_payment != null ? formatCurrency(editingDebt.monthly_payment) : '',
     due_date: editingDebt?.due_date || new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0],
     start_date: editingDebt?.start_date || new Date().toISOString().split('T')[0],
     category: editingDebt?.category || 'credit_card',
@@ -158,8 +159,8 @@ export default function PersonalDebtForm({ isOpen, onClose, onSuccess, editingDe
       // O usuário já é do Supabase, usar ID diretamente
       const supabaseUserId = user.id;
       
-      const totalAmount = parseFloat(formData.total_amount);
-      const paidAmount = parseFloat(formData.current_amount);
+      const totalAmount = parseCurrencyInputBRL(formData.total_amount);
+      const paidAmount = parseCurrencyInputBRL(formData.current_amount);
       const remainingAmount = Math.max(totalAmount - paidAmount, 0);
       
       const debtPayload = {
@@ -175,7 +176,7 @@ export default function PersonalDebtForm({ isOpen, onClose, onSuccess, editingDe
           paymentMethod: mapPaymentMethodToEnum(formData.payment_method),
           notes: formData.notes || null,
           installments: {
-            amount: parseFloat(formData.monthly_payment)
+            amount: parseCurrencyInputBRL(formData.monthly_payment)
           }
         };
 
@@ -227,8 +228,8 @@ export default function PersonalDebtForm({ isOpen, onClose, onSuccess, editingDe
   };
 
   const calculateProgress = () => {
-    const total = parseFloat(formData.total_amount) || 0;
-    const current = parseFloat(formData.current_amount) || 0;
+    const total = parseCurrencyInputBRL(formData.total_amount) || 0;
+    const current = parseCurrencyInputBRL(formData.current_amount) || 0;
     if (total === 0) return 0;
     return Math.min((current / total) * 100, 100);
   };
@@ -329,12 +330,11 @@ export default function PersonalDebtForm({ isOpen, onClose, onSuccess, editingDe
                     </Label>
                     <Input
                       id="total_amount"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0,00"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
                       value={formData.total_amount}
-                      onChange={(e) => handleInputChange('total_amount', e.target.value)}
+                      onChange={(e) => handleInputChange('total_amount', formatCurrencyInputBRL(e.target.value))}
                       required
                     />
                   </div>
@@ -343,12 +343,11 @@ export default function PersonalDebtForm({ isOpen, onClose, onSuccess, editingDe
                     <Label htmlFor="current_amount">Valor Já Pago</Label>
                     <Input
                       id="current_amount"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0,00"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
                       value={formData.current_amount}
-                      onChange={(e) => handleInputChange('current_amount', e.target.value)}
+                      onChange={(e) => handleInputChange('current_amount', formatCurrencyInputBRL(e.target.value))}
                     />
                   </div>
                 </div>
@@ -358,12 +357,11 @@ export default function PersonalDebtForm({ isOpen, onClose, onSuccess, editingDe
                     <Label htmlFor="monthly_payment">Parcela Mensal *</Label>
                     <Input
                       id="monthly_payment"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0,00"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
                       value={formData.monthly_payment}
-                      onChange={(e) => handleInputChange('monthly_payment', e.target.value)}
+                      onChange={(e) => handleInputChange('monthly_payment', formatCurrencyInputBRL(e.target.value))}
                       required
                     />
                   </div>
@@ -398,8 +396,8 @@ export default function PersonalDebtForm({ isOpen, onClose, onSuccess, editingDe
                       />
                     </div>
                     <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                      <span>Pago: R$ {parseFloat(formData.current_amount || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                      <span>Restante: R$ {(parseFloat(formData.total_amount) - parseFloat(formData.current_amount || '0')).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                      <span>Pago: {parseCurrencyInputBRL(formData.current_amount || 'R$ 0,00').toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                      <span>Restante: {(parseCurrencyInputBRL(formData.total_amount || 'R$ 0,00') - parseCurrencyInputBRL(formData.current_amount || 'R$ 0,00')).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
                   </div>
                 )}

@@ -96,13 +96,13 @@ export function PersonalDashboard({ summaryStats, className }: PersonalDashboard
           <CardContent>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Receitas</span>
+                <span className="text-sm text-muted-foreground">Entradas</span>
                 <span className="font-medium text-green-600">
                   {summaryStats.periodRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Despesas</span>
+                <span className="text-sm text-muted-foreground">Saídas</span>
                 <span className="font-medium text-red-600">
                   {summaryStats.periodExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </span>
@@ -166,7 +166,7 @@ export function PersonalDashboard({ summaryStats, className }: PersonalDashboard
                 {summaryStats.financialHealth}
               </div>
               <div className="text-sm text-muted-foreground">
-                Baseado na relação receitas/despesas
+                Baseado na relação entradas/saídas
               </div>
               <div className={cn(
                 "text-xs px-2 py-1 rounded-full inline-block",

@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-supabase-auth";
 import { Loader2, Briefcase, Settings, Calendar, DollarSign, Save, Info } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatCurrency, formatCurrencyInputBRL, parseCurrencyInputBRL } from "@/lib/utils";
 
 interface SalarySettingsFormProps {
   isOpen: boolean;
@@ -44,7 +45,7 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
     payment_day: '1',
     is_active: true,
     is_taxable: true,
-    tax_withheld: '0',
+    tax_withheld: 'R$ 0,00',
     source: '',
     notes: ''
   });
@@ -70,12 +71,12 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
         const data = await response.json();
         if (data.settings) {
           setFormData({
-            amount: data.settings.amount.toString(),
+            amount: formatCurrency(data.settings.amount),
             description: data.settings.description || 'Salário Mensal',
             payment_day: data.settings.payment_day.toString(),
             is_active: data.settings.is_active,
             is_taxable: data.settings.is_taxable,
-            tax_withheld: data.settings.tax_withheld?.toString() || '0',
+            tax_withheld: formatCurrency(data.settings.tax_withheld || 0),
             source: data.settings.source || '',
             notes: data.settings.notes || ''
           });
@@ -108,12 +109,12 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
       // Preparar dados das configurações
       const settingsData = {
         user_id: supabaseUserId,
-        amount: parseFloat(formData.amount),
+        amount: parseCurrencyInputBRL(formData.amount),
         description: formData.description,
         payment_day: parseInt(formData.payment_day),
         is_active: formData.is_active,
         is_taxable: formData.is_taxable,
-        tax_withheld: parseFloat(formData.tax_withheld) || 0,
+        tax_withheld: formData.is_taxable ? parseCurrencyInputBRL(formData.tax_withheld) : 0,
         source: formData.source,
         notes: formData.notes
       };
@@ -166,6 +167,32 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
       const currentDate = new Date();
       const currentMonth = currentDate.getMonth() + 1;
       const currentYear = currentDate.getFullYear();
+
+      const checkResponse = await fetch(`/api/personal/salary-settings?user_id=${supabaseUserId}`);
+      const checkResult = await checkResponse.json();
+      if (!(checkResponse.ok && checkResult.settings)) {
+        const saveResponse = await fetch('/api/personal/salary-settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: supabaseUserId,
+            amount: parseCurrencyInputBRL(formData.amount),
+            description: formData.description,
+            payment_day: parseInt(formData.payment_day),
+            is_active: formData.is_active,
+            is_taxable: formData.is_taxable,
+            tax_withheld: formData.is_taxable ? parseCurrencyInputBRL(formData.tax_withheld) : 0,
+            source: formData.source,
+            notes: formData.notes || null
+          })
+        });
+        if (!saveResponse.ok) {
+          const errText = await saveResponse.text();
+          throw new Error(errText || 'Erro ao salvar configurações de salário');
+        }
+      }
 
       // Aplicar salário para o mês atual
       const response = await fetch('/api/personal/salary-automation', {
@@ -255,12 +282,11 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
                   </Label>
                   <Input
                     id="amount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0,00"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="R$ 0,00"
                     value={formData.amount}
-                    onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                    onChange={(e) => setFormData({...formData, amount: formatCurrencyInputBRL(e.target.value)})}
                     required
                   />
                 </div>
@@ -358,16 +384,15 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
                 </div>
                 
                 {formData.is_taxable && (
-                  <div className="space-y-2 ml-4">
-                    <Label htmlFor="tax_withheld">Imposto Retido na Fonte</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="tax_withheld">Imposto Retido (R$)</Label>
                     <Input
                       id="tax_withheld"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0,00"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
                       value={formData.tax_withheld}
-                      onChange={(e) => setFormData({...formData, tax_withheld: e.target.value})}
+                      onChange={(e) => setFormData({...formData, tax_withheld: formatCurrencyInputBRL(e.target.value)})}
                     />
                   </div>
                 )}

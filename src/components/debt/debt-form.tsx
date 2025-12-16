@@ -26,7 +26,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency, formatCurrencyInputBRL, parseCurrencyInputBRL } from "@/lib/utils";
 import type { Debt } from "@/types";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -128,6 +128,9 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
       tags: debt?.tags?.join(", ") || "",
     },
   });
+  const [originalAmountInput, setOriginalAmountInput] = React.useState<string>(debt?.originalAmount != null ? formatCurrency(debt.originalAmount) : '');
+  const [currentAmountInput, setCurrentAmountInput] = React.useState<string>(debt?.currentAmount != null ? formatCurrency(debt.currentAmount) : '');
+  const [installmentAmountInput, setInstallmentAmountInput] = React.useState<string>(debt?.installments?.amount != null ? formatCurrency(debt.installments.amount) : '');
 
   const handleSubmit = (values: DebtFormValues) => {
     const debtData: Omit<Debt, 'id' | 'createdDate' | 'payments'> = {
@@ -240,14 +243,15 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
                     <FormControl>
                       <Input 
                         className="h-9"
-                        type="number" 
-                        step="0.01" 
-                        min="0.01"
-                        placeholder="0,00" 
-                        {...field}
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="R$ 0,00" 
+                        value={originalAmountInput}
                         onChange={(e) => {
-                          const value = parseFloat(e.target.value);
-                          field.onChange(isNaN(value) ? 0 : value);
+                          const formatted = formatCurrencyInputBRL(e.target.value);
+                          setOriginalAmountInput(formatted);
+                          const parsed = parseCurrencyInputBRL(formatted);
+                          field.onChange(parsed || 0);
                         }}
                       />
                     </FormControl>
@@ -265,14 +269,15 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
                     <FormControl>
                       <Input 
                         className="h-9"
-                        type="number" 
-                        step="0.01" 
-                        min="0.01"
-                        placeholder="0,00" 
-                        {...field}
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="R$ 0,00" 
+                        value={currentAmountInput}
                         onChange={(e) => {
-                          const value = parseFloat(e.target.value);
-                          field.onChange(isNaN(value) ? 0 : value);
+                          const formatted = formatCurrencyInputBRL(e.target.value);
+                          setCurrentAmountInput(formatted);
+                          const parsed = parseCurrencyInputBRL(formatted);
+                          field.onChange(parsed || 0);
                         }}
                       />
                     </FormControl>
@@ -517,14 +522,15 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
                         <FormControl>
                           <Input 
                             className="h-9"
-                            type="number" 
-                            step="0.01" 
-                            min="0.01"
-                            placeholder="0,00" 
-                            {...field}
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="R$ 0,00" 
+                            value={installmentAmountInput}
                             onChange={(e) => {
-                              const value = parseFloat(e.target.value);
-                              field.onChange(isNaN(value) ? undefined : value);
+                              const formatted = formatCurrencyInputBRL(e.target.value);
+                              setInstallmentAmountInput(formatted);
+                              const parsed = parseCurrencyInputBRL(formatted);
+                              field.onChange(isNaN(parsed) ? undefined : parsed);
                             }}
                           />
                         </FormControl>

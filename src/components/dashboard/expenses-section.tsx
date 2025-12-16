@@ -3,8 +3,9 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowDown, TrendingDown, CreditCard, Package, Target, AlertTriangle } from "lucide-react";
+import { ArrowDown, TrendingDown, CreditCard, Package, Target, AlertTriangle, Edit3, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Product, Expense } from "@/types";
@@ -14,6 +15,8 @@ interface ExpensesSectionProps {
   periodFilter: "day" | "week" | "month";
   currentDate?: Date;
   expenses?: Expense[];
+  onEditExpense?: (expense: ExpenseItem) => void;
+  onDeleteExpense?: (expense: ExpenseItem) => void;
 }
 
 interface ExpenseItem {
@@ -27,7 +30,7 @@ interface ExpenseItem {
   subcategory?: string;
 }
 
-export function ExpensesSection({ products, periodFilter, currentDate = new Date(), expenses = [] }: ExpensesSectionProps) {
+export function ExpensesSection({ products, periodFilter, currentDate = new Date(), expenses = [], onEditExpense, onDeleteExpense }: ExpensesSectionProps) {
   const expensesData = useMemo(() => {
     const now = currentDate;
     const getPeriodStart = () => {
@@ -225,7 +228,7 @@ export function ExpensesSection({ products, periodFilter, currentDate = new Date
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Despesas Totais</CardTitle>
+            <CardTitle className="text-sm font-medium">Saídas Totais</CardTitle>
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -292,12 +295,12 @@ export function ExpensesSection({ products, periodFilter, currentDate = new Date
         </Card>
       </div>
 
-      {/* Tabela de Despesas */}
+      {/* Tabela de Saídas */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ArrowDown className="h-5 w-5 text-red-500" />
-            Despesas {getPeriodLabel().charAt(0).toUpperCase() + getPeriodLabel().slice(1)}
+            Saídas {getPeriodLabel().charAt(0).toUpperCase() + getPeriodLabel().slice(1)}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -311,6 +314,7 @@ export function ExpensesSection({ products, periodFilter, currentDate = new Date
                     <TableHead className="hidden sm:table-cell text-xs md:text-sm">Categoria</TableHead>
                     <TableHead className="hidden md:table-cell text-xs md:text-sm">Tipo</TableHead>
                     <TableHead className="text-right text-xs md:text-sm">Valor</TableHead>
+                    <TableHead className="text-right text-xs md:text-sm">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -359,6 +363,30 @@ export function ExpensesSection({ products, periodFilter, currentDate = new Date
                           <div className="md:hidden">-{expense.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace('R$', 'R$')}</div>
                           <div className="hidden md:block">-{expense.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
                         </TableCell>
+                        <TableCell className="text-right">
+                          {String(expense.id).startsWith('expense-') && onEditExpense && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => onEditExpense(expense)}
+                              title="Editar saída"
+                            >
+                              <Edit3 className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {String(expense.id).startsWith('expense-') && onDeleteExpense && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => onDeleteExpense(expense)}
+                              title="Excluir saída"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -368,9 +396,9 @@ export function ExpensesSection({ products, periodFilter, currentDate = new Date
           ) : (
             <div className="text-center py-12">
               <CreditCard className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">Nenhuma despesa encontrada</h3>
+              <h3 className="text-lg font-medium mb-2">Nenhuma saída encontrada</h3>
               <p className="text-muted-foreground">
-                Não há despesas registradas {getPeriodLabel()}.
+                Não há saídas registradas {getPeriodLabel()}.
               </p>
             </div>
           )}
@@ -383,7 +411,7 @@ export function ExpensesSection({ products, periodFilter, currentDate = new Date
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-orange-500" />
-              Maiores Categorias de Despesa
+              Maiores Categorias de Saída
             </CardTitle>
           </CardHeader>
           <CardContent>

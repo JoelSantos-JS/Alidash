@@ -25,24 +25,3 @@ export function pruneOld(ttlMs: number): void {
     }
   }
 }
-
-export function getStorageCache<T>(key: string, ttlMs: number): T | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = sessionStorage.getItem(key);
-    if (!raw) return null;
-    const entry = JSON.parse(raw) as { data: T; timestamp: number };
-    const isFresh = Date.now() - entry.timestamp < ttlMs;
-    return isFresh ? entry.data : null;
-  } catch {
-    return null;
-  }
-}
-
-export function setStorageCache<T>(key: string, data: T): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const entry = JSON.stringify({ data, timestamp: Date.now() });
-    sessionStorage.setItem(key, entry);
-  } catch {}
-}

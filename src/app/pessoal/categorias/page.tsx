@@ -518,7 +518,7 @@ export default function PersonalCategoriesPage() {
         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">Total de Receitas</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Total de Entradas</CardTitle>
               <TrendingUp className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent className="p-3 sm:p-6">
@@ -533,7 +533,7 @@ export default function PersonalCategoriesPage() {
 
           <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">Total de Despesas</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Total de Saídas</CardTitle>
               <TrendingDown className="h-4 w-4 text-red-600" />
             </CardHeader>
             <CardContent className="p-3 sm:p-6">
@@ -599,8 +599,8 @@ export default function PersonalCategoriesPage() {
                   className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 >
                   <option value="">Todos os tipos</option>
-                  <option value="income">Receitas</option>
-                  <option value="expense">Despesas</option>
+                  <option value="income">Entradas</option>
+                  <option value="expense">Saídas</option>
                 </select>
               </div>
             </div>
@@ -648,12 +648,12 @@ export default function PersonalCategoriesPage() {
                               <div className="flex flex-wrap gap-1">
                                 {hasIncome && (
                                   <Badge variant="secondary" className="text-xs bg-green-100 text-green-600">
-                                    Receita
+                                    Entrada
                                   </Badge>
                                 )}
                                 {hasExpense && (
                                   <Badge variant="secondary" className="text-xs bg-red-100 text-red-600">
-                                    Despesa
+                                    Saída
                                   </Badge>
                                 )}
                               </div>
@@ -701,7 +701,7 @@ export default function PersonalCategoriesPage() {
                             <div className="text-sm sm:text-lg font-bold text-green-600 break-words">
                               +{category.totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </div>
-                            <p className="text-xs text-muted-foreground">Receitas</p>
+                              <p className="text-xs text-muted-foreground">Entradas</p>
                           </div>
                         )}
                         
@@ -710,7 +710,7 @@ export default function PersonalCategoriesPage() {
                             <div className="text-sm sm:text-lg font-bold text-red-600 break-words">
                               -{category.totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </div>
-                            <p className="text-xs text-muted-foreground">Despesas</p>
+                              <p className="text-xs text-muted-foreground">Saídas</p>
                           </div>
                         )}
                         
@@ -809,17 +809,19 @@ export default function PersonalCategoriesPage() {
               </div>
             </div>
             
-            <CardContent className="p-6 pt-0">
+             <CardContent className="p-6 pt-0">
                <PersonalCategoryForm
                  category={{
-                   name: selectedCategory.label,
-                   type: (DEFAULT_CATEGORIES as any)[selectedCategory.category]?.type || 'expense',
-                   category: selectedCategory.category,
-                   description: '',
-                   color: selectedCategory.color,
-                   icon: selectedCategory.icon
-                 }}
-                 onSubmit={async (data) => {
+                    id: selectedCategory.category,
+                    name: selectedCategory.label,
+                    type: (DEFAULT_CATEGORIES as any)[selectedCategory.category]?.type || 'expense',
+                    category: selectedCategory.category,
+                    description: '',
+                    color: selectedCategory.color,
+                    icon: selectedCategory.icon,
+                    createdDate: new Date()
+                  }}
+                  onSubmit={async (data) => {
                     try {
                       // Buscar usuário Supabase
                       const userResponse = await fetch(`/api/auth/get-user?user_id=${user?.id}&email=${user?.email}`);
@@ -929,7 +931,7 @@ export default function PersonalCategoriesPage() {
                        <div className="text-2xl font-bold text-green-600">
                          +{chartCategory.totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                        </div>
-                       <p className="text-sm text-muted-foreground">Total de Receitas</p>
+                       <p className="text-sm text-muted-foreground">Total de Entradas</p>
                      </div>
                    )}
                    
@@ -938,7 +940,7 @@ export default function PersonalCategoriesPage() {
                        <div className="text-2xl font-bold text-red-600">
                          -{chartCategory.totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                        </div>
-                       <p className="text-sm text-muted-foreground">Total de Despesas</p>
+                       <p className="text-sm text-muted-foreground">Total de Saídas</p>
                      </div>
                    )}
                    
@@ -967,15 +969,15 @@ export default function PersonalCategoriesPage() {
                          <span className="text-sm text-muted-foreground">Tipo</span>
                          <div className="flex gap-2">
                            {chartCategory.totalIncome > 0 && (
-                             <Badge variant="secondary" className="text-xs bg-green-100 text-green-600">
-                               Receita
-                             </Badge>
-                           )}
-                           {chartCategory.totalExpenses > 0 && (
-                             <Badge variant="secondary" className="text-xs bg-red-100 text-red-600">
-                               Despesa
-                             </Badge>
-                           )}
+                            <Badge variant="secondary" className="text-xs bg-green-100 text-green-600">
+                              Entrada
+                            </Badge>
+                          )}
+                          {chartCategory.totalExpenses > 0 && (
+                            <Badge variant="secondary" className="text-xs bg-red-100 text-red-600">
+                              Saída
+                            </Badge>
+                          )}
                          </div>
                        </div>
                      </div>
@@ -995,7 +997,7 @@ export default function PersonalCategoriesPage() {
                        {chartCategory.totalExpenses > 0 && chartCategory.totalIncome > 0 && (
                          <div>
                            <div className="flex justify-between text-sm mb-2">
-                             <span>Taxa de Receita vs Despesa</span>
+                             <span>Taxa de Entrada vs Saída</span>
                              <span>{((chartCategory.totalIncome / (chartCategory.totalIncome + chartCategory.totalExpenses)) * 100).toFixed(1)}%</span>
                            </div>
                            <Progress 
@@ -1026,7 +1028,7 @@ export default function PersonalCategoriesPage() {
                                       : 'bg-red-100 text-red-600'
                                   }`}
                                 >
-                                  {transaction.type === 'income' ? 'Receita' : 'Despesa'}
+                                  {transaction.type === 'income' ? 'Entrada' : 'Saída'}
                                 </Badge>
                               </div>
                               <div className="text-sm text-muted-foreground">

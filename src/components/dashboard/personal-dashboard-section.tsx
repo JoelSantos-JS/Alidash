@@ -8,6 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { formatCurrencyInputBRL, parseCurrencyInputBRL } from "@/lib/utils";
 import { ExpensesChart } from "./expenses-chart";
 import MonthlyIncomeForm from "@/components/forms/monthly-income-form";
 import SalarySettingsForm from "@/components/forms/salary-settings-form";
@@ -79,6 +84,7 @@ interface PersonalDashboardSectionProps {
 
 export function PersonalDashboardSection({ user, periodFilter, isLoading, viewMode = "all", selectedDate = null }: PersonalDashboardSectionProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [personalSummary, setPersonalSummary] = useState<PersonalSummary>({
     totalIncome: 0,
     totalExpenses: 0,
@@ -101,6 +107,9 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading, viewMo
   const abortControllerRef = useRef<AbortController | null>(null);
   const CACHE_TTL_MS = 30_000; // 30 segundos
   const [animatingCard, setAnimatingCard] = useState<null | 'income' | 'expenses'>(null);
+  const [budgetTotal, setBudgetTotal] = useState<number>(0);
+  const [showBudgetDialog, setShowBudgetDialog] = useState(false);
+  const [budgetInput, setBudgetInput] = useState<string>('');
 
   // Unificar receitas e despesas e ordenar por data desc (top-level Hook)
   const recentTransactions = useMemo(() => {
@@ -153,6 +162,7 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading, viewMo
       const goalsKey = `personal:goals:${supabaseUserId}`;
       const monthlyExpensesKey = `personal:expenses:${supabaseUserId}:monthly:${currentMonth}:${currentYear}`;
       const monthlyIncomesKey = `personal:incomes:${supabaseUserId}:monthly:${currentMonth}:${currentYear}`;
+      const budgetsKey = `personal:budgets:${supabaseUserId}:${currentMonth}:${currentYear}`;
 
       // Aplicar cache imediato quando disponível
       const cachedSummary = getCache<PersonalSummary>(summaryKey, CACHE_TTL_MS);
@@ -167,6 +177,8 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading, viewMo
       if (cachedMonthlyIncomes) setMonthlyIncomes(cachedMonthlyIncomes);
       const cachedGoals = getCache<Goal[]>(goalsKey, CACHE_TTL_MS);
       if (cachedGoals) setGoals(cachedGoals);
+      const cachedBudgetSummary = getCache<{ totalBudget: number }>(budgetsKey, CACHE_TTL_MS);
+      if (cachedBudgetSummary) setBudgetTotal(cachedBudgetSummary.totalBudget || 0);
 
       // Preparar fetches paralelos somente do que falta
       const summaryPromise = cachedSummary
@@ -256,7 +268,18 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading, viewMo
               return [] as Goal[];
             });
 
-      await Promise.allSettled([summaryPromise, expensesPromise, monthlyExpensesPromise, incomesPromise, monthlyIncomesPromise, goalsPromise]);
+      const budgetsPromise = cachedBudgetSummary
+        ? Promise.resolve(cachedBudgetSummary)
+        : fetch(`/api/personal/budgets?user_id=${supabaseUserId}&month=${currentMonth}&year=${currentYear}`, { signal })
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              const totalBudget = Number(data?.summary?.totalBudget || 0);
+              setBudgetTotal(totalBudget);
+              setCache(budgetsKey, { totalBudget });
+              return { totalBudget };
+            });
+
+      await Promise.allSettled([summaryPromise, expensesPromise, monthlyExpensesPromise, incomesPromise, monthlyIncomesPromise, goalsPromise, budgetsPromise]);
     } catch (error: any) {
       if (error?.name === 'AbortError') {
         // Troca rápida de modo; ignorar erros abortados
@@ -265,6 +288,41 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading, viewMo
       console.error('❌ Erro ao carregar dados pessoais:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveBudget = async () => {
+    if (!user?.id) return;
+    const value = parseCurrencyInputBRL(budgetInput);
+    if (value < 0) {
+      toast({ title: "Valor inválido", description: "Informe um valor maior ou igual a zero", variant: "destructive" });
+      return;
+    }
+    try {
+      const currentDate = new Date();
+      const month = currentDate.getMonth() + 1;
+      const year = currentDate.getFullYear();
+      const res = await fetch('/api/personal/budgets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user.id,
+          month,
+          year,
+          total_budget: value,
+          name: `Orçamento ${month}/${year}`
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error((data.error ? String(data.error) : 'Erro ao salvar orçamento') + (data.details ? ` - ${String(data.details)}` : ''));
+      }
+      toast({ title: "Orçamento salvo", description: "Seu orçamento mensal foi definido" });
+      setShowBudgetDialog(false);
+      setBudgetInput('');
+      await loadPersonalData();
+    } catch (err: any) {
+      toast({ title: "Erro", description: err?.message || 'Falha ao salvar orçamento', variant: "destructive" });
     }
   };
 
@@ -638,12 +696,19 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading, viewMo
             Orçamento Pessoal
           </CardTitle>
           <p className="text-sm text-muted-foreground">Controle suas despesas pessoais</p>
+          {budgetTotal <= 0 && (
+            <div className="mt-2">
+              <Button size="sm" variant="outline" onClick={() => setShowBudgetDialog(true)}>
+                Definir Orçamento
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <div className="grid gap-6 md:grid-cols-3">
             <div className="text-center p-4 bg-muted/30 border rounded-lg">
               <div className="text-2xl font-bold text-purple-600 mb-1">
-                {(summaryForDisplay.totalIncome * 0.6).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                {(budgetTotal > 0 ? budgetTotal : 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
               <p className="text-sm text-muted-foreground">Orçamento Mensal</p>
             </div>
@@ -655,13 +720,40 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading, viewMo
             </div>
             <div className="text-center p-4 bg-muted/30 border rounded-lg">
               <div className="text-2xl font-bold text-green-600 mb-1">
-                {((summaryForDisplay.totalIncome * 0.6) - summaryForDisplay.totalExpenses).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                {((budgetTotal > 0 ? (budgetTotal - summaryForDisplay.totalExpenses) : 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
               <p className="text-sm text-muted-foreground">Disponível</p>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {showBudgetDialog && (
+        <Dialog open={showBudgetDialog} onOpenChange={setShowBudgetDialog}>
+          <DialogContent className="sm:max-w-[420px]">
+            <DialogHeader>
+              <DialogTitle>Definir Orçamento Mensal</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="budget_value">Total do Orçamento (R$)</Label>
+                <Input
+                  id="budget_value"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="R$ 0,00"
+                  value={budgetInput}
+                  onChange={(e) => setBudgetInput(formatCurrencyInputBRL(e.target.value))}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowBudgetDialog(false)}>Cancelar</Button>
+                <Button onClick={handleSaveBudget}>Salvar</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Modal de Renda Mensal */}
       {showIncomeForm && (

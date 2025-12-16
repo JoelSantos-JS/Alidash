@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-supabase-auth';
 import type { Expense, Revenue } from '@/types';
-import { getStorageCache, setStorageCache } from '@/lib/client-cache';
 
 interface DataContextType {
   expenses: Expense[];
@@ -14,7 +13,7 @@ interface DataContextType {
   updateRevenue: (revenue: Revenue) => void;
   deleteExpense: (id: string) => void;
   deleteRevenue: (id: string) => void;
-  refreshData: (forceLoading?: boolean) => Promise<void>;
+  refreshData: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -84,14 +83,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return [];
   }, [user?.id]);
 
-  const refreshData = useCallback(async (forceLoading: boolean = false) => {
+  const refreshData = useCallback(async () => {
     if (!user?.id) {
       console.log('🚫 refreshData: user.id não disponível');
       return;
     }
     
     console.log('🔄 Iniciando refreshData para user:', user.id);
-    if (forceLoading) setIsLoading(true);
+    setIsLoading(true);
     try {
       const [expensesData, revenuesData] = await Promise.all([
         fetchExpenses(),
@@ -101,8 +100,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       console.log('📊 Dados carregados - Despesas:', expensesData.length, 'Receitas:', revenuesData.length);
       setExpenses(expensesData);
       setRevenues(revenuesData);
-      setStorageCache(`cache:expenses:${user.id}`, expensesData);
-      setStorageCache(`cache:revenues:${user.id}`, revenuesData);
     } catch (error) {
       console.error('❌ Erro ao atualizar dados:', error);
     } finally {
@@ -113,27 +110,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     console.log('🔄 useEffect do DataContext - user.id:', user?.id, 'authLoading:', loading);
     if (loading) {
-      try {
-        const lastUserId = typeof window !== 'undefined' ? sessionStorage.getItem('last_user_id') : null;
-        if (lastUserId) {
-          const cachedExpenses = getStorageCache<Expense[]>(`cache:expenses:${lastUserId}`, 30000);
-          const cachedRevenues = getStorageCache<Revenue[]>(`cache:revenues:${lastUserId}`, 30000);
-          if (cachedExpenses) setExpenses(cachedExpenses);
-          if (cachedRevenues) setRevenues(cachedRevenues);
-          if (cachedExpenses || cachedRevenues) setIsLoading(false);
-        }
-      } catch {}
+      setIsLoading(true);
       return;
     }
     if (user?.id) {
-      const expensesKey = `cache:expenses:${user.id}`;
-      const revenuesKey = `cache:revenues:${user.id}`;
-      const cachedExpenses = getStorageCache<Expense[]>(expensesKey, 30000);
-      const cachedRevenues = getStorageCache<Revenue[]>(revenuesKey, 30000);
-      if (cachedExpenses) setExpenses(cachedExpenses);
-      if (cachedRevenues) setRevenues(cachedRevenues);
-      if (cachedExpenses || cachedRevenues) setIsLoading(false);
-      refreshData(cachedExpenses || cachedRevenues ? false : true).catch(error => {
+      refreshData().catch(error => {
         console.error('❌ Erro no useEffect ao chamar refreshData:', error);
       });
     } else {

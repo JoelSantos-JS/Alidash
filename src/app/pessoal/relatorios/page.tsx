@@ -452,7 +452,7 @@ export default function PersonalReportsPage() {
           <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs sm:text-sm font-medium">Receita Total</CardTitle>
+                <CardTitle className="text-xs sm:text-sm font-medium">Entradas Totais</CardTitle>
                 <TrendingUp className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent className="p-3 sm:p-6">
@@ -468,7 +468,7 @@ export default function PersonalReportsPage() {
 
             <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs sm:text-sm font-medium">Gastos Total</CardTitle>
+                <CardTitle className="text-xs sm:text-sm font-medium">Saídas Totais</CardTitle>
                 <TrendingDown className="h-4 w-4 text-red-600" />
               </CardHeader>
               <CardContent className="p-3 sm:p-6">
@@ -562,12 +562,12 @@ export default function PersonalReportsPage() {
           </CardContent>
         </Card>
 
-        {/* Distribuição de Receitas */}
+        {/* Distribuição de Entradas */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <PieChart className="h-5 w-5" />
-              Fontes de Receita
+              Fontes de Entrada
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -592,7 +592,7 @@ export default function PersonalReportsPage() {
           </CardContent>
         </Card>
 
-        {/* Distribuição de Despesas */}
+        {/* Distribuição de Saídas */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -645,9 +645,9 @@ export default function PersonalReportsPage() {
               <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
                 <TrendingUp className="h-5 w-5 text-blue-600 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-blue-800">Crescimento de receitas</p>
+                  <p className="text-sm font-medium text-blue-800">Crescimento de entradas</p>
                   <p className="text-xs text-blue-600">
-                    Suas receitas cresceram {metrics?.trends.incomeGrowth}% no período analisado.
+                    Suas entradas cresceram {metrics?.trends.incomeGrowth}% no período analisado.
                   </p>
                 </div>
               </div>
@@ -657,7 +657,7 @@ export default function PersonalReportsPage() {
                 <div>
                   <p className="text-sm font-medium text-yellow-800">Oportunidade de otimização</p>
                   <p className="text-xs text-yellow-600">
-                    Considere revisar gastos com alimentação, que representam 32.5% das despesas.
+                    Considere revisar gastos com alimentação, que representam 32.5% das saídas.
                   </p>
                 </div>
               </div>
@@ -688,13 +688,13 @@ export default function PersonalReportsPage() {
                 <h4 className="font-medium mb-2">Médias Mensais</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Receita:</span>
+                    <span className="text-muted-foreground">Entradas:</span>
                     <span className="font-medium text-green-600">
                       {metrics.monthlyAverage.income.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Despesas:</span>
+                    <span className="text-muted-foreground">Saídas:</span>
                     <span className="font-medium text-red-600">
                       {metrics.monthlyAverage.expenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </span>
@@ -712,13 +712,13 @@ export default function PersonalReportsPage() {
                 <h4 className="font-medium mb-2">Tendências</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Receitas:</span>
+                    <span className="text-muted-foreground">Entradas:</span>
                     <Badge variant="secondary" className="text-green-600">
                       +{metrics.trends.incomeGrowth}%
                     </Badge>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Despesas:</span>
+                    <span className="text-muted-foreground">Saídas:</span>
                     <Badge variant="secondary" className="text-green-600">
                       {metrics.trends.expenseGrowth}%
                     </Badge>
@@ -741,7 +741,7 @@ export default function PersonalReportsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span>Crescimento de receitas</span>
+                    <span>Crescimento de entradas</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-600" />
@@ -749,7 +749,7 @@ export default function PersonalReportsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-yellow-600" />
-                    <span>Diversificação de receitas</span>
+                    <span>Diversificação de entradas</span>
                   </div>
                 </div>
               </div>

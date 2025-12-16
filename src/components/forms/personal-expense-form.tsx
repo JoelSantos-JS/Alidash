@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import { X, TrendingDown, Calendar, CreditCard, Tag, FileText, MapPin, Building } from "lucide-react";
+import { formatCurrency, formatCurrencyInputBRL, parseCurrencyInputBRL } from "@/lib/utils";
 
 interface PersonalExpense {
   id: string;
@@ -66,7 +67,7 @@ export default function PersonalExpenseForm({ isOpen, onClose, onSuccess, editin
   const [formData, setFormData] = useState({
     date: editingExpense?.date || new Date().toISOString().split('T')[0],
     description: editingExpense?.description || '',
-    amount: editingExpense?.amount?.toString() || '',
+    amount: editingExpense?.amount != null ? formatCurrency(editingExpense.amount) : '',
     category: editingExpense?.category || 'food',
     subcategory: editingExpense?.subcategory || '',
     payment_method: editingExpense?.payment_method || 'debit_card',
@@ -108,7 +109,7 @@ export default function PersonalExpenseForm({ isOpen, onClose, onSuccess, editin
         user_id: supabaseUserId,
         date: formData.date,
         description: formData.description,
-        amount: parseFloat(formData.amount),
+        amount: parseCurrencyInputBRL(formData.amount),
         category: formData.category,
         subcategory: formData.subcategory || null,
         payment_method: formData.payment_method,
@@ -171,7 +172,7 @@ export default function PersonalExpenseForm({ isOpen, onClose, onSuccess, editin
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="flex items-center gap-2">
             <TrendingDown className="h-5 w-5 text-red-600" />
-            {editingExpense ? 'Editar Despesa' : 'Nova Despesa Pessoal'}
+            {editingExpense ? 'Editar Saída' : 'Nova Saída Pessoal'}
           </CardTitle>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -197,20 +198,19 @@ export default function PersonalExpenseForm({ isOpen, onClose, onSuccess, editin
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="amount" className="flex items-center gap-2">
-                  <TrendingDown className="h-4 w-4" />
-                  Valor *
-                </Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0,00"
-                  value={formData.amount}
-                  onChange={(e) => handleInputChange('amount', e.target.value)}
-                  required
-                />
+              <Label htmlFor="amount" className="flex items-center gap-2">
+                <TrendingDown className="h-4 w-4" />
+                Valor *
+              </Label>
+              <Input
+                id="amount"
+                type="text"
+                inputMode="numeric"
+                placeholder="R$ 0,00"
+                value={formData.amount}
+                onChange={(e) => handleInputChange('amount', formatCurrencyInputBRL(e.target.value))}
+                required
+              />
               </div>
             </div>
             
@@ -310,8 +310,8 @@ export default function PersonalExpenseForm({ isOpen, onClose, onSuccess, editin
               
               <div className="flex items-center justify-between p-3 border rounded-lg">
                 <div>
-                  <Label htmlFor="is_essential" className="font-medium">Despesa Essencial</Label>
-                  <p className="text-sm text-muted-foreground">Esta despesa é necessária/obrigatória</p>
+                  <Label htmlFor="is_essential" className="font-medium">Saída Essencial</Label>
+                  <p className="text-sm text-muted-foreground">Esta saída é necessária/obrigatória</p>
                 </div>
                 <Switch
                   id="is_essential"
@@ -322,8 +322,8 @@ export default function PersonalExpenseForm({ isOpen, onClose, onSuccess, editin
               
               <div className="flex items-center justify-between p-3 border rounded-lg">
                 <div>
-                  <Label htmlFor="is_recurring" className="font-medium">Despesa Recorrente</Label>
-                  <p className="text-sm text-muted-foreground">Esta despesa se repete mensalmente</p>
+                  <Label htmlFor="is_recurring" className="font-medium">Saída Recorrente</Label>
+                  <p className="text-sm text-muted-foreground">Esta saída se repete mensalmente</p>
                 </div>
                 <Switch
                   id="is_recurring"
@@ -351,7 +351,7 @@ export default function PersonalExpenseForm({ isOpen, onClose, onSuccess, editin
                 Cancelar
               </Button>
               <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? 'Salvando...' : (editingExpense ? 'Atualizar' : 'Criar Despesa')}
+                {loading ? 'Salvando...' : (editingExpense ? 'Atualizar' : 'Criar Saída')}
               </Button>
             </div>
           </form>

@@ -16,7 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency, formatCurrencyInputBRL, parseCurrencyInputBRL } from "@/lib/utils";
 import type { Expense } from "@/types";
 
 const expenseSchema = z.object({
@@ -58,6 +58,7 @@ const expenseTypes = [
 
 export function ExpenseForm({ onSave, onCancel, expenseToEdit }: ExpenseFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [amountInput, setAmountInput] = useState<string>(expenseToEdit?.amount != null ? formatCurrency(expenseToEdit.amount) : '');
 
   const form = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseSchema),
@@ -129,11 +130,16 @@ export function ExpenseForm({ onSave, onCancel, expenseToEdit }: ExpenseFormProp
                   <FormLabel>Valor (R$)</FormLabel>
                   <FormControl>
                     <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0,00"
-                      {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
+                      value={amountInput}
+                      onChange={(e) => {
+                        const formatted = formatCurrencyInputBRL(e.target.value);
+                        setAmountInput(formatted);
+                        const parsed = parseCurrencyInputBRL(formatted);
+                        field.onChange(parsed || 0);
+                      }}
                     />
                   </FormControl>
                   <FormMessage />

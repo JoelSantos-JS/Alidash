@@ -3,8 +3,9 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowUp, TrendingUp, DollarSign, ShoppingCart, Trophy, Package } from "lucide-react";
+import { ArrowUp, TrendingUp, DollarSign, ShoppingCart, Trophy, Package, Edit3, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Product, Revenue } from "@/types";
@@ -14,6 +15,8 @@ interface RevenueSectionProps {
   periodFilter: "day" | "week" | "month";
   currentDate?: Date;
   revenues?: Revenue[];
+  onEditRevenue?: (revenue: RevenueItem) => void;
+  onDeleteRevenue?: (revenue: RevenueItem) => void;
 }
 
 interface RevenueItem {
@@ -28,7 +31,7 @@ interface RevenueItem {
   quantity?: number;
 }
 
-export function RevenueSection({ products, periodFilter, currentDate = new Date(), revenues = [] }: RevenueSectionProps) {
+export function RevenueSection({ products, periodFilter, currentDate = new Date(), revenues = [], onEditRevenue, onDeleteRevenue }: RevenueSectionProps) {
   const revenueData = useMemo(() => {
     const now = currentDate;
     const getPeriodStart = () => {
@@ -199,7 +202,7 @@ export function RevenueSection({ products, periodFilter, currentDate = new Date(
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
+            <CardTitle className="text-sm font-medium">Entradas Totais</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -267,7 +270,7 @@ export function RevenueSection({ products, periodFilter, currentDate = new Date(
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ArrowUp className="h-5 w-5 text-green-500" />
-            Receitas {getPeriodLabel().charAt(0).toUpperCase() + getPeriodLabel().slice(1)}
+            Entradas {getPeriodLabel().charAt(0).toUpperCase() + getPeriodLabel().slice(1)}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -281,6 +284,7 @@ export function RevenueSection({ products, periodFilter, currentDate = new Date(
                     <TableHead className="hidden sm:table-cell text-xs md:text-sm">Categoria</TableHead>
                     <TableHead className="hidden md:table-cell text-xs md:text-sm">Tipo</TableHead>
                     <TableHead className="text-right text-xs md:text-sm">Valor</TableHead>
+                    <TableHead className="text-right text-xs md:text-sm">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -298,38 +302,66 @@ export function RevenueSection({ products, periodFilter, currentDate = new Date(
                             {revenue.time && <div className="text-xs text-muted-foreground">{revenue.time}</div>}
                           </div>
                         </TableCell>
-                      <TableCell className="font-medium text-xs md:text-sm">
-                        <div className="max-w-[120px] md:max-w-none truncate">
-                          {revenue.description}
-                        </div>
-                        <div className="sm:hidden text-xs text-muted-foreground mt-1">
+                        <TableCell className="font-medium text-xs md:text-sm">
+                          <div className="max-w-[120px] md:max-w-none truncate">
+                            {revenue.description}
+                          </div>
+                          <div className="sm:hidden text-xs text-muted-foreground mt-1">
+                            <Badge variant="outline" className="text-xs">{revenue.category}</Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
                           <Badge variant="outline" className="text-xs">{revenue.category}</Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <Badge variant="outline" className="text-xs">{revenue.category}</Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <Badge variant="default" className="text-xs">
-                          {revenue.type === 'sale' ? 'Venda' : 'Receita'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-medium text-green-600 text-xs md:text-sm">
-                        <div className="md:hidden">+{revenue.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace('R$', 'R$')}</div>
-                        <div className="hidden md:block">+{revenue.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <Badge variant="default" className="text-xs">
+                            {revenue.type === 'sale' ? 'Venda' : 'Entrada'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-green-600 text-xs md:text-sm">
+                          <div className="md:hidden">+{revenue.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace('R$', 'R$')}</div>
+                          <div className="hidden md:block">+{revenue.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {String(revenue.id).startsWith('revenue-') && (
+                            <div className="flex justify-end gap-1">
+                              {typeof (onEditRevenue) === 'function' && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => onEditRevenue(revenue)}
+                                  title="Editar entrada"
+                                >
+                                  <Edit3 className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {typeof (onDeleteRevenue) === 'function' && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => onDeleteRevenue(revenue)}
+                                  title="Excluir entrada"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
           ) : (
             <div className="text-center py-12">
               <DollarSign className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">Nenhuma receita encontrada</h3>
+              <h3 className="text-lg font-medium mb-2">Nenhuma entrada encontrada</h3>
               <p className="text-muted-foreground">
-                Não há receitas registradas {getPeriodLabel()}.
+                Não há entradas registradas {getPeriodLabel()}.
               </p>
             </div>
           )}

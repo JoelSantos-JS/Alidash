@@ -96,7 +96,6 @@ import { isFeatureEnabled } from "@/config/features";
 import Link from "next/link";
 import { notifyProductCreated, notifyProductSold } from '@/lib/n8n-events';
 import { initialProducts } from '@/data/initial-products';
-import { getStorageCache, setStorageCache } from '@/lib/client-cache';
 
 interface ExtendedSale extends Sale {
   productName?: string;
@@ -158,7 +157,6 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [initialLoaded, setInitialLoaded] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showEditMenu, setShowEditMenu] = useState(true); // true = menu de edição, false = detalhes completos
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -188,10 +186,11 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
   const voxWhatsappUrl = process.env.NEXT_PUBLIC_VOX_WHATSAPP_URL || 'https://api.whatsapp.com/send/';
   const whatsappNumber = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '5573982458991').replace(/[^0-9]/g, '')
   const clientName = (user?.user_metadata?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Cliente').toString()
-  const whatsappDefaultText = encodeURIComponent(`Olá, sou ${clientName} e tenho uma dúvida/sugestão sobre o VoxCash.`)
+  const whatsappDefaultText = encodeURIComponent("Olá")
   const whatsappLink = `${voxWhatsappUrl}?phone=${whatsappNumber}&text=${whatsappDefaultText}&type=phone_number&app_absent=0`
   const salesSyncRunning = useRef(false);
   const salesSyncAttemptedKeys = useRef<Set<string>>(new Set());
+  const dataReady = !isLoading && !dataLoading;
 
   // Função para carregar dados iniciais apenas para usuários novos
   const loadInitialDataForNewUser = async () => {
@@ -300,56 +299,25 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
   // Remover redirecionamento automático - dashboard pessoal será integrado
 
   useEffect(() => {
-    try {
-      const lastUserId = typeof window !== 'undefined' ? sessionStorage.getItem('last_user_id') : null;
-      if (lastUserId && !user?.id) {
-        const productsKey = `cache:products:${lastUserId}`;
-        const salesKey = `cache:sales:${lastUserId}`;
-        const transactionsKey = `cache:transactions:${lastUserId}`;
-        const cachedProducts = getStorageCache<Product[]>(productsKey, 30000);
-        const cachedSales = getStorageCache<any[]>(salesKey, 30000);
-        const cachedTransactions = getStorageCache<any[]>(transactionsKey, 30000);
-        if (cachedProducts) setProducts(cachedProducts);
-        if (cachedSales) setSales(cachedSales);
-        if (cachedTransactions) setTransactions(cachedTransactions);
-        if (cachedProducts || cachedSales || cachedTransactions) {
-          setIsLoading(false);
-          setInitialLoaded(true);
-        }
-      }
-    } catch {}
-  }, [user?.id]);
-
-  useEffect(() => {
     if (!user?.id) {
       return;
     }
 
     const fetchData = async () => {
       try {
-        const supabaseUserId = user.id;
-        const productsKey = `cache:products:${supabaseUserId}`;
-        const salesKey = `cache:sales:${supabaseUserId}`;
-        const transactionsKey = `cache:transactions:${supabaseUserId}`;
-        const cachedProducts = getStorageCache<Product[]>(productsKey, 30000);
-        const cachedSales = getStorageCache<any[]>(salesKey, 30000);
-        const cachedTransactions = getStorageCache<any[]>(transactionsKey, 30000);
-        if (cachedProducts) setProducts(cachedProducts);
-        if (cachedSales) setSales(cachedSales);
-        if (cachedTransactions) setTransactions(cachedTransactions);
-        if (cachedProducts || cachedSales || cachedTransactions) setIsLoading(false);
         if (process.env.NODE_ENV === 'development') {
           console.log('🔄 Carregando dados do Supabase para usuário:', user.id);
         }
 
-        const supabaseUserIdDirect = supabaseUserId;
+        // O usuário já é do Supabase, então podemos usar o ID diretamente
+        const supabaseUserId = user.id;
         
         if (process.env.NODE_ENV === 'development') {
           console.log('✅ Usuário Supabase ID:', supabaseUserId);
         }
 
         // Carregar orçamento do banco de dados
-        await loadBudgetFromDatabase(supabaseUserIdDirect);
+        await loadBudgetFromDatabase(supabaseUserId);
 
         // Fazer todas as chamadas de API em paralelo para melhor performance
         const [
@@ -380,10 +348,6 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
         setProducts(finalProducts);
         setSales(supabaseSales);
         setTransactions(supabaseTransactions);
-        setStorageCache(productsKey, finalProducts);
-        setStorageCache(salesKey, supabaseSales);
-        setStorageCache(transactionsKey, supabaseTransactions);
-        setInitialLoaded(true);
         
         // Remover chamada para refreshData() que causava loop infinito
         // Os dados de expenses e revenues já são carregados automaticamente pelo DataContext
@@ -711,7 +675,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
       financialHealth,
       healthColor
     };
-  }, [products, revenues, expenses, periodFilter, businessSelectedDate, isPersonal]);
+  }, [products, revenues, expenses, sales, periodFilter, businessSelectedDate, isPersonal]);
 
   const handleSearch = (query: string) => {
     setSearchTerm(query);
@@ -1119,7 +1083,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 onClick={() => router.push(isPersonal ? '/pessoal/receitas' : '/receitas')}
               >
                 <ArrowUp className="h-4 w-4 flex-shrink-0" />
-                <span className="text-sm sm:text-base">{isPersonal ? 'Ganhos' : 'Receitas'}</span>
+                <span className="text-sm sm:text-base">{isPersonal ? 'Ganhos' : 'Entradas'}</span>
               </Button>
               
               <Button 
@@ -1129,7 +1093,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 onClick={() => router.push(isPersonal ? '/pessoal/despesas' : '/despesas')}
               >
                 <ArrowDown className="h-4 w-4 flex-shrink-0" />
-                <span className="text-sm sm:text-base">{isPersonal ? 'Gastos' : 'Despesas'}</span>
+                <span className="text-sm sm:text-base">{isPersonal ? 'Gastos' : 'Saídas'}</span>
               </Button>
               
               <Button 
@@ -1606,22 +1570,8 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
 
             {/* Metrics Cards - Apenas para modo empresarial */}
             {!isPersonal && (
+              dataReady ? (
               <div className="responsive-grid responsive-grid-4 mb-6 md:mb-8">
-              {isLoading || dataLoading ? (
-                <>
-                  {[...Array(4)].map((_, i) => (
-                    <Card key={i}>
-                      <CardContent className="p-3 sm:p-4 md:p-6">
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-24" />
-                          <Skeleton className="h-8 w-32" />
-                          <Skeleton className="h-3 w-20" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </>
-              ) : (<> 
               <Card
                 className={cn(
                   "transform-gpu cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95",
@@ -1649,7 +1599,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 <CardContent className="p-3 sm:p-4 md:p-6">
                   <div className="flex items-center justify-between mb-2 sm:mb-4">
                     <h3 className="text-xs sm:text-sm font-medium text-muted-foreground">
-                      {isPersonal ? 'Ganhos do período' : 'Receitas no período'}
+                      {isPersonal ? 'Ganhos do período' : 'Entradas no período'}
                     </h3>
                     <ArrowUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
                   </div>
@@ -1689,7 +1639,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 <CardContent className="p-3 sm:p-4 md:p-6">
                   <div className="flex items-center justify-between mb-2 sm:mb-4">
                     <h3 className="text-xs sm:text-sm font-medium text-muted-foreground">
-                      {isPersonal ? 'Gastos do período' : 'Despesas no período'}
+                      {isPersonal ? 'Gastos do período' : 'Saídas no período'}
                     </h3>
                     <ArrowDown className="h-3 w-3 sm:h-4 sm:w-4 text-red-600" />
                   </div>
@@ -1727,50 +1677,45 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
               </Card>
 
               <FinancialHealthIndicator expenseRatio={summaryStats.expenseRatio} isPersonal={isPersonal} />
-              </>
-              )}
               </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 md:mb-8">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-[120px] sm:h-[140px] w-full" />
+                  ))}
+                </div>
+              )
             )}
 
             {/* Seções Condicionais */}
             {!isPersonal && (
               <div className="space-y-6 mb-6 md:mb-8">
-                {!initialLoaded && (isLoading || dataLoading) ? (
-                  <div className="space-y-4">
-                    <Skeleton className="h-[120px] w-full" />
-                    <Skeleton className="h-[240px] w-full" />
-                    <Skeleton className="h-[160px] w-full" />
-                  </div>
-                ) : (
-                  <>
-                    <BudgetSection 
-                      className=""
-                      monthlyBudget={monthlyBudget}
-                      estimatedExpenses={summaryStats.periodExpenses || 0}
-                      totalItems={products.length}
-                      missingItems={products.filter(p => p.quantity - p.quantitySold <= 2 && p.status !== 'sold').length}
-                      periodRevenue={summaryStats.periodRevenue}
-                      onBudgetChange={saveBudgetToDatabase}
-                      isLoading={budgetLoading}
-                    />
-                    
-                    <CashFlowSection 
-                       className=""
-                       periodRevenue={summaryStats.periodRevenue}
-                       periodExpenses={summaryStats.periodExpenses}
-                       periodBalance={summaryStats.periodBalance}
-                       products={products}
-                       revenues={revenues}
-                       expenses={expenses}
-                       sales={sales}
-                     />
-                     
-                     <InventoryControlSection 
-                       products={products}
-                       className=""
-                     />
-                  </>
-                )}
+                <BudgetSection 
+                  className=""
+                  monthlyBudget={monthlyBudget}
+                  estimatedExpenses={summaryStats.periodExpenses || 0}
+                  totalItems={products.length}
+                  missingItems={products.filter(p => p.quantity - p.quantitySold <= 2 && p.status !== 'sold').length}
+                  periodRevenue={summaryStats.periodRevenue}
+                  onBudgetChange={saveBudgetToDatabase}
+                  isLoading={budgetLoading}
+                />
+                
+                <CashFlowSection 
+                   className=""
+                   periodRevenue={summaryStats.periodRevenue}
+                   periodExpenses={summaryStats.periodExpenses}
+                   periodBalance={summaryStats.periodBalance}
+                   products={products}
+                   revenues={revenues}
+                   expenses={expenses}
+                   sales={sales}
+                 />
+                 
+                 <InventoryControlSection 
+                   products={products}
+                   className=""
+                 />
                </div>
             )}
 
@@ -1786,7 +1731,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
             ) : (
               <BusinessDashboard
                 products={products}
-                isLoading={!initialLoaded && (isLoading || dataLoading)}
+                isLoading={isLoading}
                 summaryStats={summaryStats}
                 filteredProducts={filteredProducts}
                 periodFilter={periodFilter}

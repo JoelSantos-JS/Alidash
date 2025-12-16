@@ -81,7 +81,7 @@ export function FinancialHealthIndicator({ expenseRatio, className, isPersonal =
         
         <div className="mb-3">
           <div className="flex items-center justify-between text-sm mb-1">
-            <span className="text-muted-foreground">{isPersonal ? 'Gastos/Ganhos' : 'Despesas/Receitas'}</span>
+            <span className="text-muted-foreground">{isPersonal ? 'Saídas/Entradas' : 'Saídas/Entradas'}</span>
             <span className="font-medium">{expenseRatio.toFixed(1)}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">

@@ -162,12 +162,44 @@ export default function DespesasPage() {
 
     try {
       if (expenseToEdit) {
-        // Editar despesa existente - implementar quando necessário
-        toast({
-          variant: 'destructive',
-          title: "Funcionalidade em desenvolvimento",
-          description: "A edição de despesas será implementada em breve.",
+        const response = await fetch(`/api/expenses/update`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: expenseToEdit.id,
+            user_id: user.id,
+            description: expenseData.description,
+            amount: expenseData.amount,
+            category: expenseData.category,
+            type: expenseData.type,
+            supplier: expenseData.supplier,
+            notes: expenseData.notes,
+            product_id: expenseData.productId,
+            date: expenseData.date.toISOString(),
+          }),
         });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.expense) {
+            updateExpense({
+              ...expenseData,
+              id: expenseToEdit.id,
+              transactionId: result.expense.transaction_id,
+            });
+            toast({
+              title: "Despesa atualizada!",
+              description: `${expenseData.description} - Atualizada com sucesso`,
+            });
+          } else {
+            throw new Error(result.error || 'Erro ao atualizar despesa');
+          }
+        } else {
+          const errorText = await response.text();
+          throw new Error(errorText || 'Erro na atualização');
+        }
       } else {
         // Atualização otimista: adiciona imediatamente na UI
         addExpense(expenseData);
@@ -262,11 +294,11 @@ export default function DespesasPage() {
             <div>
               <h1 className="text-lg md:text-2xl font-bold flex items-center gap-2">
                 <ArrowDown className="h-5 w-5 md:h-6 md:w-6 text-red-500" />
-                Despesas
+                Saídas
               </h1>
               <p className="text-xs md:text-sm text-muted-foreground">
-                <span className="hidden sm:inline">Controle detalhado das suas despesas de produtos</span>
-                <span className="sm:hidden">Suas despesas de produtos</span>
+                <span className="hidden sm:inline">Controle detalhado das suas saídas de produtos</span>
+                <span className="sm:hidden">Suas saídas de produtos</span>
               </p>
             </div>
           </div>
@@ -317,7 +349,7 @@ export default function DespesasPage() {
               className="flex items-center gap-1 md:gap-2 text-xs md:text-sm"
             >
               <Plus className="h-3 w-3 md:h-4 md:w-4" />
-              <span className="hidden sm:inline">Adicionar Nova Despesa</span>
+              <span className="hidden sm:inline">Adicionar Nova Saída</span>
               <span className="sm:hidden">Nova</span>
             </Button>
           </div>
@@ -341,6 +373,40 @@ export default function DespesasPage() {
             periodFilter={periodFilter}
             expenses={expenses}
             currentDate={currentDate}
+            onEditExpense={(item) => {
+              const isIndependent = String(item.id).startsWith('expense-');
+              if (!isIndependent) return;
+              const realId = String(item.id).replace('expense-', '');
+              const original = expenses.find(e => e.id === realId);
+              if (original) {
+                setExpenseToEdit(original);
+                setIsFormOpen(true);
+              }
+            }}
+            onDeleteExpense={async (item) => {
+              if (!user?.id) return;
+              const isIndependent = String(item.id).startsWith('expense-');
+              if (!isIndependent) return;
+              const realId = String(item.id).replace('expense-', '');
+              try {
+                const response = await fetch(`/api/expenses/delete?id=${realId}&user_id=${user.id}`, { method: 'DELETE' });
+                const result = await response.json();
+                if (!response.ok || result.success === false) {
+                  throw new Error(result.error || 'Erro ao excluir saída');
+                }
+                deleteExpense(realId);
+                toast({
+                  title: "Saída excluída!",
+                  description: `Saída "${item.description}" removida com sucesso.`,
+                });
+              } catch (error) {
+                toast({
+                  variant: 'destructive',
+                  title: "Erro ao excluir",
+                  description: error instanceof Error ? error.message : "Falha ao excluir a saída.",
+                });
+              }
+            }}
           />
         )}
       </main>
@@ -350,7 +416,7 @@ export default function DespesasPage() {
         <DialogContent className="max-w-xl sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {expenseToEdit ? "Editar Despesa" : "Adicionar Nova Despesa"}
+              {expenseToEdit ? "Editar Saída" : "Adicionar Nova Saída"}
             </DialogTitle>
           </DialogHeader>
           <ExpenseForm 

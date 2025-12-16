@@ -5,7 +5,7 @@ export interface EmailNotificationData {
   to: string
   subject: string
   body: string
-  type: 'calendar_event' | 'product_alert' | 'transaction' | 'goal_reminder' | 'debt_reminder' | 'general'
+  type: 'calendar_event' | 'product_alert' | 'transaction' | 'goal_reminder' | 'debt_reminder' | 'general' | 'welcome'
   eventId?: string
   data?: any
 }
@@ -15,43 +15,67 @@ export interface EmailNotificationData {
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json() as { user_id: string; email: EmailNotificationData }
+    const body = await request.json() as { user_id?: string; email: EmailNotificationData }
     const { user_id, email } = body
 
-    if (!user_id || !email) {
+    if (!email) {
       return NextResponse.json(
-        { error: 'user_id e email são obrigatórios' },
+        { error: 'email é obrigatório' },
         { status: 400 }
       )
     }
 
     const supabase = createServiceClient()
 
-    // Buscar preferências do usuário
-    const { data: preferences } = await supabase
-      .from('notification_preferences')
-      .select('*')
-      .eq('user_id', user_id)
-      .single()
+    const transactional = email.type === 'welcome'
+    let targetEmail = email.to
+    let targetName = 'Usuário'
+    let resolvedUserId = user_id
 
-    // Verificar se o usuário quer receber emails
-    if (preferences && !preferences.email_notifications) {
+    if (!targetEmail && resolvedUserId) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('email, name')
+        .eq('id', resolvedUserId)
+        .single()
+      targetEmail = userData?.email || ''
+      targetName = userData?.name || 'Usuário'
+    }
+
+    if (!targetEmail) {
       return NextResponse.json(
-        { 
-          success: false,
-          message: 'Usuário desabilitou notificações por email'
-        }
+        { error: 'Email do usuário não encontrado' },
+        { status: 404 }
       )
+    }
+
+    let preferences: any = null
+    if (!transactional && resolvedUserId) {
+      const prefResult = await supabase
+        .from('notification_preferences')
+        .select('*')
+        .eq('user_id', resolvedUserId)
+        .single()
+      preferences = prefResult.data || null
+      if (preferences && !preferences.email_notifications) {
+        return NextResponse.json(
+          { 
+            success: false,
+            message: 'Usuário desabilitou notificações por email'
+          }
+        )
+      }
     }
 
     // Verificar preferências específicas por tipo
     const typePreferences: Record<EmailNotificationData['type'], boolean> = {
-      calendar_event: preferences?.calendar_reminders !== false,
-      product_alert: preferences?.product_alerts !== false,
-      transaction: preferences?.transaction_alerts !== false,
-      goal_reminder: preferences?.goal_reminders !== false,
-      debt_reminder: preferences?.debt_reminders !== false,
-      general: true
+      calendar_event: transactional ? true : preferences?.calendar_reminders !== false,
+      product_alert: transactional ? true : preferences?.product_alerts !== false,
+      transaction: transactional ? true : preferences?.transaction_alerts !== false,
+      goal_reminder: transactional ? true : preferences?.goal_reminders !== false,
+      debt_reminder: transactional ? true : preferences?.debt_reminders !== false,
+      general: true,
+      welcome: true
     }
 
     if (!typePreferences[email.type]) {
@@ -63,26 +87,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Buscar dados do usuário
-    const { data: userData } = await supabase
-      .from('users')
-      .select('email, name')
-      .eq('id', user_id)
-      .single()
+    const subject = email.subject || (email.type === 'welcome' ? 'Bem-vindo ao Alidash' : '')
+    const htmlBody = email.body || (email.type === 'welcome'
+      ? `<h1>Bem-vindo, ${targetName}</h1><p>Seu cadastro no Alidash foi realizado.</p><p>Acesse ${process.env.NEXT_PUBLIC_APP_URL || ''} para começar.</p>`
+      : '<p></p>')
 
-    if (!userData?.email) {
-      return NextResponse.json(
-        { error: 'Email do usuário não encontrado' },
-        { status: 404 }
-      )
-    }
-
-    // Preparar dados para n8n
     const n8nPayload = {
-      to: userData.email,
-      name: userData.name || 'Usuário',
-      subject: email.subject,
-      body: email.body,
+      to: targetEmail,
+      name: targetName,
+      subject,
+      body: htmlBody,
       type: email.type,
       eventId: email.eventId,
       timestamp: new Date().toISOString(),
@@ -104,22 +118,20 @@ export async function POST(request: NextRequest) {
           throw new Error(`N8N webhook failed: ${response.status}`)
         }
 
-        // Salvar log da notificação
-        {
+        if (resolvedUserId) {
           const { error: logError } = await supabase
             .from('notification_logs')
             .insert({
-              user_id,
+              user_id: resolvedUserId,
               type: email.type,
-              title: email.subject,
-              body: email.body,
+              title: subject,
+              body: htmlBody,
               channel: 'email',
               success_count: 1,
               failure_count: 0,
               sent_at: new Date().toISOString()
             })
           if (logError) {
-            console.warn('Erro ao salvar log de notificação:', logError)
           }
         }
 
@@ -131,22 +143,20 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         console.error('Erro ao enviar via n8n:', error)
         
-        // Salvar log de falha
-        {
+        if (resolvedUserId) {
           const { error: logError } = await supabase
             .from('notification_logs')
             .insert({
-              user_id,
+              user_id: resolvedUserId,
               type: email.type,
-              title: email.subject,
-              body: email.body,
+              title: subject,
+              body: htmlBody,
               channel: 'email',
               success_count: 0,
               failure_count: 1,
               sent_at: new Date().toISOString()
             })
           if (logError) {
-            console.warn('Erro ao salvar log de notificação:', logError)
           }
         }
 
@@ -170,10 +180,9 @@ export async function POST(request: NextRequest) {
           },
           body: JSON.stringify({
             from: fromAddress,
-            to: userData.email,
-            subject: email.subject,
-            // Enviar em HTML; se vier texto puro, manter simples
-            html: email.body || '<p>Mensagem vazia</p>'
+            to: targetEmail,
+            subject,
+            html: htmlBody || '<p>Mensagem vazia</p>'
           })
         })
 
@@ -183,21 +192,20 @@ export async function POST(request: NextRequest) {
           throw new Error(`Resend failed: ${resendResponse.status} ${resendData?.error?.message || ''}`)
         }
 
-        {
+        if (resolvedUserId) {
           const { error: logError } = await supabase
             .from('notification_logs')
             .insert({
-              user_id,
+              user_id: resolvedUserId,
               type: email.type,
-              title: email.subject,
-              body: email.body,
+              title: subject,
+              body: htmlBody,
               channel: 'email',
               success_count: 1,
               failure_count: 0,
               sent_at: new Date().toISOString()
             })
           if (logError) {
-            console.warn('Erro ao salvar log de notificação (Resend):', logError)
           }
         }
 
@@ -209,35 +217,41 @@ export async function POST(request: NextRequest) {
         })
       } catch (error) {
         console.error('Erro ao enviar via Resend:', error)
-        {
+        if (resolvedUserId) {
           const { error: logError } = await supabase
             .from('notification_logs')
             .insert({
-              user_id,
+              user_id: resolvedUserId,
               type: email.type,
-              title: email.subject,
-              body: email.body,
+              title: subject,
+              body: htmlBody,
               channel: 'email',
               success_count: 0,
               failure_count: 1,
               sent_at: new Date().toISOString()
             })
           if (logError) {
-            console.warn('Erro ao salvar log de notificação (Resend):', logError)
           }
         }
 
-        return NextResponse.json(
-          { error: 'Erro ao enviar email via Resend' },
-          { status: 500 }
-        )
+        if (process.env.NODE_ENV !== 'production') {
+          return NextResponse.json({
+            success: true,
+            message: 'Email processado (fallback após falha Resend)',
+            provider: 'development',
+            data: n8nPayload
+          })
+        } else {
+          return NextResponse.json(
+            { error: 'Erro ao enviar email via Resend' },
+            { status: 500 }
+          )
+        }
       }
     }
 
     // Fallback 2: modo desenvolvimento (logar sem envio real)
     try {
-      // Nota: Esta é uma implementação básica
-      // Em produção, você deve usar um serviço de email dedicado
       console.log('Enviando email via fallback:', n8nPayload)
       
       return NextResponse.json({

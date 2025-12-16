@@ -323,13 +323,13 @@ export function TransactionsSection({ products, periodFilter, currentDate = new 
                 </div>
               </div>
               <div>
-                <div className="text-xs text-muted-foreground">Receitas</div>
+                <div className="text-xs text-muted-foreground">Entradas</div>
                 <div className="text-lg font-semibold text-green-600">
                   {previousMonthSummary.totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </div>
               </div>
               <div>
-                <div className="text-xs text-muted-foreground">Despesas</div>
+                <div className="text-xs text-muted-foreground">Saídas</div>
                 <div className="text-lg font-semibold text-red-600">
                   {previousMonthSummary.totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </div>
@@ -366,7 +366,7 @@ export function TransactionsSection({ products, periodFilter, currentDate = new 
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Receitas</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Entradas</CardTitle>
             <ArrowUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
@@ -381,7 +381,7 @@ export function TransactionsSection({ products, periodFilter, currentDate = new 
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Despesas</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Saídas</CardTitle>
             <ArrowDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
@@ -447,8 +447,8 @@ export function TransactionsSection({ products, periodFilter, currentDate = new 
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os tipos</SelectItem>
-                  <SelectItem value="income">Receitas</SelectItem>
-                  <SelectItem value="expense">Despesas</SelectItem>
+                  <SelectItem value="income">Entradas</SelectItem>
+                  <SelectItem value="expense">Saídas</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={filterCategory} onValueChange={setFilterCategory}>
@@ -501,7 +501,7 @@ export function TransactionsSection({ products, periodFilter, currentDate = new 
                               <div className="sm:hidden flex gap-1 mt-1">
                                 <Badge variant="outline" className="text-xs">{transaction.category}</Badge>
                                 <Badge variant={transaction.type === 'income' ? 'default' : 'destructive'} className="text-xs">
-                                  {transaction.type === 'income' ? 'R' : 'D'}
+                                  {transaction.type === 'income' ? 'E' : 'S'}
                                 </Badge>
                                 {transaction.subcategory === 'Compra Parcelada' && (
                                   <Badge variant="secondary" className="text-xs text-blue-600">💳</Badge>
@@ -515,7 +515,7 @@ export function TransactionsSection({ products, periodFilter, currentDate = new 
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           <Badge variant={transaction.type === 'income' ? 'default' : 'destructive'} className="text-xs">
-                            {transaction.type === 'income' ? 'Receita' : 'Despesa'}
+                            {transaction.type === 'income' ? 'Entrada' : 'Saída'}
                           </Badge>
                         </TableCell>
                         <TableCell className={`text-right font-medium text-xs md:text-sm ${getTransactionColor(transaction.type)}`}>

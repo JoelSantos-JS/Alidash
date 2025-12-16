@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency, formatCurrencyInputBRL, parseCurrencyInputBRL } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -66,6 +67,7 @@ const PRIORITY_LEVELS = {
 export function PersonalEventForm({ event, onSubmit, onCancel, isOpen }: PersonalEventFormProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [amountInput, setAmountInput] = useState<string>(event?.amount != null ? formatCurrency(event.amount) : '');
   const [formData, setFormData] = useState<PersonalEvent>({
     title: event?.title || '',
     description: event?.description || '',
@@ -259,12 +261,16 @@ export function PersonalEventForm({ event, onSubmit, onCancel, isOpen }: Persona
                 <Label htmlFor="amount">Valor (R$)</Label>
                 <Input
                   id="amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.amount || ''}
-                  onChange={(e) => handleInputChange('amount', e.target.value ? parseFloat(e.target.value) : undefined)}
-                  placeholder="0,00"
+                  type="text"
+                  inputMode="numeric"
+                  value={amountInput}
+                  onChange={(e) => {
+                    const formatted = formatCurrencyInputBRL(e.target.value);
+                    setAmountInput(formatted);
+                    const parsed = parseCurrencyInputBRL(formatted);
+                    handleInputChange('amount', parsed);
+                  }}
+                  placeholder="R$ 0,00"
                 />
               </div>
             )}

@@ -112,7 +112,7 @@ const defaultCategories: Category[] = [
   },
   {
     id: "transaction-other",
-    name: "Outras Receitas",
+    name: "Outras Entradas",
     type: "transaction",
     color: "#F59E0B",
     icon: "Gift",
@@ -653,7 +653,7 @@ export default function CategoriesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Categorias de Receita</CardTitle>
+                <CardTitle className="text-lg">Categorias de Entrada</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -686,7 +686,7 @@ export default function CategoriesPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Categorias de Despesa</CardTitle>
+                <CardTitle className="text-lg">Categorias de Saída</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">

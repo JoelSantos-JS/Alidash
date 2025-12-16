@@ -34,7 +34,7 @@ export default function DuvidasPage() {
   }, [tipo, assunto, nome, email, mensagem]);
 
   const buildWhatsAppUrl = () => {
-    const text = encodeURIComponent(texto || "Olá, tenho uma dúvida/sugestão.");
+    const text = encodeURIComponent(texto || "Olá");
     try {
       const url = new URL(voxWhatsappUrl);
       if (url.host.includes("wa.me") || url.host.includes("whatsapp")) {

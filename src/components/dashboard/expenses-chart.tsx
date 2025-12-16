@@ -190,10 +190,10 @@ export function ExpensesChart({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <TrendingDown className="h-5 w-5" />
-          Análise de Gastos
+          Análise de Saídas
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Distribuição detalhada dos seus gastos mensais
+          Distribuição detalhada das suas saídas mensais
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -203,7 +203,7 @@ export function ExpensesChart({
             <div className="text-lg font-bold text-red-600">
               {essentialExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
-            <div className="text-xs text-muted-foreground">Gastos Essenciais</div>
+            <div className="text-xs text-muted-foreground">Saídas Essenciais</div>
             <div className="text-xs font-medium text-red-600">
               {((essentialExpenses / totalExpenses) * 100).toFixed(1)}%
             </div>
@@ -212,7 +212,7 @@ export function ExpensesChart({
             <div className="text-lg font-bold text-blue-600">
               {nonEssentialExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
-            <div className="text-xs text-muted-foreground">Gastos Opcionais</div>
+            <div className="text-xs text-muted-foreground">Saídas Opcionais</div>
             <div className="text-xs font-medium text-blue-600">
               {((nonEssentialExpenses / totalExpenses) * 100).toFixed(1)}%
             </div>

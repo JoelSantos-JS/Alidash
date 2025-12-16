@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import { X, DollarSign, Calendar, User, Building, Tag, FileText } from "lucide-react";
+import { formatCurrency, formatCurrencyInputBRL, parseCurrencyInputBRL } from "@/lib/utils";
 
 interface PersonalIncome {
   id: string;
@@ -51,12 +52,12 @@ export default function PersonalIncomeForm({ isOpen, onClose, onSuccess, editing
   const [formData, setFormData] = useState({
     date: editingIncome?.date || new Date().toISOString().split('T')[0],
     description: editingIncome?.description || '',
-    amount: editingIncome?.amount?.toString() || '',
+    amount: editingIncome?.amount != null ? formatCurrency(editingIncome.amount) : '',
     category: editingIncome?.category || 'salary',
     source: editingIncome?.source || '',
     is_recurring: editingIncome?.is_recurring || false,
     is_taxable: editingIncome?.is_taxable || false,
-    tax_withheld: editingIncome?.tax_withheld?.toString() || '0',
+    tax_withheld: editingIncome?.tax_withheld != null ? formatCurrency(editingIncome.tax_withheld) : '',
     notes: editingIncome?.notes || ''
   });
 
@@ -91,12 +92,12 @@ export default function PersonalIncomeForm({ isOpen, onClose, onSuccess, editing
         user_id: supabaseUserId,
         date: formData.date,
         description: formData.description,
-        amount: parseFloat(formData.amount),
+        amount: parseCurrencyInputBRL(formData.amount),
         category: formData.category,
         source: formData.source,
         is_recurring: formData.is_recurring,
         is_taxable: formData.is_taxable,
-        tax_withheld: formData.is_taxable ? parseFloat(formData.tax_withheld) : 0,
+        tax_withheld: formData.is_taxable ? parseCurrencyInputBRL(formData.tax_withheld) : 0,
         notes: formData.notes || null
       };
       
@@ -152,7 +153,7 @@ export default function PersonalIncomeForm({ isOpen, onClose, onSuccess, editing
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-green-600" />
-            {editingIncome ? 'Editar Receita' : 'Nova Receita Pessoal'}
+            {editingIncome ? 'Editar Entrada' : 'Nova Entrada Pessoal'}
           </CardTitle>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -178,22 +179,21 @@ export default function PersonalIncomeForm({ isOpen, onClose, onSuccess, editing
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="amount" className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Valor *
-                </Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0,00"
-                  value={formData.amount}
-                  onChange={(e) => handleInputChange('amount', e.target.value)}
-                  required
-                />
-              </div>
+              <Label htmlFor="amount" className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Valor *
+              </Label>
+              <Input
+                id="amount"
+                type="text"
+                inputMode="numeric"
+                placeholder="R$ 0,00"
+                value={formData.amount}
+                onChange={(e) => handleInputChange('amount', formatCurrencyInputBRL(e.target.value))}
+                required
+              />
             </div>
+          </div>
             
             <div className="space-y-2">
               <Label htmlFor="description" className="flex items-center gap-2">
@@ -249,8 +249,8 @@ export default function PersonalIncomeForm({ isOpen, onClose, onSuccess, editing
               
               <div className="flex items-center justify-between p-3 border rounded-lg">
                 <div>
-                  <Label htmlFor="is_recurring" className="font-medium">Receita Recorrente</Label>
-                  <p className="text-sm text-muted-foreground">Esta receita se repete mensalmente</p>
+                  <Label htmlFor="is_recurring" className="font-medium">Entrada Recorrente</Label>
+                  <p className="text-sm text-muted-foreground">Esta entrada se repete mensalmente</p>
                 </div>
                 <Switch
                   id="is_recurring"
@@ -261,7 +261,7 @@ export default function PersonalIncomeForm({ isOpen, onClose, onSuccess, editing
               
               <div className="flex items-center justify-between p-3 border rounded-lg">
                 <div>
-                  <Label htmlFor="is_taxable" className="font-medium">Receita Tributável</Label>
+                  <Label htmlFor="is_taxable" className="font-medium">Entrada Tributável</Label>
                   <p className="text-sm text-muted-foreground">Sujeita a imposto de renda</p>
                 </div>
                 <Switch
@@ -276,12 +276,11 @@ export default function PersonalIncomeForm({ isOpen, onClose, onSuccess, editing
                   <Label htmlFor="tax_withheld">Imposto Retido na Fonte</Label>
                   <Input
                     id="tax_withheld"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0,00"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="R$ 0,00"
                     value={formData.tax_withheld}
-                    onChange={(e) => handleInputChange('tax_withheld', e.target.value)}
+                    onChange={(e) => handleInputChange('tax_withheld', formatCurrencyInputBRL(e.target.value))}
                   />
                 </div>
               )}
@@ -292,7 +291,7 @@ export default function PersonalIncomeForm({ isOpen, onClose, onSuccess, editing
               <Label htmlFor="notes">Observações</Label>
               <Textarea
                 id="notes"
-                placeholder="Informações adicionais sobre esta receita..."
+                placeholder="Informações adicionais sobre esta entrada..."
                 value={formData.notes}
                 onChange={(e) => handleInputChange('notes', e.target.value)}
                 rows={3}
@@ -305,7 +304,7 @@ export default function PersonalIncomeForm({ isOpen, onClose, onSuccess, editing
                 Cancelar
               </Button>
               <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? 'Salvando...' : (editingIncome ? 'Atualizar' : 'Criar Receita')}
+                {loading ? 'Salvando...' : (editingIncome ? 'Atualizar' : 'Criar Entrada')}
               </Button>
             </div>
           </form>

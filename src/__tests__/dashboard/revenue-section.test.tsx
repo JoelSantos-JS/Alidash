@@ -2,6 +2,16 @@ import { describe, it, expect } from '@jest/globals'
 import { render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { RevenueSection } from '@/components/dashboard/revenue-section'
+jest.mock('lucide-react', () => ({
+  ArrowUp: () => null,
+  TrendingUp: () => null,
+  DollarSign: () => null,
+  ShoppingCart: () => null,
+  Trophy: () => null,
+  Package: () => null,
+  Edit3: () => null,
+  Trash2: () => null,
+}))
 
 const product = {
   id: 'p1',
@@ -30,7 +40,7 @@ const product = {
   actualProfit: 0,
 }
 
-describe('RevenueSection dedupe', () => {
+describe('Seção de Entradas (RevenueSection) - dedupe', () => {
   it('não duplica venda quando existe receita de venda no mesmo dia', () => {
     render(
       <RevenueSection

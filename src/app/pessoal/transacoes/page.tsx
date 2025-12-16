@@ -48,8 +48,8 @@ interface PersonalTransaction {
 }
 
 const TRANSACTION_TYPES = {
-  income: { label: 'Receita', icon: ArrowUp, color: 'text-green-600', bgColor: 'bg-green-100' },
-  expense: { label: 'Despesa', icon: ArrowDown, color: 'text-red-600', bgColor: 'bg-red-100' }
+  income: { label: 'Entrada', icon: ArrowUp, color: 'text-green-600', bgColor: 'bg-green-100' },
+  expense: { label: 'Saída', icon: ArrowDown, color: 'text-red-600', bgColor: 'bg-red-100' }
 };
 
 export default function PersonalTransactionsPage() {
@@ -298,8 +298,8 @@ export default function PersonalTransactionsPage() {
                 Transações Pessoais
               </h1>
               <p className="text-xs md:text-sm text-muted-foreground">
-                <span className="hidden sm:inline">Histórico completo de receitas e despesas pessoais</span>
-                <span className="sm:hidden">Histórico de receitas e despesas</span>
+                <span className="hidden sm:inline">Histórico completo de entradas e saídas pessoais</span>
+                <span className="sm:hidden">Histórico de entradas e saídas</span>
               </p>
             </div>
           </div>
@@ -323,7 +323,7 @@ export default function PersonalTransactionsPage() {
         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">Total de Receitas</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Total de Entradas</CardTitle>
               <TrendingUp className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent className="p-3 sm:p-6">
@@ -331,14 +331,14 @@ export default function PersonalTransactionsPage() {
                 {totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {filteredTransactions.filter(t => t.type === 'income').length} receita(s)
+                {filteredTransactions.filter(t => t.type === 'income').length} entrada(s)
               </p>
             </CardContent>
           </Card>
 
           <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">Total de Despesas</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Total de Saídas</CardTitle>
               <TrendingDown className="h-4 w-4 text-red-600" />
             </CardHeader>
             <CardContent className="p-3 sm:p-6">
@@ -346,7 +346,7 @@ export default function PersonalTransactionsPage() {
                 {totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {filteredTransactions.filter(t => t.type === 'expense').length} despesa(s)
+                {filteredTransactions.filter(t => t.type === 'expense').length} saída(s)
               </p>
             </CardContent>
           </Card>
@@ -404,8 +404,8 @@ export default function PersonalTransactionsPage() {
                   className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 >
                   <option value="">Todos os tipos</option>
-                  <option value="income">Receitas</option>
-                  <option value="expense">Despesas</option>
+                  <option value="income">Entradas</option>
+                  <option value="expense">Saídas</option>
                 </select>
               </div>
               <div className="w-full sm:w-40">

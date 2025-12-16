@@ -70,6 +70,8 @@
   }
 }
 
+/* removido container global .app-root para voltar ao layout padrão */
+
 @layer components {
   /* Estilos para números responsivos */
   .responsive-number {

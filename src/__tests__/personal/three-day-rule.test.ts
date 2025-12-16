@@ -47,7 +47,7 @@ beforeEach(() => {
 })
 
 describe('Regra de 5 dias de cadastro', () => {
-  it('permite criação de receita antes de 5 dias', async () => {
+  it('permite criação de entrada antes de 5 dias', async () => {
     mockUser = { account_type: 'personal', created_at: new Date(Date.now() - 2 * 86400000).toISOString() }
     const incomesRoute = require('@/app/api/personal/incomes/route')
     const body = { user_id: 'u1', date: '2025-01-01', description: 'Teste', amount: 10, category: 'other', source: 'test' }
@@ -58,7 +58,7 @@ describe('Regra de 5 dias de cadastro', () => {
     expect(result.income).toBeDefined()
   })
 
-  it('bloqueia criação de receita após 5 dias para plano gratuito', async () => {
+  it('bloqueia criação de entrada após 5 dias para plano gratuito', async () => {
     mockUser = { account_type: 'personal', created_at: new Date(Date.now() - 6 * 86400000).toISOString() }
     const incomesRoute = require('@/app/api/personal/incomes/route')
     const body = { user_id: 'u1', date: '2025-01-01', description: 'Teste', amount: 10, category: 'other', source: 'test' }
@@ -69,7 +69,7 @@ describe('Regra de 5 dias de cadastro', () => {
     expect(String(result.error)).toMatch(/Período gratuito de 5 dias expirado/)
   })
 
-  it('permite criação de despesa antes de 5 dias', async () => {
+  it('permite criação de saída antes de 5 dias', async () => {
     mockUser = { account_type: 'personal', created_at: new Date(Date.now() - 2 * 86400000).toISOString() }
     const expensesRoute = require('@/app/api/personal/expenses/route')
     const body = { user_id: 'u1', date: '2025-01-01', description: 'Teste', amount: 10, category: 'other', payment_method: 'cash' }

@@ -3,7 +3,7 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 // Mock do fetch global
 global.fetch = jest.fn();
 
-describe('API de Despesas', () => {
+describe('API de Saídas', () => {
   beforeEach(() => {
     jest.resetAllMocks();
   });

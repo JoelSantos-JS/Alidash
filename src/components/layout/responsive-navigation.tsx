@@ -61,13 +61,13 @@ const navigationItems: NavigationItem[] = [
   },
   {
     href: "/receitas",
-    label: "Receitas",
+    label: "Entradas",
     icon: TrendingUp,
     description: "Entradas"
   },
   {
     href: "/despesas",
-    label: "Despesas",
+    label: "Saídas",
     icon: Receipt,
     description: "Saídas"
   },

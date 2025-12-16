@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/hooks/use-supabase-auth';
 import { Loader2, DollarSign, Briefcase, User, TrendingUp, Home, Gift, Building, PiggyBank, Info, Settings } from "lucide-react";
+import { formatCurrency, formatCurrencyInputBRL, parseCurrencyInputBRL } from "@/lib/utils";
 
 interface MonthlyIncomeFormProps {
   isOpen: boolean;
@@ -38,12 +39,12 @@ export default function MonthlyIncomeForm({ isOpen, onClose, onSuccess, editingI
   
   const [formData, setFormData] = useState({
     description: editingIncome?.description || '',
-    amount: editingIncome?.amount?.toString() || '',
+    amount: editingIncome?.amount != null ? formatCurrency(editingIncome.amount) : '',
     category: editingIncome?.category || 'salary',
     source: editingIncome?.source || '',
     is_recurring: editingIncome?.is_recurring ?? true,
     is_taxable: editingIncome?.is_taxable ?? true,
-    tax_withheld: editingIncome?.tax_withheld?.toString() || '0',
+    tax_withheld: editingIncome?.tax_withheld != null ? formatCurrency(editingIncome.tax_withheld) : 'R$ 0,00',
     notes: editingIncome?.notes || '',
     recurring_day: editingIncome?.recurring_info?.day?.toString() || '1'
   });
@@ -62,12 +63,12 @@ export default function MonthlyIncomeForm({ isOpen, onClose, onSuccess, editingI
         user_id: supabaseUserId,
         date: new Date().toISOString().split('T')[0],
         description: formData.description,
-        amount: parseFloat(formData.amount),
+        amount: parseCurrencyInputBRL(formData.amount),
         category: formData.category,
         source: formData.source,
         is_recurring: formData.is_recurring,
         is_taxable: formData.is_taxable,
-        tax_withheld: parseFloat(formData.tax_withheld) || 0,
+        tax_withheld: formData.is_taxable ? parseCurrencyInputBRL(formData.tax_withheld) : 0,
         notes: formData.notes,
         recurring_info: formData.is_recurring ? {
           frequency: 'monthly',
@@ -90,11 +91,11 @@ export default function MonthlyIncomeForm({ isOpen, onClose, onSuccess, editingI
       });
 
       if (!response.ok) {
-        throw new Error('Erro ao salvar receita');
+        throw new Error('Erro ao salvar entrada');
       }
 
       toast({
-        title: editingIncome ? "Receita atualizada!" : "Receita cadastrada!",
+        title: editingIncome ? "Entrada atualizada!" : "Entrada cadastrada!",
         description: `${formData.description} foi ${editingIncome ? 'atualizada' : 'adicionada'} com sucesso.`,
       });
 
@@ -115,10 +116,10 @@ export default function MonthlyIncomeForm({ isOpen, onClose, onSuccess, editingI
       });
 
     } catch (error) {
-      console.error('Erro ao salvar receita:', error);
+      console.error('Erro ao salvar entrada:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível salvar a receita. Tente novamente.",
+        description: "Não foi possível salvar a entrada. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -135,7 +136,7 @@ export default function MonthlyIncomeForm({ isOpen, onClose, onSuccess, editingI
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <IconComponent className="h-5 w-5" />
-            {editingIncome ? 'Editar Receita' : 'Cadastrar Renda Mensal'}
+            {editingIncome ? 'Editar Entrada' : 'Cadastrar Renda Mensal'}
           </DialogTitle>
         </DialogHeader>
 
@@ -197,11 +198,11 @@ export default function MonthlyIncomeForm({ isOpen, onClose, onSuccess, editingI
                   <Label htmlFor="amount">Valor (R$)</Label>
                   <Input
                     id="amount"
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="numeric"
                     value={formData.amount}
-                    onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                    placeholder="0,00"
+                    onChange={(e) => setFormData({...formData, amount: formatCurrencyInputBRL(e.target.value)})}
+                    placeholder="R$ 0,00"
                     required
                   />
                 </div>
@@ -271,11 +272,11 @@ export default function MonthlyIncomeForm({ isOpen, onClose, onSuccess, editingI
                     <Label htmlFor="tax_withheld">Imposto Retido (R$)</Label>
                     <Input
                       id="tax_withheld"
-                      type="number"
-                      step="0.01"
+                      type="text"
+                      inputMode="numeric"
                       value={formData.tax_withheld}
-                      onChange={(e) => setFormData({...formData, tax_withheld: e.target.value})}
-                      placeholder="0,00"
+                      onChange={(e) => setFormData({...formData, tax_withheld: formatCurrencyInputBRL(e.target.value)})}
+                      placeholder="R$ 0,00"
                     />
                   </div>
                 )}

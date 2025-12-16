@@ -179,10 +179,10 @@ export function PersonalDashboard({ summaryStats, isLoading, periodFilter }: Per
     <div className="space-y-6">
       {/* Cards de Resumo Financeiro Pessoal */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Receitas */}
+        {/* Entradas */}
         <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receitas Pessoais</CardTitle>
+            <CardTitle className="text-sm font-medium">Entradas Pessoais</CardTitle>
             <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
@@ -193,10 +193,10 @@ export function PersonalDashboard({ summaryStats, isLoading, periodFilter }: Per
           </CardContent>
         </Card>
 
-        {/* Gastos */}
+        {/* Saídas */}
         <Card className="transform-gpu hover:scale-105 transition-transform duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Gastos Pessoais</CardTitle>
+            <CardTitle className="text-sm font-medium">Saídas Pessoais</CardTitle>
             <TrendingDown className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>

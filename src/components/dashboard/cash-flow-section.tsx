@@ -133,7 +133,7 @@ export function CashFlowSection({
               <TrendingUp className="h-5 w-5 text-white" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Receitas</p>
+              <p className="text-sm text-muted-foreground">Entradas</p>
               <p className="text-lg font-semibold text-green-600">
                 {periodRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </p>
@@ -145,7 +145,7 @@ export function CashFlowSection({
               <TrendingDown className="h-5 w-5 text-white" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Despesas</p>
+              <p className="text-sm text-muted-foreground">Saídas</p>
               <p className="text-lg font-semibold text-red-600">
                 {periodExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </p>
@@ -170,14 +170,14 @@ export function CashFlowSection({
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <h4 className="text-sm font-medium">Fluxo Anual (R$)</h4>
             <div className="flex items-center gap-4 text-xs">
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-green-500 rounded"></div>
-                <span>Receitas</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-red-500 rounded"></div>
-                <span>Despesas</span>
-              </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 bg-green-500 rounded"></div>
+              <span>Entradas</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 bg-red-500 rounded"></div>
+              <span>Saídas</span>
+            </div>
             </div>
           </div>
           

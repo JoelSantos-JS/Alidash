@@ -55,11 +55,6 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
 
         setSession(session)
         setUser(session?.user ?? null)
-        try {
-          if (session?.user) {
-            sessionStorage.setItem('last_user_id', session.user.id)
-          }
-        } catch {}
 
         // If user exists, ensure they exist in our database
         if (session?.user) {
@@ -101,7 +96,6 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
 
         if (event === 'SIGNED_IN' && session?.user) {
           try {
-            try { sessionStorage.setItem('last_user_id', session.user.id) } catch {}
             await ensureUserInDatabase(session.user)
             await supabaseService.updateUserLastLogin(session.user.id)
             // Redireciona apenas quando vindo de páginas de auth
@@ -130,7 +124,6 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
           }
         } else if (event === 'SIGNED_OUT') {
           hasShownLoginToastRef.current = false
-          try { sessionStorage.removeItem('last_user_id') } catch {}
           router.push('/login')
         }
         
@@ -152,7 +145,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       authSubscriptionRef.current = null
       hasInitializedSessionRef.current = false
     }
-  }, [])
+  }, [router])
 
   const ensureUserInDatabase = async (authUser: User) => {
     try {
@@ -234,6 +227,10 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     try {
       setLoading(true)
 
+      const baseUrl = typeof window !== 'undefined'
+        ? (process.env.NEXT_PUBLIC_APP_URL || window.location.origin)
+        : (process.env.NEXT_PUBLIC_APP_URL || '')
+
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -241,7 +238,8 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
           data: {
             name: name?.trim() || null,
             full_name: name?.trim() || null
-          }
+          },
+          emailRedirectTo: baseUrl ? `${baseUrl}/login` : undefined
         }
       })
 
@@ -250,12 +248,44 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       }
 
       if (data.user && !data.session) {
-        // User needs to confirm email
         toast.success('Cadastro realizado! Verifique seu email para confirmar a conta')
+        try {
+          const subject = 'Bem-vindo ao Alidash'
+          const body = `<h1>Bem-vindo${name ? `, ${name}` : ''}</h1><p>Seu cadastro foi iniciado. Confirme seu email para acessar o Alidash.</p>`
+          await fetch('/api/notifications/email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: data.user.id,
+              email: {
+                to: email.trim(),
+                subject,
+                body,
+                type: 'welcome'
+              }
+            })
+          })
+        } catch {}
         router.push('/login')
       } else if (data.session) {
-        // Auto-signed in (email confirmation disabled)
         toast.success('Cadastro realizado com sucesso!')
+        try {
+          const subject = 'Bem-vindo ao Alidash'
+          const body = `<h1>Bem-vindo${name ? `, ${name}` : ''}</h1><p>Sua conta foi criada com sucesso. Aproveite o Alidash.</p>`
+          await fetch('/api/notifications/email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: data.user?.id,
+              email: {
+                to: email.trim(),
+                subject,
+                body,
+                type: 'welcome'
+              }
+            })
+          })
+        } catch {}
       }
 
     } catch (error) {
@@ -306,8 +336,12 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     try {
       setLoading(true)
       
+      const baseUrl = typeof window !== 'undefined'
+        ? (process.env.NEXT_PUBLIC_APP_URL || window.location.origin)
+        : (process.env.NEXT_PUBLIC_APP_URL || '')
+
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/reset-password`
+        redirectTo: baseUrl ? `${baseUrl}/reset-password` : undefined
       })
 
       if (error) {

@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import { X, ArrowUp, ArrowDown, Calendar, CreditCard, Tag, FileText, MapPin, Building } from "lucide-react";
+import { formatCurrency, formatCurrencyInputBRL, parseCurrencyInputBRL } from "@/lib/utils";
 
 interface PersonalTransactionFormProps {
   isOpen: boolean;
@@ -80,14 +81,14 @@ export default function PersonalTransactionForm({ isOpen, onClose, onSuccess, tr
     type: (transactionToEdit?.type || 'expense') as 'income' | 'expense',
     date: transactionToEdit?.date || new Date().toISOString().split('T')[0],
     description: transactionToEdit?.description || '',
-    amount: transactionToEdit?.amount?.toString() || '',
+    amount: transactionToEdit?.amount != null ? formatCurrency(transactionToEdit.amount) : '',
     category: transactionToEdit?.category || 'food',
     source: transactionToEdit?.source || '', // Para receitas
     payment_method: transactionToEdit?.payment_method || 'debit_card', // Para despesas
     is_essential: transactionToEdit?.is_essential || false, // Para despesas
     is_recurring: transactionToEdit?.is_recurring || false,
     is_taxable: false, // Para receitas
-    tax_withheld: '0', // Para receitas
+    tax_withheld: 'R$ 0,00', // Para receitas
     location: '',
     merchant: '',
     notes: transactionToEdit?.notes || ''
@@ -189,13 +190,14 @@ export default function PersonalTransactionForm({ isOpen, onClose, onSuccess, tr
         user_id: supabaseUserId,
         date: formData.date,
         description: formData.description,
-        amount: parseFloat(formData.amount),
+        amount: parseCurrencyInputBRL(formData.amount),
         category: formData.category,
         is_recurring: formData.is_recurring,
         notes: formData.notes || null
       };
       
       let apiUrl = '';
+      let method: 'POST' | 'PUT' = 'POST';
       
       if (formData.type === 'income') {
         // Dados específicos para receitas
@@ -203,9 +205,12 @@ export default function PersonalTransactionForm({ isOpen, onClose, onSuccess, tr
           ...transactionData,
           source: formData.source,
           is_taxable: formData.is_taxable,
-          tax_withheld: formData.is_taxable ? parseFloat(formData.tax_withheld) : 0
+          tax_withheld: formData.is_taxable ? parseCurrencyInputBRL(formData.tax_withheld) : 0
         };
-        apiUrl = '/api/personal/incomes';
+        apiUrl = transactionToEdit
+          ? `/api/personal/incomes/${transactionToEdit.id}`
+          : '/api/personal/incomes';
+        method = transactionToEdit ? 'PUT' : 'POST';
       } else {
         // Dados específicos para despesas
         transactionData = {
@@ -215,11 +220,14 @@ export default function PersonalTransactionForm({ isOpen, onClose, onSuccess, tr
           location: formData.location || null,
           merchant: formData.merchant || null
         };
-        apiUrl = '/api/personal/expenses';
+        apiUrl = transactionToEdit
+          ? `/api/personal/expenses/${transactionToEdit.id}`
+          : '/api/personal/expenses';
+        method = transactionToEdit ? 'PUT' : 'POST';
       }
       
       const response = await fetch(apiUrl, {
-        method: 'POST',
+        method,
         headers: {
           'Content-Type': 'application/json'
         },
@@ -343,12 +351,11 @@ export default function PersonalTransactionForm({ isOpen, onClose, onSuccess, tr
                 </Label>
                 <Input
                   id="amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0,00"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="R$ 0,00"
                   value={formData.amount}
-                  onChange={(e) => handleInputChange('amount', e.target.value)}
+                  onChange={(e) => handleInputChange('amount', formatCurrencyInputBRL(e.target.value))}
                   required
                 />
               </div>
@@ -497,12 +504,11 @@ export default function PersonalTransactionForm({ isOpen, onClose, onSuccess, tr
                       <Label htmlFor="tax_withheld">Imposto Retido na Fonte</Label>
                       <Input
                         id="tax_withheld"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0,00"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="R$ 0,00"
                         value={formData.tax_withheld}
-                        onChange={(e) => handleInputChange('tax_withheld', e.target.value)}
+                        onChange={(e) => handleInputChange('tax_withheld', formatCurrencyInputBRL(e.target.value))}
                       />
                     </div>
                   )}

@@ -25,7 +25,7 @@ import {
   PiggyBank,
   AlertTriangle
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency, formatCurrencyInputBRL, parseCurrencyInputBRL } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { 
   ResponsiveContainer, 
@@ -60,7 +60,7 @@ export function BudgetSection({
   isLoading = false
 }: BudgetSectionProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [newBudget, setNewBudget] = useState(monthlyBudget.toString());
+  const [newBudget, setNewBudget] = useState(formatCurrency(monthlyBudget));
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [linkToRevenue, setLinkToRevenue] = useState(false);
   const [linkMode, setLinkMode] = useState<"revenue" | "savings" | "percentage">("revenue");
@@ -69,8 +69,7 @@ export function BudgetSection({
 
   // Sincronizar o estado local com o prop quando ele mudar
   useEffect(() => {
-    console.log('🔄 BudgetSection: monthlyBudget mudou de', newBudget, 'para', monthlyBudget);
-    setNewBudget(monthlyBudget.toString());
+    setNewBudget(formatCurrency(monthlyBudget));
   }, [monthlyBudget]);
 
   const availableBalance = monthlyBudget - estimatedExpenses;
@@ -80,7 +79,7 @@ export function BudgetSection({
   const planDeviation = estimatedExpenses - monthlyBudget; // Despesas - Orçamento
 
   const computeLinkedBudget = () => {
-    if (!linkToRevenue) return parseFloat(newBudget) || monthlyBudget;
+    if (!linkToRevenue) return parseCurrencyInputBRL(newBudget) || monthlyBudget;
     switch (linkMode) {
       case "revenue":
         return Math.max(periodRevenue, 0);
@@ -94,15 +93,12 @@ export function BudgetSection({
   };
 
   const handleSaveBudget = () => {
-    const budgetValue = linkToRevenue ? computeLinkedBudget() : parseFloat(newBudget);
-    console.log('💾 BudgetSection: Tentando salvar orçamento:', budgetValue, '(string:', newBudget + ')');
+    const budgetValue = linkToRevenue ? computeLinkedBudget() : parseCurrencyInputBRL(newBudget);
     if (!isNaN(budgetValue) && budgetValue >= 0) {
-      console.log('✅ BudgetSection: Valor válido, chamando onBudgetChange');
       onBudgetChange?.(budgetValue);
       setIsEditing(false);
       setIsDialogOpen(false);
     } else {
-      console.log('❌ BudgetSection: Valor inválido');
     }
   };
 
@@ -137,7 +133,7 @@ export function BudgetSection({
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium">Vincular orçamento à receita</label>
+                      <label className="text-sm font-medium">Vincular orçamento às entradas</label>
                       <Switch checked={linkToRevenue} onCheckedChange={setLinkToRevenue} />
                     </div>
                     {linkToRevenue && (
@@ -149,9 +145,9 @@ export function BudgetSection({
                               <SelectValue placeholder="Selecione" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="revenue">100% da receita</SelectItem>
-                              <SelectItem value="savings">Receita - meta de poupança</SelectItem>
-                              <SelectItem value="percentage">Percentual da receita</SelectItem>
+                              <SelectItem value="revenue">100% das entradas</SelectItem>
+                              <SelectItem value="savings">Entradas - meta de poupança</SelectItem>
+                              <SelectItem value="percentage">Percentual das entradas</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -169,7 +165,7 @@ export function BudgetSection({
                         )}
                         {linkMode === "percentage" && (
                           <div>
-                            <label className="text-sm font-medium">Percentual de gasto da receita</label>
+                          <label className="text-sm font-medium">Percentual de gasto das entradas</label>
                             <Input
                               type="number"
                               value={Number.isFinite(spendingPercentage) ? spendingPercentage : 100}
@@ -183,7 +179,7 @@ export function BudgetSection({
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-muted-foreground">Orçamento calculado</span>
                             <Badge variant="secondary" className="text-xs">
-                              Receita: {periodRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                              Entradas: {periodRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </Badge>
                           </div>
                           <div className="mt-1 text-xl font-bold">
@@ -197,10 +193,11 @@ export function BudgetSection({
                     <div>
                       <label className="text-sm font-medium">Novo valor do orçamento</label>
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         value={newBudget}
-                        onChange={(e) => setNewBudget(e.target.value)}
-                        placeholder="Digite o valor"
+                        onChange={(e) => setNewBudget(formatCurrencyInputBRL(e.target.value))}
+                        placeholder="R$ 0,00"
                         className="mt-1"
                       />
                     </div>
@@ -362,7 +359,7 @@ export function BudgetSection({
               <div className={cn("mt-1 text-xl font-bold", plannedBalance >= 0 ? "text-green-600" : "text-orange-600")}> 
                 {Math.abs(plannedBalance).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
-              <div className="text-xs text-muted-foreground">Receitas ({periodRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}) - Orçamento ({monthlyBudget.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})</div>
+              <div className="text-xs text-muted-foreground">Entradas ({periodRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}) - Orçamento ({monthlyBudget.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})</div>
               <div className={cn("mt-1 text-xs font-medium", plannedBalance >= 0 ? "text-green-600" : "text-orange-600")}> 
                 {plannedBalance >= 0 ? 'Margem sobre o orçamento' : 'Falta para cobrir o orçamento'}
               </div>
@@ -381,7 +378,7 @@ export function BudgetSection({
               <div className={cn("mt-1 text-xl font-bold", planDeviation <= 0 ? "text-green-600" : "text-red-600")}> 
                 {Math.abs(planDeviation).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
-              <div className="text-xs text-muted-foreground">Despesas ({estimatedExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}) - Orçamento ({monthlyBudget.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})</div>
+              <div className="text-xs text-muted-foreground">Saídas ({estimatedExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}) - Orçamento ({monthlyBudget.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})</div>
               <div className={cn("mt-1 text-xs font-medium", planDeviation <= 0 ? "text-green-600" : "text-red-600")}> 
                 {planDeviation <= 0 ? 'Economia vs orçamento' : 'Acima do orçamento'}
               </div>
@@ -415,9 +412,9 @@ export function BudgetSection({
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={[
-                      { name: 'Receita', valor: periodRevenue },
+                      { name: 'Entradas', valor: periodRevenue },
                       { name: 'Orçamento', valor: monthlyBudget },
-                      { name: 'Despesas', valor: estimatedExpenses },
+                      { name: 'Saídas', valor: estimatedExpenses },
                     ]}
                     margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                   >
@@ -431,9 +428,9 @@ export function BudgetSection({
                 </ResponsiveContainer>
               </div>
               <div className="mt-2 text-xs text-muted-foreground space-y-1">
-                <div>• Saldo planejado = Receita - Orçamento</div>
-                <div>• Saldo do período = Receita - Despesas</div>
-                <div>• O orçamento é o limite de gastos que você definiu; a receita não aumenta automaticamente o orçamento.</div>
+                <div>• Saldo planejado = Entradas - Orçamento</div>
+                <div>• Saldo do período = Entradas - Saídas</div>
+                <div>• O orçamento é o limite de gastos que você definiu; as entradas não aumentam automaticamente o orçamento.</div>
               </div>
             </div>
           </div>

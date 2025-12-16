@@ -95,3 +95,14 @@ export function formatCurrencyCompact(value: number, currency: string = 'BRL'): 
     compactDisplay: 'short'
   }).format(value)
 }
+
+export function formatCurrencyInputBRL(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  const number = digits ? parseInt(digits, 10) : 0;
+  return (number / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+export function parseCurrencyInputBRL(value: string): number {
+  const digits = value.replace(/\D/g, '');
+  return digits ? parseInt(digits, 10) / 100 : 0;
+}

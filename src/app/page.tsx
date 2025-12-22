@@ -191,6 +191,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
   const salesSyncRunning = useRef(false);
   const salesSyncAttemptedKeys = useRef<Set<string>>(new Set());
   const dataReady = !isLoading && !dataLoading;
+  const [redirecting, setRedirecting] = useState(false);
 
   // Função para carregar dados iniciais apenas para usuários novos
   const loadInitialDataForNewUser = async () => {
@@ -1016,10 +1017,14 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
   }
 
   
+  useEffect(() => {
+    if (!authLoading && !user) {
+      setRedirecting(true);
+      router.replace('/login');
+    }
+  }, [authLoading, user, router]);
 
-  // Redirecionar para login somente quando não houver usuário e não estiver carregando
-  if (!user && !authLoading) {
-    router.replace('/login');
+  if (redirecting) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <div className="text-center">

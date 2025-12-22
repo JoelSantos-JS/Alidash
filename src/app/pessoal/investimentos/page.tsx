@@ -64,6 +64,7 @@ export default function InvestimentosPage() {
   const [selic, setSelic] = useState<number | null>(null)
   const [cdi, setCdi] = useState<number | null>(null)
   const [ipca, setIpca] = useState<number | null>(null)
+  const [apiOk, setApiOk] = useState<boolean | null>(null)
   const classTotals = useMemo(() => {
     const map: Record<string, number> = { stock: 0, fii: 0, etf: 0, fixed_income: 0, crypto: 0 }
     positions.forEach((p) => {
@@ -112,6 +113,34 @@ export default function InvestimentosPage() {
   })
   const [amountInput, setAmountInput] = useState<string>("")
   const { toast } = useToast()
+
+  useEffect(() => {
+    const checkApi = async () => {
+      try {
+        const res = await fetch("/api/investments/status")
+        setApiOk(res.ok)
+      } catch {
+        setApiOk(false)
+      }
+    }
+    const fetchRates = async () => {
+      try {
+        const [selicRes, cdiRes, ipcaRes] = await Promise.all([
+          fetch("https://api.bcb.gov.br/dados/serie/bcdata.sgs.11/dados/ultimos/1?formato=json"),
+          fetch("https://api.bcb.gov.br/dados/serie/bcdata.sgs.12/dados/ultimos/1?formato=json"),
+          fetch("https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados/ultimos/1?formato=json")
+        ])
+        const selicJson = await selicRes.json().catch(() => [])
+        const cdiJson = await cdiRes.json().catch(() => [])
+        const ipcaJson = await ipcaRes.json().catch(() => [])
+        setSelic(Number(selicJson?.[0]?.valor) || null)
+        setCdi(Number(cdiJson?.[0]?.valor) || null)
+        setIpca(Number(ipcaJson?.[0]?.valor) || null)
+      } catch {}
+    }
+    checkApi()
+    fetchRates()
+  }, [])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -326,6 +355,9 @@ export default function InvestimentosPage() {
                     />
                   </PopoverContent>
                 </Popover>
+              )}
+              {apiOk !== null && (
+                <Badge variant="outline">{apiOk ? "API OK" : "API Falha"}</Badge>
               )}
               <Badge variant="secondary" className="gap-1">
                 <PieIcon className="h-3 w-3" />
@@ -790,6 +822,9 @@ export default function InvestimentosPage() {
                               <th className="text-right py-2 font-medium">Preço Médio</th>
                               <th className="text-right py-2 font-medium">Preço de Mercado</th>
                               <th className="text-right py-2 font-medium">Valor de Mercado</th>
+                              <th className="text-right py-2 font-medium">Juros</th>
+                              <th className="text-right py-2 font-medium">Preço Futuro (12m)</th>
+                              <th className="text-right py-2 font-medium">Lucro Previsto (12m)</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -807,6 +842,54 @@ export default function InvestimentosPage() {
                                   </td>
                                   <td className="text-right py-2">
                                     {Number(p.marketValue).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                                  </td>
+                                  <td className="text-right py-2">
+                                    {(() => {
+                                      const t = String(p.ticker || "").toUpperCase()
+                                      const r =
+                                        t.includes("SELIC") || t.includes("TESOURO")
+                                          ? selic
+                                          : t.includes("CDB")
+                                          ? cdi
+                                          : t.includes("LCA")
+                                          ? cdi
+                                          : null
+                                      return r != null ? `${Number(r).toFixed(2)}%` : "-"
+                                    })()}
+                                  </td>
+                                  <td className="text-right py-2">
+                                    {(() => {
+                                      const price = Number(p.marketPrice) || 0
+                                      const t = String(p.ticker || "").toUpperCase()
+                                      const r =
+                                        t.includes("SELIC") || t.includes("TESOURO")
+                                          ? selic
+                                          : t.includes("CDB")
+                                          ? cdi
+                                          : t.includes("LCA")
+                                          ? cdi
+                                          : null
+                                      const fut = r != null ? price * (1 + Number(r) / 100) : price
+                                      return fut.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                                    })()}
+                                  </td>
+                                  <td className="text-right py-2">
+                                    {(() => {
+                                      const qty = Number(p.quantity) || 0
+                                      const price = Number(p.marketPrice) || 0
+                                      const t = String(p.ticker || "").toUpperCase()
+                                      const r =
+                                        t.includes("SELIC") || t.includes("TESOURO")
+                                          ? selic
+                                          : t.includes("CDB")
+                                          ? cdi
+                                          : t.includes("LCA")
+                                          ? cdi
+                                          : null
+                                      const fut = r != null ? price * (1 + Number(r) / 100) : price
+                                      const profit = qty * (fut - price)
+                                      return profit.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                                    })()}
                                   </td>
                                 </tr>
                               ))}

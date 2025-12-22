@@ -88,3 +88,97 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const {
+      user_id,
+      asset_id,
+      ticker,
+      asset_class,
+      account_id,
+      quantity,
+      unit_price,
+      fees = 0,
+      taxes = 0,
+      date,
+      notes
+    } = body || {}
+
+    if (!user_id) {
+      return NextResponse.json({ error: "user_id é obrigatório" }, { status: 400 })
+    }
+    const qty = Number(quantity)
+    const unit = Number(unit_price)
+    if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(unit) || unit <= 0) {
+      return NextResponse.json({ error: "quantity e unit_price devem ser positivos" }, { status: 400 })
+    }
+    const dt = date ? new Date(date) : new Date()
+
+    let usedAssetId = asset_id as string | undefined
+    if (!usedAssetId) {
+      if (!ticker || !asset_class) {
+        return NextResponse.json({ error: "Informe ticker e asset_class quando asset_id não for fornecido" }, { status: 400 })
+      }
+      const { data: existingAssets, error: findErr } = await supabase
+        .from("investment_assets")
+        .select("id,ticker")
+        .eq("ticker", String(ticker).toUpperCase())
+        .limit(1)
+      if (findErr) {
+        return NextResponse.json({ error: findErr.message }, { status: 500 })
+      }
+      if (existingAssets && existingAssets.length > 0) {
+        usedAssetId = existingAssets[0].id as string
+      } else {
+        const { data: created, error: createErr } = await supabase
+          .from("investment_assets")
+          .insert({
+            ticker: String(ticker).toUpperCase(),
+            name: String(ticker).toUpperCase(),
+            class: asset_class
+          })
+          .select("id")
+          .single()
+        if (createErr) {
+          return NextResponse.json({ error: createErr.message }, { status: 500 })
+        }
+        usedAssetId = created?.id as string
+      }
+    }
+
+    const safeFees = Number(fees) || 0
+    const safeTaxes = Number(taxes) || 0
+    const total = qty * unit + safeFees + safeTaxes
+    const cashFlow = -Math.abs(total)
+
+    const insertPayload = {
+      user_id,
+      asset_id: usedAssetId!,
+      account_id: account_id || null,
+      type: "buy",
+      quantity: qty,
+      unit_price: unit,
+      fees: safeFees,
+      taxes: safeTaxes,
+      cash_flow: cashFlow,
+      date: dt.toISOString(),
+      notes: notes || null
+    }
+
+    const { data: inserted, error: insErr } = await supabase
+      .from("investment_transactions")
+      .insert(insertPayload)
+      .select("*")
+      .single()
+
+    if (insErr) {
+      return NextResponse.json({ error: insErr.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, contribution: inserted })
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
+}

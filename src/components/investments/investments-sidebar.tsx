@@ -10,7 +10,9 @@ import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 import { TrendingUp, BarChart3, Target, Download, RefreshCw } from "lucide-react"
-import { useMemo } from "react"
+import { useMemo, useState, useEffect } from "react"
+import { Input } from "@/components/ui/input"
+import { useToast } from "@/hooks/use-toast"
 
 type Period = "week" | "month" | "quarter" | "year"
 type AssetClass = "all" | "stock" | "fii" | "etf" | "fixed_income" | "crypto"
@@ -27,6 +29,7 @@ type InvestmentsSidebarProps = {
   isLoading?: boolean
   className?: string
   allocation?: { name: string; value: number }[]
+  userId?: string
 }
 
 const COLORS = ["#6366F1", "#10B981", "#F59E0B", "#EF4444", "#3B82F6", "#8B5CF6"]
@@ -42,7 +45,8 @@ export function InvestmentsSidebar({
   onExport,
   isLoading,
   className,
-  allocation
+  allocation,
+  userId
 }: InvestmentsSidebarProps) {
   const mockAllocation = useMemo(
     () => [
@@ -54,6 +58,121 @@ export function InvestmentsSidebar({
     ],
     []
   )
+  const { toast } = useToast()
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [accounts, setAccounts] = useState<{ id: string; name: string; broker?: string | null }[]>([])
+  const [showAddAccount, setShowAddAccount] = useState(false)
+  const [newAccountName, setNewAccountName] = useState("")
+  const [newInvestment, setNewInvestment] = useState<{
+    ticker: string
+    assetClass: AssetClass
+    quantity: number
+    avgPrice: number
+    accountId?: string | null
+    fiType?: "tesouro_selic" | "cdb" | "lca"
+  }>({
+    ticker: "",
+    assetClass: "stock",
+    quantity: 0,
+    avgPrice: 0,
+    accountId: null,
+    fiType: undefined
+  })
+
+  useEffect(() => {
+    const loadAccounts = async () => {
+      if (!userId) return
+      try {
+        const res = await fetch(`/api/investments/accounts?user_id=${userId}`)
+        if (res.ok) {
+          const json = await res.json()
+          setAccounts(json.accounts || [])
+        }
+      } catch {}
+    }
+    loadAccounts()
+  }, [userId])
+
+  const handleCreateAccount = async () => {
+    if (!userId) {
+      toast({ title: "Usuário não identificado", description: "Faça login para criar contas" })
+      return
+    }
+    if (!newAccountName.trim()) {
+      toast({ title: "Corretora obrigatória", description: "Informe o nome da corretora" })
+      return
+    }
+    try {
+      const res = await fetch("/api/investments/accounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          name: newAccountName.trim(),
+          broker: null
+        })
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        toast({ title: "Erro ao criar conta", description: json.error || "Tente novamente" })
+        return
+      }
+      const created = json.account
+      setAccounts((prev) => [created, ...prev])
+      setShowAddAccount(false)
+      setNewAccountName("")
+      onAccountFilterChange(created.id)
+      setNewInvestment((s) => ({ ...s, accountId: created.id }))
+      toast({ title: "Corretora criada", description: "Corretora adicionada com sucesso" })
+    } catch (e: any) {
+      toast({ title: "Erro inesperado", description: e?.message || "Falha ao conectar com o servidor" })
+    }
+  }
+  const handleAddInvestment = async () => {
+    if (!userId) {
+      toast({ title: "Usuário não identificado", description: "Faça login para adicionar investimentos" })
+      return
+    }
+    const qty = Number(newInvestment.quantity) || 0
+    const price = Number(newInvestment.avgPrice) || 0
+    const rfMap: Record<string, string> = {
+      tesouro_selic: "TESOURO SELIC",
+      cdb: "CDB",
+      lca: "LCA"
+    }
+    const finalTicker =
+      (newInvestment.ticker && newInvestment.ticker.trim()) ||
+      (newInvestment.assetClass === "fixed_income" && newInvestment.fiType ? rfMap[newInvestment.fiType] : "")
+    if (!finalTicker || qty <= 0 || price <= 0) {
+      toast({ title: "Dados inválidos", description: "Preencha ticker, quantidade e preço médio" })
+      return
+    }
+    try {
+      const res = await fetch("/api/investments/positions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          ticker: finalTicker.trim().toUpperCase(),
+          class: newInvestment.assetClass,
+          quantity: qty,
+          avg_price: price,
+          account_id: newInvestment.accountId || null
+        })
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        toast({ title: "Erro ao salvar investimento", description: err.error || "Tente novamente" })
+        return
+      }
+      toast({ title: "Investimento adicionado", description: "Posição criada com sucesso" })
+      setShowAddForm(false)
+      setNewInvestment({ ticker: "", assetClass: "stock", quantity: 0, avgPrice: 0, accountId: null })
+      onRefresh?.()
+    } catch (e: any) {
+      toast({ title: "Erro inesperado", description: e?.message || "Falha ao conectar com o servidor" })
+    }
+  }
 
   return (
     <div className={cn("w-80 bg-card border-r h-full flex flex-col", className)}>
@@ -96,6 +215,122 @@ export function InvestmentsSidebar({
             </Button>
           </div>
 
+          <div className="space-y-2">
+            <Button 
+              size="sm" 
+              className="w-full justify-center"
+              onClick={() => setShowAddForm((v) => !v)}
+              variant={showAddForm ? "secondary" : "default"}
+            >
+              {showAddForm ? "Cancelar" : "Adicionar Investimento"}
+            </Button>
+            {showAddForm && (
+              <Card>
+                <CardHeader className="py-2">
+                  <CardTitle className="text-sm">Novo Investimento</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {newInvestment.assetClass !== "fixed_income" && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">Ticker</Label>
+                      <Input
+                        value={newInvestment.ticker}
+                        onChange={(e) => setNewInvestment((s) => ({ ...s, ticker: e.target.value }))}
+                        placeholder="Ex: PETR4"
+                      />
+                    </div>
+                  )}
+                    <div className="space-y-1">
+                      <Label className="text-xs">Classe</Label>
+                      <Select
+                        value={newInvestment.assetClass}
+                        onValueChange={(v) => setNewInvestment((s) => ({ ...s, assetClass: v as AssetClass }))}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="stock">Ações</SelectItem>
+                          <SelectItem value="fii">FIIs</SelectItem>
+                          <SelectItem value="etf">ETFs</SelectItem>
+                          <SelectItem value="fixed_income">Renda Fixa</SelectItem>
+                          <SelectItem value="crypto">Cripto</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {newInvestment.assetClass === "fixed_income" && (
+                      <div className="space-y-1">
+                        <Label className="text-xs">Tipo (Renda Fixa)</Label>
+                        <Select
+                          value={newInvestment.fiType || ""}
+                          onValueChange={(v) => setNewInvestment((s) => ({ ...s, fiType: (v as any) || undefined }))}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Selecione o tipo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="tesouro_selic">Tesouro Selic</SelectItem>
+                            <SelectItem value="cdb">CDB</SelectItem>
+                            <SelectItem value="lca">LCA</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  <div className="space-y-1">
+                    <Label className="text-xs">Corretora</Label>
+                    <Select
+                      value={newInvestment.accountId || ""}
+                      onValueChange={(v) => setNewInvestment((s) => ({ ...s, accountId: v === "none" ? null : v }))}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {accounts.length > 0 ? (
+                          accounts.map(acc => (
+                            <SelectItem key={acc.id} value={acc.id}>
+                              {acc.name}{acc.broker ? ` • ${acc.broker}` : ""}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <>
+                            <SelectItem value="none">Sem conta</SelectItem>
+                            <SelectItem value="clear">Clear</SelectItem>
+                            <SelectItem value="xp">XP</SelectItem>
+                            <SelectItem value="easynvest">Nubank</SelectItem>
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Quantidade</Label>
+                      <Input
+                        type="number"
+                        value={Number.isFinite(newInvestment.quantity) ? newInvestment.quantity : 0}
+                        onChange={(e) => setNewInvestment((s) => ({ ...s, quantity: parseFloat(e.target.value) || 0 }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Preço Médio</Label>
+                      <Input
+                        type="number"
+                        value={Number.isFinite(newInvestment.avgPrice) ? newInvestment.avgPrice : 0}
+                        onChange={(e) => setNewInvestment((s) => ({ ...s, avgPrice: parseFloat(e.target.value) || 0 }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button size="sm" onClick={handleAddInvestment}>
+                      Salvar
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
           <Separator />
 
           <div className="space-y-3">
@@ -131,18 +366,46 @@ export function InvestmentsSidebar({
           </div>
 
           <div className="space-y-3">
-            <Label className="text-xs font-medium text-muted-foreground">CONTA</Label>
+            <Label className="text-xs font-medium text-muted-foreground">CORRETORA</Label>
             <Select value={accountFilter} onValueChange={onAccountFilterChange}>
               <SelectTrigger className="h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="clear">Clear</SelectItem>
-                <SelectItem value="xp">XP</SelectItem>
-                <SelectItem value="easynvest">Nubank</SelectItem>
+                {accounts.length > 0 ? (
+                  accounts.map(acc => (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      {acc.name}{acc.broker ? ` • ${acc.broker}` : ""}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <>
+                    <SelectItem value="clear">Clear</SelectItem>
+                    <SelectItem value="xp">XP</SelectItem>
+                    <SelectItem value="easynvest">Nubank</SelectItem>
+                  </>
+                )}
               </SelectContent>
             </Select>
+            <div className="space-y-2">
+              <Button size="sm" variant={showAddAccount ? "secondary" : "outline"} onClick={() => setShowAddAccount((v) => !v)}>
+                {showAddAccount ? "Cancelar" : "Nova Corretora"}
+              </Button>
+              {showAddAccount && (
+                <Card>
+                  <CardContent className="space-y-2 p-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Corretora</Label>
+                      <Input value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)} placeholder="Ex: Clear, XP, Binance" />
+                    </div>
+                    <div className="flex justify-end">
+                      <Button size="sm" onClick={handleCreateAccount}>Salvar</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </div>
 
           <Separator />
@@ -169,7 +432,7 @@ export function InvestmentsSidebar({
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip formatter={(value) => [`${Number(value).toFixed(1)}%`, '']} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>

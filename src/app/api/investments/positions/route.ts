@@ -80,6 +80,7 @@ export async function GET(request: NextRequest) {
       const avgPrice = Number(p.avg_price) || 0
       const marketValue = quantity * marketPrice
       return {
+        id: p.id,
         assetId: p.asset_id,
         accountId: p.account_id,
         ticker: asset?.ticker || "",
@@ -93,6 +94,150 @@ export async function GET(request: NextRequest) {
     })
 
     return NextResponse.json({ positions: result })
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const {
+      user_id,
+      asset_id,
+      ticker,
+      name,
+      class: assetClass,
+      account_id,
+      quantity,
+      avg_price
+    } = body || {}
+
+    if (!user_id) {
+      return NextResponse.json({ error: "user_id é obrigatório" }, { status: 400 })
+    }
+    let usedAssetId = asset_id as string | undefined
+    if (!usedAssetId) {
+      if (!ticker || !assetClass) {
+        return NextResponse.json({ error: "Informe ticker e class quando asset_id não for fornecido" }, { status: 400 })
+      }
+      const { data: existing, error: findErr } = await supabase
+        .from("investment_assets")
+        .select("id,ticker")
+        .eq("ticker", String(ticker).toUpperCase())
+        .limit(1)
+      if (findErr) {
+        return NextResponse.json({ error: findErr.message }, { status: 500 })
+      }
+      if (existing && existing.length > 0) {
+        usedAssetId = existing[0].id as string
+      } else {
+        const { data: created, error: createErr } = await supabase
+          .from("investment_assets")
+          .insert({
+            ticker: String(ticker).toUpperCase(),
+            name: name || String(ticker).toUpperCase(),
+            class: assetClass
+          })
+          .select("id")
+          .single()
+        if (createErr) {
+          return NextResponse.json({ error: createErr.message }, { status: 500 })
+        }
+        usedAssetId = created?.id as string
+      }
+    }
+
+    const qty = Number(quantity)
+    const avg = Number(avg_price)
+    if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(avg) || avg <= 0) {
+      return NextResponse.json({ error: "quantity e avg_price devem ser positivos" }, { status: 400 })
+    }
+
+    const { data: position, error: posErr } = await supabase
+      .from("investment_positions")
+      .insert({
+        user_id,
+        asset_id: usedAssetId!,
+        account_id: account_id || null,
+        quantity: qty,
+        avg_price: avg
+      })
+      .select("*")
+      .single()
+
+    if (posErr) {
+      return NextResponse.json({ error: posErr.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, position })
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { user_id, position_id, quantity, avg_price, account_id } = body || {}
+    if (!user_id || !position_id) {
+      return NextResponse.json({ error: "user_id e position_id são obrigatórios" }, { status: 400 })
+    }
+    const updatePayload: any = {}
+    if (quantity !== undefined) {
+      const q = Number(quantity)
+      if (!Number.isFinite(q) || q <= 0) {
+        return NextResponse.json({ error: "quantity deve ser positivo" }, { status: 400 })
+      }
+      updatePayload.quantity = q
+    }
+    if (avg_price !== undefined) {
+      const a = Number(avg_price)
+      if (!Number.isFinite(a) || a <= 0) {
+        return NextResponse.json({ error: "avg_price deve ser positivo" }, { status: 400 })
+      }
+      updatePayload.avg_price = a
+    }
+    if (account_id !== undefined) {
+      updatePayload.account_id = account_id || null
+    }
+    if (Object.keys(updatePayload).length === 0) {
+      return NextResponse.json({ error: "Nenhum campo para atualizar" }, { status: 400 })
+    }
+    const { data, error } = await supabase
+      .from("investment_positions")
+      .update(updatePayload)
+      .eq("id", position_id)
+      .eq("user_id", user_id)
+      .select("*")
+      .single()
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    return NextResponse.json({ success: true, position: data })
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { user_id, position_id } = body || {}
+    if (!user_id || !position_id) {
+      return NextResponse.json({ error: "user_id e position_id são obrigatórios" }, { status: 400 })
+    }
+    const { data, error } = await supabase
+      .from("investment_positions")
+      .delete()
+      .eq("id", position_id)
+      .eq("user_id", user_id)
+      .select("*")
+      .single()
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    return NextResponse.json({ success: true, deleted: data })
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

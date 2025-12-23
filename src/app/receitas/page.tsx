@@ -121,6 +121,7 @@ export default function ReceitasPage() {
   const [periodFilter, setPeriodFilter] = useState<"day" | "week" | "month">("month");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [revenueToEdit, setRevenueToEdit] = useState<Revenue | null>(null);
+  const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -282,9 +283,22 @@ export default function ReceitasPage() {
     );
   }
 
-  if (!user && !authLoading) {
-    router.replace('/login');
-    return null;
+  useEffect(() => {
+    if (!authLoading && !user) {
+      setRedirecting(true);
+      router.replace('/login');
+    }
+  }, [authLoading, user, router]);
+
+  if (redirecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Redirecionando...</p>
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -204,6 +204,7 @@ export default function MetasPage() {
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
+  const [redirecting, setRedirecting] = useState(false)
 
   // Carregar dados reais do Supabase
   useEffect(() => {
@@ -264,6 +265,13 @@ export default function MetasPage() {
 
     fetchData()
   }, [user, toast])
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      setRedirecting(true)
+      router.replace('/login')
+    }
+  }, [authLoading, user, router])
 
   const filteredAndSortedGoals = useMemo(() => {
     let filtered = goals.filter(goal => {
@@ -548,9 +556,15 @@ export default function MetasPage() {
     )
   }
 
-  if (!user && !authLoading) {
-    router.replace('/login')
-    return null
+  if (redirecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Redirecionando...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

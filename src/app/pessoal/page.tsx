@@ -54,6 +54,7 @@ export default function PersonalDashboard() {
   };
   const { user, loading: authLoading } = useSupabaseAuth();
   const [loading, setLoading] = useState(true);
+  const [redirecting, setRedirecting] = useState(false);
   const [summary, setSummary] = useState<PersonalSummary>({
     totalIncome: 0,
     totalExpenses: 0,
@@ -71,6 +72,13 @@ export default function PersonalDashboard() {
     
     loadPersonalData();
   }, [user]);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      setRedirecting(true);
+      router.replace('/login');
+    }
+  }, [authLoading, user, router]);
 
   const loadPersonalData = async () => {
     try {
@@ -183,14 +191,12 @@ export default function PersonalDashboard() {
     );
   }
 
-  if (!user) {
+  if (!authLoading && !user) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <p className="text-muted-foreground mb-4">Você precisa estar logado para acessar o dashboard pessoal.</p>
-          <Link href="/login">
-            <Button>Fazer Login</Button>
-          </Link>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Redirecionando para login...</p>
         </div>
       </div>
     );

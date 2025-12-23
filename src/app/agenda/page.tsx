@@ -43,11 +43,13 @@ export default function AgendaPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [showSyncSettings, setShowSyncSettings] = useState(false)
   const [showNotificationSettings, setShowNotificationSettings] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
 
   // Redirecionar se não estiver autenticado
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/auth/login')
+      setRedirecting(true)
+      router.replace('/login')
     }
   }, [loading, user, router])
 
@@ -210,6 +212,14 @@ export default function AgendaPage() {
   }
 
   if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
+
+  if (redirecting) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />

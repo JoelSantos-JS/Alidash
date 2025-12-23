@@ -122,6 +122,7 @@ export default function DespesasPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [expenseToEdit, setExpenseToEdit] = useState<Expense | null>(null);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [redirecting, setRedirecting] = useState(false);
   
 
 
@@ -271,8 +272,24 @@ export default function DespesasPage() {
   }
 
   if (!user && !authLoading) {
-    router.replace('/login');
-    return null;
+  }
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      setRedirecting(true);
+      router.replace('/login');
+    }
+  }, [authLoading, user, router]);
+
+  if (redirecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Redirecionando...</p>
+        </div>
+      </div>
+    );
   }
 
   return (

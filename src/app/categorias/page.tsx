@@ -254,6 +254,7 @@ export default function CategoriesPage() {
   // Estados
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [redirecting, setRedirecting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "transaction" | "product">("all");
   const [sortBy, setSortBy] = useState<"name" | "budget" | "spent" | "transactions">("name");
@@ -556,6 +557,26 @@ export default function CategoriesPage() {
     );
   }
 
+  useEffect(() => {
+    if (!authLoading && !user) {
+      setRedirecting(true);
+      router.replace('/login');
+    }
+  }, [authLoading, user, router]);
+
+  if (redirecting) {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex items-center gap-4 mb-6">
+          <Skeleton className="h-10 w-10" />
+          <Skeleton className="h-8 w-48" />
+        </div>
+        <div className="text-center">
+          <p>Redirecionando para login...</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}

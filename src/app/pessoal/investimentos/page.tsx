@@ -931,7 +931,7 @@ export default function InvestimentosPage() {
                                     {Number(p.avgPrice).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                                   </td>
                                   <td className="text-right py-2">
-                                    {Number(p.marketPrice).toLocaleString("pt-BR", { style: "currency", "BRL": "BRL" } as any)}
+                                    {Number(p.marketPrice).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                                   </td>
                                   <td className="text-right py-2">
                                     {Number(p.marketValue).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}

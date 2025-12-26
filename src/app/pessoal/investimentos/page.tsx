@@ -74,6 +74,35 @@ export default function InvestimentosPage() {
     })
     return map
   }, [positions])
+  const btcPrice = useMemo(() => {
+    const btc = positions.find(
+      (p) =>
+        String(p.class) === "crypto" &&
+        (String(p.ticker || "").toUpperCase() === "BTC" ||
+          String(p.name || "").toLowerCase().includes("bitcoin"))
+    )
+    const price = Number(btc?.marketPrice)
+    return Number.isFinite(price) && price > 0 ? price : null
+  }, [positions])
+  const [btcInfo, setBtcInfo] = useState<{ price: number | null; change24h: number | null }>({ price: null, change24h: null })
+  useEffect(() => {
+    const run = async () => {
+      if (btcPrice && btcPrice > 1000) {
+        setBtcInfo((s) => ({ ...s, price: btcPrice }))
+      } else {
+      try {
+        const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=brl&include_24hr_change=true")
+        if (res.ok) {
+          const j = await res.json()
+          const p = Number(j?.bitcoin?.brl)
+          const ch = Number(j?.bitcoin?.brl_24h_change)
+          setBtcInfo({ price: Number.isFinite(p) ? p : null, change24h: Number.isFinite(ch) ? ch : null })
+        }
+      } catch {}
+      }
+    }
+    run()
+  }, [btcPrice])
 
   const [portfolioSeries, setPortfolioSeries] = useState<
     { label: string; value: number; aportes: number }[]
@@ -355,9 +384,6 @@ export default function InvestimentosPage() {
                     />
                   </PopoverContent>
                 </Popover>
-              )}
-              {apiOk !== null && (
-                <Badge variant="outline">{apiOk ? "API OK" : "API Falha"}</Badge>
               )}
               <Badge variant="secondary" className="gap-1">
                 <PieIcon className="h-3 w-3" />
@@ -830,8 +856,8 @@ export default function InvestimentosPage() {
                           <tbody>
                             {positions
                               .filter((p) => p.class === "fixed_income")
-                              .map((p) => (
-                                <tr key={p.id} className="border-b hover:bg-muted/50">
+                              .map((p, idx) => (
+                                <tr key={`${p.class}-${(p as any).id ?? (p as any).assetId ?? (p as any).accountId ?? p.ticker}-${idx}`} className="border-b hover:bg-muted/50">
                                   <td className="py-2 font-medium">{p.ticker}</td>
                                   <td className="text-right py-2">{p.quantity}</td>
                                   <td className="text-right py-2">
@@ -923,8 +949,8 @@ export default function InvestimentosPage() {
                           <tbody>
                             {positions
                               .filter((p) => p.class === "stock")
-                              .map((p) => (
-                                <tr key={p.id} className="border-b hover:bg-muted/50">
+                              .map((p, idx) => (
+                                <tr key={`${p.class}-${(p as any).id ?? (p as any).assetId ?? (p as any).accountId ?? p.ticker}-${idx}`} className="border-b hover:bg-muted/50">
                                   <td className="py-2 font-medium">{p.ticker}</td>
                                   <td className="text-right py-2">{p.quantity}</td>
                                   <td className="text-right py-2">
@@ -966,8 +992,8 @@ export default function InvestimentosPage() {
                           <tbody>
                             {positions
                               .filter((p) => p.class === "fii")
-                              .map((p) => (
-                                <tr key={p.id} className="border-b hover:bg-muted/50">
+                              .map((p, idx) => (
+                                <tr key={`${p.class}-${(p as any).id ?? (p as any).assetId ?? (p as any).accountId ?? p.ticker}-${idx}`} className="border-b hover:bg-muted/50">
                                   <td className="py-2 font-medium">{p.ticker}</td>
                                   <td className="text-right py-2">{p.quantity}</td>
                                   <td className="text-right py-2">
@@ -1009,8 +1035,8 @@ export default function InvestimentosPage() {
                           <tbody>
                             {positions
                               .filter((p) => p.class === "etf")
-                              .map((p) => (
-                                <tr key={p.id} className="border-b hover:bg-muted/50">
+                              .map((p, idx) => (
+                                <tr key={`${p.class}-${(p as any).id ?? (p as any).assetId ?? (p as any).accountId ?? p.ticker}-${idx}`} className="border-b hover:bg-muted/50">
                                   <td className="py-2 font-medium">{p.ticker}</td>
                                   <td className="text-right py-2">{p.quantity}</td>
                                   <td className="text-right py-2">
@@ -1032,30 +1058,78 @@ export default function InvestimentosPage() {
                     )}
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="md:col-span-2">
                   <CardHeader>
                     <CardTitle className="text-sm font-medium">Investimentos em Cripto</CardTitle>
                   </CardHeader>
                   <CardContent>
+                    {(() => {
+                      const effectivePrice = btcPrice ?? btcInfo.price
+                      const totalCryptoValue = positions
+                        .filter((p) => p.class === "crypto")
+                        .reduce((sum, p) => sum + (Number(p.marketValue) || 0), 0)
+                      const totalBtc = effectivePrice && effectivePrice > 0 ? totalCryptoValue / effectivePrice : 0
+                      const change = btcInfo.change24h ?? null
+                      return (
+                        <div className="mb-3">
+                          <div className="flex flex-nowrap items-center gap-6 whitespace-nowrap py-1.5 px-3 rounded border">
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-sm text-muted-foreground">Preço atual do Bitcoin:</span>
+                              <span className="text-base sm:text-lg font-medium">
+                                {effectivePrice != null && effectivePrice > 0
+                                  ? effectivePrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                                  : "-"}
+                              </span>
+                            </div>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-sm text-muted-foreground">Variação 24h:</span>
+                              <span className={`text-base sm:text-lg font-medium ${change != null ? (change >= 0 ? "text-green-600" : "text-red-600") : ""}`}>
+                                {change != null ? `${change.toFixed(2)}%` : "-"}
+                              </span>
+                            </div>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-sm text-muted-foreground">Total em Cripto (BRL):</span>
+                              <span className="text-base sm:text-lg font-medium">
+                                {totalCryptoValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                              </span>
+                            </div>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-sm text-muted-foreground">Total em BTC (equivalente):</span>
+                              <span className="text-base sm:text-lg font-medium">
+                                {effectivePrice != null && effectivePrice > 0
+                                  ? totalBtc.toLocaleString("pt-BR", { minimumFractionDigits: 6, maximumFractionDigits: 8 })
+                                  : "-"}
+                              </span>
+                            </div>
+                        </div>
+                        </div>
+                      )
+                    })()}
                     {positions.filter((p) => p.class === "crypto").length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs sm:text-sm">
-                          <thead>
-                            <tr className="border-b">
-                              <th className="text-left py-2 font-medium">Ticker</th>
-                              <th className="text-right py-2 font-medium">Quantidade</th>
-                              <th className="text-right py-2 font-medium">Preço Médio</th>
-                              <th className="text-right py-2 font-medium">Preço de Mercado</th>
-                              <th className="text-right py-2 font-medium">Valor de Mercado</th>
+                      <>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm sm:text-base">
+                            <thead>
+                              <tr className="border-b">
+                                <th className="text-left py-2 font-semibold">Ticker</th>
+                                <th className="text-right py-2 font-semibold">Quantidade</th>
+                              <th className="text-right py-2 font-semibold">Preço Médio</th>
+                              <th className="text-right py-2 font-semibold">Preço de Mercado</th>
+                              <th className="text-right py-2 font-semibold">Valor de Mercado</th>
+                              <th className="text-right py-2 font-semibold">Equivalente em BTC</th>
+                              <th className="text-right py-2 font-semibold">P/L Atual</th>
+                              <th className="text-right py-2 font-semibold">Rentabilidade</th>
                             </tr>
                           </thead>
                           <tbody>
                             {positions
                               .filter((p) => p.class === "crypto")
-                              .map((p) => (
-                                <tr key={p.id} className="border-b hover:bg-muted/50">
+                              .map((p, idx) => (
+                                <tr key={`${p.class}-${(p as any).id ?? (p as any).assetId ?? (p as any).accountId ?? p.ticker}-${idx}`} className="border-b hover:bg-muted/50">
                                   <td className="py-2 font-medium">{p.ticker}</td>
-                                  <td className="text-right py-2">{p.quantity}</td>
+                                  <td className="text-right py-2">
+                                    {Number(p.quantity).toLocaleString("pt-BR", { maximumFractionDigits: 8 })}
+                                  </td>
                                   <td className="text-right py-2">
                                     {Number(p.avgPrice).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                                   </td>
@@ -1065,11 +1139,46 @@ export default function InvestimentosPage() {
                                   <td className="text-right py-2">
                                     {Number(p.marketValue).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                                   </td>
+                                  <td className="text-right py-2 whitespace-nowrap">
+                                    {(btcPrice ?? btcInfo.price)
+                                      ? (Number(p.marketValue) / Number(btcPrice ?? btcInfo.price)).toLocaleString("pt-BR", {
+                                          minimumFractionDigits: 6,
+                                          maximumFractionDigits: 8
+                                        })
+                                      : "-"}
+                                  </td>
+                                  <td className={`text-right py-2 ${Number(p.marketPrice) * Number(p.quantity) - Number(p.avgPrice) * Number(p.quantity) >= 0 ? "text-green-600" : "text-red-600"}`}>
+                                    {(Number(p.marketPrice) * Number(p.quantity) - Number(p.avgPrice) * Number(p.quantity)).toLocaleString("pt-BR", {
+                                      style: "currency",
+                                      currency: "BRL"
+                                    })}
+                                  </td>
+                                  <td className={`text-right py-2 ${Number(p.marketPrice) - Number(p.avgPrice) >= 0 ? "text-green-600" : "text-red-600"}`}>
+                                    {Number(p.avgPrice) > 0
+                                      ? `${(((Number(p.marketPrice) - Number(p.avgPrice)) / Number(p.avgPrice)) * 100).toFixed(2)}%`
+                                      : "-"}
+                                  </td>
                                 </tr>
                               ))}
                           </tbody>
                         </table>
                       </div>
+                        {(btcPrice ?? btcInfo.price) !== null && (
+                          <div className="mt-2 text-xs sm:text-sm text-muted-foreground">
+                            {(() => {
+                              const totalCryptoValue = positions
+                                .filter((p) => p.class === "crypto")
+                                .reduce((sum, p) => sum + (Number(p.marketValue) || 0), 0)
+                              const base = Number(btcPrice ?? btcInfo.price ?? 0)
+                              const totalBtc = base > 0 ? totalCryptoValue / base : 0
+                              return `Total em BTC (equivalente): ${totalBtc.toLocaleString("pt-BR", {
+                                minimumFractionDigits: 6,
+                                maximumFractionDigits: 8
+                              })}`
+                            })()}
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <p className="text-xs text-muted-foreground">Nenhuma posição em cripto</p>
                     )}
@@ -1208,7 +1317,7 @@ export default function InvestimentosPage() {
                                 </thead>
                                 <tbody>
                                   {positions.map((pos, idx) => (
-                                    <tr key={`${pos.ticker}-${idx}`} className="border-t">
+                                    <tr key={`${pos.class}-${(pos as any).id ?? (pos as any).assetId ?? (pos as any).accountId ?? pos.ticker}-${idx}`} className="border-t">
                                       <td className="p-2 font-medium">{pos.ticker}</td>
                                       <td className="p-2 capitalize hidden sm:table-cell">{pos.class}</td>
                                       <td className="p-2 text-right">{pos.quantity}</td>
@@ -1414,34 +1523,34 @@ export default function InvestimentosPage() {
                     <CardTitle>Resumo por Classe</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      <div className="p-3 rounded border">
+                    <div className="flex flex-wrap gap-3">
+                      <div className="p-3 rounded border flex flex-col gap-1 w-fit">
                         <p className="text-xs text-muted-foreground">Ações</p>
-                        <p className="text-sm font-semibold">
+                        <p className="text-sm font-semibold whitespace-nowrap">
                           {Number(classTotals.stock).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                         </p>
                       </div>
-                      <div className="p-3 rounded border">
+                      <div className="p-3 rounded border flex flex-col gap-1 w-fit">
                         <p className="text-xs text-muted-foreground">FIIs</p>
-                        <p className="text-sm font-semibold">
+                        <p className="text-sm font-semibold whitespace-nowrap">
                           {Number(classTotals.fii).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                         </p>
                       </div>
-                      <div className="p-3 rounded border">
+                      <div className="p-3 rounded border flex flex-col gap-1 w-fit">
                         <p className="text-xs text-muted-foreground">ETFs</p>
-                        <p className="text-sm font-semibold">
+                        <p className="text-sm font-semibold whitespace-nowrap">
                           {Number(classTotals.etf).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                         </p>
                       </div>
-                      <div className="p-3 rounded border">
+                      <div className="p-3 rounded border flex flex-col gap-1 w-fit">
                         <p className="text-xs text-muted-foreground">Renda Fixa</p>
-                        <p className="text-sm font-semibold">
+                        <p className="text-sm font-semibold whitespace-nowrap">
                           {Number(classTotals.fixed_income).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                         </p>
                       </div>
-                      <div className="p-3 rounded border">
+                      <div className="p-3 rounded border flex flex-col gap-1 w-fit">
                         <p className="text-xs text-muted-foreground">Cripto</p>
-                        <p className="text-sm font-semibold">
+                        <p className="text-sm font-semibold whitespace-nowrap">
                           {Number(classTotals.crypto).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                         </p>
                       </div>

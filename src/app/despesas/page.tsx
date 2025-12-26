@@ -211,7 +211,16 @@ export default function DespesasPage() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(expenseData),
+          body: JSON.stringify({
+            description: expenseData.description,
+            amount: expenseData.amount,
+            category: expenseData.category,
+            type: expenseData.type,
+            supplier: expenseData.supplier,
+            notes: expenseData.notes,
+            product_id: expenseData.productId,
+            date: expenseData.date.toISOString(),
+          }),
         });
 
         if (response.ok) {
@@ -244,7 +253,17 @@ export default function DespesasPage() {
         } else {
           // Falha HTTP: reverter otimista
           deleteExpense(expenseData.id);
-          throw new Error('Erro na requisição');
+          let serverMessage = 'Erro na requisição';
+          try {
+            const errJson = await response.json();
+            serverMessage = errJson?.error || errJson?.message || serverMessage;
+          } catch {
+            try {
+              const errText = await response.text();
+              serverMessage = errText || serverMessage;
+            } catch {}
+          }
+          throw new Error(serverMessage);
         }
       }
     } catch (error) {

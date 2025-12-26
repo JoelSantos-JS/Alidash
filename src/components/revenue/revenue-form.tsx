@@ -185,7 +185,7 @@ export function RevenueForm({ onSave, onCancel, revenueToEdit, products = [] }: 
           />
           </div>
 
-          {form.watch('source') === 'sale' && (
+          {form.watch('source') === 'sale' && products && products.length > 0 && (
             <FormField
               control={form.control}
               name="productId"
@@ -199,15 +199,13 @@ export function RevenueForm({ onSave, onCancel, revenueToEdit, products = [] }: 
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {products && products.length > 0 ? (
-                        products.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
+                      {products
+                        .filter((p) => p.id && String(p.id).trim() !== "")
+                        .map((p) => (
+                          <SelectItem key={p.id} value={String(p.id)}>
                             {p.name}
                           </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="">Sem produtos disponíveis</SelectItem>
-                      )}
+                        ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />

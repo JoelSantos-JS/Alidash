@@ -17,6 +17,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn, calculateInstallmentInfo, generateInstallmentTransactions, formatCurrency, formatCurrencyInputBRL, parseCurrencyInputBRL } from "@/lib/utils";
 import type { Transaction } from "@/types";
 
@@ -191,7 +192,14 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
     <>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Tabs defaultValue="dados" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="dados">Dados</TabsTrigger>
+              <TabsTrigger value="classificacao">Classificação</TabsTrigger>
+              <TabsTrigger value="parcelamento">Parcelamento</TabsTrigger>
+            </TabsList>
+            <TabsContent value="dados" className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="description"
@@ -231,8 +239,10 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
               )}
             />
           </div>
+          </TabsContent>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <TabsContent value="classificacao" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="type"
@@ -279,7 +289,7 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
                 </FormItem>
               )}
             />
-          </div>
+            </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
@@ -341,7 +351,7 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
             />
           </div>
 
-          <FormField
+            <FormField
             control={form.control}
             name="subcategory"
             render={({ field }) => (
@@ -353,9 +363,9 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
                 <FormMessage />
               </FormItem>
             )}
-          />
+            />
 
-          <FormField
+            <FormField
             control={form.control}
             name="date"
             render={({ field }) => (
@@ -396,9 +406,9 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
                 <FormMessage />
               </FormItem>
             )}
-          />
+            />
 
-          <FormField
+            <FormField
             control={form.control}
             name="notes"
             render={({ field }) => (
@@ -414,8 +424,10 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
                 <FormMessage />
               </FormItem>
             )}
-          />
+            />
+          </TabsContent>
 
+          <TabsContent value="parcelamento" className="space-y-4">
           {showInstallmentFields && (
             <div className="space-y-4">
               <FormField
@@ -514,8 +526,10 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
               )}
             </div>
           )}
+          </TabsContent>
+          </Tabs>
 
-          <div className="sticky bottom-0 bg-background/80 backdrop-blur border-t mt-4 px-3 py-3 flex justify-end gap-3">
+          <div className="sticky bottom-0 bg-card border-t mt-4 px-3 py-3 flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancelar
             </Button>

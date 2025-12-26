@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const { signIn, resetPassword } = useAuth()
+  const { signIn, resetPassword, loading } = useAuth()
   const router = useRouter()
 
   const validateForm = () => {
@@ -138,7 +138,8 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={handleForgotPassword}
-                className="text-white/80 text-sm hover:text-white hover:underline"
+                className="text-white/80 text-sm hover:text-white hover:underline disabled:opacity-50"
+                disabled={loading}
               >
                 Esqueci minha senha
               </button>

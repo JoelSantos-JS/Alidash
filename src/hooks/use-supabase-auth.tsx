@@ -34,6 +34,41 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   // Guardas de proteção contra múltiplos cadastros
   const signUpInProgressRef = useRef(false)
   const lastSignUpAttemptRef = useRef<{ email: string; at: number } | null>(null)
+  const resetInProgressRef = useRef(false)
+  const lastResetAttemptRef = useRef<{ email: string; at: number } | null>(null)
+  const sessionTimeoutRef = useRef<number | null>(null)
+  const SESSION_TIMEOUT_MS = 60 * 60 * 1000
+  const SESSION_LOGIN_AT_KEY = 'alidash:session_login_at'
+  const PASSWORD_RESET_COOLDOWN_MS = 5 * 60 * 1000
+
+  const clearSessionTimer = () => {
+    if (sessionTimeoutRef.current) {
+      clearTimeout(sessionTimeoutRef.current)
+      sessionTimeoutRef.current = null
+    }
+  }
+
+  const forceLogoutDueToTimeout = async () => {
+    try {
+      await supabase.auth.signOut()
+      toast.error('Sua sessão expirou após 1 hora. Faça login novamente.')
+      router.push('/login')
+    } catch {}
+  }
+
+  const scheduleSessionExpiration = (loginAt: number) => {
+    const expiresAt = loginAt + SESSION_TIMEOUT_MS
+    const now = Date.now()
+    const remaining = expiresAt - now
+    clearSessionTimer()
+    if (remaining <= 0) {
+      forceLogoutDueToTimeout()
+      return
+    }
+    sessionTimeoutRef.current = window.setTimeout(() => {
+      forceLogoutDueToTimeout()
+    }, remaining)
+  }
 
   // Prevent hydration mismatch by ensuring consistent initial state
   useEffect(() => {
@@ -61,6 +96,19 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
 
         // If user exists, ensure they exist in our database
         if (session?.user) {
+          try {
+            const existingLoginAt = typeof window !== 'undefined' ? window.localStorage.getItem(SESSION_LOGIN_AT_KEY) : null
+            const parsedLoginAt = existingLoginAt ? parseInt(existingLoginAt, 10) : NaN
+            if (!existingLoginAt || Number.isNaN(parsedLoginAt)) {
+              const now = Date.now()
+              if (typeof window !== 'undefined') {
+                window.localStorage.setItem(SESSION_LOGIN_AT_KEY, String(now))
+              }
+              scheduleSessionExpiration(now)
+            } else {
+              scheduleSessionExpiration(parsedLoginAt)
+            }
+          } catch {}
           console.log('👤 Usuário encontrado na sessão, verificando no banco...')
           try {
             await ensureUserInDatabase(session.user)
@@ -99,6 +147,13 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
 
         if (event === 'SIGNED_IN' && session?.user) {
           try {
+            try {
+              const now = Date.now()
+              if (typeof window !== 'undefined') {
+                window.localStorage.setItem(SESSION_LOGIN_AT_KEY, String(now))
+              }
+              scheduleSessionExpiration(now)
+            } catch {}
             await ensureUserInDatabase(session.user)
             await supabaseService.updateUserLastLogin(session.user.id)
             // Redireciona apenas quando vindo de páginas de auth
@@ -126,6 +181,12 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
             // Não impedir o login por causa de erros de sincronização
           }
         } else if (event === 'SIGNED_OUT') {
+          clearSessionTimer()
+          try {
+            if (typeof window !== 'undefined') {
+              window.localStorage.removeItem(SESSION_LOGIN_AT_KEY)
+            }
+          } catch {}
           hasShownLoginToastRef.current = false
           router.push('/login')
         }
@@ -145,6 +206,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       try {
         authSubscriptionRef.current?.unsubscribe()
       } catch {}
+      clearSessionTimer()
       authSubscriptionRef.current = null
       hasInitializedSessionRef.current = false
     }
@@ -381,6 +443,15 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
         throw error
       }
 
+      clearSessionTimer()
+      try {
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(SESSION_LOGIN_AT_KEY)
+        }
+      } catch {}
+      setUser(null)
+      setSession(null)
+      router.push('/login')
       toast.success('Logout realizado com sucesso!')
       
     } catch (error) {
@@ -394,17 +465,58 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
 
   const resetPassword = async (email: string) => {
     try {
+      const trimmed = email.trim()
+      const now = Date.now()
+      if (resetInProgressRef.current) {
+        toast.error('Aguarde alguns segundos e tente novamente')
+        return
+      }
+      if (lastResetAttemptRef.current && lastResetAttemptRef.current.email === trimmed) {
+        const elapsed = now - lastResetAttemptRef.current.at
+        if (elapsed < PASSWORD_RESET_COOLDOWN_MS) {
+          const remainingMs = PASSWORD_RESET_COOLDOWN_MS - elapsed
+          const remainingMin = Math.max(1, Math.ceil(remainingMs / 60000))
+          toast.error(`Solicitação recente. Tente novamente em ${remainingMin} min`)
+          return
+        }
+      }
+      resetInProgressRef.current = true
       setLoading(true)
       
       const baseUrl = typeof window !== 'undefined'
         ? (process.env.NEXT_PUBLIC_APP_URL || window.location.origin)
         : (process.env.NEXT_PUBLIC_APP_URL || '')
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
         redirectTo: baseUrl ? `${baseUrl}/reset-password` : undefined
       })
 
       if (error) {
+        const msg = String(error.message || '').toLowerCase()
+        lastResetAttemptRef.current = { email: trimmed, at: now }
+        if (msg.includes('rate limit') || msg.includes('too many') || msg.includes('exceeded')) {
+          try {
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+            const adminKey = process.env.NEXT_PUBLIC_ADMIN_SIGNUP_KEY
+            if (adminKey) headers['x-api-key'] = adminKey
+            const resp = await fetch('/api/auth/admin-reset', {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ email: trimmed, redirectTo: baseUrl ? `${baseUrl}/reset-password` : undefined })
+            })
+            if (resp.ok) {
+              const json = await resp.json().catch(() => ({}))
+              const url = json?.recoveryUrl
+              if (url) {
+                toast.success('Abrindo página de redefinição de senha')
+                window.location.href = url
+                return
+              }
+            }
+          } catch {}
+          toast.error('Muitas solicitações. Verifique seu email e tente novamente em alguns minutos')
+          return
+        }
         throw error
       }
 
@@ -422,9 +534,9 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       } else {
         toast.error('Erro inesperado')
       }
-      
-      throw error
+      return
     } finally {
+      resetInProgressRef.current = false
       setLoading(false)
     }
   }

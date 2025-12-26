@@ -73,6 +73,55 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    const cryptoAssetsNeedingPrice = filteredPositions
+      .filter(p => {
+        const a = assetMap.get(p.asset_id)
+        return a?.class === "crypto" && latestPriceByAsset[p.asset_id] === undefined
+      })
+      .map(p => p.asset_id)
+    if (cryptoAssetsNeedingPrice.length > 0) {
+      try {
+        const coinListRes = await fetch("https://api.coingecko.com/api/v3/coins/list?include_platform=false")
+        if (coinListRes.ok) {
+          const coins: Array<{ id: string; symbol: string; name: string }> = await coinListRes.json()
+          const normalize = (s: string) =>
+            String(s || "")
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/[^a-z0-9]/g, "")
+          const idByAsset = new Map<string, string>()
+          for (const assetId of cryptoAssetsNeedingPrice) {
+            const a = assetMap.get(assetId)
+            const sym = normalize(a?.ticker || "")
+            const nm = normalize(a?.name || "")
+            let match =
+              coins.find(c => normalize(c.symbol) === sym) ||
+              coins.find(c => normalize(c.id) === sym) ||
+              coins.find(c => normalize(c.name) === nm)
+            if (match) {
+              idByAsset.set(assetId, match.id)
+            }
+          }
+          const ids = Array.from(new Set(Array.from(idByAsset.values())))
+          if (ids.length > 0) {
+            const pricesRes = await fetch(
+              `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids.join(","))}&vs_currencies=brl`
+            )
+            if (pricesRes.ok) {
+              const priceData = await pricesRes.json()
+              for (const [assetId, cgId] of idByAsset) {
+                const v = priceData?.[cgId]?.brl
+                if (v !== undefined && v !== null) {
+                  latestPriceByAsset[assetId] = Number(v)
+                }
+              }
+            }
+          }
+        }
+      } catch {}
+    }
+
     const result = filteredPositions.map(p => {
       const asset = assetMap.get(p.asset_id)
       const marketPrice = latestPriceByAsset[p.asset_id] ?? Number(p.avg_price) ?? 0

@@ -19,20 +19,20 @@ export async function POST(request: NextRequest) {
       .select('account_type, created_at, plan_started_at')
       .eq('id', userId)
       .single()
+    
+    const resolvedUser = userError || !userRow
+      ? { account_type: 'personal', created_at: new Date().toISOString(), plan_started_at: null }
+      : userRow
 
-    if (userError) {
-      return NextResponse.json({ error: 'Erro ao validar usuário' }, { status: 500 })
-    }
-
-    const isPaid = userRow?.account_type === 'pro' || userRow?.account_type === 'basic'
+    const isPaid = resolvedUser.account_type === 'pro' || resolvedUser.account_type === 'basic'
     if (!isPaid) {
-      const startAt = userRow?.plan_started_at ? new Date(userRow.plan_started_at) : (userRow?.created_at ? new Date(userRow.created_at) : new Date())
+      const startAt = resolvedUser.plan_started_at ? new Date(resolvedUser.plan_started_at) : (resolvedUser.created_at ? new Date(resolvedUser.created_at) : new Date())
       const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
       if (diffDays >= 5) {
         return NextResponse.json({ error: 'Período gratuito de 5 dias expirado' }, { status: 403 })
       }
     }
-    if (userRow?.account_type === 'basic') {
+    if (resolvedUser.account_type === 'basic') {
       const now = new Date()
       const start = new Date(now.getFullYear(), now.getMonth(), 1)
       const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)

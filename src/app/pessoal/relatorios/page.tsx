@@ -247,6 +247,10 @@ export default function PersonalReportsPage() {
     if (previous === 0) return 0;
     return ((current - previous) / previous) * 100;
   };
+  const formatSignedPercent = (v: number): string => {
+    const sign = v > 0 ? "+" : "";
+    return `${sign}${v.toFixed(1)}%`;
+  };
 
   const exportReport = async () => {
     try {
@@ -461,7 +465,7 @@ export default function PersonalReportsPage() {
                 </div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                 <TrendingUp className="h-3 w-3 text-green-600" />
-                +{metrics.trends.incomeGrowth}% vs período anterior
+                {formatSignedPercent(metrics.trends.incomeGrowth)} vs período anterior
               </p>
             </CardContent>
           </Card>
@@ -477,7 +481,7 @@ export default function PersonalReportsPage() {
                 </div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                   <TrendingDown className="h-3 w-3 text-green-600" />
-                  {metrics.trends.expenseGrowth}% vs período anterior
+                  {formatSignedPercent(metrics.trends.expenseGrowth)} vs período anterior
                 </p>
               </CardContent>
             </Card>
@@ -493,7 +497,7 @@ export default function PersonalReportsPage() {
                 </div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                   <TrendingUp className="h-3 w-3 text-green-600" />
-                  +{metrics.trends.balanceGrowth}% vs período anterior
+                  {formatSignedPercent(metrics.trends.balanceGrowth)} vs período anterior
                 </p>
               </CardContent>
             </Card>
@@ -647,7 +651,7 @@ export default function PersonalReportsPage() {
                 <div>
                   <p className="text-sm font-medium text-blue-800">Crescimento de entradas</p>
                   <p className="text-xs text-blue-600">
-                    Suas entradas cresceram {metrics?.trends.incomeGrowth}% no período analisado.
+                    Suas entradas cresceram {formatSignedPercent(metrics?.trends.incomeGrowth || 0)} no período analisado.
                   </p>
                 </div>
               </div>
@@ -714,19 +718,19 @@ export default function PersonalReportsPage() {
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Entradas:</span>
                     <Badge variant="secondary" className="text-green-600">
-                      +{metrics.trends.incomeGrowth}%
+                      {formatSignedPercent(metrics.trends.incomeGrowth)}
                     </Badge>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Saídas:</span>
                     <Badge variant="secondary" className="text-green-600">
-                      {metrics.trends.expenseGrowth}%
+                      {formatSignedPercent(metrics.trends.expenseGrowth)}
                     </Badge>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Economia:</span>
                     <Badge variant="secondary" className="text-green-600">
-                      +{metrics.trends.balanceGrowth}%
+                      {formatSignedPercent(metrics.trends.balanceGrowth)}
                     </Badge>
                   </div>
                 </div>

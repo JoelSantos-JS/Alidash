@@ -1468,12 +1468,6 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                           <span>Configurações</span>
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/pessoal" className="flex items-center w-full">
-                          <User className="mr-2 h-4 w-4" />
-                          <span>Dashboard Pessoal</span>
-                        </Link>
-                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 
                         onClick={async () => {

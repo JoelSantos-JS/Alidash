@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient } from '@/utils/supabase/server';
 import { notifyProductSold } from '@/lib/n8n-events';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function POST(request: NextRequest) {
   const routeStart = Date.now()
@@ -12,16 +8,17 @@ export async function POST(request: NextRequest) {
     const revenueData = await request.json();
     const parseEnd = Date.now()
     const timings: Record<string, number> = { parse: parseEnd - routeStart }
-    const userId = revenueData.user_id
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+    const userId = user.id
     
     console.log('💰 Criando receita via API:', revenueData);
 
     // Validar dados obrigatórios
-    if (!userId) {
-      return NextResponse.json({ 
-        error: 'user_id é obrigatório' 
-      }, { status: 400 });
-    }
+    // userId garantido via sessão
 
     const userQueryStart = Date.now()
     const { data: userRow, error: userError } = await supabase

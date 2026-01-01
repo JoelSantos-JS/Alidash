@@ -175,7 +175,6 @@ export default function ReceitasPage() {
           },
           body: JSON.stringify({
             id: revenueToEdit.id,
-            user_id: user.id,
             description: revenueData.description,
             amount: revenueData.amount,
             category: revenueData.category,
@@ -219,7 +218,6 @@ export default function ReceitasPage() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            user_id: user.id,
             description: revenueData.description,
             amount: revenueData.amount,
             category: revenueData.category,
@@ -407,7 +405,7 @@ export default function ReceitasPage() {
               if (!isIndependent) return;
               const realId = String(item.id).replace('revenue-', '');
               try {
-                const response = await fetch(`/api/revenues/delete?id=${realId}&user_id=${user.id}`, { method: 'DELETE' });
+                const response = await fetch(`/api/revenues/delete?id=${realId}`, { method: 'DELETE' });
                 const result = await response.json();
                 if (!response.ok || result.success === false) {
                   throw new Error(result.error || 'Erro ao excluir entrada');

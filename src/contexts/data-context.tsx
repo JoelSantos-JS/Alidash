@@ -55,8 +55,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
     
     try {
-      console.log('🔍 Buscando receitas para user_id:', user.id);
-      const response = await fetch(`/api/revenues?user_id=${user.id}`);
+      console.log('🔍 Buscando receitas via sessão');
+      const response = await fetch(`/api/revenues/get`);
       
       if (response.ok) {
         const data = await response.json();

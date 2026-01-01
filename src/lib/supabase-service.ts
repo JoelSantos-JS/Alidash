@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 import type { 
   Product,
   Goal
@@ -20,18 +21,23 @@ if (!supabaseAnonKey) {
 // Detect environment to avoid creating multiple auth clients in the browser
 const isServer = typeof window === 'undefined'
 
-// Client-side Supabase client (singleton)
-export const supabase = createClient(
-  supabaseUrl,
-  supabaseAnonKey,
-  {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true
-    }
-  }
-)
+// Client-side Supabase client (SSR cookies) e fallback no server
+export const supabase = isServer
+  ? createClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+          detectSessionInUrl: false,
+        },
+      }
+    )
+  : createBrowserClient(
+      supabaseUrl!,
+      supabaseAnonKey!
+    )
 
 // Server-side Supabase admin client (ONLY create on server)
 export const supabaseAdmin = isServer

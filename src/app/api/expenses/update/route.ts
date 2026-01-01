@@ -1,18 +1,11 @@
-"use server";
-
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { createClient as createSupabaseClient } from "@/utils/supabase/server";
 
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
     const {
       id,
-      user_id,
       description,
       amount,
       category,
@@ -23,9 +16,9 @@ export async function PUT(request: NextRequest) {
       date,
     } = body || {};
 
-    if (!id || !user_id) {
+    if (!id) {
       return NextResponse.json(
-        { error: "id e user_id são obrigatórios" },
+        { error: "id é obrigatório" },
         { status: 400 }
       );
     }
@@ -37,11 +30,21 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: "Não autenticado" },
+        { status: 401 }
+      );
+    }
+
     const { data: existingExpense, error: fetchError } = await supabase
       .from("expenses")
       .select("id, user_id, transaction_id")
       .eq("id", id)
-      .eq("user_id", user_id)
+      .eq("user_id", user.id)
       .single();
 
     if (fetchError || !existingExpense) {
@@ -67,7 +70,7 @@ export async function PUT(request: NextRequest) {
         date: parsedDate,
       })
       .eq("id", id)
-      .eq("user_id", user_id)
+      .eq("user_id", user.id)
       .select()
       .single();
 
@@ -89,7 +92,7 @@ export async function PUT(request: NextRequest) {
           notes: notes ?? null,
         })
         .eq("id", existingExpense.transaction_id)
-        .eq("user_id", user_id);
+        .eq("user_id", user.id);
     }
 
     return NextResponse.json({ success: true, expense: updatedExpense });
@@ -100,4 +103,3 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
-

@@ -170,7 +170,6 @@ export default function DespesasPage() {
           },
           body: JSON.stringify({
             id: expenseToEdit.id,
-            user_id: user.id,
             description: expenseData.description,
             amount: expenseData.amount,
             category: expenseData.category,
@@ -206,7 +205,7 @@ export default function DespesasPage() {
         addExpense(expenseData);
 
         // Sincroniza com a API em background
-        const response = await fetch(`/api/expenses/create?user_id=${user.id}`, {
+        const response = await fetch(`/api/expenses/create`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -425,7 +424,7 @@ export default function DespesasPage() {
               if (!isIndependent) return;
               const realId = String(item.id).replace('expense-', '');
               try {
-                const response = await fetch(`/api/expenses/delete?id=${realId}&user_id=${user.id}`, { method: 'DELETE' });
+                const response = await fetch(`/api/expenses/delete?id=${realId}`, { method: 'DELETE' });
                 const result = await response.json();
                 if (!response.ok || result.success === false) {
                   throw new Error(result.error || 'Erro ao excluir saída');

@@ -1,23 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { createClient as createSupabaseClient } from '@/utils/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('user_id');
-
-    if (!userId) {
-      return NextResponse.json({ error: 'user_id é obrigatório' }, { status: 400 });
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
     const { data: userRow, error: userError } = await supabase
       .from('users')
       .select('account_type, created_at, plan_started_at')
-      .eq('id', userId)
+      .eq('id', user.id)
       .single()
     
     const resolvedUser = userError || !userRow
@@ -42,7 +37,7 @@ export async function POST(request: NextRequest) {
       const { count, error: countError } = await supabase
         .from('transactions')
         .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
+        .eq('user_id', user.id)
         .gte('date', startIso)
         .lte('date', endIso)
 
@@ -57,18 +52,18 @@ export async function POST(request: NextRequest) {
 
     const expenseData = await request.json();
 
-    console.log('💰 Criando despesa via API:', { userId, expenseData });
+    console.log('💰 Criando despesa via API:', { userId: user.id, expenseData });
 
     // Converter date string para Date object se necessário
     const processedExpenseData = {
       ...expenseData,
-      user_id: userId,
+      user_id: user.id,
       date: typeof expenseData.date === 'string' ? new Date(expenseData.date) : expenseData.date
     };
 
     // 1. Primeiro criar a transação
     const transactionData = {
-      user_id: userId,
+      user_id: user.id,
       date: processedExpenseData.date,
       description: processedExpenseData.description,
       amount: processedExpenseData.amount,

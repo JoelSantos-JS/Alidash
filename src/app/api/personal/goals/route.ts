@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { createClient as createSupabaseClient } from '@/utils/supabase/server';
 
 // GET - Buscar metas pessoais do usuário
 export async function GET(request: NextRequest) {
@@ -18,7 +13,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'user_id é obrigatório' }, { status: 400 });
     }
 
-    console.log('🔍 Buscando metas pessoais:', { userId, status, type });
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    }
 
     let query = supabase
       .from('personal_goals')
@@ -37,11 +36,9 @@ export async function GET(request: NextRequest) {
     const { data: goals, error } = await query;
 
     if (error) {
-      console.error('❌ Erro ao buscar metas:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Calcular progresso para cada meta
     const goalsWithProgress = goals?.map(goal => {
       const progress = goal.target_amount > 0 ? (goal.current_amount / goal.target_amount) * 100 : 0;
       return {
@@ -50,12 +47,9 @@ export async function GET(request: NextRequest) {
       };
     }) || [];
 
-    console.log('✅ Metas encontradas:', goalsWithProgress.length);
-
     return NextResponse.json({ goals: goalsWithProgress });
 
   } catch (error) {
-    console.error('❌ Erro interno:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
 }
@@ -85,22 +79,20 @@ export async function PUT(request: Request) {
         { status: 400 }
       );
     }
-    // Bloqueio para plano gratuito após 3 dias
-    const { data: userRow } = await supabase
-      .from('users')
-      .select('account_type, created_at')
-      .eq('id', user_id)
-      .single()
-    const isPaid = userRow?.account_type === 'pro' || userRow?.account_type === 'basic'
-    if (!isPaid) {
-      const startAt = userRow?.created_at ? new Date(userRow.created_at) : new Date()
-      const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
-      if (diffDays >= 5) {
-        return NextResponse.json({ error: 'Período gratuito de 5 dias expirado' }, { status: 403 })
+    if (process.env.NODE_ENV === 'production') {
+      const origin = (request as any).headers?.get?.('origin') || ''
+      const allowed = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+      const isAllowed = allowed.length ? allowed.includes(origin) : (appUrl ? origin.startsWith(appUrl) : true)
+      if (!isAllowed) {
+        return NextResponse.json({ error: 'Origem não permitida' }, { status: 403 })
       }
     }
-    // Construir payload de atualização com base no schema existente
-    // personal_goals possui: name, description, type, target_amount, current_amount, deadline, priority, status
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user || user.id !== user_id) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    }
     const updatePayload: Record<string, any> = {};
 
     if (title !== undefined) updatePayload.name = title;
@@ -116,9 +108,32 @@ export async function PUT(request: Request) {
     if (priority !== undefined) updatePayload.priority = priority;
     if (status !== undefined) updatePayload.status = status;
     if (target_date !== undefined) updatePayload.deadline = target_date;
-    if (type !== undefined) updatePayload.type = type;
+    const normalizeType = (v: any): string => {
+      const s = String(v || '').toLowerCase();
+      const map: Record<string, string> = {
+        emergency_fund: 'emergency_fund',
+        savings: 'savings',
+        saving: 'savings',
+        debt_payoff: 'debt_payoff',
+        investment: 'investment',
+        purchase: 'purchase',
+        car: 'purchase',
+        vacation: 'vacation',
+        travel: 'vacation',
+        retirement: 'retirement',
+        education: 'education',
+        home_purchase: 'home_purchase',
+        house: 'home_purchase',
+        wedding: 'wedding',
+        gift: 'other',
+        health: 'other',
+        other: 'other'
+      };
+      return map[s] || 'other';
+    };
+    if (type !== undefined) updatePayload.type = normalizeType(type);
+    if (category !== undefined) updatePayload.type = normalizeType(category);
 
-    // Campos não existentes no schema são ignorados: category, monthly_contribution, notes
     updatePayload.updated_at = new Date().toISOString();
 
     if (Object.keys(updatePayload).length === 1) { // apenas updated_at
@@ -128,7 +143,6 @@ export async function PUT(request: Request) {
       );
     }
 
-    // Atualizar a meta pessoal
     const { data, error } = await supabase
       .from('personal_goals')
       .update(updatePayload)
@@ -138,7 +152,6 @@ export async function PUT(request: Request) {
       .single();
 
     if (error) {
-      console.error('Erro ao atualizar meta pessoal:', error);
       return NextResponse.json(
         { error: 'Erro ao atualizar meta pessoal' },
         { status: 500 }
@@ -147,7 +160,6 @@ export async function PUT(request: Request) {
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Erro no PUT /api/personal/goals:', error);
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
@@ -162,16 +174,28 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get('id');
     const userId = searchParams.get('user_id');
 
-    console.log('🗑️ Deletando meta pessoal:', { id, userId });
-
     if (!id || !userId) {
       return NextResponse.json(
         { success: false, error: 'id e user_id são obrigatórios' },
         { status: 400 }
       );
     }
+    if (process.env.NODE_ENV === 'production') {
+      const origin = request.headers.get('origin') || ''
+      const allowed = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+      const isAllowed = allowed.length ? allowed.includes(origin) : (appUrl ? origin.startsWith(appUrl) : true)
+      if (!isAllowed) {
+        return NextResponse.json({ success: false, error: 'Origem não permitida' }, { status: 403 })
+      }
+    }
 
-    // Deletar do banco de dados
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ success: false, error: 'Não autenticado' }, { status: 401 });
+    }
+
     const { error } = await supabase
       .from('personal_goals')
       .delete()
@@ -179,14 +203,11 @@ export async function DELETE(request: NextRequest) {
       .eq('user_id', userId);
 
     if (error) {
-      console.error('❌ Erro ao deletar meta do banco:', error);
       return NextResponse.json(
         { success: false, error: `Erro ao deletar meta: ${error.message}` },
         { status: 500 }
       );
     }
-
-    console.log('✅ Meta pessoal deletada do banco:', id);
 
     return NextResponse.json({
       success: true,
@@ -194,7 +215,6 @@ export async function DELETE(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ Erro ao deletar meta pessoal:', error);
     return NextResponse.json(
       { success: false, error: 'Erro interno do servidor' },
       { status: 500 }
@@ -206,59 +226,79 @@ export async function DELETE(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { user_id, name, description, type, target_amount, deadline, priority, current_amount } = body;
+    const { user_id, name, description, type, target_amount, deadline, priority, current_amount, monthly_contribution, notes } = body;
 
     if (!user_id || !name || !type || !target_amount || !deadline) {
       return NextResponse.json({ 
         error: 'user_id, name, type, target_amount e deadline são obrigatórios' 
       }, { status: 400 });
     }
-
-    // Bloqueio para plano gratuito após 3 dias
-    const { data: userRow } = await supabase
-      .from('users')
-      .select('account_type, created_at')
-      .eq('id', user_id)
-      .single()
-    const isPaid = userRow?.account_type === 'pro' || userRow?.account_type === 'basic'
-    if (!isPaid) {
-      const startAt = userRow?.created_at ? new Date(userRow.created_at) : new Date()
-      const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
-      if (diffDays >= 5) {
-        return NextResponse.json({ error: 'Período gratuito de 5 dias expirado' }, { status: 403 })
+    if (process.env.NODE_ENV === 'production') {
+      const origin = request.headers.get('origin') || ''
+      const allowed = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+      const isAllowed = allowed.length ? allowed.includes(origin) : (appUrl ? origin.startsWith(appUrl) : true)
+      if (!isAllowed) {
+        return NextResponse.json({ error: 'Origem não permitida' }, { status: 403 })
       }
     }
-    console.log('📝 Criando nova meta:', { user_id, name, type, target_amount });
 
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user || user.id !== user_id) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    }
+    const normalizeType = (v: any): string => {
+      const s = String(v || '').toLowerCase();
+      const map: Record<string, string> = {
+        emergency_fund: 'emergency_fund',
+        savings: 'savings',
+        saving: 'savings',
+        debt_payoff: 'debt_payoff',
+        investment: 'investment',
+        purchase: 'purchase',
+        car: 'purchase',
+        vacation: 'vacation',
+        travel: 'vacation',
+        retirement: 'retirement',
+        education: 'education',
+        home_purchase: 'home_purchase',
+        house: 'home_purchase',
+        wedding: 'wedding',
+        gift: 'other',
+        health: 'other',
+        other: 'other'
+      };
+      return map[s] || 'other';
+    };
+    const normalizedType = normalizeType(type);
     const { data: goal, error } = await supabase
       .from('personal_goals')
       .insert({
         user_id,
         name,
         description,
-        type,
+        type: normalizedType,
         target_amount,
         current_amount: typeof current_amount !== 'undefined' 
           ? (Number.isFinite(parseFloat(String(current_amount))) ? parseFloat(String(current_amount)) : 0)
           : 0,
         deadline,
         priority: priority || 'medium',
-        status: 'active'
+        status: 'active',
+        monthly_contribution: typeof monthly_contribution === 'number' ? monthly_contribution : (monthly_contribution ? parseFloat(String(monthly_contribution)) : null),
+        notes: notes || null
       })
       .select()
       .single();
 
     if (error) {
-      console.error('❌ Erro ao criar meta:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-
-    console.log('✅ Meta criada:', goal);
 
     return NextResponse.json({ goal });
 
   } catch (error) {
-    console.error('❌ Erro interno:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
 }

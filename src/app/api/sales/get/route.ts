@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { createClient as createSupabaseClient } from '@/utils/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,18 +13,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('🔍 Buscando vendas para usuário ID:', userId);
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    }
 
-    // Verificar se é um UUID (Supabase ID) ou Firebase UID
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-    
-    // Usar UUID do Supabase diretamente
-    console.log('📋 Usando UUID do Supabase:', userId);
-    const user = { id: userId };
-
-    console.log('✅ Usuário encontrado:', user.id);
-
-    // Buscar vendas do usuário com informações do produto
     const { data: sales, error: salesError } = await supabase
       .from('sales')
       .select(`
@@ -45,16 +34,12 @@ export async function GET(request: NextRequest) {
       .order('date', { ascending: false });
 
     if (salesError) {
-      console.error('❌ Erro ao buscar vendas:', salesError);
       return NextResponse.json({ 
         error: 'Erro ao buscar vendas',
         details: salesError.message 
       }, { status: 500 });
     }
 
-    console.log('🛒 Vendas encontradas:', sales?.length || 0);
-
-    // Transformar dados do Supabase para o formato esperado
     const transformedSales = sales?.map(sale => ({
       id: sale.id,
       productId: sale.product_id,
@@ -74,7 +59,6 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ Erro na API de vendas:', error);
     return NextResponse.json({ 
       error: 'Erro interno do servidor',
       details: error instanceof Error ? error.message : 'Erro desconhecido'

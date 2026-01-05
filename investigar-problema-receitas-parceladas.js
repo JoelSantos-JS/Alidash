@@ -1,8 +1,11 @@
 const { createClient } = require('@supabase/supabase-js');
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://wnpqkdwjqhqjqhqjqhqj.supabase.co';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InducHFrZHdqcWhxanFocWpxaHFqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczNDM2NzE5NCwiZXhwIjoyMDQ5OTQzMTk0fQ.Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8';
-
+require('dotenv').config({ path: '.env.local' });
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('Supabase environment variables not configured');
+  process.exit(1);
+}
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function investigarReceitasParceladas() {

@@ -144,6 +144,136 @@ jest.mock('@supabase/supabase-js', () => {
     })
   }
 })
+ 
+jest.mock('@/utils/supabase/server', () => {
+  const makeBuilder = (table: string) => {
+    const state: any = { table, filters: {} }
+    const applyFilters = (rows: any[]) => {
+      return rows.filter(row => {
+        return Object.keys(state.filters).every((k) => row[k] === state.filters[k])
+      })
+    }
+    const builder: any = {
+      select: () => builder,
+      eq: (col: string, val: any) => { state.filters[col] = val; return builder },
+      in: (_: string, __: any[]) => builder,
+      order: () => builder,
+      gte: () => builder,
+      limit: (n: number) => {
+        const rows = state.table === 'investment_assets' ? mockAssets
+          : state.table === 'investment_positions' ? mockPositions
+          : state.table === 'investment_prices' ? [] 
+          : state.table === 'investment_transactions' ? mockTransactions
+          : state.table === 'investment_accounts' ? mockAccounts
+          : []
+        return Promise.resolve({ data: applyFilters(rows).slice(0, n), error: null })
+      },
+      single: async () => {
+        const rows = state.table === 'investment_assets' ? mockAssets
+          : state.table === 'investment_positions' ? mockPositions
+          : state.table === 'investment_transactions' ? mockTransactions
+          : state.table === 'investment_accounts' ? mockAccounts
+          : []
+        const data = applyFilters(rows)[0] || null
+        return { data }
+      },
+      insert: (payload: any) => {
+        const row = Array.isArray(payload) ? payload[0] : payload
+        if (state.table === 'investment_assets') {
+          const id = `asset_${nextSeq()}`
+          const newRow = { id, ticker: row.ticker, name: row.name, class: row.class }
+          mockAssets.push(newRow as any)
+          const chain = {
+            select: () => ({
+              single: async () => ({ data: { id } })
+            })
+          }
+          return chain as any
+        }
+        if (state.table === 'investment_positions') {
+          const id = `pos_${nextSeq()}`
+          const newRow = { id, ...row }
+          mockPositions.push(newRow as any)
+          const chain = {
+            select: () => ({
+              single: async () => ({ data: newRow })
+            })
+          }
+          return chain as any
+        }
+        if (state.table === 'investment_transactions') {
+          const id = `tx_${nextSeq()}`
+          const newRow = { id, ...row }
+          mockTransactions.push(newRow as any)
+          const chain = {
+            select: () => ({
+              single: async () => ({ data: newRow })
+            })
+          }
+          return chain as any
+        }
+        if (state.table === 'investment_accounts') {
+          const id = `acc_${nextSeq()}`
+          const newRow = { id, user_id: row.user_id, name: row.name, broker: row.broker ?? null }
+          mockAccounts.push(newRow as any)
+          const chain = {
+            select: () => ({
+              single: async () => ({ data: newRow })
+            })
+          }
+          return chain as any
+        }
+        return {} as any
+      },
+      update: (payload: any) => {
+        (state as any).updatePayload = payload
+        const chain: any = {
+          eq: (col: string, val: any) => { state.filters[col] = val; return chain },
+          select: () => chain,
+          single: async () => {
+            let rows = state.table === 'investment_positions' ? mockPositions : []
+            const filtered = applyFilters(rows)
+            const target = filtered[0]
+            if (state.table === 'investment_positions' && target) {
+              Object.assign(target, (state as any).updatePayload)
+            }
+            return { data: target || null }
+          }
+        }
+        return chain
+      },
+      delete: () => {
+        const chain: any = {
+          eq: (col: string, val: any) => { state.filters[col] = val; return chain },
+          select: () => chain,
+          single: async () => {
+            let rows = state.table === 'investment_positions' ? mockPositions : []
+            const filtered = applyFilters(rows)
+            const target = filtered[0]
+            if (state.table === 'investment_positions' && target) {
+              const idx = rows.findIndex(r => r.id === target.id)
+              if (idx >= 0) rows.splice(idx, 1)
+            }
+            return { data: target || null }
+          }
+        }
+        return chain
+      }
+    }
+    return builder
+  }
+  return {
+    createClient: async () => ({
+      auth: {
+        getUser: async () => ({ data: { user: { id: 'user_1', email: 'user1@example.com' } }, error: null })
+      },
+      from: (table: string) => makeBuilder(table)
+    }),
+    createServiceClient: () => ({
+      from: (table: string) => makeBuilder(table)
+    })
+  }
+})
 
 beforeEach(() => {
   mockAssets = []

@@ -323,7 +323,7 @@ export function RevenueSection({ products, periodFilter, currentDate = new Date(
                           <div className="hidden md:block">+{revenue.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
                         </TableCell>
                         <TableCell className="text-right">
-                          {String(revenue.id).startsWith('revenue-') && (
+                          {(String(revenue.id).startsWith('revenue-') || String(revenue.id).startsWith('rev-sale-')) && (
                             <div className="flex justify-end gap-1">
                               {typeof (onEditRevenue) === 'function' && (
                                 <Button

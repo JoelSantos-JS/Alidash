@@ -1,17 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
+import { createClient as createSupabaseClient } from '@/utils/supabase/server'
 
 // Função para gerar token único
 function generateToken(): string {
@@ -31,11 +20,44 @@ export async function GET(request: NextRequest) {
     const origin = new URL(request.url).origin
     const baseUrl = (process.env.NEXT_PUBLIC_APP_URL?.trim() || origin).replace(/\/+$/, '')
 
+    const debug = new URL(request.url).searchParams.get('debug') === 'true'
+    if (debug) {
+      const cookieStore = await cookies()
+      const cookieNames = cookieStore.getAll().map(c => c.name)
+      return NextResponse.json({ cookies: cookieNames })
+    }
+
     if (!userId) {
       return NextResponse.json(
         { error: 'user_id é obrigatório' },
         { status: 400 }
       )
+    }
+
+    const cookieHeader = request.headers.get('cookie') || ''
+    const authHeader = request.headers.get('authorization') || ''
+    let accessToken: string | null = null
+    const m = cookieHeader.match(/sb-[^=]+-auth-token=([^;]+)/)
+    if (m) {
+      const raw = m[1]
+      if (raw.startsWith('base64-')) {
+        try {
+          const decoded = Buffer.from(raw.slice(7), 'base64').toString('utf-8')
+          const payload = JSON.parse(decoded)
+          accessToken = String(payload?.access_token || '')
+        } catch {}
+      }
+    }
+    if (!accessToken && authHeader.toLowerCase().startsWith('bearer ')) {
+      accessToken = authHeader.slice(7).trim()
+    }
+
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = accessToken 
+      ? await supabase.auth.getUser(accessToken) 
+      : await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
     console.log('🔍 Buscando token para usuário:', userId)
@@ -97,16 +119,42 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const cookieHeader = request.headers.get('cookie') || ''
+    const authHeader = request.headers.get('authorization') || ''
+    let accessToken: string | null = null
+    const m = cookieHeader.match(/sb-[^=]+-auth-token=([^;]+)/)
+    if (m) {
+      const raw = m[1]
+      if (raw.startsWith('base64-')) {
+        try {
+          const decoded = Buffer.from(raw.slice(7), 'base64').toString('utf-8')
+          const payload = JSON.parse(decoded)
+          accessToken = String(payload?.access_token || '')
+        } catch {}
+      }
+    }
+    if (!accessToken && authHeader.toLowerCase().startsWith('bearer ')) {
+      accessToken = authHeader.slice(7).trim()
+    }
+
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = accessToken
+      ? await supabase.auth.getUser(accessToken)
+      : await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
     console.log('➕ Criando novo token para usuário:', userId)
 
     // Verificar se usuário existe
-    const { data: user, error: userError } = await supabase
+    const { data: existingUser, error: userError } = await supabase
       .from('users')
       .select('id')
       .eq('id', userId)
       .single()
 
-    if (userError || !user) {
+    if (userError || !existingUser) {
       return NextResponse.json(
         { error: 'Usuário não encontrado' },
         { status: 404 }
@@ -189,6 +237,32 @@ export async function DELETE(request: NextRequest) {
         { error: 'user_id é obrigatório' },
         { status: 400 }
       )
+    }
+
+    const cookieHeader = request.headers.get('cookie') || ''
+    const authHeader = request.headers.get('authorization') || ''
+    let accessToken: string | null = null
+    const m = cookieHeader.match(/sb-[^=]+-auth-token=([^;]+)/)
+    if (m) {
+      const raw = m[1]
+      if (raw.startsWith('base64-')) {
+        try {
+          const decoded = Buffer.from(raw.slice(7), 'base64').toString('utf-8')
+          const payload = JSON.parse(decoded)
+          accessToken = String(payload?.access_token || '')
+        } catch {}
+      }
+    }
+    if (!accessToken && authHeader.toLowerCase().startsWith('bearer ')) {
+      accessToken = authHeader.slice(7).trim()
+    }
+
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = accessToken
+      ? await supabase.auth.getUser(accessToken)
+      : await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
     console.log('🗑️ Desativando token para usuário:', userId)

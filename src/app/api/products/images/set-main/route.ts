@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { createClient as createSupabaseClient } from '@/utils/supabase/server'
 
 export async function PUT(request: NextRequest) {
   try {
@@ -15,6 +10,12 @@ export async function PUT(request: NextRequest) {
 
     if (!userId || !productId || !imageId) {
       return NextResponse.json({ error: 'user_id, product_id e image_id são obrigatórios' }, { status: 400 })
+    }
+
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
     const { data: target } = await supabase

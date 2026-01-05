@@ -1,9 +1,11 @@
 const { createClient } = require('@supabase/supabase-js')
-
-// Configuração do Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ixjlqvfgkqtjhqjzqzqz.supabase.co'
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4amxxdmZna3F0amhxanpxenF6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczNTU4NzE4MSwiZXhwIjoyMDUxMTYzMTgxfQ.Ej_Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8'
-
+require('dotenv').config({ path: '.env.local' })
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('Supabase environment variables not configured')
+  process.exit(1)
+}
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 async function testProductCreation() {

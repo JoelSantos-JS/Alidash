@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { createClient as createSupabaseClient } from '@/utils/supabase/server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,6 +10,12 @@ export async function GET(request: NextRequest) {
 
     if (!userId) {
       return NextResponse.json({ error: 'user_id é obrigatório' }, { status: 400 })
+    }
+
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
     let query = supabase
@@ -69,6 +70,12 @@ export async function POST(request: NextRequest) {
     }
     const tb = typeof total_budget === 'number' ? total_budget : Number(total_budget || 0)
     const cats = categories && typeof categories === 'object' ? categories : {}
+
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== user_id) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
 
     const { data: existing } = await supabase
       .from('personal_budgets')
@@ -146,6 +153,12 @@ export async function PUT(request: NextRequest) {
     }
     if (categories && typeof categories === 'object') {
       payload.categories = categories
+    }
+
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== user_id) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
     const { data, error } = await supabase

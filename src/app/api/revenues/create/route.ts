@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient as createSupabaseClient } from '@/utils/supabase/server';
+import { createClient as createSupabaseClient, createServiceClient } from '@/utils/supabase/server';
 import { notifyProductSold } from '@/lib/n8n-events';
 
 export async function POST(request: NextRequest) {
@@ -9,11 +9,59 @@ export async function POST(request: NextRequest) {
     const parseEnd = Date.now()
     const timings: Record<string, number> = { parse: parseEnd - routeStart }
     const supabase = await createSupabaseClient()
+    const serviceSupabase = createServiceClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
-    const userId = user.id
+    let internalUserId = user.id
+    const { data: byId } = await serviceSupabase
+      .from('users')
+      .select('id, email, firebase_uid, account_type, created_at')
+      .eq('id', user.id)
+      .single()
+    let resolvedUserRow = byId || null
+    if (!resolvedUserRow) {
+      const { data: byFirebase } = await serviceSupabase
+        .from('users')
+        .select('id, email, firebase_uid, account_type, created_at')
+        .eq('firebase_uid', user.id)
+        .single()
+      resolvedUserRow = byFirebase || null
+    }
+    if (!resolvedUserRow && user.email) {
+      const { data: byEmail } = await serviceSupabase
+        .from('users')
+        .select('id, email, firebase_uid, account_type, created_at')
+        .eq('email', user.email)
+        .single()
+      resolvedUserRow = byEmail || null
+    }
+    if (!resolvedUserRow) {
+      const insertPayload: any = {
+        id: user.id,
+        firebase_uid: user.id,
+        email: user.email || `${user.id}@local`,
+        name: (user.user_metadata as any)?.name || null,
+        avatar_url: (user.user_metadata as any)?.avatar_url || null,
+        account_type: 'personal'
+      }
+      const { data: created } = await serviceSupabase
+        .from('users')
+        .insert(insertPayload)
+        .select()
+        .single()
+      resolvedUserRow = created
+    } else if (!resolvedUserRow.firebase_uid || resolvedUserRow.firebase_uid !== user.id) {
+      const { data: updated } = await serviceSupabase
+        .from('users')
+        .update({ firebase_uid: user.id, updated_at: new Date().toISOString() })
+        .eq('id', resolvedUserRow.id)
+        .select()
+        .single()
+      resolvedUserRow = updated || resolvedUserRow
+    }
+    internalUserId = resolvedUserRow?.id || user.id
     
     console.log('💰 Criando receita via API:', revenueData);
 
@@ -21,25 +69,17 @@ export async function POST(request: NextRequest) {
     // userId garantido via sessão
 
     const userQueryStart = Date.now()
-    const { data: userRow, error: userError } = await supabase
+    const { data: userRow, error: userError } = await serviceSupabase
       .from('users')
-      .select('account_type, created_at, plan_started_at')
-      .eq('id', userId)
+      .select('account_type, created_at')
+      .eq('id', internalUserId)
       .single()
     timings.userQuery = Date.now() - userQueryStart
     
     const resolvedUser = userError || !userRow
-      ? { account_type: 'personal', created_at: new Date().toISOString(), plan_started_at: null }
+      ? { account_type: 'personal', created_at: new Date().toISOString() }
       : userRow
 
-    const isPaid = resolvedUser?.account_type === 'pro' || resolvedUser?.account_type === 'basic'
-    if (!isPaid) {
-      const startAt = resolvedUser?.plan_started_at ? new Date(resolvedUser.plan_started_at) : (resolvedUser?.created_at ? new Date(resolvedUser.created_at) : new Date())
-      const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
-      if (diffDays >= 5) {
-        return NextResponse.json({ error: 'Período gratuito de 5 dias expirado' }, { status: 403 })
-      }
-    }
     if (resolvedUser?.account_type === 'basic') {
       const now = new Date()
       const start = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -48,10 +88,10 @@ export async function POST(request: NextRequest) {
       const endIso = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59, 999).toISOString()
 
       const planCountStart = Date.now()
-      const { count, error: countError } = await supabase
+      const { count, error: countError } = await serviceSupabase
         .from('transactions')
         .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
+        .eq('user_id', internalUserId)
         .gte('date', startIso)
         .lte('date', endIso)
       timings.planCount = Date.now() - planCountStart
@@ -98,14 +138,14 @@ export async function POST(request: NextRequest) {
       notes: revenueData.notes || '',
       product_id: revenueData.product_id || null,
       date: typeof revenueData.date === 'string' ? new Date(revenueData.date) : new Date(revenueData.date),
-      user_id: userId
+      user_id: internalUserId
     };
 
     console.log('📋 Dados processados da receita:', processedRevenueData);
 
     // 1. Primeiro criar a transação
     const transactionData = {
-      user_id: userId,
+      user_id: internalUserId,
       date: processedRevenueData.date,
       description: processedRevenueData.description,
       amount: processedRevenueData.amount,
@@ -179,7 +219,7 @@ export async function POST(request: NextRequest) {
           .from('products')
           .select('id, name, category, selling_price, quantity, quantity_sold, status')
           .eq('id', processedRevenueData.product_id)
-          .eq('user_id', userId)
+          .eq('user_id', internalUserId)
           .single();
 
         if (productError || !product) {
@@ -195,7 +235,7 @@ export async function POST(request: NextRequest) {
           const { data: sale, error: saleError } = await supabase
             .from('sales')
             .insert({
-              user_id: userId,
+              user_id: internalUserId,
               product_id: product.id,
               quantity,
               unit_price: unitPrice,
@@ -219,10 +259,10 @@ export async function POST(request: NextRequest) {
               .from('products')
               .update({ quantity_sold: updatedSold, status: newStatus })
               .eq('id', product.id)
-              .eq('user_id', userId);
+              .eq('user_id', internalUserId);
 
             try {
-              await notifyProductSold(userId, product as any, {
+              await notifyProductSold(internalUserId, product as any, {
                 id: sale.id,
                 quantity,
                 date: processedRevenueData.date.toISOString(),

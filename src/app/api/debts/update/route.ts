@@ -1,15 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-// Configuração direta do Supabase para evitar problemas de inicialização
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('❌ Variáveis de ambiente do Supabase não encontradas');
-}
-
-const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
+import { createClient as createSupabaseClient } from '@/utils/supabase/server';
 
 export async function PUT(request: NextRequest) {
   try {
@@ -26,6 +16,12 @@ export async function PUT(request: NextRequest) {
         { error: 'user_id, debt_id e debt são obrigatórios' },
         { status: 400 }
       );
+    }
+
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== supabaseUserId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
     // Verificar se a dívida existe e pertence ao usuário

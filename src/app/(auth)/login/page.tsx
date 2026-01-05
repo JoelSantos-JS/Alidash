@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { useAuth } from '@/hooks/use-supabase-auth'
 import { toast } from 'sonner'
 import { ElectricVIcon } from '@/components/ui/electric-v-icon'
@@ -160,20 +159,6 @@ export default function LoginPage() {
               )}
             </button>
 
-            <div className="flex items-center gap-3">
-              <div className="h-px bg-white/20 flex-1" />
-              <span className="text-white/60 text-sm">ou</span>
-              <div className="h-px bg-white/20 flex-1" />
-            </div>
-
-            <div className="text-center">
-              <span className="text-white/80 text-sm">
-                Não tem uma conta?{' '}
-                <Link href="/cadastro" className="text-white font-medium hover:underline">
-                  Cadastre-se
-                </Link>
-              </span>
-            </div>
           </form>
         </div>
       </div>

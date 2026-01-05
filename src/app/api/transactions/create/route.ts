@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdminService } from '@/lib/supabase-service';
+import { createClient as createSupabaseClient } from '@/utils/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,14 +11,7 @@ export async function POST(request: NextRequest) {
     
     const { user_id, transaction } = body;
     
-    console.log('📝 Criando transação:', {
-      user_id,
-      transaction: {
-        ...transaction,
-        isInstallment: transaction.isInstallment,
-        installmentInfo: transaction.installmentInfo
-      }
-    });
+    console.log('📝 Criando transação:', { user_id, transaction });
 
     if (!user_id) {
       console.error('❌ user_id não fornecido');
@@ -35,6 +29,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== user_id) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+    const internalUserId = user.id
+
     // Preparar dados da transação para o SupabaseService
     const transactionData = {
       date: transaction.date instanceof Date ? transaction.date : new Date(transaction.date),
@@ -51,20 +52,10 @@ export async function POST(request: NextRequest) {
       installmentInfo: transaction.installmentInfo || null
     };
 
-    const userRow = await supabaseAdminService.getUserById(user_id)
-    const accountType = userRow?.account_type
-    const isPaid = accountType === 'pro' || accountType === 'basic'
-    if (!isPaid) {
-      const startAt = userRow?.plan_started_at ? new Date(userRow.plan_started_at) : (userRow?.created_at ? new Date(userRow.created_at) : new Date())
-      const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
-      if (diffDays >= 5) {
-        return NextResponse.json({ error: 'Período gratuito de 5 dias expirado' }, { status: 403 })
-      }
-    }
     console.log('🔧 Criando transação usando SupabaseService...');
     
     // Usar o método createTransaction do SupabaseService que tem a lógica de criação automática
-    const result = await supabaseAdminService.createTransaction(user_id, transactionData);
+    const result = await supabaseAdminService.createTransaction(internalUserId, transactionData);
 
     return NextResponse.json(result);
   } catch (error) {

@@ -1,20 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient as createServerClient } from '@/utils/supabase/server'
+import { createClient as createServerClient, createServiceClient } from '@/utils/supabase/server'
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerClient()
+    const serviceSupabase = createServiceClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     }
-    console.log('🔍 Buscando receitas para user_id:', user.id)
-    const supabaseUserId = user.id
+    let internalUserId = user.id
+    const { data: byId } = await serviceSupabase
+      .from('users')
+      .select('id')
+      .eq('id', user.id)
+      .single()
+    if (byId?.id) {
+      internalUserId = byId.id
+    } else {
+      const { data: byFirebase } = await serviceSupabase
+        .from('users')
+        .select('id')
+        .eq('firebase_uid', user.id)
+        .single()
+      if (byFirebase?.id) internalUserId = byFirebase.id
+    }
+    console.log('🔍 Buscando receitas para user_id:', internalUserId)
 
     const { data: revenues, error: revenuesError } = await supabase
       .from('revenues')
       .select('*')
-      .eq('user_id', supabaseUserId)
+      .eq('user_id', internalUserId)
       .order('date', { ascending: false });
 
     if (revenuesError) {
@@ -28,7 +44,7 @@ export async function GET(request: NextRequest) {
     const { data: installmentTransactions, error: installmentError } = await supabase
       .from('transactions')
       .select('*')
-      .eq('user_id', supabaseUserId)
+      .eq('user_id', internalUserId)
       .eq('type', 'revenue')
       .eq('is_installment', true)
       .order('date', { ascending: false });

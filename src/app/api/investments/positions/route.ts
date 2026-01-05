@@ -1,12 +1,7 @@
 "use server"
 
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { createClient as createSupabaseClient, createServiceClient } from "@/utils/supabase/server"
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,6 +18,12 @@ export async function GET(request: NextRequest) {
 
     if (!userId) {
       return NextResponse.json({ error: "user_id é obrigatório" }, { status: 400 })
+    }
+
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
     }
 
     let query = supabase
@@ -42,12 +43,13 @@ export async function GET(request: NextRequest) {
 
     const assetIds = Array.from(new Set((positions || []).map(p => p.asset_id).filter(Boolean)))
 
-    const { data: assets } = await supabase
+    const serviceSupabase = createServiceClient()
+    const { data: assets } = await serviceSupabase
       .from("investment_assets")
       .select("id,ticker,name,class")
       .in("id", assetIds.length ? assetIds : ["00000000-0000-0000-0000-000000000000"])
 
-    const { data: prices } = await supabase
+    const { data: prices } = await serviceSupabase
       .from("investment_prices")
       .select("asset_id,date,close")
       .in("asset_id", assetIds.length ? assetIds : ["00000000-0000-0000-0000-000000000000"])
@@ -165,12 +167,18 @@ export async function POST(request: NextRequest) {
     if (!user_id) {
       return NextResponse.json({ error: "user_id é obrigatório" }, { status: 400 })
     }
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== user_id) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
+    }
     let usedAssetId = asset_id as string | undefined
     if (!usedAssetId) {
       if (!ticker || !assetClass) {
         return NextResponse.json({ error: "Informe ticker e class quando asset_id não for fornecido" }, { status: 400 })
       }
-      const { data: existing, error: findErr } = await supabase
+      const serviceSupabase = createServiceClient()
+      const { data: existing, error: findErr } = await serviceSupabase
         .from("investment_assets")
         .select("id,ticker")
         .eq("ticker", String(ticker).toUpperCase())
@@ -181,7 +189,7 @@ export async function POST(request: NextRequest) {
       if (existing && existing.length > 0) {
         usedAssetId = existing[0].id as string
       } else {
-        const { data: created, error: createErr } = await supabase
+        const { data: created, error: createErr } = await serviceSupabase
           .from("investment_assets")
           .insert({
             ticker: String(ticker).toUpperCase(),
@@ -232,6 +240,11 @@ export async function PATCH(request: NextRequest) {
     if (!user_id || !position_id) {
       return NextResponse.json({ error: "user_id e position_id são obrigatórios" }, { status: 400 })
     }
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== user_id) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
+    }
     const updatePayload: any = {}
     if (quantity !== undefined) {
       const q = Number(quantity)
@@ -275,6 +288,11 @@ export async function DELETE(request: NextRequest) {
     const { user_id, position_id } = body || {}
     if (!user_id || !position_id) {
       return NextResponse.json({ error: "user_id e position_id são obrigatórios" }, { status: 400 })
+    }
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== user_id) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
     }
     const { data, error } = await supabase
       .from("investment_positions")

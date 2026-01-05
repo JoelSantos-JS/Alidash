@@ -85,6 +85,35 @@ jest.mock('@supabase/supabase-js', () => {
   }
 })
 
+jest.mock('@/utils/supabase/server', () => {
+  const mockFrom = (table: string) => {
+    const state: any = { table, selectCols: '*', filter: {} }
+    const builder: any = {
+      select: (cols?: string) => { state.selectCols = cols || '*'; return builder },
+      eq: (col: string, val: any) => { state.filter[col] = val; return builder },
+      order: () => builder,
+      insert: (payload: any) => { mockLastInserted = Array.isArray(payload) ? payload[0] : payload; return builder },
+      update: (payload: any) => { mockLastInserted = payload; return builder },
+      single: async () => {
+        if (state.table === 'personal_budgets') {
+          if (state.selectCols === 'id') return { data: null }
+          return { data: mockLastInserted || {} }
+        }
+        return { data: {} }
+      }
+    }
+    return builder
+  }
+  return {
+    createClient: async () => ({
+      auth: {
+        getUser: async () => ({ data: { user: { id: 'u1', email: 'u1@example.com' } }, error: null })
+      },
+      from: (table: string) => mockFrom(table)
+    })
+  }
+})
+
 describe('Fluxo de Orçamento Pessoal', () => {
   it('parseCurrencyInputBRL converte string BRL para número', () => {
     const n1 = parseCurrencyInputBRL('R$ 1.800,00')

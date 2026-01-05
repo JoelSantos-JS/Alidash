@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdminService } from '@/lib/supabase-service'
+import { createClient as createSupabaseClient } from '@/utils/supabase/server'
 import { Product } from '@/types'
 
 export async function PUT(request: NextRequest) {
@@ -24,9 +25,12 @@ export async function PUT(request: NextRequest) {
 
     const updates: Partial<Product> = await request.json()
 
-    console.log('🔍 Atualizando produto (Supabase):', productId, 'para usuário:', userId)
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
 
-    // Atualizar produto diretamente no Supabase
     await supabaseAdminService.updateProduct(userId, productId, updates)
 
     return NextResponse.json({

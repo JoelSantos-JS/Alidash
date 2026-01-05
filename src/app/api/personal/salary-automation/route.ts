@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { applyUserFixedSalary, applyFixedSalaries, SalaryAutomationResult } from '@/lib/salary-automation';
+import { createClient as createSupabaseClient } from '@/utils/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,6 +29,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    }
+
     let result: SalaryAutomationResult;
 
     if (apply_all) {
@@ -41,26 +48,9 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-
-      const { createClient } = await import('@supabase/supabase-js')
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      )
-      const { data: userRow } = await supabase
-        .from('users')
-        .select('account_type, created_at')
-        .eq('id', user_id)
-        .single()
-      const isPaid = userRow?.account_type === 'pro' || userRow?.account_type === 'basic'
-      if (!isPaid) {
-        const startAt = userRow?.created_at ? new Date(userRow.created_at) : new Date()
-        const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
-        if (diffDays >= 5) {
-          return NextResponse.json({ error: 'Período gratuito de 5 dias expirado' }, { status: 403 })
-        }
+      if (user.id !== user_id) {
+        return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
       }
-
       result = await applyUserFixedSalary(user_id, month, year);
     }
 
@@ -107,12 +97,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verificar se o salário já foi aplicado para este mês
-    const { createClient } = await import('@supabase/supabase-js')
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user || user.id !== user_id) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    }
 
     const startOfMonth = new Date(year, month - 1, 1);
     const endOfMonth = new Date(year, month, 0);

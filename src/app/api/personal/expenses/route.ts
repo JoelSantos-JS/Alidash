@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { createClient as createSupabaseClient } from '@/utils/supabase/server';
 
 // GET - Buscar despesas pessoais do usuário
 export async function GET(request: NextRequest) {
@@ -19,6 +14,12 @@ export async function GET(request: NextRequest) {
 
     if (!userId) {
       return NextResponse.json({ error: 'user_id é obrigatório' }, { status: 400 });
+    }
+
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
     console.log('🔍 Buscando despesas pessoais:', { userId, limit, category, month: monthParam, year: yearParam });
@@ -121,19 +122,12 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const { data: userRow } = await supabase
-      .from('users')
-      .select('account_type, created_at')
-      .eq('id', user_id)
-      .single()
-    const isPaid = userRow?.account_type === 'pro' || userRow?.account_type === 'basic'
-    if (!isPaid) {
-      const startAt = userRow?.created_at ? new Date(userRow.created_at) : new Date()
-      const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
-      if (diffDays >= 5) {
-        return NextResponse.json({ error: 'Período gratuito de 5 dias expirado' }, { status: 403 })
-      }
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user || user.id !== user_id) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
+
     console.log('💸 Criando nova despesa pessoal:', { user_id, description, amount, category });
 
     const { data: expense, error } = await supabase
@@ -182,6 +176,12 @@ export async function DELETE(request: NextRequest) {
         { error: 'id e user_id são obrigatórios' },
         { status: 400 }
       );
+    }
+
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
     console.log('🗑️ Deletando despesa pessoal:', { expenseId, userId });

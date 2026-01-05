@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { supabaseAdminService } from '@/lib/supabase-service'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+import { createClient as createSupabaseClient } from '@/utils/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,20 +16,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'product_id é obrigatório' }, { status: 400 })
     }
 
-    const body = await request.json()
-    const { data: userRow } = await supabase
-      .from('users')
-      .select('account_type, created_at, plan_started_at')
-      .eq('id', userId)
-      .single()
-    const isPaid = userRow?.account_type === 'pro' || userRow?.account_type === 'basic'
-    if (!isPaid) {
-      const startAt = userRow?.plan_started_at ? new Date(userRow.plan_started_at) : (userRow?.created_at ? new Date(userRow.created_at) : new Date())
-      const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
-      if (diffDays >= 5) {
-        return NextResponse.json({ error: 'Período gratuito de 5 dias expirado' }, { status: 403 })
-      }
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
+    const body = await request.json()
     const quantity = Math.max(1, Math.floor(Number(body?.quantity || 0)))
     const buyerName = body?.buyerName ? String(body.buyerName) : undefined
     const dateInput = body?.date ? new Date(body.date) : new Date()

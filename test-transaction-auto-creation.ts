@@ -47,13 +47,13 @@ async function testTransactionAutoCreation() {
     };
 
     const createdRevTransaction = await supabaseAdminService.createTransaction(testUser.id, revenueTransaction);
-    console.log(`✅ Transação de receita criada: ${createdRevTransaction.id}`);
+    console.log(`✅ Transação de receita criada: ${createdRevTransaction.transaction.id}`);
 
     // Verificar se a receita foi criada automaticamente
     const { data: autoRevenue, error: autoRevError } = await supabase
       .from('revenues')
       .select('*')
-      .eq('transaction_id', createdRevTransaction.id)
+      .eq('transaction_id', createdRevTransaction.transaction.id)
       .single();
 
     if (autoRevError) {
@@ -77,13 +77,13 @@ async function testTransactionAutoCreation() {
     };
 
     const createdExpTransaction = await supabaseAdminService.createTransaction(testUser.id, expenseTransaction);
-    console.log(`✅ Transação de despesa criada: ${createdExpTransaction.id}`);
+    console.log(`✅ Transação de despesa criada: ${createdExpTransaction.transaction.id}`);
 
     // Verificar se a despesa foi criada automaticamente
     const { data: autoExpense, error: autoExpError } = await supabase
       .from('expenses')
       .select('*')
-      .eq('transaction_id', createdExpTransaction.id)
+      .eq('transaction_id', createdExpTransaction.transaction.id)
       .single();
 
     if (autoExpError) {
@@ -101,19 +101,19 @@ async function testTransactionAutoCreation() {
     await supabase
       .from('revenues')
       .delete()
-      .eq('transaction_id', createdRevTransaction.id);
+      .eq('transaction_id', createdRevTransaction.transaction.id);
 
     // Remover despesas de teste
     await supabase
       .from('expenses')
       .delete()
-      .eq('transaction_id', createdExpTransaction.id);
+      .eq('transaction_id', createdExpTransaction.transaction.id);
 
     // Remover transações de teste
     await supabase
       .from('transactions')
       .delete()
-      .in('id', [createdRevTransaction.id, createdExpTransaction.id]);
+      .in('id', [createdRevTransaction.transaction.id, createdExpTransaction.transaction.id]);
 
     console.log('✅ Dados de teste removidos');
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from '@/utils/supabase/server';
 
 // Configuração direta do Supabase para evitar problemas de inicialização
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -16,13 +17,13 @@ export async function GET(request: NextRequest) {
     console.log('🚀 API route GET iniciada');
     
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('user_id');
+    const userIdParam = searchParams.get('user_id');
     const startDateParam = searchParams.get('start_date');
     const endDateParam = searchParams.get('end_date');
 
-    console.log('🔍 Buscando transações para usuário:', userId);
+    console.log('🔍 Buscando transações para usuário:', userIdParam);
 
-    if (!userId) {
+    if (!userIdParam) {
       console.log('❌ user_id não fornecido');
       return NextResponse.json(
         { error: 'user_id é obrigatório' },
@@ -30,12 +31,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const svc = createServiceClient()
+    let internalUserId = userIdParam
+    const { data: byId } = await svc
+      .from('users')
+      .select('id')
+      .eq('id', userIdParam)
+      .single()
+    if (byId?.id) {
+      internalUserId = byId.id
+    } else {
+      const { data: byFirebase } = await svc
+        .from('users')
+        .select('id')
+        .eq('firebase_uid', userIdParam)
+        .single()
+      if (byFirebase?.id) internalUserId = byFirebase.id
+    }
+
     // Montar query com filtros opcionais de data
     console.log('🔧 Executando query com filtros de data...');
     let query = supabase
       .from('transactions')
       .select('*')
-      .eq('user_id', userId);
+      .eq('user_id', internalUserId);
 
     if (startDateParam) {
       const startDate = new Date(startDateParam);

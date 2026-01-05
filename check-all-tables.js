@@ -1,8 +1,11 @@
 const { createClient } = require('@supabase/supabase-js')
-
-const supabaseUrl = 'https://atyeakcunmhrzzpdcvxm.supabase.co'
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0eWVha2N1bm1ocnp6cGRjdnhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NzIzNDEsImV4cCI6MjA3MTQ0ODM0MX0.qFHcONpGQVAwWfMhCdh2kX5ZNBk5qtNM1M7_GS-LXZ4'
-
+require('dotenv').config({ path: '.env.local' })
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Supabase environment variables not configured')
+  process.exit(1)
+}
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 async function checkAllTables() {

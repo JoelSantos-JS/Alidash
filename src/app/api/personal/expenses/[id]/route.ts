@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { createClient as createSupabaseClient } from '@/utils/supabase/server';
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -30,6 +25,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         { error: 'id e user_id são obrigatórios' },
         { status: 400 }
       );
+    }
+
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user || user.id !== user_id) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
     if (!date || !description || !amount || !category || !payment_method) {
@@ -88,4 +89,3 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     );
   }
 }
-

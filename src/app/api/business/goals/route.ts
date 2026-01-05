@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdminService } from '@/lib/supabase-service'
+import { createClient as createSupabaseClient } from '@/utils/supabase/server'
 import type { Goal } from '@/types'
 
 export async function GET(request: NextRequest) {
@@ -14,20 +14,26 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    console.log('🔍 Buscando metas empresariais para usuário:', userId)
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
 
-    // Buscar todas as metas do usuário
-    const allGoals = await supabaseAdminService.getGoals(userId)
-    
-    // Filtrar apenas metas empresariais (category: 'business')
-    const businessGoals = allGoals.filter(goal => goal.category === 'business')
-    
-    console.log('✅ Metas empresariais encontradas:', businessGoals.length)
+    const { data: businessGoals, error } = await supabase
+      .from('goals')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('category', 'business')
+      .order('created_at', { ascending: false })
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
 
     return NextResponse.json({
       success: true,
-      goals: businessGoals,
-      count: businessGoals.length
+      goals: businessGoals || [],
+      count: (businessGoals || []).length
     })
 
   } catch (error) {
@@ -62,18 +68,36 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Garantir que a meta seja empresarial
-    const businessGoalData = {
-      ...goalData,
-      category: 'business'
+    if (process.env.NODE_ENV === 'production') {
+      const origin = request.headers.get('origin') || ''
+      const allowed = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+      const isAllowed = allowed.length ? allowed.includes(origin) : (appUrl ? origin.startsWith(appUrl) : true)
+      if (!isAllowed) {
+        return NextResponse.json({ error: 'Origem não permitida' }, { status: 403 })
+      }
     }
 
-    // Criar meta empresarial
-    const goal = await supabaseAdminService.createGoal(user_id, businessGoalData)
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== user_id) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
+    const businessGoalData = { ...goalData, category: 'business' }
+
+    const { data: created, error } = await supabase
+      .from('goals')
+      .insert({ user_id, ...businessGoalData })
+      .select()
+      .single()
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
 
     return NextResponse.json({
       success: true,
-      goal
+      goal: created
     })
 
   } catch (error) {
@@ -115,14 +139,34 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Garantir que a categoria permaneça como business
-    const businessUpdates = {
-      ...updates,
-      category: 'business'
+    if (process.env.NODE_ENV === 'production') {
+      const origin = request.headers.get('origin') || ''
+      const allowed = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+      const isAllowed = allowed.length ? allowed.includes(origin) : (appUrl ? origin.startsWith(appUrl) : true)
+      if (!isAllowed) {
+        return NextResponse.json({ error: 'Origem não permitida' }, { status: 403 })
+      }
     }
 
-    // Atualizar meta empresarial
-    const updatedGoal = await supabaseAdminService.updateGoal(userId, goalId, businessUpdates)
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
+    const businessUpdates = { ...updates, category: 'business' }
+
+    const { data: updatedGoal, error } = await supabase
+      .from('goals')
+      .update(businessUpdates)
+      .eq('id', goalId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
 
     return NextResponse.json({
       success: true,
@@ -162,8 +206,30 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Deletar meta empresarial
-    await supabaseAdminService.deleteGoal(userId, goalId)
+    if (process.env.NODE_ENV === 'production') {
+      const origin = request.headers.get('origin') || ''
+      const allowed = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+      const isAllowed = allowed.length ? allowed.includes(origin) : (appUrl ? origin.startsWith(appUrl) : true)
+      if (!isAllowed) {
+        return NextResponse.json({ error: 'Origem não permitida' }, { status: 403 })
+      }
+    }
+
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
+    const { error } = await supabase
+      .from('goals')
+      .delete()
+      .eq('id', goalId)
+      .eq('user_id', userId)
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
 
     return NextResponse.json({
       success: true,

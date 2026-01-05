@@ -65,7 +65,9 @@ export async function GET(
         selling_price,
         status,
         quantity,
-        quantity_sold
+        quantity_sold,
+        aliexpress_link,
+        purchase_date
       `)
       .eq('user_id', tokenData.user_id)
       .eq('is_public', true)
@@ -92,7 +94,9 @@ export async function GET(
       sellingPrice: Number(product.selling_price) || 0,
       status: product.status,
       quantity: Number(product.quantity) || 0,
-      quantitySold: Number(product.quantity_sold) || 0
+      quantitySold: Number(product.quantity_sold) || 0,
+      aliexpressLink: product.aliexpress_link || undefined,
+      purchaseDate: product.purchase_date || undefined
     })) || []
 
     // 4. Atualizar contador de acessos (sem bloquear resposta)

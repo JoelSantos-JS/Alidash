@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/utils/supabase/server'
+import { createServiceClient, createClient as createSupabaseClient } from '@/utils/supabase/server'
 
 export interface EmailNotificationData {
   to: string
@@ -25,6 +25,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const supabaseAuth = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+    if (user_id && user.id !== user_id) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
+    }
     const supabase = createServiceClient()
 
     const transactional = email.type === 'welcome'

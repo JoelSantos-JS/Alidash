@@ -51,6 +51,19 @@ export async function DELETE(request: NextRequest) {
         );
       }
 
+      const { error: expDeleteError } = await supabase
+        .from("expenses")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user.id);
+
+      if (expDeleteError) {
+        return NextResponse.json(
+          { success: false, error: `Erro ao deletar despesa: ${expDeleteError.message}` },
+          { status: 500 }
+        );
+      }
+
       return NextResponse.json({ success: true, deleted: id, cascade: true });
     } else {
       const { error: expDeleteError } = await supabase

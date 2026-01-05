@@ -1,9 +1,12 @@
 // Teste simples de conexão com Supabase
 const { createClient } = require('@supabase/supabase-js')
-
-const supabaseUrl = 'https://atyeakcunmhrzzpdcvxm.supabase.co'
-const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0eWVha2N1bm1ocnp6cGRjdnhtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTg3MjM0MSwiZXhwIjoyMDcxNDQ4MzQxfQ.RYbe-ygQ43m_I7COUhPmgmPmlCilCimZHSW2W7uqRkU'
-
+require('dotenv').config({ path: '.env.local' })
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('Supabase environment variables not configured')
+  process.exit(1)
+}
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 async function testConnection() {

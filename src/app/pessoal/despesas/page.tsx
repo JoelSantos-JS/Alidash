@@ -85,6 +85,7 @@ export default function PersonalExpensesPage() {
   const [filterEssential, setFilterEssential] = useState<string>('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<PersonalExpense | null>(null);
+  const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -104,6 +105,7 @@ export default function PersonalExpensesPage() {
       
       const userResult = await userResponse.json();
       const supabaseUserId = userResult.user.id;
+      setSupabaseUserId(supabaseUserId);
       
       // Buscar despesas pessoais
       const expensesResponse = await fetch(`/api/personal/expenses?user_id=${supabaseUserId}&limit=50`);
@@ -131,8 +133,9 @@ export default function PersonalExpensesPage() {
 
   const handleDeleteExpense = async (expense: PersonalExpense) => {
     try {
-      if (!user?.id) return;
-      const response = await fetch(`/api/personal/expenses?id=${expense.id}&user_id=${user.id}`, {
+      const uid = supabaseUserId || user?.id;
+      if (!uid) return;
+      const response = await fetch(`/api/personal/expenses?id=${expense.id}&user_id=${uid}`, {
         method: 'DELETE'
       });
       const result = await response.json();

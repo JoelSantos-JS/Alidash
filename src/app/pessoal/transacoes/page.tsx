@@ -182,9 +182,11 @@ export default function PersonalTransactionsPage() {
       const userResult = await userResponse.json();
       const supabaseUserId = userResult.user.id;
       
-      // Determinar o tipo e ID real da transação
-      const [type, realId] = transactionToDelete.id.split('_');
-      const endpoint = type === 'income' ? '/api/personal/incomes' : '/api/personal/expenses';
+      // Determinar o tipo e ID real da transação (robusto a IDs sem prefixo)
+      const idParts = String(transactionToDelete.id).split('_');
+      const inferredType = idParts[0] === 'income' || idParts[0] === 'expense' ? idParts[0] : transactionToDelete.type;
+      const realId = idParts.length > 1 ? idParts.slice(1).join('_') : String(transactionToDelete.id);
+      const endpoint = inferredType === 'income' ? '/api/personal/incomes' : '/api/personal/expenses';
       
       // Deletar via API
       const response = await fetch(`${endpoint}?id=${realId}&user_id=${supabaseUserId}`, {

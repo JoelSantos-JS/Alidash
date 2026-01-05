@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { createClient as createSupabaseClient, createServiceClient } from '@/utils/supabase/server';
 
 // GET - Buscar configurações de salário
 export async function GET(request: NextRequest) {
@@ -13,6 +9,12 @@ export async function GET(request: NextRequest) {
 
     if (!userId) {
       return NextResponse.json({ error: 'user_id é obrigatório' }, { status: 400 });
+    }
+
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
     const { data: settings, error } = await supabase
@@ -64,24 +66,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Dia de pagamento deve estar entre 1 e 31' }, { status: 400 });
     }
 
-    // Bloqueio para plano gratuito após 3 dias
-    const { createClient } = await import('@supabase/supabase-js')
-    const supabaseUsers = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-    const { data: userRow } = await supabaseUsers
-      .from('users')
-      .select('account_type, created_at')
-      .eq('id', user_id)
-      .single()
-    const isPaid = userRow?.account_type === 'pro' || userRow?.account_type === 'basic'
-    if (!isPaid) {
-      const startAt = userRow?.created_at ? new Date(userRow.created_at) : new Date()
-      const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
-      if (diffDays >= 5) {
-        return NextResponse.json({ error: 'Período gratuito de 5 dias expirado' }, { status: 403 })
-      }
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== user_id) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
     // Verificar se já existe configuração para este usuário
@@ -153,6 +141,12 @@ export async function DELETE(request: NextRequest) {
 
     if (!userId) {
       return NextResponse.json({ error: 'user_id é obrigatório' }, { status: 400 });
+    }
+
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
     const { error } = await supabase

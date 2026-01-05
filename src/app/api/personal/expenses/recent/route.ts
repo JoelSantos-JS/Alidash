@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { createClient as createSupabaseClient } from '@/utils/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,9 +11,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'user_id é obrigatório' }, { status: 400 });
     }
 
-    console.log('🔍 Buscando despesas recentes:', { userId, limit });
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    }
 
-    // Buscar despesas recentes do usuário
     const { data: expenses, error } = await supabase
       .from('personal_expenses')
       .select('*')
@@ -27,11 +25,9 @@ export async function GET(request: NextRequest) {
       .limit(limit);
 
     if (error) {
-      console.error('❌ Erro ao buscar despesas:', error);
       return NextResponse.json({ error: 'Erro ao buscar despesas' }, { status: 500 });
     }
 
-    // Transformar dados para o formato esperado
     const transformedExpenses = expenses?.map(expense => ({
       id: expense.id,
       description: expense.description,
@@ -42,12 +38,9 @@ export async function GET(request: NextRequest) {
       supplier: expense.supplier || 'Não informado'
     })) || [];
 
-    console.log('✅ Despesas recentes encontradas:', transformedExpenses.length);
-
     return NextResponse.json({ expenses: transformedExpenses });
 
   } catch (error) {
-    console.error('❌ Erro interno:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
 }

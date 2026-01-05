@@ -153,6 +153,12 @@ export default function ReceitasPage() {
     fetchProducts();
   }, [user?.id]);
 
+  useEffect(() => {
+    if (!authLoading && !user) {
+      setRedirecting(true);
+      router.replace('/login');
+    }
+  }, [authLoading, user, router]);
 
 
   const handleSaveRevenue = async (revenueData: Revenue) => {
@@ -281,13 +287,6 @@ export default function ReceitasPage() {
     );
   }
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      setRedirecting(true);
-      router.replace('/login');
-    }
-  }, [authLoading, user, router]);
-
   if (redirecting) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -390,9 +389,10 @@ export default function ReceitasPage() {
             periodFilter={periodFilter}
             revenues={revenues}
             onEditRevenue={(item) => {
-              const isIndependent = String(item.id).startsWith('revenue-');
-              if (!isIndependent) return;
-              const realId = String(item.id).replace('revenue-', '');
+              const idStr = String(item.id);
+              const isEditable = idStr.startsWith('revenue-') || idStr.startsWith('rev-sale-');
+              if (!isEditable) return;
+              const realId = idStr.startsWith('revenue-') ? idStr.replace('revenue-', '') : idStr.replace('rev-sale-', '');
               const original = revenues.find(r => r.id === realId);
               if (original) {
                 setRevenueToEdit(original);
@@ -401,9 +401,10 @@ export default function ReceitasPage() {
             }}
             onDeleteRevenue={async (item) => {
               if (!user?.id) return;
-              const isIndependent = String(item.id).startsWith('revenue-');
-              if (!isIndependent) return;
-              const realId = String(item.id).replace('revenue-', '');
+              const idStr = String(item.id);
+              const isDeletable = idStr.startsWith('revenue-') || idStr.startsWith('rev-sale-');
+              if (!isDeletable) return;
+              const realId = idStr.startsWith('revenue-') ? idStr.replace('revenue-', '') : idStr.replace('rev-sale-', '');
               try {
                 const response = await fetch(`/api/revenues/delete?id=${realId}`, { method: 'DELETE' });
                 const result = await response.json();

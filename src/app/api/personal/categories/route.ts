@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-service';
+import { createClient as createSupabaseClient } from '@/utils/supabase/server';
 
 // Tipos baseados no arquivo SQL
 type PersonalIncomeCategory = 
@@ -60,10 +60,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('🔍 Buscando categorias personalizadas para usuário:', userId);
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ success: false, error: 'Não autenticado' }, { status: 401 });
+    }
 
-    // Buscar categorias reais do banco de dados
-    let query = supabaseAdmin
+    let query = supabase
       .from('personal_categories')
       .select('*')
       .eq('user_id', userId)
@@ -73,14 +76,11 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
-      console.error('❌ Erro ao buscar categorias do banco:', error);
       return NextResponse.json(
         { success: false, error: `Erro ao buscar categorias: ${error.message}` },
         { status: 500 }
       );
     }
-
-    console.log('✅ Categorias encontradas:', data?.length || 0);
 
     return NextResponse.json({
       success: true,
@@ -88,7 +88,6 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ Erro ao buscar categorias personalizadas:', error);
     return NextResponse.json(
       { success: false, error: 'Erro interno do servidor' },
       { status: 500 }
@@ -102,7 +101,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { user_id, ...categoryData }: { user_id: string } & PersonalCategoryData = body;
 
-    console.log('📝 Criando categoria personalizada:', { user_id, categoryData });
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user || user.id !== user_id) {
+      return NextResponse.json({ success: false, error: 'Não autenticado' }, { status: 401 });
+    }
 
     if (!user_id) {
       return NextResponse.json(
@@ -111,22 +114,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Bloqueio para plano gratuito após 3 dias
-    const { data: userRow } = await supabaseAdmin
-      .from('users')
-      .select('account_type, created_at')
-      .eq('id', user_id)
-      .single()
-    const isPaid = userRow?.account_type === 'pro' || userRow?.account_type === 'basic'
-    if (!isPaid) {
-      const startAt = userRow?.created_at ? new Date(userRow.created_at) : new Date()
-      const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
-      if (diffDays >= 5) {
-        return NextResponse.json({ success: false, error: 'Período gratuito de 5 dias expirado' }, { status: 403 })
-      }
-    }
+    // Sistema totalmente pago: sem bloqueio por período gratuito
 
-    // Validar dados obrigatórios
     if (!categoryData.name || !categoryData.type || !categoryData.category || !categoryData.color || !categoryData.icon) {
       return NextResponse.json(
         { success: false, error: 'Campos obrigatórios: name, type, category, color, icon' },
@@ -167,8 +156,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Salvar no banco de dados real
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('personal_categories')
       .insert({
         user_id,
@@ -192,14 +180,11 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('❌ Erro ao salvar categoria no banco:', error);
       return NextResponse.json(
         { success: false, error: `Erro ao salvar categoria: ${error.message}` },
         { status: 500 }
       );
     }
-
-    console.log('✅ Categoria personalizada criada no banco:', data.id);
 
     return NextResponse.json({
       success: true,
@@ -208,7 +193,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ Erro ao criar categoria personalizada:', error);
     return NextResponse.json(
       { success: false, error: 'Erro interno do servidor' },
       { status: 500 }
@@ -222,7 +206,11 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { id, user_id, ...categoryData }: { id: string; user_id: string } & Partial<PersonalCategoryData> = body;
 
-    console.log('📝 Atualizando categoria personalizada:', { id, user_id, categoryData });
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user || user.id !== user_id) {
+      return NextResponse.json({ success: false, error: 'Não autenticado' }, { status: 401 });
+    }
 
     if (!id || !user_id) {
       return NextResponse.json(
@@ -231,19 +219,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const { data: userRow } = await supabaseAdmin
-      .from('users')
-      .select('account_type, created_at')
-      .eq('id', user_id)
-      .single()
-    const isPaid = userRow?.account_type === 'pro' || userRow?.account_type === 'basic'
-    if (!isPaid) {
-      const startAt = userRow?.created_at ? new Date(userRow.created_at) : new Date()
-      const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
-      if (diffDays >= 5) {
-        return NextResponse.json({ success: false, error: 'Período gratuito de 5 dias expirado' }, { status: 403 })
-      }
-    }
+    // Sistema totalmente pago: sem bloqueio por período gratuito
 
     const updatePayload: any = { updated_at: new Date().toISOString() }
     if (categoryData.name !== undefined) {
@@ -298,7 +274,7 @@ export async function PUT(request: NextRequest) {
           : null)
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('personal_categories')
       .update(updatePayload)
       .eq('id', id)
@@ -307,14 +283,11 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('❌ Erro ao atualizar categoria no banco:', error);
       return NextResponse.json(
         { success: false, error: `Erro ao atualizar categoria: ${error.message}` },
         { status: 500 }
       );
     }
-
-    console.log('✅ Categoria personalizada atualizada no banco:', id);
 
     return NextResponse.json({
       success: true,
@@ -323,7 +296,6 @@ export async function PUT(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ Erro ao atualizar categoria personalizada:', error);
     return NextResponse.json(
       { success: false, error: 'Erro interno do servidor' },
       { status: 500 }
@@ -338,8 +310,6 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get('id');
     const userId = searchParams.get('user_id');
 
-    console.log('🗑️ Deletando categoria personalizada:', { id, userId });
-
     if (!id || !userId) {
       return NextResponse.json(
         { success: false, error: 'id e user_id são obrigatórios' },
@@ -347,22 +317,24 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Deletar do banco de dados real
-    const { error } = await supabaseAdmin
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ success: false, error: 'Não autenticado' }, { status: 401 });
+    }
+
+    const { error } = await supabase
       .from('personal_categories')
       .delete()
       .eq('id', id)
       .eq('user_id', userId);
 
     if (error) {
-      console.error('❌ Erro ao deletar categoria do banco:', error);
       return NextResponse.json(
         { success: false, error: `Erro ao deletar categoria: ${error.message}` },
         { status: 500 }
       );
     }
-
-    console.log('✅ Categoria personalizada deletada do banco:', id);
 
     return NextResponse.json({
       success: true,
@@ -370,7 +342,6 @@ export async function DELETE(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ Erro ao deletar categoria personalizada:', error);
     return NextResponse.json(
       { success: false, error: 'Erro interno do servidor' },
       { status: 500 }

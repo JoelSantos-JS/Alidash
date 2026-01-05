@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdminService } from '@/lib/supabase-service'
+import { createClient as createSupabaseClient } from '@/utils/supabase/server'
 import type { Goal } from '@/types'
 
 export async function GET(request: NextRequest) {
@@ -14,16 +14,25 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    console.log('🔍 Buscando metas para usuário:', userId)
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
 
-    // Buscar metas diretamente por UUID do Supabase
-    const goals = await supabaseAdminService.getGoals(userId)
-    console.log('✅ Metas encontradas:', goals.length)
+    const { data: goals, error } = await supabase
+      .from('goals')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
 
     return NextResponse.json({
       success: true,
-      goals,
-      count: goals.length
+      goals: goals || [],
+      count: (goals || []).length
     })
 
   } catch (error) {
@@ -58,12 +67,35 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Criar meta usando o UUID do Supabase
-    const goal = await supabaseAdminService.createGoal(user_id, goalData)
+    if (process.env.NODE_ENV === 'production') {
+      const origin = request.headers.get('origin') || ''
+      const allowed = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+      const isAllowed = allowed.length ? allowed.includes(origin) : (appUrl ? origin.startsWith(appUrl) : true)
+      if (!isAllowed) {
+        return NextResponse.json({ error: 'Origem não permitida' }, { status: 403 })
+      }
+    }
+
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== user_id) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
+    const insertData = { user_id, ...goalData }
+    const { data: created, error } = await supabase
+      .from('goals')
+      .insert(insertData)
+      .select()
+      .single()
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
 
     return NextResponse.json({
       success: true,
-      goal
+      goal: created
     })
 
   } catch (error) {
@@ -105,8 +137,32 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Atualizar meta
-    const updatedGoal = await supabaseAdminService.updateGoal(userId, goalId, updates)
+    if (process.env.NODE_ENV === 'production') {
+      const origin = request.headers.get('origin') || ''
+      const allowed = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+      const isAllowed = allowed.length ? allowed.includes(origin) : (appUrl ? origin.startsWith(appUrl) : true)
+      if (!isAllowed) {
+        return NextResponse.json({ error: 'Origem não permitida' }, { status: 403 })
+      }
+    }
+
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
+    const { data: updatedGoal, error } = await supabase
+      .from('goals')
+      .update(updates)
+      .eq('id', goalId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
 
     return NextResponse.json({
       success: true,
@@ -146,8 +202,30 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Deletar meta
-    await supabaseAdminService.deleteGoal(userId, goalId)
+    if (process.env.NODE_ENV === 'production') {
+      const origin = request.headers.get('origin') || ''
+      const allowed = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+      const isAllowed = allowed.length ? allowed.includes(origin) : (appUrl ? origin.startsWith(appUrl) : true)
+      if (!isAllowed) {
+        return NextResponse.json({ error: 'Origem não permitida' }, { status: 403 })
+      }
+    }
+
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
+    const { error } = await supabase
+      .from('goals')
+      .delete()
+      .eq('id', goalId)
+      .eq('user_id', userId)
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
 
     return NextResponse.json({
       success: true,

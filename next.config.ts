@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
   
   // Headers de cache otimizados com revalidação
   async headers() {
+    const isProd = process.env.NODE_ENV === 'production'
+    const cspDev = "default-src 'self'; img-src 'self' data: blob: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; connect-src 'self' https: wss: https://*.supabase.co; frame-ancestors 'none'; form-action 'self'; base-uri 'self';"
+    const cspProd = "default-src 'self'; img-src 'self' data: blob: https:; script-src 'self'; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; connect-src 'self' https: wss: https://*.supabase.co; frame-ancestors 'none'; form-action 'self'; base-uri 'self';"
     return [
       {
         source: '/_next/static/:path*',
@@ -106,8 +109,40 @@ const nextConfig: NextConfig = {
             value: 'nosniff',
           },
           {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'require-corp',
+          },
+          {
+            key: 'Origin-Agent-Cluster',
+            value: '?1',
+          },
+          {
             key: 'X-DNS-Prefetch-Control',
             value: 'on',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'geolocation=(), microphone=(), camera=(), payment=(), interest-cohort=()',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: isProd ? cspProd : cspDev,
+          },
+          {
+            key: 'X-Permitted-Cross-Domain-Policies',
+            value: 'none',
           },
         ],
       },

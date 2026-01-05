@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdminService } from '@/lib/supabase-service'
 import { Product } from '@/types'
+import { createClient as createSupabaseClient } from '@/utils/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,17 +15,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const productData: Omit<Product, 'id'> = await request.json()
-    const userRow = await supabaseAdminService.getUserById(userId)
-    const accountType = userRow?.account_type
-    const isPaid = accountType === 'pro' || accountType === 'basic'
-    if (!isPaid) {
-      const startAt = userRow?.plan_started_at ? new Date(userRow.plan_started_at) : (userRow?.created_at ? new Date(userRow.created_at) : new Date())
-      const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
-      if (diffDays >= 5) {
-        return NextResponse.json({ error: 'Período gratuito de 5 dias expirado' }, { status: 403 })
-      }
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
+
+    const productData: Omit<Product, 'id'> = await request.json()
 
     console.log('🔍 Criando produto (Supabase) para usuário:', userId)
 

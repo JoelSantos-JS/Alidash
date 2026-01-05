@@ -1,7 +1,12 @@
 const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' })
 
-const supabaseUrl = 'https://ixqhqjqjqjqjqjqjqjqj.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4cWhxanFqcWpxanFqcWpxanFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ5NzI0NzQsImV4cCI6MjA1MDU0ODQ3NH0.Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Supabase environment variables not configured')
+  process.exit(1)
+}
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 

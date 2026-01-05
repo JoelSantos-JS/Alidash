@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { createClient as createSupabaseClient } from '@/utils/supabase/server';
 
 export async function GET(request: NextRequest) {
   const routeStart = Date.now();
@@ -20,48 +15,46 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('🔍 Buscando usuário no Supabase:', { userId, email });
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    }
 
-    let user = null;
+    if (userId && user.id !== userId) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
+    }
+    if (email && user.email && user.email !== email) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
+    }
 
-    // Tentar buscar pelo User ID primeiro
+    let resultUser = null;
+
     if (userId) {
-      const { data: userById, error: idError } = await supabase
+      const { data: userById } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .single();
-
-      if (!idError && userById) {
-        user = userById;
-        console.log('✅ Usuário encontrado pelo User ID');
-      }
-    }
-
-    // Se não encontrou pelo ID, tentar pelo email
-    if (!user && email) {
-      const { data: userByEmail, error: emailError } = await supabase
+      resultUser = userById || null;
+    } else if (email) {
+      const { data: userByEmail } = await supabase
         .from('users')
         .select('*')
         .eq('email', email)
         .single();
-
-      if (!emailError && userByEmail) {
-        user = userByEmail;
-        console.log('✅ Usuário encontrado pelo email');
-      }
+      resultUser = userByEmail || null;
     }
 
     const total = Date.now() - routeStart;
     const serverTiming = `total;dur=${Math.round(total)}`;
-    if (user) {
-      return NextResponse.json({ success: true, user }, { headers: { 'Server-Timing': serverTiming } });
+    if (resultUser) {
+      return NextResponse.json({ success: true, user: resultUser }, { headers: { 'Server-Timing': serverTiming } });
     } else {
       return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404, headers: { 'Server-Timing': serverTiming } });
     }
 
   } catch (error) {
-    console.error('❌ Erro ao buscar usuário:', error);
     const serverTiming = `total;dur=${Math.round(Date.now() - routeStart)}`;
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500, headers: { 'Server-Timing': serverTiming } });
   }

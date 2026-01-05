@@ -5,7 +5,7 @@ import type {
   Goal
 } from '../types'
 
-// Environment variables validation
+const isServer = typeof window === 'undefined'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -14,18 +14,18 @@ if (!supabaseUrl) {
   throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
 }
 
-if (!supabaseAnonKey) {
+if (!isServer && !supabaseAnonKey) {
   throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is required')
 }
-
-// Detect environment to avoid creating multiple auth clients in the browser
-const isServer = typeof window === 'undefined'
+if (isServer && !supabaseAnonKey && !supabaseServiceKey) {
+  throw new Error('Supabase key is required')
+}
 
 // Client-side Supabase client (SSR cookies) e fallback no server
 export const supabase = isServer
   ? createClient(
       supabaseUrl,
-      supabaseAnonKey,
+      supabaseAnonKey || supabaseServiceKey!,
       {
         auth: {
           autoRefreshToken: false,
@@ -43,7 +43,7 @@ export const supabase = isServer
 export const supabaseAdmin = isServer
   ? createClient(
       supabaseUrl,
-      supabaseServiceKey || supabaseAnonKey,
+      (supabaseServiceKey || supabaseAnonKey)!,
       {
         auth: {
           autoRefreshToken: false,
@@ -83,12 +83,28 @@ export class SupabaseService {
     name?: string | null
     avatar_url?: string | null
     account_type?: string
+    firebase_uid?: string
   }) {
-    const { data: existing, error: existingError } = await this.client
-      .from('users')
-      .select('*')
-      .eq('email', userData.email)
-      .single()
+    let existing: any = null
+    let existingError: any = null
+    if (userData.firebase_uid) {
+      const { data, error } = await this.client
+        .from('users')
+        .select('*')
+        .eq('firebase_uid', userData.firebase_uid)
+        .single()
+      existing = data
+      existingError = error
+    }
+    if (!existing && !existingError) {
+      const { data, error } = await this.client
+        .from('users')
+        .select('*')
+        .eq('email', userData.email)
+        .single()
+      existing = data
+      existingError = error
+    }
 
     if (!existingError && existing) {
       if (userData.account_type && existing.account_type !== userData.account_type) {
@@ -111,6 +127,9 @@ export class SupabaseService {
     }
     if (userData.id) {
       insertData.id = userData.id
+    }
+    if (userData.firebase_uid) {
+      insertData.firebase_uid = userData.firebase_uid
     }
 
     const { data, error } = await this.client
@@ -157,6 +176,20 @@ export class SupabaseService {
     return data
   }
 
+  async getUserByFirebaseUid(firebaseUid: string) {
+    const { data, error } = await this.client
+      .from('users')
+      .select('*')
+      .eq('firebase_uid', firebaseUid)
+      .single()
+
+    if (error && error.code !== 'PGRST116') {
+      throw error
+    }
+    
+    return data
+  }
+
   async getUserByEmail(email: string) {
     const { data, error } = await this.client
       .from('users')
@@ -180,6 +213,35 @@ export class SupabaseService {
     if (error) {
       throw error
     }
+  }
+
+  async updateUser(userId: string, updates: { name?: string | null; avatar_url?: string | null }) {
+    const updateData: any = {}
+    if (updates.name !== undefined) updateData.name = updates.name
+    if (updates.avatar_url !== undefined) updateData.avatar_url = updates.avatar_url
+    const { data, error } = await this.client
+      .from('users')
+      .update(updateData)
+      .eq('id', userId)
+      .select()
+      .single()
+    if (error) {
+      throw new Error(`Erro ao atualizar usuário: ${error.message}`)
+    }
+    return data
+  }
+
+  async updateUserFirebaseUid(userId: string, firebaseUid: string) {
+    const { data, error } = await this.client
+      .from('users')
+      .update({ firebase_uid: firebaseUid, updated_at: new Date().toISOString() })
+      .eq('id', userId)
+      .select()
+      .single()
+    if (error) {
+      throw new Error(`Erro ao atualizar firebase_uid: ${error.message}`)
+    }
+    return data
   }
 
   async updateUserAccountType(userId: string, accountType: string) {
@@ -311,7 +373,7 @@ export class SupabaseService {
     isInstallment?: boolean
     installmentInfo?: any
   }) {
-    const insertData = {
+    const insertData: Record<string, any> = {
       user_id: userId,
       description: transactionData.description,
       amount: transactionData.amount,
@@ -322,9 +384,7 @@ export class SupabaseService {
       status: transactionData.status || 'completed',
       notes: transactionData.notes || '',
       tags: transactionData.tags || [],
-      date: transactionData.date.toISOString(),
-      is_installment: transactionData.isInstallment || false,
-      installment_info: transactionData.installmentInfo || null
+      date: transactionData.date.toISOString()
     }
 
     const { data, error } = await this.client
@@ -337,7 +397,26 @@ export class SupabaseService {
       throw new Error(`Erro ao criar transação: ${error.message}`)
     }
 
-    return { success: true, transaction: data }
+    let final = data
+    if (transactionData.isInstallment !== undefined || transactionData.installmentInfo !== undefined) {
+      try {
+        const updatePayload: Record<string, any> = {}
+        if (transactionData.isInstallment !== undefined) updatePayload.is_installment = transactionData.isInstallment
+        if (transactionData.installmentInfo !== undefined) updatePayload.installment_info = transactionData.installmentInfo
+        if (Object.keys(updatePayload).length) {
+          const { data: updated } = await this.client
+            .from('transactions')
+            .update(updatePayload)
+            .eq('id', data.id)
+            .eq('user_id', userId)
+            .select()
+            .single()
+          if (updated) final = updated
+        }
+      } catch {}
+    }
+
+    return { success: true, transaction: final }
   }
 
   async getTransactions(userId: string, filters?: {

@@ -51,6 +51,19 @@ export async function DELETE(request: NextRequest) {
         );
       }
 
+      const { error: revDeleteError } = await supabase
+        .from("revenues")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user.id);
+
+      if (revDeleteError) {
+        return NextResponse.json(
+          { success: false, error: `Erro ao deletar receita: ${revDeleteError.message}` },
+          { status: 500 }
+        );
+      }
+
       return NextResponse.json({ success: true, deleted: id, cascade: true });
     } else {
       const { error: revDeleteError } = await supabase

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdminService } from '@/lib/supabase-service'
+import { createClient as createSupabaseClient } from '@/utils/supabase/server'
 
 export async function DELETE(request: NextRequest) {
   try {
@@ -21,9 +22,12 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    console.log('🔍 Deletando produto (Supabase):', productId, 'para usuário:', userId)
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
 
-    // Deletar produto diretamente no Supabase
     await supabaseAdminService.deleteProduct(userId, productId)
 
     return NextResponse.json({

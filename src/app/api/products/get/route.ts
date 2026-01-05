@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdminService } from '@/lib/supabase-service'
 import { createClient } from '@supabase/supabase-js'
+import { createServiceClient } from '@/utils/supabase/server'
+import type { Product, ProductImage, Sale } from '@/types'
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,19 +16,38 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    console.log('🔍 Buscando produtos (Supabase) para usuário ID:', userId)
+    const serviceSupabase = createServiceClient()
+    let internalUserId = userId
+    const { data: byId } = await serviceSupabase
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .single()
+    if (byId?.id) {
+      internalUserId = byId.id
+    } else {
+      const { data: byFirebase } = await serviceSupabase
+        .from('users')
+        .select('id')
+        .eq('firebase_uid', userId)
+        .single()
+      if (byFirebase?.id) internalUserId = byFirebase.id
+    }
 
-    const products = await supabaseAdminService.getProducts(userId)
+    console.log('🔍 Buscando produtos (Supabase) para usuário ID:', internalUserId)
+
+    const products = await supabaseAdminService.getProducts(internalUserId)
     console.log('📦 Produtos encontrados:', products.length)
 
     // Transformar dados do Supabase para o formato esperado
-    const transformedProducts = products.map((product: any) => ({
+    const transformedProducts: Product[] = products.map((product: any) => ({
       id: product.id,
       name: product.name,
       category: product.category,
       supplier: product.supplier || '',
       aliexpressLink: product.aliexpress_link || '',
       imageUrl: product.image_url || '',
+      isPublic: !!product.is_public,
       description: product.description || '',
       notes: product.notes || '',
       trackingCode: product.tracking_code || '',
@@ -48,21 +69,27 @@ export async function GET(request: NextRequest) {
       roi: product.roi || 0,
       actualProfit: product.actual_profit || 0,
       daysToSell: product.days_to_sell ?? null,
-      sales: [],
-      images: []
+      sales: [] as Sale[],
+      images: [] as ProductImage[]
     }))
 
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
     const { data: sales } = await supabase
       .from('sales')
       .select('id, product_id, quantity, buyer_name, date')
-      .eq('user_id', userId)
+      .eq('user_id', internalUserId)
 
     if (sales && sales.length > 0) {
-      const byProduct = new Map<string, any[]>()
+      const byProduct = new Map<string, Sale[]>()
       for (const s of sales) {
         const arr = byProduct.get(s.product_id) || []
-        arr.push({ id: s.id, date: new Date(s.date), quantity: s.quantity, buyerName: s.buyer_name || undefined, productId: s.product_id })
+        arr.push({
+          id: String(s.id),
+          date: new Date(s.date),
+          quantity: Number(s.quantity || 0),
+          buyerName: s.buyer_name ? String(s.buyer_name) : undefined,
+          productId: s.product_id ? String(s.product_id) : undefined
+        })
         byProduct.set(s.product_id, arr)
       }
       for (let i = 0; i < transformedProducts.length; i++) {
@@ -74,32 +101,53 @@ export async function GET(request: NextRequest) {
     const { data: allImages } = await supabase
       .from('product_images')
       .select('id, product_id, url, type, alt, created_at, order')
-      .eq('user_id', userId)
+      .eq('user_id', internalUserId)
 
     if (allImages && allImages.length > 0) {
-      const imgsByProduct = new Map<string, any[]>()
+      const imgsByProduct = new Map<string, ProductImage[]>()
       for (const img of allImages) {
         const arr = imgsByProduct.get(img.product_id) || []
+        const createdAtStr = typeof img.created_at === 'string' ? img.created_at : new Date(img.created_at).toISOString()
         arr.push({
-          id: img.id,
-          url: img.url,
-          type: img.type || 'gallery',
-          alt: img.alt || '',
-          created_at: img.created_at,
-          order: img.order || 0,
-        })
+          id: String(img.id),
+          url: String(img.url),
+          type: (img.type || 'gallery') as ProductImage['type'],
+          alt: String(img.alt || ''),
+          created_at: createdAtStr,
+          order: typeof img.order === 'number' ? img.order : Number(img.order || 0),
+          path: undefined
+        } as ProductImage)
         imgsByProduct.set(img.product_id, arr)
       }
       for (let i = 0; i < transformedProducts.length; i++) {
         const p = transformedProducts[i]
         const imgs = imgsByProduct.get(p.id) || []
-        transformedProducts[i] = { ...p, images: imgs.length > 0 ? imgs.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) : (p.imageUrl ? [{ id: `${p.id}-main`, url: p.imageUrl, type: 'main', alt: 'Imagem principal', created_at: new Date().toISOString(), order: 1 }] : []) }
+        const mainFallback: ProductImage[] = p.imageUrl ? [{
+          id: `${p.id}-main`,
+          url: String(p.imageUrl),
+          type: 'main',
+          alt: 'Imagem principal',
+          created_at: new Date().toISOString(),
+          order: 1
+        }] : []
+        transformedProducts[i] = {
+          ...p,
+          images: imgs.length > 0 ? imgs.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) : mainFallback
+        }
       }
     } else {
       // Fallback: criar imagem principal a partir de imageUrl
       for (let i = 0; i < transformedProducts.length; i++) {
         const p = transformedProducts[i]
-        transformedProducts[i] = { ...p, images: p.imageUrl ? [{ id: `${p.id}-main`, url: p.imageUrl, type: 'main', alt: 'Imagem principal', created_at: new Date().toISOString(), order: 1 }] : [] }
+        const mainFallback: ProductImage[] = p.imageUrl ? [{
+          id: `${p.id}-main`,
+          url: String(p.imageUrl),
+          type: 'main',
+          alt: 'Imagem principal',
+          created_at: new Date().toISOString(),
+          order: 1
+        }] : []
+        transformedProducts[i] = { ...p, images: mainFallback }
       }
     }
 

@@ -11,22 +11,14 @@ export async function POST(request: NextRequest) {
 
     const { data: userRow, error: userError } = await supabase
       .from('users')
-      .select('account_type, created_at, plan_started_at')
+      .select('account_type, created_at')
       .eq('id', user.id)
       .single()
     
     const resolvedUser = userError || !userRow
-      ? { account_type: 'personal', created_at: new Date().toISOString(), plan_started_at: null }
+      ? { account_type: 'personal', created_at: new Date().toISOString() }
       : userRow
 
-    const isPaid = resolvedUser.account_type === 'pro' || resolvedUser.account_type === 'basic'
-    if (!isPaid) {
-      const startAt = resolvedUser.plan_started_at ? new Date(resolvedUser.plan_started_at) : (resolvedUser.created_at ? new Date(resolvedUser.created_at) : new Date())
-      const diffDays = Math.floor((Date.now() - startAt.getTime()) / (1000 * 60 * 60 * 24))
-      if (diffDays >= 5) {
-        return NextResponse.json({ error: 'Período gratuito de 5 dias expirado' }, { status: 403 })
-      }
-    }
     if (resolvedUser.account_type === 'basic') {
       const now = new Date()
       const start = new Date(now.getFullYear(), now.getMonth(), 1)

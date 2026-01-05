@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
   async headers() {
     const isProd = process.env.NODE_ENV === 'production'
     const cspDev = "default-src 'self'; img-src 'self' data: blob: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; connect-src 'self' https: wss: https://*.supabase.co; frame-ancestors 'none'; form-action 'self'; base-uri 'self';"
-    const cspProd = "default-src 'self'; img-src 'self' data: blob: https:; script-src 'self'; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; connect-src 'self' https: wss: https://*.supabase.co; frame-ancestors 'none'; form-action 'self'; base-uri 'self';"
+    const cspProd = "default-src 'self'; img-src 'self' data: blob: https:; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; connect-src 'self' https: wss: https://*.supabase.co; frame-ancestors 'none'; form-action 'self'; base-uri 'self';"
     return [
       {
         source: '/_next/static/:path*',

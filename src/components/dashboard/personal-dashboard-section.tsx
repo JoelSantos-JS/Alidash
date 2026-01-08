@@ -18,7 +18,7 @@ import MonthlyIncomeForm from "@/components/forms/monthly-income-form";
 import SalarySettingsForm from "@/components/forms/salary-settings-form";
 import { GoalsWidget } from "@/components/dashboard/goals-widget";
 import type { Goal } from "@/types";
-import { getCache, setCache } from "@/lib/client-cache";
+import { getCache, setCache, invalidateCacheByPrefix } from "@/lib/client-cache";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -105,7 +105,7 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading, viewMo
   const [showIncomeForm, setShowIncomeForm] = useState(false);
   const [showSalarySettings, setShowSalarySettings] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const CACHE_TTL_MS = 30_000; // 30 segundos
+  const CACHE_TTL_MS = 5_000;
   const [animatingCard, setAnimatingCard] = useState<null | 'income' | 'expenses'>(null);
   const [budgetTotal, setBudgetTotal] = useState<number>(0);
   const [showBudgetDialog, setShowBudgetDialog] = useState(false);
@@ -290,6 +290,27 @@ export function PersonalDashboardSection({ user, periodFilter, isLoading, viewMo
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const handler = () => {
+      if (!user?.id) return;
+      const uid = user.id;
+      invalidateCacheByPrefix(`personal:summary:${uid}`);
+      invalidateCacheByPrefix(`personal:expenses:${uid}`);
+      invalidateCacheByPrefix(`personal:incomes:${uid}`);
+      invalidateCacheByPrefix(`personal:goals:${uid}`);
+      invalidateCacheByPrefix(`personal:budgets:${uid}`);
+      loadPersonalData();
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("personal:dataUpdated", handler as EventListener);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("personal:dataUpdated", handler as EventListener);
+      }
+    };
+  }, [user?.id]);
 
   const handleSaveBudget = async () => {
     if (!user?.id) return;

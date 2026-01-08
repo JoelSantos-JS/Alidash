@@ -54,6 +54,7 @@ export default function InvestimentosPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const { user } = useAuth()
   const isMobile = useIsMobile()
+  const [activeTab, setActiveTab] = useState<"pessoais" | "geral">("pessoais")
   const [allocationData, setAllocationData] = useState<{ name: string; value: number }[]>([])
   const [totalValor, setTotalValor] = useState(0)
   const [totalAportes, setTotalAportes] = useState(0)
@@ -337,7 +338,7 @@ export default function InvestimentosPage() {
         <div className="sticky top-0 z-30 border-b bg-card p-1 sm:p-2 h-12 sm:h-auto">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Button asChild variant="outline" size="sm" className="inline-flex h-9 min-h-11 px-3">
+              <Button asChild variant="outline" size="sm" className="h-8 px-2">
                 <Link href="/">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Dashboard
@@ -345,7 +346,7 @@ export default function InvestimentosPage() {
               </Button>
               <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" className="lg:hidden h-9 min-h-11 px-3">
+                  <Button variant="outline" size="sm" className="lg:hidden h-8 px-2">
                     <Menu className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
@@ -374,11 +375,11 @@ export default function InvestimentosPage() {
               {period === "month" && (
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 h-9 min-h-11 px-3">
-                      <CalendarDays className="h-4 w-4" />
-                      {format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}
-                    </Button>
-                  </PopoverTrigger>
+                  <Button variant="outline" size="sm" className="gap-2 h-8 px-2">
+                    <CalendarDays className="h-4 w-4" />
+                    {format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}
+                  </Button>
+                </PopoverTrigger>
                   <PopoverContent className="sm:w-auto w-[calc(100vw-2rem)] p-0" align="end">
                     <Calendar
                       mode="single"
@@ -398,15 +399,15 @@ export default function InvestimentosPage() {
         </div>
 
         <div className="flex-1 overflow-auto p-2 sm:p-4">
-          <Tabs defaultValue="pessoais" className="w-full">
-            <TabsList className="mb-2 w-full grid grid-cols-2 gap-1 h-8 sm:h-10 p-0.5 rounded-sm">
-              <TabsTrigger value="pessoais" className="w-full min-w-0 h-7 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm justify-center truncate">Pessoais</TabsTrigger>
-              <TabsTrigger value="geral" className="w-full min-w-0 h-7 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm justify-center truncate">Geral</TabsTrigger>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="pessoais">Pessoais</TabsTrigger>
+              <TabsTrigger value="geral">Geral</TabsTrigger>
             </TabsList>
 
             <TabsContent value="pessoais">
               <div className="mb-2 sm:mb-4">
-                <Button size="sm" className="w-full sm:w-auto h-11 min-h-11 text-sm rounded-full" onClick={() => setShowContributionModal(true)}>
+                <Button size="sm" className="w-full sm:w-auto h-9 text-sm" onClick={() => setShowContributionModal(true)}>
                   Adicionar Aporte
                 </Button>
                 <Dialog open={showContributionModal} onOpenChange={setShowContributionModal}>
@@ -795,7 +796,8 @@ export default function InvestimentosPage() {
               </div>
 
               <div className="grid gap-2 sm:gap-4 md:grid-cols-2 mt-2 sm:mt-4">
-                <Card className={cn(portfolioSeries.every(p => (Number(p.value) || 0) === 0) ? "hidden" : "")}>
+                {portfolioSeries.every(p => (Number(p.value) || 0) === 0) ? null : (
+                <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <DollarSign className="h-5 w-5" />
@@ -817,8 +819,10 @@ export default function InvestimentosPage() {
                     </div>
                   </CardContent>
                 </Card>
+                )}
 
-                <Card className={cn(portfolioSeries.every(p => (Number(p.aportes) || 0) === 0) ? "hidden" : "")}>
+                {portfolioSeries.every(p => (Number(p.aportes) || 0) === 0) ? null : (
+                <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <DollarSign className="h-5 w-5" />
@@ -839,6 +843,7 @@ export default function InvestimentosPage() {
                     </div>
                   </CardContent>
                 </Card>
+                )}
               </div>
 
               {/* Seção de drawdown removida para simplificar a interface */}
@@ -1439,6 +1444,7 @@ export default function InvestimentosPage() {
             </TabsContent>
 
             <TabsContent value="geral">
+              {activeTab !== "geral" ? null : (
               <div className="grid gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <Card>
                   <CardHeader>
@@ -1569,6 +1575,7 @@ export default function InvestimentosPage() {
                   </CardContent>
                 </Card>
               </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>

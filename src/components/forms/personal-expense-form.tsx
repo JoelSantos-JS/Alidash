@@ -144,6 +144,11 @@ export default function PersonalExpenseForm({ isOpen, onClose, onSuccess, editin
       });
       
       onSuccess();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('personal:dataUpdated', {
+          detail: { type: 'expense', action: editingExpense ? 'update' : 'add' }
+        }));
+      }
       
     } catch (error) {
       console.error('Erro ao salvar despesa:', error);

@@ -100,6 +100,11 @@ export default function MonthlyIncomeForm({ isOpen, onClose, onSuccess, editingI
       });
 
       onSuccess();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('personal:dataUpdated', {
+          detail: { type: 'income', action: editingIncome ? 'update' : 'add' }
+        }));
+      }
       onClose();
       
       // Reset form

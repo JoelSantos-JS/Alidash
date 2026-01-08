@@ -92,45 +92,50 @@ export function ExpensesChart({
   totalIncome = 0,
   expensesByCategory = []
 }: ExpensesChartProps) {
+  const safePercent = (part: number, total: number) => {
+    if (!isFinite(part) || !isFinite(total) || total <= 0 || part <= 0) return 0;
+    const p = (part / total) * 100;
+    return isFinite(p) && p >= 0 ? p : 0;
+  };
   
   // Dados padrão se não houver dados de categoria
   const defaultCategoryData: ExpenseData[] = [
     {
       category: 'housing',
-      amount: essentialExpenses * 0.4,
-      percentage: (essentialExpenses * 0.4 / totalExpenses) * 100,
+      amount: totalExpenses > 0 ? essentialExpenses * 0.4 : 0,
+      percentage: safePercent(totalExpenses > 0 ? essentialExpenses * 0.4 : 0, totalExpenses),
       color: COLORS.housing,
       icon: 'housing',
       isEssential: true
     },
     {
       category: 'food',
-      amount: essentialExpenses * 0.35,
-      percentage: (essentialExpenses * 0.35 / totalExpenses) * 100,
+      amount: totalExpenses > 0 ? essentialExpenses * 0.35 : 0,
+      percentage: safePercent(totalExpenses > 0 ? essentialExpenses * 0.35 : 0, totalExpenses),
       color: COLORS.food,
       icon: 'food',
       isEssential: true
     },
     {
       category: 'transportation',
-      amount: essentialExpenses * 0.25,
-      percentage: (essentialExpenses * 0.25 / totalExpenses) * 100,
+      amount: totalExpenses > 0 ? essentialExpenses * 0.25 : 0,
+      percentage: safePercent(totalExpenses > 0 ? essentialExpenses * 0.25 : 0, totalExpenses),
       color: COLORS.transportation,
       icon: 'transportation',
       isEssential: true
     },
     {
       category: 'entertainment',
-      amount: nonEssentialExpenses * 0.6,
-      percentage: (nonEssentialExpenses * 0.6 / totalExpenses) * 100,
+      amount: totalExpenses > 0 ? nonEssentialExpenses * 0.6 : 0,
+      percentage: safePercent(totalExpenses > 0 ? nonEssentialExpenses * 0.6 : 0, totalExpenses),
       color: COLORS.entertainment,
       icon: 'entertainment',
       isEssential: false
     },
     {
       category: 'clothing',
-      amount: nonEssentialExpenses * 0.4,
-      percentage: (nonEssentialExpenses * 0.4 / totalExpenses) * 100,
+      amount: totalExpenses > 0 ? nonEssentialExpenses * 0.4 : 0,
+      percentage: safePercent(totalExpenses > 0 ? nonEssentialExpenses * 0.4 : 0, totalExpenses),
       color: COLORS.clothing,
       icon: 'clothing',
       isEssential: false
@@ -138,12 +143,13 @@ export function ExpensesChart({
   ];
 
   const categoryData = expensesByCategory.length > 0 ? expensesByCategory : defaultCategoryData;
+  const hasCategoryValues = totalExpenses > 0 && categoryData.some((c) => c.amount > 0);
 
   // Dados para o gráfico de pizza
   const pieData = categoryData.map(item => ({
     name: CATEGORY_NAMES[item.category as keyof typeof CATEGORY_NAMES] || item.category,
     value: item.amount,
-    percentage: item.percentage,
+    percentage: safePercent(item.amount, totalExpenses),
     color: item.color,
     isEssential: item.isEssential
   }));
@@ -177,7 +183,7 @@ export function ExpensesChart({
             {data.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
           <p className="text-sm text-muted-foreground">
-            {data.payload.percentage?.toFixed(1)}% do total
+            {safePercent(Number(data.value) || 0, totalExpenses).toFixed(1)}% do total
           </p>
         </div>
       );
@@ -205,7 +211,7 @@ export function ExpensesChart({
             </div>
             <div className="text-xs text-muted-foreground">Saídas Essenciais</div>
             <div className="text-xs font-medium text-red-600">
-              {((essentialExpenses / totalExpenses) * 100).toFixed(1)}%
+              {safePercent(essentialExpenses, totalExpenses).toFixed(1)}%
             </div>
           </div>
           <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
@@ -214,7 +220,7 @@ export function ExpensesChart({
             </div>
             <div className="text-xs text-muted-foreground">Saídas Opcionais</div>
             <div className="text-xs font-medium text-blue-600">
-              {((nonEssentialExpenses / totalExpenses) * 100).toFixed(1)}%
+              {safePercent(nonEssentialExpenses, totalExpenses).toFixed(1)}%
             </div>
           </div>
         </div>
@@ -245,41 +251,47 @@ export function ExpensesChart({
         {/* Lista de Categorias */}
         <div className="space-y-2">
           <h4 className="text-sm font-medium">Detalhamento por Categoria</h4>
-          <div className="space-y-2">
-            {categoryData
-              .sort((a, b) => b.amount - a.amount)
-              .map((item, index) => {
-                const IconComponent = CATEGORY_ICONS[item.category as keyof typeof CATEGORY_ICONS] || Wallet;
-                return (
-                  <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="p-2 rounded-lg"
-                        style={{ backgroundColor: `${item.color}20`, color: item.color }}
-                      >
-                        <IconComponent className="h-4 w-4" />
+          {hasCategoryValues ? (
+            <div className="space-y-2">
+              {categoryData
+                .sort((a, b) => b.amount - a.amount)
+                .map((item, index) => {
+                  const IconComponent = CATEGORY_ICONS[item.category as keyof typeof CATEGORY_ICONS] || Wallet;
+                  return (
+                    <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="p-2 rounded-lg"
+                          style={{ backgroundColor: `${item.color}20`, color: item.color }}
+                        >
+                          <IconComponent className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">
+                            {CATEGORY_NAMES[item.category as keyof typeof CATEGORY_NAMES] || item.category}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {safePercent(item.amount, totalExpenses).toFixed(1)}% do total
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">
-                          {CATEGORY_NAMES[item.category as keyof typeof CATEGORY_NAMES] || item.category}
+                      <div className="text-right">
+                        <p className="text-sm font-bold">
+                          {item.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {item.percentage.toFixed(1)}% do total
-                        </p>
+                        <Badge variant={item.isEssential ? 'destructive' : 'secondary'} className="text-xs">
+                          {item.isEssential ? 'Essencial' : 'Opcional'}
+                        </Badge>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold">
-                        {item.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </p>
-                      <Badge variant={item.isEssential ? 'destructive' : 'secondary'} className="text-xs">
-                        {item.isEssential ? 'Essencial' : 'Opcional'}
-                      </Badge>
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
+                  );
+                })}
+            </div>
+          ) : (
+            <div className="p-3 rounded-lg bg-muted/30 text-sm text-muted-foreground">
+              Nenhum gasto registrado no período.
+            </div>
+          )}
         </div>
 
         {/* Gráfico de Barras - Comparação */}

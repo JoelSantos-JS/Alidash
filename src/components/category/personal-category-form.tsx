@@ -480,7 +480,7 @@ export function PersonalCategoryForm({ category, onSubmit, onCancel, isLoading =
       </Tabs>
 
       {/* Botões de Ação (fixos ao fundo durante a rolagem) */}
-      <div className="mt-2 sticky bottom-0 z-10 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-3 sm:p-4 flex items-center justify-end gap-3">
+      <div className="mt-2 sm:sticky bottom-0 z-10 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-3 sm:p-4 flex items-center justify-end gap-3">
         <Button
           type="button"
           variant="outline"

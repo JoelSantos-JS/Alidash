@@ -251,7 +251,7 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-full sm:max-w-[500px] max-h-[85vh] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-green-600" />
@@ -297,7 +297,7 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
                     Dia do Recebimento
                   </Label>
                   <Select value={formData.payment_day} onValueChange={(value) => setFormData({...formData, payment_day: value})}>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -413,8 +413,8 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
           </Tabs>
           
           {/* Botões */}
-          <div className="flex gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-4 sm:pt-6">
+            <Button type="button" variant="outline" onClick={onClose} className="w-full sm:flex-1">
               Cancelar
             </Button>
             <Button
@@ -422,12 +422,12 @@ export default function SalarySettingsForm({ isOpen, onClose, onSuccess }: Salar
               variant="outline"
               onClick={handleApplyCurrentMonth}
               disabled={applyingCurrentMonth || !formData.amount}
-              className="flex-1"
+              className="w-full sm:flex-1 whitespace-normal sm:whitespace-nowrap"
             >
               <Calendar className="h-4 w-4 mr-2" />
               Aplicar Mês Atual
             </Button>
-            <Button type="submit" disabled={loading} className="flex-1">
+            <Button type="submit" disabled={loading} className="w-full sm:flex-1">
               {loading ? 'Salvando...' : 'Salvar'}
             </Button>
           </div>

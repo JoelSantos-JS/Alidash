@@ -184,7 +184,7 @@ export function InvestmentsSidebar({
   return (
     <div className={cn("w-full sm:w-80 bg-card border-r h-full flex flex-col", className)}>
       <ScrollArea className="flex-1">
-        <div className="p-3 sm:p-4 space-y-6">
+        <div className="p-3 sm:p-4 space-y-4 sm:space-y-6">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
@@ -236,11 +236,12 @@ export function InvestmentsSidebar({
                 <CardHeader className="py-2">
                   <CardTitle className="text-sm">Novo Investimento</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-2 sm:space-y-3">
                   {newInvestment.assetClass !== "fixed_income" && (
                     <div className="space-y-1">
                       <Label className="text-xs">Ticker</Label>
                       <Input
+                        className="h-8 sm:h-9"
                         value={newInvestment.ticker}
                         onChange={(e) => setNewInvestment((s) => ({ ...s, ticker: e.target.value }))}
                         placeholder="Ex: PETR4"
@@ -253,7 +254,7 @@ export function InvestmentsSidebar({
                         value={newInvestment.assetClass}
                         onValueChange={(v) => setNewInvestment((s) => ({ ...s, assetClass: v as AssetClass }))}
                       >
-                        <SelectTrigger className="h-9">
+                        <SelectTrigger className="h-8 sm:h-9">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -272,7 +273,7 @@ export function InvestmentsSidebar({
                           value={newInvestment.fiType || ""}
                           onValueChange={(v) => setNewInvestment((s) => ({ ...s, fiType: (v as any) || undefined }))}
                         >
-                          <SelectTrigger className="h-9">
+                          <SelectTrigger className="h-8 sm:h-9">
                             <SelectValue placeholder="Selecione o tipo" />
                           </SelectTrigger>
                           <SelectContent>
@@ -289,7 +290,7 @@ export function InvestmentsSidebar({
                       value={newInvestment.accountId || ""}
                       onValueChange={(v) => setNewInvestment((s) => ({ ...s, accountId: v === "none" ? null : v }))}
                     >
-                      <SelectTrigger className="h-9">
+                      <SelectTrigger className="h-8 sm:h-9">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -310,10 +311,11 @@ export function InvestmentsSidebar({
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Quantidade</Label>
                       <Input
+                        className="h-8 sm:h-9"
                         type="number"
                         value={Number.isFinite(newInvestment.quantity) ? newInvestment.quantity : 0}
                         onChange={(e) => setNewInvestment((s) => ({ ...s, quantity: parseFloat(e.target.value) || 0 }))}
@@ -322,6 +324,7 @@ export function InvestmentsSidebar({
                     <div className="space-y-1">
                       <Label className="text-xs">Preço Médio</Label>
                       <Input
+                        className="h-8 sm:h-9"
                         type="number"
                         value={Number.isFinite(newInvestment.avgPrice) ? newInvestment.avgPrice : 0}
                         onChange={(e) => setNewInvestment((s) => ({ ...s, avgPrice: parseFloat(e.target.value) || 0 }))}
@@ -340,10 +343,10 @@ export function InvestmentsSidebar({
 
           <Separator />
 
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             <Label className="text-xs font-medium text-muted-foreground">PERÍODO</Label>
             <Select value={period} onValueChange={(v) => onPeriodChange(v as Period)}>
-              <SelectTrigger className="h-9">
+              <SelectTrigger className="h-8 sm:h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -355,10 +358,10 @@ export function InvestmentsSidebar({
             </Select>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             <Label className="text-xs font-medium text-muted-foreground">CLASSE</Label>
             <Select value={classFilter} onValueChange={(v) => onClassFilterChange(v as AssetClass)}>
-              <SelectTrigger className="h-9">
+              <SelectTrigger className="h-8 sm:h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -372,10 +375,10 @@ export function InvestmentsSidebar({
             </Select>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             <Label className="text-xs font-medium text-muted-foreground">CORRETORA</Label>
             <Select value={accountFilter} onValueChange={onAccountFilterChange}>
-              <SelectTrigger className="h-9">
+              <SelectTrigger className="h-8 sm:h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -404,7 +407,7 @@ export function InvestmentsSidebar({
                   <CardContent className="space-y-2 p-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Corretora</Label>
-                      <Input value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)} placeholder="Ex: Clear, XP, Binance" />
+                      <Input className="h-8 sm:h-9" value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)} placeholder="Ex: Clear, XP, Binance" />
                     </div>
                     <div className="flex justify-end">
                       <Button size="sm" onClick={handleCreateAccount}>Salvar</Button>
@@ -432,8 +435,8 @@ export function InvestmentsSidebar({
                       data={allocation && allocation.length ? allocation : mockAllocation}
                       dataKey="value"
                       nameKey="name"
-                      innerRadius={50}
-                      outerRadius={80}
+                      innerRadius={isMobile ? 36 : 50}
+                      outerRadius={isMobile ? 64 : 80}
                     >
                       {(allocation && allocation.length ? allocation : mockAllocation).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

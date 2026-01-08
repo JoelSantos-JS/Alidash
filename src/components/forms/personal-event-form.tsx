@@ -336,7 +336,7 @@ export function PersonalEventForm({ event, onSubmit, onCancel, isOpen }: Persona
               </TabsContent>
             </Tabs>
 
-            <div className="sticky bottom-0 bg-card px-2 sm:px-0 pt-3 border-t">
+            <div className="sm:sticky bottom-0 bg-card px-2 sm:px-0 pt-3 border-t">
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button
                   type="button"

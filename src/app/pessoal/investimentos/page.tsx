@@ -20,8 +20,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useAuth } from "@/hooks/use-supabase-auth"
 import { useToast } from "@/hooks/use-toast"
+import { useIsMobile } from "@/hooks/use-mobile"
 import {
   LineChart,
   Line,
@@ -51,6 +53,7 @@ export default function InvestimentosPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const { user } = useAuth()
+  const isMobile = useIsMobile()
   const [allocationData, setAllocationData] = useState<{ name: string; value: number }[]>([])
   const [totalValor, setTotalValor] = useState(0)
   const [totalAportes, setTotalAportes] = useState(0)
@@ -114,6 +117,7 @@ export default function InvestimentosPage() {
     { label: "Mai", value: 0, aportes: 0 },
     { label: "Jun", value: 0, aportes: 0 }
   ])
+  const [showContributionModal, setShowContributionModal] = useState(false)
 
   // Simplificado: sem drawdown calculado
   const [editingPos, setEditingPos] = useState<{ id: string; quantity: number; avgPrice: number } | null>(null)
@@ -330,10 +334,10 @@ export default function InvestimentosPage() {
       />
 
       <div className="flex-1 flex flex-col">
-        <div className="border-b bg-card p-2 sm:p-4">
+        <div className="sticky top-0 z-30 border-b bg-card p-1 sm:p-2 h-12 sm:h-auto">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Button asChild variant="outline" size="sm" className="inline-flex">
+              <Button asChild variant="outline" size="sm" className="inline-flex h-9 min-h-11 px-3">
                 <Link href="/">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Dashboard
@@ -341,7 +345,7 @@ export default function InvestimentosPage() {
               </Button>
               <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" className="lg:hidden">
+                  <Button variant="outline" size="sm" className="lg:hidden h-9 min-h-11 px-3">
                     <Menu className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
@@ -363,14 +367,14 @@ export default function InvestimentosPage() {
                 </SheetContent>
               </Sheet>
               <TrendingUp className="h-5 w-5 text-primary" />
-              <h1 className="text-xl font-bold">Investimentos</h1>
+              <h1 className="text-lg sm:text-xl font-bold leading-none">Investimentos</h1>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="outline">{period === "month" ? "Mês" : period}</Badge>
               {period === "month" && (
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2">
+                    <Button variant="outline" size="sm" className="gap-2 h-9 min-h-11 px-3">
                       <CalendarDays className="h-4 w-4" />
                       {format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}
                     </Button>
@@ -395,343 +399,349 @@ export default function InvestimentosPage() {
 
         <div className="flex-1 overflow-auto p-2 sm:p-4">
           <Tabs defaultValue="pessoais" className="w-full">
-            <TabsList className="mb-4 flex flex-wrap gap-2">
-              <TabsTrigger value="pessoais">Pessoais</TabsTrigger>
-              <TabsTrigger value="geral">Geral</TabsTrigger>
+            <TabsList className="mb-2 w-full grid grid-cols-2 gap-1 h-8 sm:h-10 p-0.5 rounded-sm">
+              <TabsTrigger value="pessoais" className="w-full min-w-0 h-7 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm justify-center truncate">Pessoais</TabsTrigger>
+              <TabsTrigger value="geral" className="w-full min-w-0 h-7 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm justify-center truncate">Geral</TabsTrigger>
             </TabsList>
 
             <TabsContent value="pessoais">
-              <Card className="mb-3 sm:mb-4 border-0 bg-transparent sm:border sm:bg-card">
-                <CardHeader className="py-2 sm:py-3">
-                  <CardTitle className="text-base sm:text-lg">Adicionar Aporte</CardTitle>
-                </CardHeader>
-                <CardContent className="p-2 sm:p-4">
-                  <Form {...contributionForm}>
-                    <form
-                      onSubmit={contributionForm.handleSubmit(async (data) => {
-                        if (!user?.id) {
-                          toast({ title: "Usuário não identificado", description: "Faça login para salvar aportes" })
-                          return
-                        }
-                        try {
-                          const selectedAccountId = accounts.find(acc => acc.id === data.account)?.id || null
-                          const rfMap: Record<string, string> = {
-                            tesouro_selic: "TESOURO SELIC",
-                            cdb: "CDB",
-                            lca: "LCA"
-                          }
-                          const derivedTicker =
-                            data.assetClass === "fixed_income"
-                              ? ((data.fixedIncomeType && rfMap[data.fixedIncomeType]) || undefined)
-                              : undefined
-                          const payload = {
-                            user_id: user.id,
-                            ticker: ((data as any).ticker || derivedTicker) || undefined,
-                            asset_class: data.assetClass,
-                            quantity: 1,
-                            unit_price: data.amount,
-                            fees: 0,
-                            taxes: 0,
-                            date: data.date.toISOString(),
-                            notes: data.notes || "",
-                            account_id: selectedAccountId
-                          }
-                          const res = await fetch("/api/investments/contributions", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify(payload)
-                          })
-                          if (!res.ok) {
-                            const err = await res.json().catch(() => ({}))
-                            toast({ title: "Erro ao salvar aporte", description: err.error || "Tente novamente" })
+              <div className="mb-2 sm:mb-4">
+                <Button size="sm" className="w-full sm:w-auto h-11 min-h-11 text-sm rounded-full" onClick={() => setShowContributionModal(true)}>
+                  Adicionar Aporte
+                </Button>
+                <Dialog open={showContributionModal} onOpenChange={setShowContributionModal}>
+                  <DialogContent className="w-full sm:max-w-[540px] max-h-[85vh] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+                    <DialogHeader>
+                      <DialogTitle>Adicionar Aporte</DialogTitle>
+                    </DialogHeader>
+                    <Form {...contributionForm}>
+                      <form
+                        onSubmit={contributionForm.handleSubmit(async (data) => {
+                          if (!user?.id) {
+                            toast({ title: "Usuário não identificado", description: "Faça login para salvar aportes" })
                             return
                           }
-                          toast({ title: "Aporte registrado", description: "Contribuição salva com sucesso" })
-                          contributionForm.reset({
-                            amount: 0,
-                            assetClass: "stock",
-                            account: "clear",
-                            date: new Date(),
-                            notes: ""
-                          })
-                          setAmountInput("")
-                          setIsLoading(true)
-                          const classParam = classFilter !== "all" ? `&class=${classFilter}` : ""
-                          Promise.all([
-                            fetch(`/api/investments/positions?user_id=${user.id}${classParam}`),
-                            fetch(`/api/investments/allocation?user_id=${user.id}`),
-                            fetch(`/api/investments/contributions?user_id=${user.id}&months=6${classParam}`)
-                          ]).then(async ([positionsRes, allocationRes, contributionsRes]) => {
-                            let totalFromPositions = 0
-                            if (positionsRes.ok) {
-                              const { positions } = await positionsRes.json()
-                              totalFromPositions = (positions || []).reduce((sum: number, p: any) => sum + (Number(p.marketValue) || 0), 0)
-                              setTotalValor(totalFromPositions)
-                              setPositions(positions || [])
+                          try {
+                            const selectedAccountId = accounts.find(acc => acc.id === data.account)?.id || null
+                            const rfMap: Record<string, string> = {
+                              tesouro_selic: "TESOURO SELIC",
+                              cdb: "CDB",
+                              lca: "LCA"
                             }
-                            if (allocationRes.ok) {
-                              const { distribution } = await allocationRes.json()
-                              const mapped = (distribution || []).map((d: any) => ({
-                                name: d.class === "stock" ? "Ações" :
-                                      d.class === "fii" ? "FIIs" :
-                                      d.class === "etf" ? "ETFs" :
-                                      d.class === "fixed_income" ? "Renda Fixa" :
-                                      d.class === "crypto" ? "Cripto" : String(d.class),
-                                value: Number(d.percentage) || 0
-                              }))
-                              setAllocationData(mapped)
+                            const derivedTicker =
+                              data.assetClass === "fixed_income"
+                                ? ((data.fixedIncomeType && rfMap[data.fixedIncomeType]) || undefined)
+                                : undefined
+                            const payload = {
+                              user_id: user.id,
+                              ticker: ((data as any).ticker || derivedTicker) || undefined,
+                              asset_class: data.assetClass,
+                              quantity: 1,
+                              unit_price: data.amount,
+                              fees: 0,
+                              taxes: 0,
+                              date: data.date.toISOString(),
+                              notes: data.notes || "",
+                              account_id: selectedAccountId
                             }
-                            if (contributionsRes.ok) {
-                              const { contributions } = await contributionsRes.json()
-                              const monthsLabels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
-                              const totals = (contributions || []).map((c: any) => Number(c.total) || 0)
-                              const series = (contributions || []).map((c: any, i: number) => {
-                                const [year, month] = String(c.month).split("-").map((x: string) => Number(x))
-                                const label = monthsLabels[(month - 1) % 12]
-                                const remainder = totals.slice(i + 1).reduce((acc: number, v: number) => acc + v, 0)
-                                const value = Math.max(0, totalFromPositions - remainder)
-                                return { label, value, aportes: totals[i] }
-                              })
-                              setPortfolioSeries(series)
-                              setTotalAportes(
-                                series.reduce(
-                                  (acc: number, p: { label: string; value: number; aportes: number }) => acc + p.aportes,
-                                  0
+                            const res = await fetch("/api/investments/contributions", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify(payload)
+                            })
+                            if (!res.ok) {
+                              const err = await res.json().catch(() => ({}))
+                              toast({ title: "Erro ao salvar aporte", description: err.error || "Tente novamente" })
+                              return
+                            }
+                            toast({ title: "Aporte registrado", description: "Contribuição salva com sucesso" })
+                            contributionForm.reset({
+                              amount: 0,
+                              assetClass: "stock",
+                              account: "clear",
+                              date: new Date(),
+                              notes: ""
+                            })
+                            setAmountInput("")
+                            setIsLoading(true)
+                            const classParam = classFilter !== "all" ? `&class=${classFilter}` : ""
+                            Promise.all([
+                              fetch(`/api/investments/positions?user_id=${user.id}${classParam}`),
+                              fetch(`/api/investments/allocation?user_id=${user.id}`),
+                              fetch(`/api/investments/contributions?user_id=${user.id}&months=6${classParam}`)
+                            ]).then(async ([positionsRes, allocationRes, contributionsRes]) => {
+                              let totalFromPositions = 0
+                              if (positionsRes.ok) {
+                                const { positions } = await positionsRes.json()
+                                totalFromPositions = (positions || []).reduce((sum: number, p: any) => sum + (Number(p.marketValue) || 0), 0)
+                                setTotalValor(totalFromPositions)
+                                setPositions(positions || [])
+                              }
+                              if (allocationRes.ok) {
+                                const { distribution } = await allocationRes.json()
+                                const mapped = (distribution || []).map((d: any) => ({
+                                  name: d.class === "stock" ? "Ações" :
+                                        d.class === "fii" ? "FIIs" :
+                                        d.class === "etf" ? "ETFs" :
+                                        d.class === "fixed_income" ? "Renda Fixa" :
+                                        d.class === "crypto" ? "Cripto" : String(d.class),
+                                  value: Number(d.percentage) || 0
+                                }))
+                                setAllocationData(mapped)
+                              }
+                              if (contributionsRes.ok) {
+                                const { contributions } = await contributionsRes.json()
+                                const monthsLabels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+                                const totals = (contributions || []).map((c: any) => Number(c.total) || 0)
+                                const series = (contributions || []).map((c: any, i: number) => {
+                                  const [year, month] = String(c.month).split("-").map((x: string) => Number(x))
+                                  const label = monthsLabels[(month - 1) % 12]
+                                  const remainder = totals.slice(i + 1).reduce((acc: number, v: number) => acc + v, 0)
+                                  const value = Math.max(0, totalFromPositions - remainder)
+                                  return { label, value, aportes: totals[i] }
+                                })
+                                setPortfolioSeries(series)
+                                setTotalAportes(
+                                  series.reduce(
+                                    (acc: number, p: { label: string; value: number; aportes: number }) => acc + p.aportes,
+                                    0
+                                  )
                                 )
-                              )
-                            }
-                          }).finally(() => setIsLoading(false))
-                        } catch (e: any) {
-                          toast({ title: "Erro inesperado", description: e?.message || "Falha ao conectar com o servidor" })
-                        }
-                      })}
-                      className="space-y-3 sm:space-y-4"
-                    >
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
-                        <FormField
-                          control={contributionForm.control}
-                          name="amount"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Valor do Aporte</FormLabel>
-                              <FormControl>
-                                <Input
-                                  value={amountInput}
-                                  onChange={(e) => {
-                                    const v = e.target.value
-                                    const digits = v.replace(/\D/g, "")
-                                    const number = digits ? parseInt(digits, 10) : 0
-                                    const formatted = (number / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-                                    setAmountInput(formatted)
-                                    field.onChange(number / 100)
-                                  }}
-                                  placeholder="R$ 0,00"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={contributionForm.control}
-                          name="assetClass"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Classe</FormLabel>
-                              <Select value={field.value} onValueChange={field.onChange}>
-                                <SelectTrigger className="w-full">
-                                  <SelectValue placeholder="Selecione a classe" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="stock">Ações</SelectItem>
-                                  <SelectItem value="fii">FIIs</SelectItem>
-                                  <SelectItem value="etf">ETFs</SelectItem>
-                                  <SelectItem value="fixed_income">Renda Fixa</SelectItem>
-                                  <SelectItem value="crypto">Cripto</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        {contributionForm.watch("assetClass") === "fixed_income" ? (
+                              }
+                            }).finally(() => setIsLoading(false))
+                            setShowContributionModal(false)
+                          } catch (e: any) {
+                            toast({ title: "Erro inesperado", description: e?.message || "Falha ao conectar com o servidor" })
+                          }
+                        })}
+                        className="space-y-3 sm:space-y-4"
+                      >
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
                           <FormField
                             control={contributionForm.control}
-                            name="fixedIncomeType"
+                            name="amount"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Tipo (Renda Fixa)</FormLabel>
+                                <FormLabel>Valor do Aporte</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    value={amountInput}
+                                    onChange={(e) => {
+                                      const v = e.target.value
+                                      const digits = v.replace(/\D/g, "")
+                                      const number = digits ? parseInt(digits, 10) : 0
+                                      const formatted = (number / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                                      setAmountInput(formatted)
+                                      field.onChange(number / 100)
+                                    }}
+                                    placeholder="R$ 0,00"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={contributionForm.control}
+                            name="assetClass"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Classe</FormLabel>
                                 <Select value={field.value} onValueChange={field.onChange}>
                                   <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Selecione o tipo" />
+                                    <SelectValue placeholder="Selecione a classe" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="tesouro_selic">Tesouro Selic</SelectItem>
-                                    <SelectItem value="cdb">CDB</SelectItem>
-                                    <SelectItem value="lca">LCA</SelectItem>
+                                    <SelectItem value="stock">Ações</SelectItem>
+                                    <SelectItem value="fii">FIIs</SelectItem>
+                                    <SelectItem value="etf">ETFs</SelectItem>
+                                    <SelectItem value="fixed_income">Renda Fixa</SelectItem>
+                                    <SelectItem value="crypto">Cripto</SelectItem>
                                   </SelectContent>
                                 </Select>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
-                        ) : (
+                          {contributionForm.watch("assetClass") === "fixed_income" ? (
+                            <FormField
+                              control={contributionForm.control}
+                              name="fixedIncomeType"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Tipo (Renda Fixa)</FormLabel>
+                                  <Select value={field.value} onValueChange={field.onChange}>
+                                    <SelectTrigger className="w-full">
+                                      <SelectValue placeholder="Selecione o tipo" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="tesouro_selic">Tesouro Selic</SelectItem>
+                                      <SelectItem value="cdb">CDB</SelectItem>
+                                      <SelectItem value="lca">LCA</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          ) : (
+                            <FormField
+                              control={contributionForm.control}
+                              name="ticker"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Ticker (opcional)</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Ex: BOVA11"
+                                      value={(field.value as any) || ""}
+                                      onChange={(e) => field.onChange(e.target.value)}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
                           <FormField
                             control={contributionForm.control}
-                            name="ticker"
+                            name="account"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Ticker (opcional)</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder="Ex: BOVA11"
-                                    value={(field.value as any) || ""}
-                                    onChange={(e) => field.onChange(e.target.value)}
-                                  />
-                                </FormControl>
+                                <FormLabel>Corretora</FormLabel>
+                                <Select value={field.value} onValueChange={field.onChange}>
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Selecione a conta" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {accounts.length > 0 ? (
+                                      accounts.map(acc => (
+                                        <SelectItem key={acc.id} value={acc.id}>
+                                          {acc.name}{acc.broker ? ` • ${acc.broker}` : ""}
+                                        </SelectItem>
+                                      ))
+                                    ) : (
+                                      <>
+                                        <SelectItem value="clear">Clear</SelectItem>
+                                        <SelectItem value="xp">XP</SelectItem>
+                                        <SelectItem value="easynvest">Nubank</SelectItem>
+                                      </>
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                <div className="mt-2 space-y-2">
+                                  <Button size="sm" className="w-full sm:w-auto" variant={showNewAccount ? "secondary" : "outline"} onClick={() => setShowNewAccount(v => !v)}>
+                                    {showNewAccount ? "Cancelar" : "Nova Corretora"}
+                                  </Button>
+                                  {showNewAccount && (
+                                    <Card>
+                                      <CardContent className="space-y-2 p-3">
+                                        <div className="space-y-1">
+                                          <FormLabel className="text-xs">Corretora</FormLabel>
+                                        <Input value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)} placeholder="Ex: Clear, XP, Binance" />
+                                        </div>
+                                        <div className="sm:flex sm:justify-end">
+                                          <Button
+                                            size="sm"
+                                            className="w-full sm:w-auto"
+                                            onClick={async () => {
+                                              if (!user?.id || !newAccountName.trim()) {
+                                                  toast({ title: "Dados inválidos", description: "Informe o nome da corretora" })
+                                                  return
+                                                }
+                                                const res = await fetch("/api/investments/accounts", {
+                                                  method: "POST",
+                                                  headers: { "Content-Type": "application/json" },
+                                                  body: JSON.stringify({
+                                                    user_id: user.id,
+                                                    name: newAccountName.trim(),
+                                                    broker: null
+                                                  })
+                                                })
+                                                const json = await res.json()
+                                                if (!res.ok) {
+                                                  toast({ title: "Erro ao criar conta", description: json.error || "Tente novamente" })
+                                                  return
+                                                }
+                                                setAccounts(prev => [json.account, ...prev])
+                                                contributionForm.setValue("account", json.account.id)
+                                                setShowNewAccount(false)
+                                                setNewAccountName("")
+                                                toast({ title: "Corretora criada", description: "Corretora adicionada com sucesso" })
+                                              }}
+                                            >
+                                              Salvar
+                                            </Button>
+                                        </div>
+                                      </CardContent>
+                                    </Card>
+                                  )}
+                                </div>
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={contributionForm.control}
+                            name="date"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Data</FormLabel>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      className={cn(
+                                        "w-full justify-start text-left font-normal",
+                                        !field.value && "text-muted-foreground"
+                                      )}
+                                    >
+                                      {field.value ? format(field.value, "PPP", { locale: ptBR }) : "Selecionar data"}
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="sm:w-auto w-[calc(100vw-2rem)] p-0" align="start">
+                                    <Calendar
+                                      mode="single"
+                                      selected={field.value}
+                                      onSelect={field.onChange}
+                                      initialFocus
+                                    />
+                                  </PopoverContent>
+                                </Popover>
                                 <FormMessage />
                               </FormItem>
-                          )}
-                        />
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
+                            )}
+                          />
+                        </div>
                         <FormField
                           control={contributionForm.control}
-                          name="account"
+                          name="notes"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Corretora</FormLabel>
-                              <Select value={field.value} onValueChange={field.onChange}>
-                                <SelectTrigger className="w-full">
-                                  <SelectValue placeholder="Selecione a conta" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {accounts.length > 0 ? (
-                                    accounts.map(acc => (
-                                      <SelectItem key={acc.id} value={acc.id}>
-                                        {acc.name}{acc.broker ? ` • ${acc.broker}` : ""}
-                                      </SelectItem>
-                                    ))
-                                  ) : (
-                                    <>
-                                      <SelectItem value="clear">Clear</SelectItem>
-                                      <SelectItem value="xp">XP</SelectItem>
-                                      <SelectItem value="easynvest">Nubank</SelectItem>
-                                    </>
-                                  )}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                              <div className="mt-2 space-y-2">
-                                <Button size="sm" className="w-full sm:w-auto" variant={showNewAccount ? "secondary" : "outline"} onClick={() => setShowNewAccount(v => !v)}>
-                                  {showNewAccount ? "Cancelar" : "Nova Corretora"}
-                                </Button>
-                                {showNewAccount && (
-                                  <Card>
-                                    <CardContent className="space-y-2 p-3">
-                                      <div className="space-y-1">
-                                        <FormLabel className="text-xs">Corretora</FormLabel>
-                                      <Input value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)} placeholder="Ex: Clear, XP, Binance" />
-                                    </div>
-                                    <div className="sm:flex sm:justify-end">
-                                      <Button
-                                        size="sm"
-                                        className="w-full sm:w-auto"
-                                        onClick={async () => {
-                                          if (!user?.id || !newAccountName.trim()) {
-                                              toast({ title: "Dados inválidos", description: "Informe o nome da corretora" })
-                                              return
-                                            }
-                                            const res = await fetch("/api/investments/accounts", {
-                                              method: "POST",
-                                              headers: { "Content-Type": "application/json" },
-                                              body: JSON.stringify({
-                                                user_id: user.id,
-                                                name: newAccountName.trim(),
-                                                broker: null
-                                              })
-                                            })
-                                            const json = await res.json()
-                                            if (!res.ok) {
-                                              toast({ title: "Erro ao criar conta", description: json.error || "Tente novamente" })
-                                              return
-                                            }
-                                            setAccounts(prev => [json.account, ...prev])
-                                            contributionForm.setValue("account", json.account.id)
-                                            setShowNewAccount(false)
-                                            setNewAccountName("")
-                                            toast({ title: "Corretora criada", description: "Corretora adicionada com sucesso" })
-                                          }}
-                                        >
-                                          Salvar
-                                        </Button>
-                                      </div>
-                                    </CardContent>
-                                  </Card>
-                                )}
-                              </div>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={contributionForm.control}
-                          name="date"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Data</FormLabel>
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    className={cn(
-                                      "w-full justify-start text-left font-normal",
-                                      !field.value && "text-muted-foreground"
-                                    )}
-                                  >
-                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : "Selecionar data"}
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="sm:w-auto w-[calc(100vw-2rem)] p-0" align="start">
-                                  <Calendar
-                                    mode="single"
-                                    selected={field.value}
-                                    onSelect={field.onChange}
-                                    initialFocus
-                                  />
-                                </PopoverContent>
-                              </Popover>
+                              <FormLabel>Observações</FormLabel>
+                              <FormControl>
+                                <Textarea placeholder="Detalhes sobre o aporte" {...field} />
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-                      </div>
-                      <FormField
-                        control={contributionForm.control}
-                        name="notes"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Observações</FormLabel>
-                            <FormControl>
-                              <Textarea placeholder="Detalhes sobre o aporte" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <div className="sm:flex sm:justify-end">
-                        <Button type="submit" className="w-full sm:w-auto">Salvar Aporte</Button>
-                      </div>
-                    </form>
-                  </Form>
-                </CardContent>
-              </Card>
+                        <div className="sm:flex sm:justify-end">
+                          <Button type="submit" className="w-full sm:w-auto">Salvar Aporte</Button>
+                        </div>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              </div>
               <Card>
-                <CardHeader className="pb-2">
+                <CardHeader className="py-1">
                   <CardTitle className="text-sm font-medium">Taxas de Referência</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="grid grid-cols-3 gap-1 text-[14px] leading-tight">
                     <div>
                       <p className="text-muted-foreground">Selic</p>
                       <p className="font-medium">{selic !== null ? `${selic.toFixed(2)}%` : "-"}</p>
@@ -748,44 +758,44 @@ export default function InvestimentosPage() {
                 </CardContent>
               </Card>
 
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <Card>
-                  <CardHeader className="pb-2">
+                  <CardHeader className="py-1">
                     <CardTitle className="text-sm font-medium">Valor da Carteira</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-primary">
+                    <div className={cn("text-2xl font-bold tracking-tight", totalValor === 0 && "opacity-70 text-muted-foreground", totalValor > 0 && "text-primary")}>
                       {totalValor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </div>
-                    <p className="text-xs text-muted-foreground">Atual</p>
+                    <p className="text-[12px] text-muted-foreground leading-tight">Atual</p>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardHeader className="pb-2">
+                  <CardHeader className="py-1">
                     <CardTitle className="text-sm font-medium">Aportes no Período</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className={cn("text-2xl font-bold", "text-green-600")}>
+                    <div className={cn("text-2xl font-bold tracking-tight", totalAportes === 0 ? "opacity-70 text-muted-foreground" : "text-green-600")}>
                       {totalAportes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </div>
-                    <p className="text-xs text-muted-foreground">Total de contribuições</p>
+                    <p className="text-[12px] text-muted-foreground leading-tight">Total de contribuições</p>
                   </CardContent>
                 </Card>
-              <Card>
-                  <CardHeader className="pb-2">
+                <Card>
+                  <CardHeader className="py-1">
                     <CardTitle className="text-sm font-medium">Saldo de Ganhos</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-blue-600">
+                    <div className={cn("text-2xl font-bold tracking-tight", (totalValor - totalAportes) >= 0 ? "text-green-600" : "text-red-600", (totalValor - totalAportes) === 0 && "opacity-70 text-muted-foreground")}>
                       {(totalValor - totalAportes).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </div>
-                    <p className="text-xs text-muted-foreground">Variação líquida</p>
+                    <p className="text-[12px] text-muted-foreground leading-tight">Variação líquida</p>
                   </CardContent>
                 </Card>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2 mt-4">
-                <Card>
+              <div className="grid gap-2 sm:gap-4 md:grid-cols-2 mt-2 sm:mt-4">
+                <Card className={cn(portfolioSeries.every(p => (Number(p.value) || 0) === 0) ? "hidden" : "")}>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <DollarSign className="h-5 w-5" />
@@ -793,14 +803,14 @@ export default function InvestimentosPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-64">
+                    <div className={cn("min-w-0 overflow-hidden", isMobile ? "h-40" : "h-64")}>
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={portfolioSeries}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="label" />
-                          <YAxis />
+                        <LineChart data={portfolioSeries} margin={{ left: isMobile ? 8 : 16, right: isMobile ? 8 : 16, top: 8, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                          <XAxis dataKey="label" tick={{ fontSize: isMobile ? 13 : 13 }} tickMargin={6} />
+                          <YAxis tick={{ fontSize: isMobile ? 13 : 13 }} tickFormatter={(v: number) => v.toLocaleString("pt-BR")} width={isMobile ? 40 : 42} />
                           <Tooltip />
-                          <Legend />
+                          {isMobile ? null : <Legend />}
                           <Line type="monotone" dataKey="value" name="Valor" stroke="#6366F1" strokeWidth={2} dot={false} />
                         </LineChart>
                       </ResponsiveContainer>
@@ -808,7 +818,7 @@ export default function InvestimentosPage() {
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className={cn(portfolioSeries.every(p => (Number(p.aportes) || 0) === 0) ? "hidden" : "")}>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <DollarSign className="h-5 w-5" />
@@ -816,19 +826,19 @@ export default function InvestimentosPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-64">
+                    <div className={cn("min-w-0 overflow-hidden", isMobile ? "h-40" : "h-64")}>
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={portfolioSeries}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="label" />
-                          <YAxis />
+                        <BarChart data={portfolioSeries} margin={{ left: isMobile ? 8 : 16, right: isMobile ? 8 : 16, top: 8, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                          <XAxis dataKey="label" tick={{ fontSize: isMobile ? 13 : 13 }} tickMargin={6} />
+                          <YAxis tick={{ fontSize: isMobile ? 13 : 13 }} tickFormatter={(v: number) => v.toLocaleString("pt-BR")} width={isMobile ? 40 : 42} />
                           <Tooltip />
                           <Bar dataKey="aportes" name="Aportes" fill="#10B981" />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
                   </CardContent>
-              </Card>
+                </Card>
               </div>
 
               {/* Seção de drawdown removida para simplificar a interface */}
@@ -924,7 +934,7 @@ export default function InvestimentosPage() {
                         </table>
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground">Nenhuma posição de renda fixa</p>
+                      <p className="text-xs text-muted-foreground text-center py-6 border rounded-md">Nenhuma posição de renda fixa</p>
                     )}
                   </CardContent>
                 </Card>
@@ -1073,7 +1083,7 @@ export default function InvestimentosPage() {
                       const change = btcInfo.change24h ?? null
                       return (
                         <div className="mb-3">
-                          <div className="flex flex-nowrap items-center gap-6 whitespace-nowrap py-1.5 px-3 rounded border">
+                          <div className="flex flex-wrap md:flex-nowrap items-center gap-4 md:gap-6 py-1.5 px-3 rounded border">
                             <div className="flex items-baseline gap-1.5">
                               <span className="text-sm text-muted-foreground">Preço atual do Bitcoin:</span>
                               <span className="text-base sm:text-lg font-medium">
@@ -1102,7 +1112,7 @@ export default function InvestimentosPage() {
                                   : "-"}
                               </span>
                             </div>
-                        </div>
+                          </div>
                         </div>
                       )
                     })()}
@@ -1429,13 +1439,13 @@ export default function InvestimentosPage() {
             </TabsContent>
 
             <TabsContent value="geral">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <Card>
                   <CardHeader>
                     <CardTitle>Alocação por Classe</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-64">
+                    <div className={cn(isMobile ? "h-40" : "h-64")}>
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
@@ -1444,8 +1454,8 @@ export default function InvestimentosPage() {
                             nameKey="name"
                             cx="50%"
                             cy="50%"
-                            innerRadius={40}
-                            outerRadius={80}
+                            innerRadius={isMobile ? 28 : 40}
+                            outerRadius={isMobile ? 60 : 80}
                           >
                             {allocationData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -1481,7 +1491,7 @@ export default function InvestimentosPage() {
                         {totalValor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                       </div>
                       <p className="text-sm text-muted-foreground">Valor consolidado da carteira</p>
-                      <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
+                      <div className="grid grid-cols-2 gap-1 sm:gap-2 mt-1 sm:mt-2 text-sm">
                         <div>
                           <p className="text-muted-foreground">Aportes (6 meses)</p>
                           <p className="font-medium">
@@ -1524,7 +1534,7 @@ export default function InvestimentosPage() {
                     <CardTitle>Resumo por Classe</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-2 sm:gap-3">
                       <div className="p-3 rounded border flex flex-col gap-1 w-fit">
                         <p className="text-xs text-muted-foreground">Ações</p>
                         <p className="text-sm font-semibold whitespace-nowrap">

@@ -529,7 +529,7 @@ export function TransactionForm({ onSave, onCancel, transactionToEdit }: Transac
           </TabsContent>
           </Tabs>
 
-          <div className="sticky bottom-0 bg-card border-t mt-4 px-3 py-3 flex justify-end gap-3">
+          <div className="sm:sticky bottom-0 bg-card border-t mt-4 px-3 py-3 flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancelar
             </Button>

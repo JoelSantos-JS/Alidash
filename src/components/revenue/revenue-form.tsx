@@ -276,7 +276,7 @@ export function RevenueForm({ onSave, onCancel, revenueToEdit, products = [] }: 
             )}
           />
 
-          <div className="sticky bottom-0 border-t bg-card/80 backdrop-blur p-3">
+          <div className="sm:sticky bottom-0 border-t bg-card/80 backdrop-blur p-3">
             <div className="flex justify-end gap-3">
               <Button type="button" variant="outline" onClick={onCancel}>
                 Cancelar

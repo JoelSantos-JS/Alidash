@@ -567,7 +567,7 @@ export function DebtForm({ debt, onSubmit, onCancel, isLoading }: DebtFormProps)
         </Tabs>
 
         {/* Botões */}
-        <div className="sticky bottom-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t px-4 sm:px-6 py-1.5 flex justify-end gap-2">
+        <div className="sm:sticky bottom-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t px-4 sm:px-6 py-1.5 flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancelar
           </Button>

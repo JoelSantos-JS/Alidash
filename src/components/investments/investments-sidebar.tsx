@@ -9,10 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
-import { TrendingUp, BarChart3, Target, Download, RefreshCw } from "lucide-react"
+import { TrendingUp, BarChart3, Target, Download, RefreshCw, ChevronDown, ChevronRight } from "lucide-react"
 import { useMemo, useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 type Period = "week" | "month" | "quarter" | "year"
 type AssetClass = "all" | "stock" | "fii" | "etf" | "fixed_income" | "crypto"
@@ -59,6 +61,7 @@ export function InvestmentsSidebar({
     []
   )
   const { toast } = useToast()
+  const isMobile = useIsMobile()
   const [showAddForm, setShowAddForm] = useState(false)
   const [accounts, setAccounts] = useState<{ id: string; name: string; broker?: string | null }[]>([])
   const [showAddAccount, setShowAddAccount] = useState(false)
@@ -78,6 +81,10 @@ export function InvestmentsSidebar({
     accountId: null,
     fiType: undefined
   })
+  const [goalsOpen, setGoalsOpen] = useState(true)
+  useEffect(() => {
+    setGoalsOpen(!isMobile)
+  }, [isMobile])
 
   useEffect(() => {
     const loadAccounts = async () => {
@@ -175,16 +182,16 @@ export function InvestmentsSidebar({
   }
 
   return (
-    <div className={cn("w-80 bg-card border-r h-full flex flex-col", className)}>
+    <div className={cn("w-full sm:w-80 bg-card border-r h-full flex flex-col", className)}>
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-6">
+        <div className="p-3 sm:p-4 space-y-6">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-primary" />
                 Investimentos
               </h2>
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs hidden sm:inline-flex">
                 Sidebar
               </Badge>
             </div>
@@ -193,7 +200,7 @@ export function InvestmentsSidebar({
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="hidden sm:grid grid-cols-2 gap-2">
             <Button 
               variant="outline" 
               size="sm" 
@@ -418,7 +425,7 @@ export function InvestmentsSidebar({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-40">
+              <div className="h-36 sm:h-40">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -439,40 +446,74 @@ export function InvestmentsSidebar({
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Target className="h-4 w-4 text-primary" />
-                Metas de Alocação
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 text-sm">
+          <Collapsible open={goalsOpen} onOpenChange={setGoalsOpen}>
+            <Card>
+              <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <span>Ações</span>
-                  <Badge variant="outline">40%</Badge>
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Target className="h-4 w-4 text-primary" />
+                    Metas de Alocação
+                  </CardTitle>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="sm:hidden">
+                      {goalsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </Button>
+                  </CollapsibleTrigger>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span>FIIs</span>
-                  <Badge variant="outline">20%</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>ETFs</span>
-                  <Badge variant="outline">15%</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Renda Fixa</span>
-                  <Badge variant="outline">20%</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Cripto</span>
-                  <Badge variant="outline">5%</Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CollapsibleContent>
+                <CardContent>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span>Ações</span>
+                      <Badge variant="outline">40%</Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>FIIs</span>
+                      <Badge variant="outline">20%</Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>ETFs</span>
+                      <Badge variant="outline">15%</Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Renda Fixa</span>
+                      <Badge variant="outline">20%</Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Cripto</span>
+                      <Badge variant="outline">5%</Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
         </div>
       </ScrollArea>
+      <div className="sm:hidden border-t bg-card p-2">
+        <div className="grid grid-cols-2 gap-2">
+          <Button 
+            variant="default" 
+            size="sm" 
+            onClick={onRefresh}
+            disabled={isLoading}
+            className="gap-2 w-full"
+          >
+            <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+            Atualizar
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={onExport}
+            className="gap-2 w-full"
+          >
+            <Download className="h-4 w-4" />
+            Exportar
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

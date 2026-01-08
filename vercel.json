@@ -12,12 +12,16 @@
   },
   "regions": ["cle1"],
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "ALLOWED_ORIGINS": "https://app.voxcash.com.br, https://www.voxcash.com.br",
+    "NEXT_PUBLIC_APP_URL": "https://app.voxcash.com.br"
   },
   "build": {
     "env": {
       "NODE_ENV": "production",
-      "NEXT_TELEMETRY_DISABLED": "1"
+      "NEXT_TELEMETRY_DISABLED": "1",
+      "ALLOWED_ORIGINS": "https://app.voxcash.com.br, https://www.voxcash.com.br",
+      "NEXT_PUBLIC_APP_URL": "https://app.voxcash.com.br"
     }
   }
 }

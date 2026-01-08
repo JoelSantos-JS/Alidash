@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatCurrencyInputBRL, parseCurrencyInputBRL } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -143,10 +144,10 @@ export function PersonalEventForm({ event, onSubmit, onCancel, isOpen }: Persona
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4 z-50">
       <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <CardTitle className="text-lg sm:text-xl">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 sm:pb-4">
+          <CardTitle className="text-base sm:text-xl">
             {event ? 'Editar Evento' : 'Novo Evento Pessoal'}
           </CardTitle>
           <Button
@@ -159,193 +160,200 @@ export function PersonalEventForm({ event, onSubmit, onCancel, isOpen }: Persona
           </Button>
         </CardHeader>
         
-        <CardContent className="space-y-4">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Título */}
-            <div className="space-y-2">
-              <Label htmlFor="title">Título *</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => handleInputChange('title', e.target.value)}
-                placeholder="Ex: Pagamento da fatura do cartão"
-                required
-              />
-            </div>
+        <CardContent className="space-y-3 sm:space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+            <Tabs defaultValue="basic" className="w-full">
+              <TabsList className="w-full overflow-auto">
+                <TabsTrigger value="basic" className="flex-1">Básico</TabsTrigger>
+                <TabsTrigger value="schedule" className="flex-1">Agendamento</TabsTrigger>
+                <TabsTrigger value="extras" className="flex-1">Extras</TabsTrigger>
+              </TabsList>
 
-            {/* Descrição */}
-            <div className="space-y-2">
-              <Label htmlFor="description">Descrição</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
-                placeholder="Detalhes adicionais sobre o evento..."
-                rows={3}
-              />
-            </div>
+              <TabsContent value="basic" className="space-y-3 sm:space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Título *</Label>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => handleInputChange('title', e.target.value)}
+                    placeholder="Ex: Pagamento da fatura do cartão"
+                    required
+                  />
+                </div>
 
-            {/* Data e Hora */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="date">Data *</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => handleInputChange('date', e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="time">Hora</Label>
-                <Input
-                  id="time"
-                  type="time"
-                  value={formData.time}
-                  onChange={(e) => handleInputChange('time', e.target.value)}
-                />
-              </div>
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descrição</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => handleInputChange('description', e.target.value)}
+                    placeholder="Detalhes adicionais sobre o evento..."
+                    rows={3}
+                  />
+                </div>
+              </TabsContent>
 
-            {/* Tipo e Prioridade */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Tipo do Evento</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(value) => handleInputChange('type', value)}
+              <TabsContent value="schedule" className="space-y-3 sm:space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Data *</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => handleInputChange('date', e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="time">Hora</Label>
+                    <Input
+                      id="time"
+                      type="time"
+                      value={formData.time}
+                      onChange={(e) => handleInputChange('time', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="space-y-2">
+                    <Label>Tipo do Evento</Label>
+                    <Select
+                      value={formData.type}
+                      onValueChange={(value) => handleInputChange('type', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(EVENT_TYPES).map(([key, type]) => {
+                          const IconComponent = type.icon;
+                          return (
+                            <SelectItem key={key} value={key}>
+                              <div className="flex items-center gap-2">
+                                <IconComponent className="h-4 w-4" />
+                                {type.label}
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Prioridade</Label>
+                    <Select
+                      value={formData.priority}
+                      onValueChange={(value) => handleInputChange('priority', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(PRIORITY_LEVELS).map(([key, priority]) => (
+                          <SelectItem key={key} value={key}>
+                            <span className={priority.color}>{priority.label}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="extras" className="space-y-3 sm:space-y-4">
+                {(formData.type === 'payment' || formData.type === 'investment') && (
+                  <div className="space-y-2">
+                    <Label htmlFor="amount">Valor (R$)</Label>
+                    <Input
+                      id="amount"
+                      type="text"
+                      inputMode="numeric"
+                      value={amountInput}
+                      onChange={(e) => {
+                        const formatted = formatCurrencyInputBRL(e.target.value);
+                        setAmountInput(formatted);
+                        const parsed = parseCurrencyInputBRL(formatted);
+                        handleInputChange('amount', parsed);
+                      }}
+                      placeholder="R$ 0,00"
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="category">Categoria</Label>
+                  <Input
+                    id="category"
+                    value={formData.category}
+                    onChange={(e) => handleInputChange('category', e.target.value)}
+                    placeholder="Ex: Cartão de crédito, Investimentos, Saúde..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="recurring"
+                      checked={formData.recurring}
+                      onChange={(e) => handleInputChange('recurring', e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <Label htmlFor="recurring">Evento recorrente</Label>
+                  </div>
+                  
+                  {formData.recurring && (
+                    <Select
+                      value={formData.recurrence_type}
+                      onValueChange={(value) => handleInputChange('recurrence_type', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a frequência" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="daily">Diário</SelectItem>
+                        <SelectItem value="weekly">Semanal</SelectItem>
+                        <SelectItem value="monthly">Mensal</SelectItem>
+                        <SelectItem value="yearly">Anual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notas</Label>
+                  <Textarea
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) => handleInputChange('notes', e.target.value)}
+                    placeholder="Observações adicionais..."
+                    rows={2}
+                  />
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            <div className="sticky bottom-0 bg-card px-2 sm:px-0 pt-3 border-t">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onCancel}
+                  className="flex-1"
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(EVENT_TYPES).map(([key, type]) => {
-                      const IconComponent = type.icon;
-                      return (
-                        <SelectItem key={key} value={key}>
-                          <div className="flex items-center gap-2">
-                            <IconComponent className="h-4 w-4" />
-                            {type.label}
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Prioridade</Label>
-                <Select
-                  value={formData.priority}
-                  onValueChange={(value) => handleInputChange('priority', value)}
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1"
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(PRIORITY_LEVELS).map(([key, priority]) => (
-                      <SelectItem key={key} value={key}>
-                        <span className={priority.color}>{priority.label}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {loading ? 'Salvando...' : (event ? 'Atualizar' : 'Criar Evento')}
+                </Button>
               </div>
-            </div>
-
-            {/* Valor (se aplicável) */}
-            {(formData.type === 'payment' || formData.type === 'investment') && (
-              <div className="space-y-2">
-                <Label htmlFor="amount">Valor (R$)</Label>
-                <Input
-                  id="amount"
-                  type="text"
-                  inputMode="numeric"
-                  value={amountInput}
-                  onChange={(e) => {
-                    const formatted = formatCurrencyInputBRL(e.target.value);
-                    setAmountInput(formatted);
-                    const parsed = parseCurrencyInputBRL(formatted);
-                    handleInputChange('amount', parsed);
-                  }}
-                  placeholder="R$ 0,00"
-                />
-              </div>
-            )}
-
-            {/* Categoria */}
-            <div className="space-y-2">
-              <Label htmlFor="category">Categoria</Label>
-              <Input
-                id="category"
-                value={formData.category}
-                onChange={(e) => handleInputChange('category', e.target.value)}
-                placeholder="Ex: Cartão de crédito, Investimentos, Saúde..."
-              />
-            </div>
-
-            {/* Recorrência */}
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="recurring"
-                  checked={formData.recurring}
-                  onChange={(e) => handleInputChange('recurring', e.target.checked)}
-                  className="rounded border-gray-300"
-                />
-                <Label htmlFor="recurring">Evento recorrente</Label>
-              </div>
-              
-              {formData.recurring && (
-                <Select
-                  value={formData.recurrence_type}
-                  onValueChange={(value) => handleInputChange('recurrence_type', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a frequência" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Diário</SelectItem>
-                    <SelectItem value="weekly">Semanal</SelectItem>
-                    <SelectItem value="monthly">Mensal</SelectItem>
-                    <SelectItem value="yearly">Anual</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            {/* Notas */}
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notas</Label>
-              <Textarea
-                id="notes"
-                value={formData.notes}
-                onChange={(e) => handleInputChange('notes', e.target.value)}
-                placeholder="Observações adicionais..."
-                rows={2}
-              />
-            </div>
-
-            {/* Botões */}
-            <div className="flex flex-col sm:flex-row gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                className="flex-1"
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                className="flex-1"
-              >
-                {loading ? 'Salvando...' : (event ? 'Atualizar' : 'Criar Evento')}
-              </Button>
             </div>
           </form>
         </CardContent>

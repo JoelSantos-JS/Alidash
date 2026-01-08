@@ -456,8 +456,16 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       
     } catch (error) {
       console.error('Erro no logout:', error)
+      try {
+        clearSessionTimer()
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(SESSION_LOGIN_AT_KEY)
+        }
+      } catch {}
+      setUser(null)
+      setSession(null)
+      router.push('/login')
       toast.error('Erro ao fazer logout')
-      throw error
     } finally {
       setLoading(false)
     }

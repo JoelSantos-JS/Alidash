@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { PersonalEventForm } from "@/components/forms/personal-event-form";
+import { RemindersSidebar } from "@/components/personal/reminders-sidebar";
 
 interface PersonalEvent {
   id: string;
@@ -96,109 +97,39 @@ export default function PersonalAgendaPage() {
   const loadEvents = async () => {
     try {
       setLoading(true);
-      
-      // Simular dados de agenda pessoal para demonstração
-      // TODO: Implementar API real para agenda pessoal
-      const mockEvents: PersonalEvent[] = [
-        {
-          id: '1',
-          title: 'Pagamento Cartão de Crédito',
-          description: 'Fatura do Nubank - vencimento',
-          date: '2025-02-15',
-          time: '09:00',
-          type: 'payment',
-          amount: 1800.00,
-          priority: 'high',
-          status: 'pending',
-          recurring: true,
-          recurrence_type: 'monthly',
-          notes: 'Configurar débito automático',
-          created_at: '2025-01-15T10:00:00Z'
-        },
-        {
-          id: '2',
-          title: 'Aporte em Investimentos',
-          description: 'Investimento mensal em CDB',
-          date: '2025-02-05',
-          time: '14:00',
-          type: 'investment',
-          amount: 2000.00,
-          priority: 'high',
-          status: 'pending',
-          recurring: true,
-          recurrence_type: 'monthly',
-          notes: 'Verificar melhores taxas disponíveis',
-          created_at: '2025-01-05T10:00:00Z'
-        },
-        {
-          id: '3',
-          title: 'Revisão de Metas Financeiras',
-          description: 'Análise trimestral do progresso das metas',
-          date: '2025-02-28',
-          time: '19:00',
-          type: 'goal_deadline',
-          priority: 'medium',
-          status: 'pending',
-          recurring: true,
-          recurrence_type: 'monthly',
-          notes: 'Revisar reserva de emergência e entrada do apartamento',
-          created_at: '2025-01-28T10:00:00Z'
-        },
-        {
-          id: '4',
-          title: 'Consulta Médica - Check-up',
-          description: 'Exames de rotina anuais',
-          date: '2025-02-20',
-          time: '08:30',
-          type: 'appointment',
-          amount: 350.00,
-          priority: 'medium',
-          status: 'pending',
-          notes: 'Dr. Silva - Clínica São Paulo',
-          created_at: '2025-01-20T10:00:00Z'
-        },
-        {
-          id: '5',
-          title: 'Renovação Seguro do Carro',
-          description: 'Vencimento do seguro automotivo',
-          date: '2025-03-10',
-          time: '10:00',
-          type: 'payment',
-          amount: 1200.00,
-          priority: 'high',
-          status: 'pending',
-          notes: 'Comparar preços de outras seguradoras',
-          created_at: '2025-01-10T10:00:00Z'
-        },
-        {
-          id: '6',
-          title: 'Declaração de Imposto de Renda',
-          description: 'Prazo para entrega da declaração',
-          date: '2025-04-30',
-          time: '23:59',
-          type: 'reminder',
-          priority: 'high',
-          status: 'pending',
-          notes: 'Reunir todos os documentos necessários',
-          created_at: '2025-01-01T10:00:00Z'
-        },
-        {
-          id: '7',
-          title: 'Pagamento IPVA',
-          description: 'Imposto sobre veículo',
-          date: '2025-01-31',
-          time: '18:00',
-          type: 'payment',
-          amount: 850.00,
-          priority: 'high',
-          status: 'completed',
-          notes: 'Pago com desconto à vista',
-          created_at: '2025-01-01T10:00:00Z'
-        }
-      ];
-      
-      setEvents(mockEvents);
-      
+      const now = new Date();
+      const startIso = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0).toISOString();
+      const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      const endIso = endDate.toISOString();
+      const url = new URL('/api/personal/reminders', window.location.origin);
+      url.searchParams.set('user_id', user!.id);
+      url.searchParams.set('start_date', startIso);
+      url.searchParams.set('end_date', endIso);
+      url.searchParams.set('limit', '200');
+      const res = await fetch(url.toString());
+      if (!res.ok) {
+        setEvents([]);
+      } else {
+        const data = await res.json();
+        const list = (data?.reminders || []) as any[];
+        const mapped: PersonalEvent[] = list.map(r => {
+          const dt = new Date(r.start_time);
+          const timeStr = r.is_all_day ? '' : dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          return {
+            id: r.id,
+            title: r.title,
+            description: r.description || '',
+            date: dt.toISOString().split('T')[0],
+            time: timeStr,
+            type: 'reminder',
+            priority: r.priority || 'medium',
+            status: r.status === 'cancelled' ? 'completed' : 'pending',
+            notes: '',
+            created_at: r.created_at || new Date().toISOString()
+          };
+        });
+        setEvents(mapped);
+      }
     } catch (error) {
       console.error('Erro ao carregar agenda:', error);
       toast({
@@ -221,27 +152,140 @@ export default function PersonalAgendaPage() {
     setIsFormOpen(true);
   };
 
-  const handleDeleteEvent = (eventId: string) => {
-    if (confirm('Tem certeza que deseja excluir este evento?')) {
-      setEvents(prev => prev.filter(event => event.id !== eventId));
-      toast({
-        title: "Evento excluído",
-        description: "O evento foi removido da sua agenda.",
-      });
+  const handleDeleteEvent = async (eventId: string) => {
+    const event = events.find(e => e.id === eventId);
+    if (!event) return;
+    if (!confirm('Tem certeza que deseja excluir este evento?')) return;
+    if (event.type === 'reminder' && user?.id) {
+      try {
+        const url = new URL('/api/personal/reminders', window.location.origin);
+        url.searchParams.set('id', event.id);
+        url.searchParams.set('user_id', user.id);
+        await fetch(url.toString(), { method: 'DELETE' });
+      } catch {}
     }
+    setEvents(prev => prev.filter(e => e.id !== eventId));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('reminders:changed'));
+    }
+    toast({
+      title: "Evento excluído",
+      description: "O evento foi removido da sua agenda.",
+    });
   };
 
-  const handleSubmitEvent = (eventData: PersonalEvent) => {
+  const handleSubmitEvent = async (eventData: any) => {
     if (selectedEvent) {
-      // Editar evento existente
+      if (selectedEvent.type === 'reminder' && user?.id) {
+        try {
+          const res = await fetch(`/api/personal/reminders`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: selectedEvent.id,
+              user_id: user.id,
+              title: eventData.title,
+              description: eventData.description || '',
+              date: eventData.date,
+              time: eventData.time || '',
+              priority: eventData.priority,
+              is_all_day: !eventData.time
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const r = data.reminder;
+            const dt = new Date(r.start_time);
+            const updatedEvent: PersonalEvent = {
+              id: r.id,
+              title: r.title,
+              description: r.description || '',
+              date: dt.toISOString().split('T')[0],
+              time: r.is_all_day ? '' : dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+              type: 'reminder',
+              priority: r.priority || 'medium',
+              status: 'pending',
+              notes: '',
+              created_at: r.created_at || selectedEvent.created_at
+            };
+            setEvents(prev => prev.map(event => event.id === selectedEvent.id ? updatedEvent : event));
+          } else {
+            setEvents(prev => prev.map(event => 
+              event.id === selectedEvent.id ? { ...eventData, id: selectedEvent.id } : event
+            ));
+          }
+        } catch {
+          setEvents(prev => prev.map(event => 
+            event.id === selectedEvent.id ? { ...eventData, id: selectedEvent.id } : event
+          ));
+        }
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('reminders:changed'));
+        }
+        setIsFormOpen(false);
+        setSelectedEvent(null);
+        return;
+      }
       setEvents(prev => prev.map(event => 
         event.id === selectedEvent.id ? { ...eventData, id: selectedEvent.id } : event
       ));
-    } else {
-      // Criar novo evento
-      setEvents(prev => [...prev, { ...eventData, created_at: new Date().toISOString() }]);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('reminders:changed'));
+      }
+      setIsFormOpen(false);
+      setSelectedEvent(null);
+      return;
     }
-    
+    if (eventData.type === 'reminder' && user?.id) {
+      try {
+        const res = await fetch(`/api/personal/reminders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: user.id,
+            title: eventData.title,
+            description: eventData.description || '',
+            date: eventData.date,
+            time: eventData.time || '',
+            priority: eventData.priority,
+            is_all_day: !eventData.time,
+            notify: true
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const r = data.reminder;
+          const dt = new Date(r.start_time);
+          const newEvent: PersonalEvent = {
+            id: r.id,
+            title: r.title,
+            description: r.description || '',
+            date: dt.toISOString().split('T')[0],
+            time: r.is_all_day ? '' : dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            type: 'reminder',
+            priority: r.priority || 'medium',
+            status: 'pending',
+            notes: '',
+            created_at: r.created_at || new Date().toISOString()
+          };
+          setEvents(prev => [...prev, newEvent]);
+        } else {
+          setEvents(prev => [...prev, { ...eventData, created_at: new Date().toISOString() }]);
+        }
+      } catch {
+        setEvents(prev => [...prev, { ...eventData, created_at: new Date().toISOString() }]);
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('reminders:changed'));
+      }
+      setIsFormOpen(false);
+      setSelectedEvent(null);
+      return;
+    }
+    setEvents(prev => [...prev, { ...eventData, created_at: new Date().toISOString() }]);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('reminders:changed'));
+    }
     setIsFormOpen(false);
     setSelectedEvent(null);
   };
@@ -377,7 +421,9 @@ export default function PersonalAgendaPage() {
         </div>
       </header>
 
-      <div className="container mx-auto px-3 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6">
+      <div className="container mx-auto px-3 md:px-6 py-4 md:py-6">
+        <div className="grid gap-4 lg:gap-6 grid-cols-1 lg:grid-cols-3">
+          <div className="space-y-4 lg:space-y-6 lg:col-span-2">
 
         {/* Cards de Resumo */}
         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
@@ -685,15 +731,23 @@ export default function PersonalAgendaPage() {
                     const IconComponent = typeInfo.icon;
                     
                     return (
-                      <div key={event.id} className="flex items-center justify-between p-3 border rounded-lg bg-green-50/50">
+                      <div
+                        key={event.id}
+                        className="flex items-center justify-between p-3 border rounded-xl bg-emerald-500/5 border-emerald-300/20 hover:bg-emerald-500/10 transition-colors ring-1 ring-emerald-300/20 shadow-sm"
+                      >
                         <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${typeInfo.color} opacity-60`}>
+                          <div className={`p-2 rounded-lg ${typeInfo.color} opacity-70`}>
                             <IconComponent className="h-4 w-4" />
                           </div>
                           <div>
                             <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-medium text-muted-foreground">{event.title}</h4>
-                              <Badge variant="secondary" className="text-xs">
+                              <h4 className="font-medium text-foreground line-through decoration-emerald-400/30">
+                                {event.title}
+                              </h4>
+                              <Badge
+                                variant="secondary"
+                                className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                              >
                                 Concluído
                               </Badge>
                             </div>
@@ -702,18 +756,18 @@ export default function PersonalAgendaPage() {
                                 <Calendar className="h-3 w-3" />
                                 {new Date(event.date).toLocaleDateString('pt-BR')}
                               </span>
-                              <Badge variant="secondary" className="text-xs">
+                              <Badge variant="outline" className="text-xs">
                                 {typeInfo.label}
                               </Badge>
                               {event.amount && (
-                                <span className="font-medium">
+                                <span className="font-medium text-emerald-600">
                                   {event.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                 </span>
                               )}
                             </div>
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" title="Ver detalhes">
                           <Eye className="h-4 w-4" />
                         </Button>
                       </div>
@@ -732,6 +786,11 @@ export default function PersonalAgendaPage() {
          onCancel={handleCancelForm}
          isOpen={isFormOpen}
        />
+          </div>
+          <div className="lg:col-span-1 space-y-4 lg:space-y-6">
+            <RemindersSidebar onAdd={() => { setSelectedEvent(null); setIsFormOpen(true); }} />
+          </div>
+        </div>
       </div>
     </div>
   );

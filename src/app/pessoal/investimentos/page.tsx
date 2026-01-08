@@ -330,10 +330,10 @@ export default function InvestimentosPage() {
       />
 
       <div className="flex-1 flex flex-col">
-        <div className="border-b bg-card p-4">
+        <div className="border-b bg-card p-2 sm:p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Button asChild variant="outline" size="sm" className="hidden lg:inline-flex">
+              <Button asChild variant="outline" size="sm" className="inline-flex">
                 <Link href="/">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Dashboard
@@ -345,7 +345,7 @@ export default function InvestimentosPage() {
                     <Menu className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-80 p-0">
+                <SheetContent side="left" className="w-[90vw] sm:max-w-sm p-0">
                   <SheetTitle className="sr-only">Menu de Investimentos</SheetTitle>
                   <InvestmentsSidebar
                     period={period}
@@ -375,7 +375,7 @@ export default function InvestimentosPage() {
                       {format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="end">
+                  <PopoverContent className="sm:w-auto w-[calc(100vw-2rem)] p-0" align="end">
                     <Calendar
                       mode="single"
                       selected={selectedDate}
@@ -393,19 +393,19 @@ export default function InvestimentosPage() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 overflow-auto p-2 sm:p-4">
           <Tabs defaultValue="pessoais" className="w-full">
-            <TabsList className="mb-4">
+            <TabsList className="mb-4 flex flex-wrap gap-2">
               <TabsTrigger value="pessoais">Pessoais</TabsTrigger>
               <TabsTrigger value="geral">Geral</TabsTrigger>
             </TabsList>
 
             <TabsContent value="pessoais">
-              <Card className="mb-4">
-                <CardHeader>
-                  <CardTitle>Adicionar Aporte</CardTitle>
+              <Card className="mb-3 sm:mb-4 border-0 bg-transparent sm:border sm:bg-card">
+                <CardHeader className="py-2 sm:py-3">
+                  <CardTitle className="text-base sm:text-lg">Adicionar Aporte</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-2 sm:p-4">
                   <Form {...contributionForm}>
                     <form
                       onSubmit={contributionForm.handleSubmit(async (data) => {
@@ -505,9 +505,9 @@ export default function InvestimentosPage() {
                           toast({ title: "Erro inesperado", description: e?.message || "Falha ao conectar com o servidor" })
                         }
                       })}
-                      className="space-y-4"
+                      className="space-y-3 sm:space-y-4"
                     >
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
                         <FormField
                           control={contributionForm.control}
                           name="amount"
@@ -539,7 +539,7 @@ export default function InvestimentosPage() {
                             <FormItem>
                               <FormLabel>Classe</FormLabel>
                               <Select value={field.value} onValueChange={field.onChange}>
-                                <SelectTrigger>
+                                <SelectTrigger className="w-full">
                                   <SelectValue placeholder="Selecione a classe" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -562,7 +562,7 @@ export default function InvestimentosPage() {
                               <FormItem>
                                 <FormLabel>Tipo (Renda Fixa)</FormLabel>
                                 <Select value={field.value} onValueChange={field.onChange}>
-                                  <SelectTrigger>
+                                  <SelectTrigger className="w-full">
                                     <SelectValue placeholder="Selecione o tipo" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -591,11 +591,11 @@ export default function InvestimentosPage() {
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
-                            )}
-                          />
+                          )}
+                        />
                         )}
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
                         <FormField
                           control={contributionForm.control}
                           name="account"
@@ -603,7 +603,7 @@ export default function InvestimentosPage() {
                             <FormItem>
                               <FormLabel>Corretora</FormLabel>
                               <Select value={field.value} onValueChange={field.onChange}>
-                                <SelectTrigger>
+                                <SelectTrigger className="w-full">
                                   <SelectValue placeholder="Selecione a conta" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -624,7 +624,7 @@ export default function InvestimentosPage() {
                               </Select>
                               <FormMessage />
                               <div className="mt-2 space-y-2">
-                                <Button size="sm" variant={showNewAccount ? "secondary" : "outline"} onClick={() => setShowNewAccount(v => !v)}>
+                                <Button size="sm" className="w-full sm:w-auto" variant={showNewAccount ? "secondary" : "outline"} onClick={() => setShowNewAccount(v => !v)}>
                                   {showNewAccount ? "Cancelar" : "Nova Corretora"}
                                 </Button>
                                 {showNewAccount && (
@@ -632,13 +632,14 @@ export default function InvestimentosPage() {
                                     <CardContent className="space-y-2 p-3">
                                       <div className="space-y-1">
                                         <FormLabel className="text-xs">Corretora</FormLabel>
-                                        <Input value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)} placeholder="Ex: Clear, XP, Binance" />
-                                      </div>
-                                      <div className="flex justify-end">
-                                        <Button
-                                          size="sm"
-                                          onClick={async () => {
-                                            if (!user?.id || !newAccountName.trim()) {
+                                      <Input value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)} placeholder="Ex: Clear, XP, Binance" />
+                                    </div>
+                                    <div className="sm:flex sm:justify-end">
+                                      <Button
+                                        size="sm"
+                                        className="w-full sm:w-auto"
+                                        onClick={async () => {
+                                          if (!user?.id || !newAccountName.trim()) {
                                               toast({ title: "Dados inválidos", description: "Informe o nome da corretora" })
                                               return
                                             }
@@ -691,7 +692,7 @@ export default function InvestimentosPage() {
                                     {field.value ? format(field.value, "PPP", { locale: ptBR }) : "Selecionar data"}
                                   </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
+                                <PopoverContent className="sm:w-auto w-[calc(100vw-2rem)] p-0" align="start">
                                   <Calendar
                                     mode="single"
                                     selected={field.value}
@@ -718,8 +719,8 @@ export default function InvestimentosPage() {
                           </FormItem>
                         )}
                       />
-                      <div className="flex justify-end">
-                        <Button type="submit">Salvar Aporte</Button>
+                      <div className="sm:flex sm:justify-end">
+                        <Button type="submit" className="w-full sm:w-auto">Salvar Aporte</Button>
                       </div>
                     </form>
                   </Form>

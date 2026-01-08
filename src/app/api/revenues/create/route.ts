@@ -5,6 +5,20 @@ import { notifyProductSold } from '@/lib/n8n-events';
 export async function POST(request: NextRequest) {
   const routeStart = Date.now()
   try {
+    if (process.env.NODE_ENV === 'production') {
+      const origin = request.headers.get('origin') || ''
+      const normalize = (u: string) => u.replace(/\/+$/, '')
+      const allowed = (process.env.ALLOWED_ORIGINS || '')
+        .split(',')
+        .map(s => normalize(s.trim()))
+        .filter(Boolean)
+      const appUrl = normalize((process.env.NEXT_PUBLIC_APP_URL || '').trim())
+      const current = normalize(origin)
+      const isAllowed = allowed.length ? allowed.includes(current) : (appUrl ? current === appUrl : true)
+      if (!isAllowed) {
+        return NextResponse.json({ error: 'Origem não permitida' }, { status: 403 })
+      }
+    }
     const revenueData = await request.json();
     const parseEnd = Date.now()
     const timings: Record<string, number> = { parse: parseEnd - routeStart }

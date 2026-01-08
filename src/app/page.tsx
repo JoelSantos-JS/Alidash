@@ -37,6 +37,7 @@ import {
   Tag,
   MessageCircle,
   HelpCircle,
+  Bell,
   FileText,
   Target as TargetIcon,
   User,
@@ -1139,6 +1140,18 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 >
                   <Package className="h-4 w-4 flex-shrink-0" />
                   <span className="text-sm sm:text-base">Produtos</span>
+                </Button>
+              )}
+              
+              {isPersonal && (
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start gap-2 sm:gap-3" 
+                  size="lg"
+                  onClick={() => router.push('/pessoal/agenda')}
+                >
+                  <Bell className="h-4 w-4 flex-shrink-0" />
+                  <span className="text-sm sm:text-base">Lembretes</span>
                 </Button>
               )}
               

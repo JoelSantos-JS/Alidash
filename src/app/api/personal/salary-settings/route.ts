@@ -38,6 +38,20 @@ export async function GET(request: NextRequest) {
 // POST - Criar ou atualizar configurações de salário
 export async function POST(request: NextRequest) {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      const origin = request.headers.get('origin') || ''
+      const normalize = (u: string) => u.replace(/\/+$/, '')
+      const allowed = (process.env.ALLOWED_ORIGINS || '')
+        .split(',')
+        .map(s => normalize(s.trim()))
+        .filter(Boolean)
+      const appUrl = normalize((process.env.NEXT_PUBLIC_APP_URL || '').trim())
+      const current = normalize(origin)
+      const isAllowed = allowed.length ? allowed.includes(current) : (appUrl ? current === appUrl : true)
+      if (!isAllowed) {
+        return NextResponse.json({ error: 'Origem não permitida' }, { status: 403 })
+      }
+    }
     const body = await request.json();
     const {
       user_id,
@@ -136,6 +150,20 @@ export async function POST(request: NextRequest) {
 // DELETE - Remover configurações de salário
 export async function DELETE(request: NextRequest) {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      const origin = request.headers.get('origin') || ''
+      const normalize = (u: string) => u.replace(/\/+$/, '')
+      const allowed = (process.env.ALLOWED_ORIGINS || '')
+        .split(',')
+        .map(s => normalize(s.trim()))
+        .filter(Boolean)
+      const appUrl = normalize((process.env.NEXT_PUBLIC_APP_URL || '').trim())
+      const current = normalize(origin)
+      const isAllowed = allowed.length ? allowed.includes(current) : (appUrl ? current === appUrl : true)
+      if (!isAllowed) {
+        return NextResponse.json({ error: 'Origem não permitida' }, { status: 403 })
+      }
+    }
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('user_id');
 

@@ -16,6 +16,7 @@ import {
   Receipt,
   BarChart3,
   Calendar,
+  Bell,
   Settings,
   User,
   Heart,
@@ -101,6 +102,12 @@ const navigationItems: NavigationItem[] = [
     label: "Agenda",
     icon: Calendar,
     description: "Compromissos"
+  },
+  {
+    href: "/pessoal/agenda",
+    label: "Lembretes",
+    icon: Bell,
+    description: "Alertas pessoais"
   },
   {
     href: "/categorias",

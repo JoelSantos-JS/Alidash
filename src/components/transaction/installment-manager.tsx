@@ -185,7 +185,7 @@ export function InstallmentManager({
               <p className="text-gray-700 mb-6 font-medium">
                 Você ainda não tem compras parceladas no cartão de crédito.
               </p>
-              <Button onClick={() => setIsFormOpen(true)} className="flex items-center gap-2 mx-auto">
+              <Button onClick={() => setIsFormOpen(true)} size="sm" className="flex items-center gap-2 mx-auto h-8 px-3 text-xs">
                 <Plus className="h-4 w-4" />
                 Adicionar Primeira Compra Parcelada
               </Button>
@@ -268,7 +268,7 @@ export function InstallmentManager({
               <CreditCard className="h-5 w-5" />
               Compras Parceladas no Cartão
             </CardTitle>
-            <Button onClick={() => setIsFormOpen(true)} className="flex items-center gap-2">
+            <Button onClick={() => setIsFormOpen(true)} size="sm" className="flex items-center gap-2 h-8 px-3 text-xs">
               <Plus className="h-4 w-4" />
               Nova Compra Parcelada
             </Button>

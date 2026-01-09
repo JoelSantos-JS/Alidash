@@ -1,21 +1,39 @@
 // Imports otimizados do date-fns para melhor tree-shaking
-export { format } from 'date-fns/format';
-export { isPast } from 'date-fns/isPast';
-export { differenceInDays } from 'date-fns/differenceInDays';
-export { isToday } from 'date-fns/isToday';
-export { isTomorrow } from 'date-fns/isTomorrow';
-export { isYesterday } from 'date-fns/isYesterday';
-export { startOfDay } from 'date-fns/startOfDay';
-export { endOfDay } from 'date-fns/endOfDay';
-export { isThisWeek } from 'date-fns/isThisWeek';
-export { isThisMonth } from 'date-fns/isThisMonth';
-export { subDays } from 'date-fns/subDays';
-export { eachDayOfInterval } from 'date-fns/eachDayOfInterval';
-export { startOfWeek } from 'date-fns/startOfWeek';
-export { endOfWeek } from 'date-fns/endOfWeek';
+import { format } from 'date-fns/format';
+import { isPast } from 'date-fns/isPast';
+import { differenceInDays } from 'date-fns/differenceInDays';
+import { isToday } from 'date-fns/isToday';
+import { isTomorrow } from 'date-fns/isTomorrow';
+import { isYesterday } from 'date-fns/isYesterday';
+import { startOfDay } from 'date-fns/startOfDay';
+import { endOfDay } from 'date-fns/endOfDay';
+import { isThisWeek } from 'date-fns/isThisWeek';
+import { isThisMonth } from 'date-fns/isThisMonth';
+import { subDays } from 'date-fns/subDays';
+import { eachDayOfInterval } from 'date-fns/eachDayOfInterval';
+import { startOfWeek } from 'date-fns/startOfWeek';
+import { endOfWeek } from 'date-fns/endOfWeek';
 
 // Locale otimizado
-export { ptBR } from 'date-fns/locale/pt-BR';
+import { ptBR } from 'date-fns/locale/pt-BR';
+
+export {
+  format,
+  isPast,
+  differenceInDays,
+  isToday,
+  isTomorrow,
+  isYesterday,
+  startOfDay,
+  endOfDay,
+  isThisWeek,
+  isThisMonth,
+  subDays,
+  eachDayOfInterval,
+  startOfWeek,
+  endOfWeek,
+  ptBR
+}
 
 // Funções utilitárias comuns
 export const formatDate = (date: Date | string, formatStr: string = 'dd/MM/yyyy') => {

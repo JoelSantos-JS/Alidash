@@ -1,5 +1,4 @@
 import { google } from 'googleapis';
-import { OAuth2Client } from 'google-auth-library';
 
 // Tipos para eventos do Google Calendar
 export interface GoogleCalendarEvent {
@@ -46,7 +45,7 @@ export interface CalendarEvent {
 }
 
 export class GoogleCalendarService {
-  private oauth2Client: OAuth2Client;
+  private oauth2Client: any;
   private calendar: any;
 
   constructor() {
@@ -262,7 +261,9 @@ export class GoogleCalendarService {
       summary: event.title,
       description: event.description,
       location: event.location,
-      status: event.status
+      status: event.status,
+      start: {},
+      end: {}
     };
 
     if (event.isAllDay) {

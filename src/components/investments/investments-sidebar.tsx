@@ -64,7 +64,6 @@ export function InvestmentsSidebar({
   const isMobile = useIsMobile()
   const [showAddForm, setShowAddForm] = useState(false)
   const [accounts, setAccounts] = useState<{ id: string; name: string; broker?: string | null }[]>([])
-  const [showAddAccount, setShowAddAccount] = useState(false)
   const [newAccountName, setNewAccountName] = useState("")
   const [newInvestment, setNewInvestment] = useState<{
     ticker: string
@@ -105,19 +104,27 @@ export function InvestmentsSidebar({
       toast({ title: "Usuário não identificado", description: "Faça login para criar contas" })
       return
     }
-    if (!newAccountName.trim()) {
+    const trimmedName = newAccountName.trim()
+    if (!trimmedName) {
       toast({ title: "Corretora obrigatória", description: "Informe o nome da corretora" })
       return
     }
     try {
+      const nameKey = trimmedName.toLowerCase()
+      const existing = accounts.find((acc) => {
+        const candidates = [acc.name, acc.broker].filter(Boolean) as string[]
+        return candidates.some((c) => String(c).trim().toLowerCase() === nameKey)
+      })
+      if (existing?.id) {
+        onAccountFilterChange(existing.id)
+        setNewInvestment((s) => ({ ...s, accountId: existing.id }))
+        setNewAccountName("")
+        return
+      }
       const res = await fetch("/api/investments/accounts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: userId,
-          name: newAccountName.trim(),
-          broker: null
-        })
+        body: JSON.stringify({ name: trimmedName })
       })
       const json = await res.json()
       if (!res.ok) {
@@ -126,7 +133,6 @@ export function InvestmentsSidebar({
       }
       const created = json.account
       setAccounts((prev) => [created, ...prev])
-      setShowAddAccount(false)
       setNewAccountName("")
       onAccountFilterChange(created.id)
       setNewInvestment((s) => ({ ...s, accountId: created.id }))
@@ -184,18 +190,18 @@ export function InvestmentsSidebar({
   return (
     <div className={cn("w-full sm:w-80 bg-card border-r h-full flex flex-col", className)}>
       <ScrollArea className="flex-1">
-        <div className="p-3 sm:p-4 space-y-4 sm:space-y-6">
-          <div className="space-y-2">
+        <div className="p-2 sm:p-4 space-y-2 sm:space-y-6">
+          <div className="space-y-1 sm:space-y-2">
             <div className="flex items-center justify-between">
-              <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
+              <h2 className="text-sm sm:text-lg font-semibold flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                 Investimentos
               </h2>
-              <Badge variant="secondary" className="text-xs hidden sm:inline-flex">
+              <Badge variant="secondary" className="text-[10px] sm:text-xs hidden sm:inline-flex">
                 Sidebar
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Controle e análise da sua carteira
             </p>
           </div>
@@ -225,7 +231,7 @@ export function InvestmentsSidebar({
           <div className="space-y-2">
             <Button 
               size="sm" 
-              className="w-full justify-center"
+              className="w-full justify-center h-8 sm:h-9 text-xs sm:text-sm"
               onClick={() => setShowAddForm((v) => !v)}
               variant={showAddForm ? "secondary" : "default"}
             >
@@ -234,9 +240,9 @@ export function InvestmentsSidebar({
             {showAddForm && (
               <Card>
                 <CardHeader className="py-2">
-                  <CardTitle className="text-sm">Novo Investimento</CardTitle>
+                  <CardTitle className="text-xs sm:text-sm">Novo Investimento</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 sm:space-y-3">
+                <CardContent className="space-y-2 sm:space-y-3 p-2 sm:p-6 pt-0">
                   {newInvestment.assetClass !== "fixed_income" && (
                     <div className="space-y-1">
                       <Label className="text-xs">Ticker</Label>
@@ -344,9 +350,9 @@ export function InvestmentsSidebar({
           <Separator />
 
           <div className="space-y-2 sm:space-y-3">
-            <Label className="text-xs font-medium text-muted-foreground">PERÍODO</Label>
+            <Label className="text-[10px] sm:text-xs font-medium text-muted-foreground">PERÍODO</Label>
             <Select value={period} onValueChange={(v) => onPeriodChange(v as Period)}>
-              <SelectTrigger className="h-8 sm:h-9">
+              <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -359,9 +365,9 @@ export function InvestmentsSidebar({
           </div>
 
           <div className="space-y-2 sm:space-y-3">
-            <Label className="text-xs font-medium text-muted-foreground">CLASSE</Label>
+            <Label className="text-[10px] sm:text-xs font-medium text-muted-foreground">CLASSE</Label>
             <Select value={classFilter} onValueChange={(v) => onClassFilterChange(v as AssetClass)}>
-              <SelectTrigger className="h-8 sm:h-9">
+              <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -376,9 +382,9 @@ export function InvestmentsSidebar({
           </div>
 
           <div className="space-y-2 sm:space-y-3">
-            <Label className="text-xs font-medium text-muted-foreground">CORRETORA</Label>
+            <Label className="text-[10px] sm:text-xs font-medium text-muted-foreground">CORRETORA</Label>
             <Select value={accountFilter} onValueChange={onAccountFilterChange}>
-              <SelectTrigger className="h-8 sm:h-9">
+              <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -398,45 +404,48 @@ export function InvestmentsSidebar({
                 )}
               </SelectContent>
             </Select>
-            <div className="space-y-2">
-              <Button size="sm" variant={showAddAccount ? "secondary" : "outline"} onClick={() => setShowAddAccount((v) => !v)}>
-                {showAddAccount ? "Cancelar" : "Nova Corretora"}
-              </Button>
-              {showAddAccount && (
-                <Card>
-                  <CardContent className="space-y-2 p-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Corretora</Label>
-                      <Input className="h-8 sm:h-9" value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)} placeholder="Ex: Clear, XP, Binance" />
-                    </div>
-                    <div className="flex justify-end">
-                      <Button size="sm" onClick={handleCreateAccount}>Salvar</Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+            <div className="space-y-1">
+              <Label className="text-[10px] sm:text-xs">Adicionar/selecionar corretora</Label>
+              <Input
+                className="h-8 sm:h-9 text-xs sm:text-sm"
+                value={newAccountName}
+                onChange={(e) => setNewAccountName(e.target.value)}
+                placeholder="Ex: Clear, XP, Binance"
+                list="investment-brokers-sidebar"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    void handleCreateAccount()
+                  }
+                }}
+              />
+              <datalist id="investment-brokers-sidebar">
+                {accounts.map((acc) => (
+                  <option key={acc.id} value={acc.broker || acc.name} />
+                ))}
+              </datalist>
             </div>
           </div>
 
           <Separator />
 
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-primary" />
+            <CardHeader className="pb-2 p-3 sm:p-6">
+              <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
                 Alocação por Classe
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="h-36 sm:h-40">
+            <CardContent className="p-3 sm:p-6 pt-0">
+              <div className="h-32 sm:h-40">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={allocation && allocation.length ? allocation : mockAllocation}
                       dataKey="value"
                       nameKey="name"
-                      innerRadius={isMobile ? 36 : 50}
-                      outerRadius={isMobile ? 64 : 80}
+                      innerRadius={isMobile ? 30 : 50}
+                      outerRadius={isMobile ? 55 : 80}
                     >
                       {(allocation && allocation.length ? allocation : mockAllocation).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -451,41 +460,41 @@ export function InvestmentsSidebar({
 
           <Collapsible open={goalsOpen} onOpenChange={setGoalsOpen}>
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-2 p-3 sm:p-6">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Target className="h-4 w-4 text-primary" />
+                  <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+                    <Target className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
                     Metas de Alocação
                   </CardTitle>
                   <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="sm:hidden">
-                      {goalsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    <Button variant="ghost" size="sm" className="sm:hidden h-6 w-6 p-0">
+                      {goalsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                     </Button>
                   </CollapsibleTrigger>
                 </div>
               </CardHeader>
               <CollapsibleContent>
-                <CardContent>
-                  <div className="space-y-2 text-sm">
+                <CardContent className="p-3 sm:p-6 pt-0">
+                  <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
                     <div className="flex items-center justify-between">
                       <span>Ações</span>
-                      <Badge variant="outline">40%</Badge>
+                      <Badge variant="outline" className="text-[10px] sm:text-xs">40%</Badge>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>FIIs</span>
-                      <Badge variant="outline">20%</Badge>
+                      <Badge variant="outline" className="text-[10px] sm:text-xs">20%</Badge>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>ETFs</span>
-                      <Badge variant="outline">15%</Badge>
+                      <Badge variant="outline" className="text-[10px] sm:text-xs">15%</Badge>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>Renda Fixa</span>
-                      <Badge variant="outline">20%</Badge>
+                      <Badge variant="outline" className="text-[10px] sm:text-xs">20%</Badge>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>Cripto</span>
-                      <Badge variant="outline">5%</Badge>
+                      <Badge variant="outline" className="text-[10px] sm:text-xs">5%</Badge>
                     </div>
                   </div>
                 </CardContent>

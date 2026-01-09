@@ -76,12 +76,11 @@ export const EVENT_TYPES = {
  * Enviar evento para N8N
  */
 export async function sendN8NEvent(eventType: string, userId: string, data: Record<string, unknown>, metadata?: Record<string, unknown>) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
     // Buscar configurações de webhook do usuário
     const { data: webhookData, error } = await supabase
       .from('user_webhooks')
@@ -113,7 +112,7 @@ export async function sendN8NEvent(eventType: string, userId: string, data: Reco
     }
     
     // Enviar para cada webhook configurado
-    const promises = activeWebhooks.map(webhook => sendWebhook(webhook, event))
+    const promises = activeWebhooks.map(webhook => sendWebhook(supabase, webhook, event))
     await Promise.allSettled(promises)
     
     // Log do evento
@@ -150,7 +149,7 @@ export async function sendN8NEvent(eventType: string, userId: string, data: Reco
 /**
  * Enviar webhook para uma URL específica
  */
-async function sendWebhook(webhook: WebhookConfig, event: N8NEvent) {
+async function sendWebhook(supabase: ReturnType<typeof createClient>, webhook: WebhookConfig, event: N8NEvent) {
   const maxRetries = webhook.retryConfig?.maxRetries || 3
   const retryDelay = webhook.retryConfig?.retryDelay || 1000
   
@@ -268,6 +267,9 @@ export async function notifyProductUpdated(userId: string, product: Record<strin
 }
 
 export async function notifyProductSold(userId: string, product: Record<string, unknown>, sale: Record<string, unknown>) {
+  const quantity = Number(sale.quantity) || 0
+  const sellingPrice = Number(product.sellingPrice) || 0
+  const totalCost = Number(product.totalCost) || 0
   await sendN8NEvent(EVENT_TYPES.PRODUCT_SOLD, userId, {
     product: {
       id: product.id,
@@ -279,8 +281,8 @@ export async function notifyProductSold(userId: string, product: Record<string, 
       quantity: sale.quantity,
       date: sale.date,
       buyerName: sale.buyerName,
-      revenue: sale.quantity * product.sellingPrice,
-      profit: (sale.quantity * product.sellingPrice) - (sale.quantity * product.totalCost)
+      revenue: quantity * sellingPrice,
+      profit: (quantity * sellingPrice) - (quantity * totalCost)
     }
   })
 }

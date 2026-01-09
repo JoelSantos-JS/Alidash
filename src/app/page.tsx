@@ -1069,7 +1069,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 p-3 sm:p-4 space-y-2">
+            <nav className="flex-1 p-3 sm:p-4 space-y-2 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
               <Button
                 variant="default"
                 className="w-full justify-start gap-2 sm:gap-3"

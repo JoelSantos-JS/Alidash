@@ -11,7 +11,7 @@ jest.mock('next/server', () => ({
 type Asset = { id: string, ticker: string, name?: string, class: string }
 type Position = { id: string, user_id: string, asset_id: string, account_id?: string | null, quantity: number, avg_price: number }
 type Transaction = { id: string, user_id: string, asset_id: string, type: string, quantity: number, unit_price: number, fees: number, taxes: number, cash_flow: number, date: string }
-type Account = { id: string, user_id: string, name: string, broker?: string | null }
+type Account = { id: string, user_id: string, account_code: string, broker?: string | null }
 
 let mockAssets: Asset[] = []
 let mockPositions: Position[] = []
@@ -19,6 +19,136 @@ let mockTransactions: Transaction[] = []
 let mockAccounts: Account[] = []
 let idSeq = 1
 const nextSeq = () => { idSeq += 1; return idSeq }
+
+function mockSupabaseServerMock(user: any) {
+  const makeBuilder = (table: string) => {
+    const state: any = { table, filters: {} }
+    const applyFilters = (rows: any[]) => {
+      return rows.filter(row => {
+        return Object.keys(state.filters).every((k) => row[k] === state.filters[k])
+      })
+    }
+    const builder: any = {
+      select: () => builder,
+      eq: (col: string, val: any) => { state.filters[col] = val; return builder },
+      in: (_: string, __: any[]) => builder,
+      order: () => builder,
+      gte: () => builder,
+      limit: (n: number) => {
+        const rows = state.table === 'investment_assets' ? mockAssets
+          : state.table === 'investment_positions' ? mockPositions
+          : state.table === 'investment_prices' ? []
+          : state.table === 'investment_transactions' ? mockTransactions
+          : state.table === 'investment_accounts' ? mockAccounts
+          : []
+        return Promise.resolve({ data: applyFilters(rows).slice(0, n), error: null })
+      },
+      single: async () => {
+        const rows = state.table === 'investment_assets' ? mockAssets
+          : state.table === 'investment_positions' ? mockPositions
+          : state.table === 'investment_transactions' ? mockTransactions
+          : state.table === 'investment_accounts' ? mockAccounts
+          : []
+        const data = applyFilters(rows)[0] || null
+        return { data }
+      },
+      insert: (payload: any) => {
+        const row = Array.isArray(payload) ? payload[0] : payload
+        if (state.table === 'investment_assets') {
+          const id = `asset_${nextSeq()}`
+          const newRow = { id, ticker: row.ticker, name: row.name, class: row.class }
+          mockAssets.push(newRow as any)
+          const chain = {
+            select: () => ({
+              single: async () => ({ data: { id } })
+            })
+          }
+          return chain as any
+        }
+        if (state.table === 'investment_positions') {
+          const id = `pos_${nextSeq()}`
+          const newRow = { id, ...row }
+          mockPositions.push(newRow as any)
+          const chain = {
+            select: () => ({
+              single: async () => ({ data: newRow })
+            })
+          }
+          return chain as any
+        }
+        if (state.table === 'investment_transactions') {
+          const id = `tx_${nextSeq()}`
+          const newRow = { id, ...row }
+          mockTransactions.push(newRow as any)
+          const chain = {
+            select: () => ({
+              single: async () => ({ data: newRow })
+            })
+          }
+          return chain as any
+        }
+        if (state.table === 'investment_accounts') {
+          const id = `acc_${nextSeq()}`
+          const newRow = { id, user_id: row.user_id, account_code: row.account_code ?? row.name, broker: row.broker ?? null }
+          mockAccounts.push(newRow as any)
+          const chain = {
+            select: () => ({
+              single: async () => ({ data: newRow })
+            })
+          }
+          return chain as any
+        }
+        return {} as any
+      },
+      update: (payload: any) => {
+        (state as any).updatePayload = payload
+        const chain: any = {
+          eq: (col: string, val: any) => { state.filters[col] = val; return chain },
+          select: () => chain,
+          single: async () => {
+            let rows = state.table === 'investment_positions' ? mockPositions : []
+            const filtered = applyFilters(rows)
+            const target = filtered[0]
+            if (state.table === 'investment_positions' && target) {
+              Object.assign(target, (state as any).updatePayload)
+            }
+            return { data: target || null }
+          }
+        }
+        return chain
+      },
+      delete: () => {
+        const chain: any = {
+          eq: (col: string, val: any) => { state.filters[col] = val; return chain },
+          select: () => chain,
+          single: async () => {
+            let rows = state.table === 'investment_positions' ? mockPositions : []
+            const filtered = applyFilters(rows)
+            const target = filtered[0]
+            if (state.table === 'investment_positions' && target) {
+              const idx = rows.findIndex(r => r.id === target.id)
+              if (idx >= 0) rows.splice(idx, 1)
+            }
+            return { data: target || null }
+          }
+        }
+        return chain
+      }
+    }
+    return builder
+  }
+  return {
+    createClient: async () => ({
+      auth: {
+        getUser: async () => ({ data: { user }, error: null })
+      },
+      from: (table: string) => makeBuilder(table)
+    }),
+    createServiceClient: () => ({
+      from: (table: string) => makeBuilder(table)
+    })
+  }
+}
 
 jest.mock('@supabase/supabase-js', () => {
   return {
@@ -93,7 +223,7 @@ jest.mock('@supabase/supabase-js', () => {
             }
             if (state.table === 'investment_accounts') {
               const id = `acc_${nextSeq()}`
-              const newRow = { id, user_id: row.user_id, name: row.name, broker: row.broker ?? null }
+              const newRow = { id, user_id: row.user_id, account_code: row.account_code ?? row.name, broker: row.broker ?? null }
               mockAccounts.push(newRow as any)
               const chain = {
                 select: () => ({
@@ -145,135 +275,7 @@ jest.mock('@supabase/supabase-js', () => {
   }
 })
  
-jest.mock('@/utils/supabase/server', () => {
-  const makeBuilder = (table: string) => {
-    const state: any = { table, filters: {} }
-    const applyFilters = (rows: any[]) => {
-      return rows.filter(row => {
-        return Object.keys(state.filters).every((k) => row[k] === state.filters[k])
-      })
-    }
-    const builder: any = {
-      select: () => builder,
-      eq: (col: string, val: any) => { state.filters[col] = val; return builder },
-      in: (_: string, __: any[]) => builder,
-      order: () => builder,
-      gte: () => builder,
-      limit: (n: number) => {
-        const rows = state.table === 'investment_assets' ? mockAssets
-          : state.table === 'investment_positions' ? mockPositions
-          : state.table === 'investment_prices' ? [] 
-          : state.table === 'investment_transactions' ? mockTransactions
-          : state.table === 'investment_accounts' ? mockAccounts
-          : []
-        return Promise.resolve({ data: applyFilters(rows).slice(0, n), error: null })
-      },
-      single: async () => {
-        const rows = state.table === 'investment_assets' ? mockAssets
-          : state.table === 'investment_positions' ? mockPositions
-          : state.table === 'investment_transactions' ? mockTransactions
-          : state.table === 'investment_accounts' ? mockAccounts
-          : []
-        const data = applyFilters(rows)[0] || null
-        return { data }
-      },
-      insert: (payload: any) => {
-        const row = Array.isArray(payload) ? payload[0] : payload
-        if (state.table === 'investment_assets') {
-          const id = `asset_${nextSeq()}`
-          const newRow = { id, ticker: row.ticker, name: row.name, class: row.class }
-          mockAssets.push(newRow as any)
-          const chain = {
-            select: () => ({
-              single: async () => ({ data: { id } })
-            })
-          }
-          return chain as any
-        }
-        if (state.table === 'investment_positions') {
-          const id = `pos_${nextSeq()}`
-          const newRow = { id, ...row }
-          mockPositions.push(newRow as any)
-          const chain = {
-            select: () => ({
-              single: async () => ({ data: newRow })
-            })
-          }
-          return chain as any
-        }
-        if (state.table === 'investment_transactions') {
-          const id = `tx_${nextSeq()}`
-          const newRow = { id, ...row }
-          mockTransactions.push(newRow as any)
-          const chain = {
-            select: () => ({
-              single: async () => ({ data: newRow })
-            })
-          }
-          return chain as any
-        }
-        if (state.table === 'investment_accounts') {
-          const id = `acc_${nextSeq()}`
-          const newRow = { id, user_id: row.user_id, name: row.name, broker: row.broker ?? null }
-          mockAccounts.push(newRow as any)
-          const chain = {
-            select: () => ({
-              single: async () => ({ data: newRow })
-            })
-          }
-          return chain as any
-        }
-        return {} as any
-      },
-      update: (payload: any) => {
-        (state as any).updatePayload = payload
-        const chain: any = {
-          eq: (col: string, val: any) => { state.filters[col] = val; return chain },
-          select: () => chain,
-          single: async () => {
-            let rows = state.table === 'investment_positions' ? mockPositions : []
-            const filtered = applyFilters(rows)
-            const target = filtered[0]
-            if (state.table === 'investment_positions' && target) {
-              Object.assign(target, (state as any).updatePayload)
-            }
-            return { data: target || null }
-          }
-        }
-        return chain
-      },
-      delete: () => {
-        const chain: any = {
-          eq: (col: string, val: any) => { state.filters[col] = val; return chain },
-          select: () => chain,
-          single: async () => {
-            let rows = state.table === 'investment_positions' ? mockPositions : []
-            const filtered = applyFilters(rows)
-            const target = filtered[0]
-            if (state.table === 'investment_positions' && target) {
-              const idx = rows.findIndex(r => r.id === target.id)
-              if (idx >= 0) rows.splice(idx, 1)
-            }
-            return { data: target || null }
-          }
-        }
-        return chain
-      }
-    }
-    return builder
-  }
-  return {
-    createClient: async () => ({
-      auth: {
-        getUser: async () => ({ data: { user: { id: 'user_1', email: 'user1@example.com' } }, error: null })
-      },
-      from: (table: string) => makeBuilder(table)
-    }),
-    createServiceClient: () => ({
-      from: (table: string) => makeBuilder(table)
-    })
-  }
-})
+jest.mock('@/utils/supabase/server', () => mockSupabaseServerMock({ id: 'user_1', email: 'user1@example.com' }))
 
 beforeEach(() => {
   mockAssets = []
@@ -282,6 +284,7 @@ beforeEach(() => {
   mockAccounts = []
   idSeq = 1
   jest.resetModules()
+  jest.doMock('@/utils/supabase/server', () => mockSupabaseServerMock({ id: 'user_1', email: 'user1@example.com' }))
 })
 
 describe('Investments API', () => {
@@ -359,38 +362,10 @@ describe('Investments API', () => {
   it('GET /api/investments/accounts sem sessão usa user_id (service)', async () => {
     jest.resetModules()
     jest.doMock('@/utils/supabase/server', () => {
-      const makeBuilder = (table: string) => {
-        const state: any = { table, filters: {} }
-        const applyFilters = (rows: any[]) => rows.filter(row => Object.keys(state.filters).every(k => row[k] === state.filters[k]))
-        const builder: any = {
-          select: () => builder,
-          eq: (col: string, val: any) => { state.filters[col] = val; return builder },
-          in: (_: string, __: any[]) => builder,
-          order: () => builder,
-          limit: async (n: number) => {
-            const rows = table === 'investment_accounts' ? mockAccounts : []
-            return { data: applyFilters(rows).slice(0, n), error: null }
-          },
-          single: async () => {
-            const rows = table === 'investment_accounts' ? mockAccounts : []
-            const data = applyFilters(rows)[0] || null
-            return { data }
-          }
-        }
-        return builder
-      }
-      return {
-        createClient: async () => ({
-          auth: { getUser: async () => ({ data: { user: null }, error: null }) },
-          from: (t: string) => makeBuilder(t)
-        }),
-        createServiceClient: () => ({
-          from: (t: string) => makeBuilder(t)
-        })
-      }
+      return mockSupabaseServerMock(null)
     })
     const { GET } = await import('@/app/api/investments/accounts/route')
-    mockAccounts.push({ id: 'acc_1', user_id: 'user_1', name: 'Conta Sem Sessao', broker: 'XP' } as any)
+    mockAccounts.push({ id: 'acc_1', user_id: 'user_1', account_code: 'Conta Sem Sessao', broker: 'XP' } as any)
     const res: any = await GET({ url: 'http://localhost/api/investments/accounts?user_id=user_1' } as any)
     const body = await res.json()
     expect(res.status).toBe(200)
@@ -400,7 +375,6 @@ describe('Investments API', () => {
   })
 
   it('PATCH /api/investments/positions atualiza quantidade e preço médio', async () => {
-    jest.unmock('@/utils/supabase/server')
     const { POST, PATCH } = await import('@/app/api/investments/positions/route')
     const createRes: any = await POST({ json: async () => ({
       user_id: 'user_1', ticker: 'VALE3', class: 'stock', quantity: 5, avg_price: 60
@@ -423,7 +397,6 @@ describe('Investments API', () => {
   })
 
   it('DELETE /api/investments/positions remove posição', async () => {
-    jest.unmock('@/utils/supabase/server')
     const { POST, DELETE } = await import('@/app/api/investments/positions/route')
     const resCreate: any = await POST({ json: async () => ({
       user_id: 'user_1', ticker: 'ITUB4', class: 'stock', quantity: 3, avg_price: 30

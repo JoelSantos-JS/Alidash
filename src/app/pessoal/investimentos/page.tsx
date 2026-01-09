@@ -39,7 +39,7 @@ import {
   Pie,
   Cell
 } from "recharts"
-import { TrendingUp, DollarSign, PieChart as PieIcon, Menu, ArrowLeft, CalendarDays, Pencil, Trash2 } from "lucide-react"
+import { TrendingUp, DollarSign, PieChart as PieIcon, Menu, ArrowLeft, CalendarDays, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react"
 
 type Period = "week" | "month" | "quarter" | "year"
 type AssetClass = "all" | "stock" | "fii" | "etf" | "fixed_income" | "crypto"
@@ -63,12 +63,18 @@ export default function InvestimentosPage() {
     { id: string; ticker: string; name: string; class: string; quantity: number; avgPrice: number; marketPrice: number; marketValue: number }[]
   >([])
   const [accounts, setAccounts] = useState<{ id: string; name: string; broker?: string | null }[]>([])
-  const [showNewAccount, setShowNewAccount] = useState(false)
-  const [newAccountName, setNewAccountName] = useState("")
   const [selic, setSelic] = useState<number | null>(null)
   const [cdi, setCdi] = useState<number | null>(null)
   const [ipca, setIpca] = useState<number | null>(null)
   const [apiOk, setApiOk] = useState<boolean | null>(null)
+  const [mobileSections, setMobileSections] = useState({
+    fixedIncome: false,
+    stocks: false,
+    fiis: false,
+    etfs: false,
+    crypto: false,
+    positions: false
+  })
   const classTotals = useMemo(() => {
     const map: Record<string, number> = { stock: 0, fii: 0, etf: 0, fixed_income: 0, crypto: 0 }
     positions.forEach((p) => {
@@ -126,7 +132,7 @@ export default function InvestimentosPage() {
   const contributionSchema = z.object({
     amount: z.number().min(0.01, "Valor deve ser maior que zero"),
     assetClass: z.enum(["stock", "fii", "etf", "fixed_income", "crypto"]),
-    account: z.string().min(1, "Conta é obrigatória"),
+    account: z.string().min(1, "Corretora é obrigatória"),
     date: z.date(),
     notes: z.string().optional(),
     ticker: z.string().optional(),
@@ -138,7 +144,7 @@ export default function InvestimentosPage() {
     defaultValues: {
       amount: 0,
       assetClass: "stock",
-      account: "clear",
+      account: "",
       date: new Date(),
       notes: "",
       ticker: "",
@@ -335,9 +341,9 @@ export default function InvestimentosPage() {
       />
 
       <div className="flex-1 flex flex-col">
-        <div className="sticky top-0 z-30 border-b bg-card p-1 sm:p-2 h-12 sm:h-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+        <div className="sticky top-0 z-30 border-b bg-card p-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
               <Button asChild variant="outline" size="sm" className="h-8 px-2">
                 <Link href="/">
                   <ArrowLeft className="h-4 w-4 mr-2" />
@@ -370,7 +376,7 @@ export default function InvestimentosPage() {
               <TrendingUp className="h-5 w-5 text-primary" />
               <h1 className="text-lg sm:text-xl font-bold leading-none">Investimentos</h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 justify-start sm:justify-end">
               <Badge variant="outline">{period === "month" ? "Mês" : period}</Badge>
               {period === "month" && (
                 <Popover>
@@ -399,7 +405,7 @@ export default function InvestimentosPage() {
         </div>
 
         <div className="flex-1 overflow-auto p-2 sm:p-4">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-6">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-3 sm:space-y-6">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="pessoais">Pessoais</TabsTrigger>
               <TabsTrigger value="geral">Geral</TabsTrigger>
@@ -407,7 +413,7 @@ export default function InvestimentosPage() {
 
             <TabsContent value="pessoais">
               <div className="mb-2 sm:mb-4">
-                <Button size="sm" className="w-full sm:w-auto h-9 text-sm" onClick={() => setShowContributionModal(true)}>
+                <Button size="sm" className="w-auto sm:w-auto h-8 sm:h-9 text-xs sm:text-sm px-3" onClick={() => setShowContributionModal(true)}>
                   Adicionar Aporte
                 </Button>
                 <Dialog open={showContributionModal} onOpenChange={setShowContributionModal}>
@@ -423,7 +429,30 @@ export default function InvestimentosPage() {
                             return
                           }
                           try {
-                            const selectedAccountId = accounts.find(acc => acc.id === data.account)?.id || null
+                            const brokerName = String(data.account || "").trim()
+                            const brokerNameKey = brokerName.toLowerCase()
+                            let selectedAccountId =
+                              accounts.find((acc) => {
+                                const candidates = [acc.name, acc.broker].filter(Boolean) as string[]
+                                return candidates.some((c) => String(c).trim().toLowerCase() === brokerNameKey)
+                              })?.id || null
+                            if (!selectedAccountId) {
+                              const accRes = await fetch("/api/investments/accounts", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ name: brokerName })
+                              })
+                              const accJson = await accRes.json().catch(() => ({}))
+                              if (!accRes.ok) {
+                                toast({ title: "Erro ao salvar corretora", description: accJson.error || "Tente novamente" })
+                                return
+                              }
+                              const created = accJson.account
+                              if (created?.id) {
+                                setAccounts((prev) => [created, ...prev])
+                                selectedAccountId = created.id
+                              }
+                            }
                             const rfMap: Record<string, string> = {
                               tesouro_selic: "TESOURO SELIC",
                               cdb: "CDB",
@@ -433,9 +462,19 @@ export default function InvestimentosPage() {
                               data.assetClass === "fixed_income"
                                 ? ((data.fixedIncomeType && rfMap[data.fixedIncomeType]) || undefined)
                                 : undefined
+                            if (data.assetClass === "fixed_income" && !derivedTicker) {
+                              toast({ title: "Tipo obrigatório", description: "Selecione o tipo de Renda Fixa (Tesouro, CDB, LCA)" })
+                              return
+                            }
+                            const manualTicker = (data as any).ticker ? String((data as any).ticker).trim() : ""
+                            if (data.assetClass !== "fixed_income" && !manualTicker) {
+                              toast({ title: "Ticker obrigatório", description: "Informe o ticker para Ações, FIIs, ETFs ou Cripto" })
+                              return
+                            }
+                            const finalTicker = (manualTicker || derivedTicker) as string | undefined
                             const payload = {
                               user_id: user.id,
-                              ticker: ((data as any).ticker || derivedTicker) || undefined,
+                              ticker: finalTicker,
                               asset_class: data.assetClass,
                               quantity: 1,
                               unit_price: data.amount,
@@ -459,7 +498,7 @@ export default function InvestimentosPage() {
                             contributionForm.reset({
                               amount: 0,
                               assetClass: "stock",
-                              account: "clear",
+                              account: "",
                               date: new Date(),
                               notes: ""
                             })
@@ -591,10 +630,10 @@ export default function InvestimentosPage() {
                               name="ticker"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Ticker (opcional)</FormLabel>
+                                  <FormLabel>Ticker</FormLabel>
                                   <FormControl>
                                     <Input
-                                      placeholder="Ex: BOVA11"
+                                      placeholder="Ex: BOVA11, PETR4, BTC"
                                       value={(field.value as any) || ""}
                                       onChange={(e) => field.onChange(e.target.value)}
                                     />
@@ -612,75 +651,20 @@ export default function InvestimentosPage() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Corretora</FormLabel>
-                                <Select value={field.value} onValueChange={field.onChange}>
-                                  <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Selecione a conta" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {accounts.length > 0 ? (
-                                      accounts.map(acc => (
-                                        <SelectItem key={acc.id} value={acc.id}>
-                                          {acc.name}{acc.broker ? ` • ${acc.broker}` : ""}
-                                        </SelectItem>
-                                      ))
-                                    ) : (
-                                      <>
-                                        <SelectItem value="clear">Clear</SelectItem>
-                                        <SelectItem value="xp">XP</SelectItem>
-                                        <SelectItem value="easynvest">Nubank</SelectItem>
-                                      </>
-                                    )}
-                                  </SelectContent>
-                                </Select>
+                                <FormControl>
+                                  <Input
+                                    placeholder="Ex: Clear, XP, Nubank, Binance"
+                                    value={field.value || ""}
+                                    onChange={(e) => field.onChange(e.target.value)}
+                                    list="investment-brokers"
+                                  />
+                                </FormControl>
+                                <datalist id="investment-brokers">
+                                  {accounts.map((acc) => (
+                                    <option key={acc.id} value={acc.broker || acc.name} />
+                                  ))}
+                                </datalist>
                                 <FormMessage />
-                                <div className="mt-2 space-y-2">
-                                  <Button size="sm" className="w-full sm:w-auto" variant={showNewAccount ? "secondary" : "outline"} onClick={() => setShowNewAccount(v => !v)}>
-                                    {showNewAccount ? "Cancelar" : "Nova Corretora"}
-                                  </Button>
-                                  {showNewAccount && (
-                                    <Card>
-                                      <CardContent className="space-y-2 p-3">
-                                        <div className="space-y-1">
-                                          <FormLabel className="text-xs">Corretora</FormLabel>
-                                        <Input value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)} placeholder="Ex: Clear, XP, Binance" />
-                                        </div>
-                                        <div className="sm:flex sm:justify-end">
-                                          <Button
-                                            size="sm"
-                                            className="w-full sm:w-auto"
-                                            onClick={async () => {
-                                              if (!user?.id || !newAccountName.trim()) {
-                                                  toast({ title: "Dados inválidos", description: "Informe o nome da corretora" })
-                                                  return
-                                                }
-                                                const res = await fetch("/api/investments/accounts", {
-                                                  method: "POST",
-                                                  headers: { "Content-Type": "application/json" },
-                                                  body: JSON.stringify({
-                                                    user_id: user.id,
-                                                    name: newAccountName.trim(),
-                                                    broker: null
-                                                  })
-                                                })
-                                                const json = await res.json()
-                                                if (!res.ok) {
-                                                  toast({ title: "Erro ao criar conta", description: json.error || "Tente novamente" })
-                                                  return
-                                                }
-                                                setAccounts(prev => [json.account, ...prev])
-                                                contributionForm.setValue("account", json.account.id)
-                                                setShowNewAccount(false)
-                                                setNewAccountName("")
-                                                toast({ title: "Corretora criada", description: "Corretora adicionada com sucesso" })
-                                              }}
-                                            >
-                                              Salvar
-                                            </Button>
-                                        </div>
-                                      </CardContent>
-                                    </Card>
-                                  )}
-                                </div>
                               </FormItem>
                             )}
                           />
@@ -737,21 +721,21 @@ export default function InvestimentosPage() {
                   </DialogContent>
                 </Dialog>
               </div>
-              <Card>
-                <CardHeader className="py-1">
+              <Card className="mb-4">
+                <CardHeader className="p-3 sm:p-6 pb-2">
                   <CardTitle className="text-sm font-medium">Taxas de Referência</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-1 text-[14px] leading-tight">
-                    <div>
+                <CardContent className="p-3 sm:p-6 pt-0">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs sm:text-[14px] leading-tight">
+                    <div className="min-w-0">
                       <p className="text-muted-foreground">Selic</p>
                       <p className="font-medium">{selic !== null ? `${selic.toFixed(2)}%` : "-"}</p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-muted-foreground">CDI</p>
                       <p className="font-medium">{cdi !== null ? `${cdi.toFixed(2)}%` : "-"}</p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-muted-foreground">IPCA</p>
                       <p className="font-medium">{ipca !== null ? `${ipca.toFixed(2)}%` : "-"}</p>
                     </div>
@@ -759,35 +743,35 @@ export default function InvestimentosPage() {
                 </CardContent>
               </Card>
 
-              <div className="grid gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <Card>
-                  <CardHeader className="py-1">
+              <div className="grid gap-2 sm:gap-4 grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-3">
+                <Card className="min-w-0">
+                  <CardHeader className="p-3 lg:p-6 pb-2">
                     <CardTitle className="text-sm font-medium">Valor da Carteira</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className={cn("text-2xl font-bold tracking-tight", totalValor === 0 && "opacity-70 text-muted-foreground", totalValor > 0 && "text-primary")}>
+                  <CardContent className="p-3 lg:p-6 pt-0">
+                    <div className={cn("text-xl lg:text-2xl font-bold tracking-tight break-words", totalValor === 0 && "opacity-70 text-muted-foreground", totalValor > 0 && "text-primary")}>
                       {totalValor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </div>
                     <p className="text-[12px] text-muted-foreground leading-tight">Atual</p>
                   </CardContent>
                 </Card>
-                <Card>
-                  <CardHeader className="py-1">
+                <Card className="min-w-0">
+                  <CardHeader className="p-3 lg:p-6 pb-2">
                     <CardTitle className="text-sm font-medium">Aportes no Período</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className={cn("text-2xl font-bold tracking-tight", totalAportes === 0 ? "opacity-70 text-muted-foreground" : "text-green-600")}>
+                  <CardContent className="p-3 lg:p-6 pt-0">
+                    <div className={cn("text-xl lg:text-2xl font-bold tracking-tight break-words", totalAportes === 0 ? "opacity-70 text-muted-foreground" : "text-green-600")}>
                       {totalAportes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </div>
                     <p className="text-[12px] text-muted-foreground leading-tight">Total de contribuições</p>
                   </CardContent>
                 </Card>
-                <Card>
-                  <CardHeader className="py-1">
+                <Card className="min-w-0">
+                  <CardHeader className="p-3 lg:p-6 pb-2">
                     <CardTitle className="text-sm font-medium">Saldo de Ganhos</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className={cn("text-2xl font-bold tracking-tight", (totalValor - totalAportes) >= 0 ? "text-green-600" : "text-red-600", (totalValor - totalAportes) === 0 && "opacity-70 text-muted-foreground")}>
+                  <CardContent className="p-3 lg:p-6 pt-0">
+                    <div className={cn("text-xl lg:text-2xl font-bold tracking-tight break-words", (totalValor - totalAportes) >= 0 ? "text-green-600" : "text-red-600", (totalValor - totalAportes) === 0 && "opacity-70 text-muted-foreground")}>
                       {(totalValor - totalAportes).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </div>
                     <p className="text-[12px] text-muted-foreground leading-tight">Variação líquida</p>
@@ -795,17 +779,17 @@ export default function InvestimentosPage() {
                 </Card>
               </div>
 
-              <div className="grid gap-2 sm:gap-4 md:grid-cols-2 mt-2 sm:mt-4">
+              <div className="grid gap-2 sm:gap-4 md:grid-cols-2 mt-2 lg:mt-4">
                 {portfolioSeries.every(p => (Number(p.value) || 0) === 0) ? null : (
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <DollarSign className="h-5 w-5" />
+                  <CardHeader className="p-3 lg:p-6 pb-2">
+                    <CardTitle className="text-sm lg:text-base font-medium flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 lg:h-5 lg:w-5" />
                       Valor da Carteira
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className={cn("min-w-0 overflow-hidden", isMobile ? "h-40" : "h-64")}>
+                  <CardContent className="p-3 lg:p-6 pt-0">
+                    <div className="min-w-0 overflow-hidden h-40 sm:h-64">
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={portfolioSeries} margin={{ left: isMobile ? 8 : 16, right: isMobile ? 8 : 16, top: 8, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -823,14 +807,14 @@ export default function InvestimentosPage() {
 
                 {portfolioSeries.every(p => (Number(p.aportes) || 0) === 0) ? null : (
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <DollarSign className="h-5 w-5" />
+                  <CardHeader className="p-3 lg:p-6 pb-2">
+                    <CardTitle className="text-sm lg:text-base font-medium flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 lg:h-5 lg:w-5" />
                       Aportes Mensais
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className={cn("min-w-0 overflow-hidden", isMobile ? "h-40" : "h-64")}>
+                  <CardContent className="p-3 lg:p-6 pt-0">
+                    <div className="min-w-0 overflow-hidden h-40 sm:h-64">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={portfolioSeries} margin={{ left: isMobile ? 8 : 16, right: isMobile ? 8 : 16, top: 8, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -848,12 +832,30 @@ export default function InvestimentosPage() {
 
               {/* Seção de drawdown removida para simplificar a interface */}
 
-              <div className="mt-4">
+              <div className="mt-2 sm:mt-4">
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm font-medium">Investimentos de Renda Fixa</CardTitle>
+                  <CardHeader className="p-3 lg:p-6 pb-2">
+                    <div className="flex items-start justify-between gap-2 min-w-0">
+                      <CardTitle className="text-sm font-medium">Investimentos de Renda Fixa</CardTitle>
+                      {isMobile ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => setMobileSections((s) => ({ ...s, fixedIncome: !s.fixedIncome }))}
+                        >
+                          {mobileSections.fixedIncome ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </Button>
+                      ) : null}
+                    </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent
+                    className={cn(
+                      "p-3 lg:p-6 pt-0",
+                      isMobile &&
+                        (mobileSections.fixedIncome ? "max-h-[70svh] overflow-y-auto" : "max-h-[140px] overflow-hidden")
+                    )}
+                  >
                     {positions.filter((p) => p.class === "fixed_income").length > 0 ? (
                       <div className="overflow-x-auto">
                         <table className="w-full text-xs sm:text-sm">
@@ -939,17 +941,34 @@ export default function InvestimentosPage() {
                         </table>
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground text-center py-6 border rounded-md">Nenhuma posição de renda fixa</p>
+                      <p className="text-xs text-muted-foreground text-center py-4 sm:py-6 border rounded-md break-words px-2">Nenhuma posição de renda fixa</p>
                     )}
                   </CardContent>
                 </Card>
               </div>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <div className="mt-2 lg:mt-4 grid gap-2 lg:gap-4 md:grid-cols-2">
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm font-medium">Investimentos em Ações</CardTitle>
+                  <CardHeader className="p-3 lg:p-6 pb-2">
+                    <div className="flex items-start justify-between gap-2 min-w-0">
+                      <CardTitle className="text-sm font-medium">Investimentos em Ações</CardTitle>
+                      {isMobile ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => setMobileSections((s) => ({ ...s, stocks: !s.stocks }))}
+                        >
+                          {mobileSections.stocks ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </Button>
+                      ) : null}
+                    </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent
+                    className={cn(
+                      "p-3 lg:p-6 pt-0",
+                      isMobile && (mobileSections.stocks ? "max-h-[70svh] overflow-y-auto" : "max-h-[140px] overflow-hidden")
+                    )}
+                  >
                     {positions.filter((p) => p.class === "stock").length > 0 ? (
                       <div className="overflow-x-auto">
                         <table className="w-full text-xs sm:text-sm">
@@ -984,15 +1003,32 @@ export default function InvestimentosPage() {
                         </table>
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground">Nenhuma posição em ações</p>
+                      <p className="text-xs text-muted-foreground break-words">Nenhuma posição em ações</p>
                     )}
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm font-medium">Investimentos em FIIs</CardTitle>
+                  <CardHeader className="p-3 lg:p-6 pb-2">
+                    <div className="flex items-start justify-between gap-2 min-w-0">
+                      <CardTitle className="text-sm font-medium">Investimentos em FIIs</CardTitle>
+                      {isMobile ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => setMobileSections((s) => ({ ...s, fiis: !s.fiis }))}
+                        >
+                          {mobileSections.fiis ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </Button>
+                      ) : null}
+                    </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent
+                    className={cn(
+                      "p-3 lg:p-6 pt-0",
+                      isMobile && (mobileSections.fiis ? "max-h-[70svh] overflow-y-auto" : "max-h-[140px] overflow-hidden")
+                    )}
+                  >
                     {positions.filter((p) => p.class === "fii").length > 0 ? (
                       <div className="overflow-x-auto">
                         <table className="w-full text-xs sm:text-sm">
@@ -1027,15 +1063,32 @@ export default function InvestimentosPage() {
                         </table>
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground">Nenhuma posição em FIIs</p>
+                      <p className="text-xs text-muted-foreground break-words">Nenhuma posição em FIIs</p>
                     )}
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm font-medium">Investimentos em ETFs</CardTitle>
+                  <CardHeader className="p-3 lg:p-6 pb-2">
+                    <div className="flex items-start justify-between gap-2 min-w-0">
+                      <CardTitle className="text-sm font-medium">Investimentos em ETFs</CardTitle>
+                      {isMobile ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => setMobileSections((s) => ({ ...s, etfs: !s.etfs }))}
+                        >
+                          {mobileSections.etfs ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </Button>
+                      ) : null}
+                    </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent
+                    className={cn(
+                      "p-3 lg:p-6 pt-0",
+                      isMobile && (mobileSections.etfs ? "max-h-[70svh] overflow-y-auto" : "max-h-[140px] overflow-hidden")
+                    )}
+                  >
                     {positions.filter((p) => p.class === "etf").length > 0 ? (
                       <div className="overflow-x-auto">
                         <table className="w-full text-xs sm:text-sm">
@@ -1070,15 +1123,32 @@ export default function InvestimentosPage() {
                         </table>
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground">Nenhuma posição em ETFs</p>
+                      <p className="text-xs text-muted-foreground break-words">Nenhuma posição em ETFs</p>
                     )}
                   </CardContent>
                 </Card>
                 <Card className="md:col-span-2">
-                  <CardHeader>
-                    <CardTitle className="text-sm font-medium">Investimentos em Cripto</CardTitle>
+                  <CardHeader className="p-3 lg:p-6 pb-2">
+                    <div className="flex items-start justify-between gap-2 min-w-0">
+                      <CardTitle className="text-sm font-medium">Investimentos em Cripto</CardTitle>
+                      {isMobile ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => setMobileSections((s) => ({ ...s, crypto: !s.crypto }))}
+                        >
+                          {mobileSections.crypto ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </Button>
+                      ) : null}
+                    </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent
+                    className={cn(
+                      "p-3 lg:p-6 pt-0",
+                      isMobile && (mobileSections.crypto ? "max-h-[70svh] overflow-y-auto" : "max-h-[160px] overflow-hidden")
+                    )}
+                  >
                     {(() => {
                       const effectivePrice = btcPrice ?? btcInfo.price
                       const totalCryptoValue = positions
@@ -1196,20 +1266,35 @@ export default function InvestimentosPage() {
                         )}
                       </>
                     ) : (
-                      <p className="text-xs text-muted-foreground">Nenhuma posição em cripto</p>
+                      <p className="text-xs text-muted-foreground break-words">Nenhuma posição em cripto</p>
                     )}
                   </CardContent>
                 </Card>
               </div>
 
-              <div className="mt-4">
+              <div className="mt-2 sm:mt-4">
                 <Card>
-                  <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            Posições
-                          </CardTitle>
-                          </CardHeader>
-                          <CardContent>
+                  <CardHeader className="p-3 lg:p-6 pb-2">
+                    <div className="flex items-start justify-between gap-2 min-w-0">
+                      <CardTitle className="text-sm font-medium">Posições</CardTitle>
+                      {isMobile ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => setMobileSections((s) => ({ ...s, positions: !s.positions }))}
+                        >
+                          {mobileSections.positions ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </CardHeader>
+                  <CardContent
+                    className={cn(
+                      "p-3 lg:p-6 pt-0",
+                      isMobile && (mobileSections.positions ? "max-h-[70svh] overflow-y-auto" : "max-h-[160px] overflow-hidden")
+                    )}
+                  >
                           {editingPos && (
                             <div className="mb-4">
                               <Card>
@@ -1447,10 +1532,10 @@ export default function InvestimentosPage() {
               {activeTab !== "geral" ? null : (
               <div className="grid gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Alocação por Classe</CardTitle>
+                  <CardHeader className="p-3 sm:p-6 pb-2">
+                    <CardTitle className="text-sm font-medium">Alocação por Classe</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-3 sm:p-6 pt-0">
                     <div className={cn(isMobile ? "h-40" : "h-64")}>
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -1471,12 +1556,12 @@ export default function InvestimentosPage() {
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
-                    <div className="mt-4 space-y-2">
+                    <div className="mt-2 sm:mt-4 space-y-2">
                       {allocationData.map((a, i) => (
-                        <div key={`${a.name}-${i}`} className="flex items-center justify-between text-sm">
+                        <div key={`${a.name}-${i}`} className="flex items-center justify-between text-xs sm:text-sm">
                           <div className="flex items-center gap-2">
                             <span
-                              className="inline-block h-3 w-3 rounded"
+                              className="inline-block h-2.5 w-2.5 sm:h-3 sm:w-3 rounded"
                               style={{ backgroundColor: COLORS[i % COLORS.length] }}
                             />
                             {a.name}
@@ -1488,16 +1573,16 @@ export default function InvestimentosPage() {
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Resumo Geral</CardTitle>
+                  <CardHeader className="p-3 sm:p-6 pb-2">
+                    <CardTitle className="text-sm font-medium">Resumo Geral</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="text-2xl font-bold text-primary">
+                  <CardContent className="p-3 sm:p-6 pt-0">
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <div className="text-xl sm:text-2xl font-bold text-primary">
                         {totalValor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                       </div>
-                      <p className="text-sm text-muted-foreground">Valor consolidado da carteira</p>
-                      <div className="grid grid-cols-2 gap-1 sm:gap-2 mt-1 sm:mt-2 text-sm">
+                      <p className="text-xs sm:text-sm text-muted-foreground">Valor consolidado da carteira</p>
+                      <div className="grid grid-cols-2 gap-2 sm:gap-2 mt-1 sm:mt-2 text-xs sm:text-sm">
                         <div>
                           <p className="text-muted-foreground">Aportes (6 meses)</p>
                           <p className="font-medium">
@@ -1522,7 +1607,7 @@ export default function InvestimentosPage() {
                         </div>
                       </div>
                       {allocationData.length > 0 && (
-                        <div className="mt-2 pt-2 border-t text-sm">
+                        <div className="mt-2 pt-2 border-t text-xs sm:text-sm">
                           <p className="text-muted-foreground">Classe dominante</p>
                           <p className="font-medium">
                             {(() => {
@@ -1536,36 +1621,36 @@ export default function InvestimentosPage() {
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Resumo por Classe</CardTitle>
+                  <CardHeader className="p-3 sm:p-6 pb-2">
+                    <CardTitle className="text-sm font-medium">Resumo por Classe</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-3 sm:p-6 pt-0">
                     <div className="flex flex-wrap gap-2 sm:gap-3">
-                      <div className="p-3 rounded border flex flex-col gap-1 w-fit">
+                      <div className="p-2 sm:p-3 rounded border flex flex-col gap-1 w-fit">
                         <p className="text-xs text-muted-foreground">Ações</p>
                         <p className="text-sm font-semibold whitespace-nowrap">
                           {Number(classTotals.stock).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                         </p>
                       </div>
-                      <div className="p-3 rounded border flex flex-col gap-1 w-fit">
+                      <div className="p-2 sm:p-3 rounded border flex flex-col gap-1 w-fit">
                         <p className="text-xs text-muted-foreground">FIIs</p>
                         <p className="text-sm font-semibold whitespace-nowrap">
                           {Number(classTotals.fii).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                         </p>
                       </div>
-                      <div className="p-3 rounded border flex flex-col gap-1 w-fit">
+                      <div className="p-2 sm:p-3 rounded border flex flex-col gap-1 w-fit">
                         <p className="text-xs text-muted-foreground">ETFs</p>
                         <p className="text-sm font-semibold whitespace-nowrap">
                           {Number(classTotals.etf).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                         </p>
                       </div>
-                      <div className="p-3 rounded border flex flex-col gap-1 w-fit">
+                      <div className="p-2 sm:p-3 rounded border flex flex-col gap-1 w-fit">
                         <p className="text-xs text-muted-foreground">Renda Fixa</p>
                         <p className="text-sm font-semibold whitespace-nowrap">
                           {Number(classTotals.fixed_income).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                         </p>
                       </div>
-                      <div className="p-3 rounded border flex flex-col gap-1 w-fit">
+                      <div className="p-2 sm:p-3 rounded border flex flex-col gap-1 w-fit">
                         <p className="text-xs text-muted-foreground">Cripto</p>
                         <p className="text-sm font-semibold whitespace-nowrap">
                           {Number(classTotals.crypto).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}

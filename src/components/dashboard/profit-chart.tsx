@@ -28,12 +28,16 @@ type ProfitChartProps = {
 }
 
 export function ProfitChart({ data, isLoading }: ProfitChartProps) {
-  
-  const chartData = data.map(product => ({
-    name: product.name.split(" ").slice(0, 2).join(" "), // Pega as duas primeiras palavras
-    lucro: product.actualProfit,
-    custo: product.totalCost * product.quantity,
-  })).sort((a,b) => b.lucro - a.lucro).slice(0, 10); // Pega os 10 mais lucrativos
+  const chartData = React.useMemo(() => {
+    return (data || [])
+      .map(product => ({
+        name: product.name.split(" ").slice(0, 2).join(" "),
+        lucro: product.actualProfit,
+        custo: product.totalCost * product.quantity,
+      }))
+      .sort((a, b) => b.lucro - a.lucro)
+      .slice(0, 10);
+  }, [data]);
   
   const [skeletonHeights, setSkeletonHeights] = React.useState<number[]>([]);
 

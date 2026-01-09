@@ -160,6 +160,24 @@ export default function ReceitasPage() {
     }
   }, [authLoading, user, router]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    const anchor = new Date();
+    const startDate = (() => {
+      switch (periodFilter) {
+        case "day":
+          return new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 0, 0, 0, 0);
+        case "week":
+          return new Date(anchor.getTime() - 7 * 24 * 60 * 60 * 1000);
+        case "month":
+        default:
+          return new Date(anchor.getFullYear(), anchor.getMonth(), 1, 0, 0, 0, 0);
+      }
+    })();
+    const endDate = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 23, 59, 59, 999);
+    refreshData({ startDate, endDate });
+  }, [user?.id, periodFilter, refreshData]);
+
 
   const handleSaveRevenue = async (revenueData: Revenue) => {
     if (!user?.id) {

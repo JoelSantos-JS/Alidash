@@ -5,6 +5,14 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerClient()
     const serviceSupabase = createServiceClient()
+    const { searchParams } = new URL(request.url)
+    const startDateParam = searchParams.get('start_date')
+    const endDateParam = searchParams.get('end_date')
+    const startDate = startDateParam ? new Date(startDateParam) : null
+    const endDate = endDateParam ? new Date(endDateParam) : null
+    const hasStart = !!startDate && !isNaN(startDate.getTime())
+    const hasEnd = !!endDate && !isNaN(endDate.getTime())
+
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
@@ -27,11 +35,15 @@ export async function GET(request: NextRequest) {
     }
     console.log('🔍 Buscando receitas para user_id:', internalUserId)
 
-    const { data: revenues, error: revenuesError } = await supabase
+    let revenuesQuery = supabase
       .from('revenues')
       .select('*')
       .eq('user_id', internalUserId)
-      .order('date', { ascending: false });
+
+    if (hasStart) revenuesQuery = revenuesQuery.gte('date', (startDate as Date).toISOString())
+    if (hasEnd) revenuesQuery = revenuesQuery.lte('date', (endDate as Date).toISOString())
+
+    const { data: revenues, error: revenuesError } = await revenuesQuery.order('date', { ascending: false });
 
     if (revenuesError) {
       console.error('❌ Erro ao buscar receitas:', revenuesError)
@@ -41,13 +53,17 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    const { data: installmentTransactions, error: installmentError } = await supabase
+    let installmentQuery = supabase
       .from('transactions')
       .select('*')
       .eq('user_id', internalUserId)
       .eq('type', 'revenue')
       .eq('is_installment', true)
-      .order('date', { ascending: false });
+
+    if (hasStart) installmentQuery = installmentQuery.gte('date', (startDate as Date).toISOString())
+    if (hasEnd) installmentQuery = installmentQuery.lte('date', (endDate as Date).toISOString())
+
+    const { data: installmentTransactions, error: installmentError } = await installmentQuery.order('date', { ascending: false });
 
     if (installmentError) {
       console.error('❌ Erro ao buscar transações parceladas:', installmentError)

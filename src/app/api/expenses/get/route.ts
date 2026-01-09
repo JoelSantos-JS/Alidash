@@ -9,11 +9,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
 
-    const { data: expenses, error: expensesError } = await supabase
+    const { searchParams } = new URL(request.url);
+    const startDateParam = searchParams.get('start_date');
+    const endDateParam = searchParams.get('end_date');
+
+    const startDate = startDateParam ? new Date(startDateParam) : null;
+    const endDate = endDateParam ? new Date(endDateParam) : null;
+    const hasStart = !!startDate && !isNaN(startDate.getTime());
+    const hasEnd = !!endDate && !isNaN(endDate.getTime());
+
+    let expensesQuery = supabase
       .from('expenses')
       .select('*')
-      .eq('user_id', user.id)
-      .order('date', { ascending: false });
+      .eq('user_id', user.id);
+
+    if (hasStart) expensesQuery = expensesQuery.gte('date', (startDate as Date).toISOString());
+    if (hasEnd) expensesQuery = expensesQuery.lte('date', (endDate as Date).toISOString());
+
+    const { data: expenses, error: expensesError } = await expensesQuery.order('date', { ascending: false });
 
     if (expensesError) {
       return NextResponse.json({ 
@@ -22,13 +35,17 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    const { data: installmentTransactions, error: installmentError } = await supabase
+    let installmentQuery = supabase
       .from('transactions')
       .select('*')
       .eq('user_id', user.id)
       .eq('type', 'expense')
-      .eq('is_installment', true)
-      .order('date', { ascending: false });
+      .eq('is_installment', true);
+
+    if (hasStart) installmentQuery = installmentQuery.gte('date', (startDate as Date).toISOString());
+    if (hasEnd) installmentQuery = installmentQuery.lte('date', (endDate as Date).toISOString());
+
+    const { data: installmentTransactions, error: installmentError } = await installmentQuery.order('date', { ascending: false });
 
     if (installmentError) {
       return NextResponse.json({ 

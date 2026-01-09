@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,18 +17,42 @@ import {
 } from "lucide-react";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { SummaryCard } from "@/components/dashboard/summary-card";
-import { CategoryChart } from "@/components/dashboard/category-chart";
-import { ProfitChart } from "@/components/dashboard/profit-chart";
-import { SupplierChart } from "@/components/dashboard/supplier-chart";
-import { SalesTrendsChart } from "@/components/reports/sales-trends-chart";
 import { ProductSearch } from "@/components/product/product-search";
 import { ProductCard } from "@/components/product/product-card";
-import { RevenueSection } from "@/components/dashboard/revenue-section";
-import { ExpensesSection } from "@/components/dashboard/expenses-section";
-import { TransactionsSection } from "@/components/dashboard/transactions-section";
  
-import { useAuth } from "@/hooks/use-supabase-auth";
 import type { Product } from "@/types";
+
+const ProfitChart = dynamic(
+  () => import("@/components/dashboard/profit-chart").then((m) => m.ProfitChart),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-[250px] sm:h-[300px] w-full" />,
+  }
+);
+
+const CategoryChart = dynamic(
+  () => import("@/components/dashboard/category-chart").then((m) => m.CategoryChart),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-[250px] sm:h-[300px] w-full" />,
+  }
+);
+
+const SupplierChart = dynamic(
+  () => import("@/components/dashboard/supplier-chart").then((m) => m.SupplierChart),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-[250px] sm:h-[300px] w-full" />,
+  }
+);
+
+const SalesTrendsChart = dynamic(
+  () => import("@/components/reports/sales-trends-chart").then((m) => m.SalesTrendsChart),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-[400px] w-full" />,
+  }
+);
 
 interface BusinessDashboardProps {
   products: Product[];
@@ -44,7 +69,6 @@ interface BusinessDashboardProps {
   periodFilter: "day" | "week" | "month";
   revenues: any[];
   expenses: any[];
-  transactions: any[];
   sales: any[];
   currentDate?: Date;
   onOpenForm: () => void;
@@ -65,7 +89,6 @@ export function BusinessDashboard({
   periodFilter,
   revenues,
   expenses,
-  transactions,
   sales,
   currentDate: currentDateProp,
   onOpenForm,
@@ -77,32 +100,34 @@ export function BusinessDashboard({
   onLoadExampleData,
   onDateChange
 }: BusinessDashboardProps) {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("dashboard");
   const [currentDate, setCurrentDate] = useState(new Date());
-  const anchorDate = currentDateProp || currentDate;
-  
-  // Carregar dados do período selecionado
+  const lastPropTimeRef = useRef<number | null>(null);
+
+  const INITIAL_VISIBLE_PRODUCTS = 24;
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_PRODUCTS);
   
   const handlePeriodChange = (date: Date) => {
     setCurrentDate(date);
     if (onDateChange) onDateChange(date);
-    
-    // Aqui implementaríamos a chamada para API com os parâmetros de mês e ano
-    const month = date.getMonth() + 1; // Mês em JavaScript é 0-indexed
-    const year = date.getFullYear();
-    
-    console.log(`Carregando dados para: ${month}/${year}`);
-    
-    // Exemplo de como seria a chamada para API
-    // loadDashboardData(userId, 'business', month, year);
   };
   
   useEffect(() => {
     if (currentDateProp) {
-      setCurrentDate(currentDateProp);
+      const time = currentDateProp.getTime();
+      if (lastPropTimeRef.current !== time) {
+        lastPropTimeRef.current = time;
+        setCurrentDate(currentDateProp);
+      }
     }
   }, [currentDateProp]);
+
+  useEffect(() => {
+    setVisibleCount(INITIAL_VISIBLE_PRODUCTS);
+  }, [filteredProducts.length]);
+
+  const visibleProducts = useMemo(() => {
+    return filteredProducts.slice(0, visibleCount);
+  }, [filteredProducts, visibleCount]);
   
   return (
     <Tabs defaultValue="dashboard" className="w-full">
@@ -247,18 +272,30 @@ export function BusinessDashboard({
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-            {filteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onClick={() => onProductClick(product)}
-                onEdit={() => onEditProduct(product)}
-                onDelete={() => onDeleteProduct(product)}
-                onSell={() => onSellProduct(product)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+              {visibleProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onClick={() => onProductClick(product)}
+                  onEdit={() => onEditProduct(product)}
+                  onDelete={() => onDeleteProduct(product)}
+                  onSell={() => onSellProduct(product)}
+                />
+              ))}
+            </div>
+            {visibleProducts.length < filteredProducts.length && (
+              <div className="flex justify-center mt-6">
+                <Button
+                  variant="outline"
+                  onClick={() => setVisibleCount((c) => c + INITIAL_VISIBLE_PRODUCTS)}
+                >
+                  Carregar mais
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </TabsContent>
       

@@ -124,21 +124,14 @@ export default function AgendaPage() {
     id: event.id,
     title: event.title,
     description: event.description,
-    startTime: new Date(event.start_time).toLocaleTimeString('pt-BR', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    }),
-    endTime: new Date(event.end_time).toLocaleTimeString('pt-BR', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    }),
-    date: new Date(event.start_time).toLocaleDateString('pt-BR'),
     priority: event.priority || 'medium',
     type: event.type || 'meeting',
     attendees: event.attendees || [],
     user_id: event.user_id,
     start_time: event.start_time,
     end_time: event.end_time,
+    location: event.location || '',
+    status: event.status || 'confirmed',
     is_all_day: event.is_all_day,
     recurrence: event.recurrence,
     created_at: event.created_at,
@@ -168,13 +161,24 @@ export default function AgendaPage() {
     setEventModalOpen(true)
   }
 
-  const handleSaveEvent = async (eventData: Partial<CalendarEvent>) => {
+  const handleSaveEvent = async (eventData: any) => {
     try {
+      const payload = {
+        title: String(eventData?.title || ''),
+        description: String(eventData?.description || ''),
+        start_time: String(eventData?.start_time || new Date().toISOString()),
+        end_time: String(eventData?.end_time || new Date().toISOString()),
+        location: String(eventData?.location || ''),
+        is_all_day: Boolean(eventData?.is_all_day),
+        attendees: Array.isArray(eventData?.attendees) ? eventData.attendees : [],
+        recurrence: eventData?.recurrence ?? null
+      }
+
       if (eventModalMode === 'create') {
-        await createEvent(eventData)
+        await createEvent(payload)
         toast.success('Evento criado com sucesso!')
       } else if (eventModalMode === 'edit' && selectedEvent) {
-        await updateEvent(selectedEvent.id, eventData)
+        await updateEvent({ id: selectedEvent.id, ...payload })
         toast.success('Evento atualizado com sucesso!')
       }
       setEventModalOpen(false)

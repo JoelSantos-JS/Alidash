@@ -13,7 +13,7 @@ interface DataContextType {
   updateRevenue: (revenue: Revenue) => void;
   deleteExpense: (id: string) => void;
   deleteRevenue: (id: string) => void;
-  refreshData: () => Promise<void>;
+  refreshData: (options?: { startDate?: Date; endDate?: Date }) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -25,7 +25,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const { user, loading } = useAuth();
 
-  const fetchExpenses = useCallback(async () => {
+  const fetchExpenses = useCallback(async (options?: { startDate?: Date; endDate?: Date }) => {
     if (!user?.id) {
       console.log('🚫 fetchExpenses: user.id não disponível');
       return [];
@@ -33,7 +33,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     
     try {
       console.log('🔍 Buscando despesas via sessão');
-      const response = await fetch(`/api/expenses/get`);
+      const params = new URLSearchParams();
+      if (options?.startDate) params.set('start_date', options.startDate.toISOString());
+      if (options?.endDate) params.set('end_date', options.endDate.toISOString());
+      const qs = params.toString();
+      const response = await fetch(`/api/expenses/get${qs ? `?${qs}` : ''}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -48,7 +52,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return [];
   }, [user?.id]);
 
-  const fetchRevenues = useCallback(async () => {
+  const fetchRevenues = useCallback(async (options?: { startDate?: Date; endDate?: Date }) => {
     if (!user?.id) {
       console.log('🚫 fetchRevenues: user.id não disponível');
       return [];
@@ -56,7 +60,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     
     try {
       console.log('🔍 Buscando receitas via sessão');
-      const response = await fetch(`/api/revenues/get`);
+      const params = new URLSearchParams();
+      if (options?.startDate) params.set('start_date', options.startDate.toISOString());
+      if (options?.endDate) params.set('end_date', options.endDate.toISOString());
+      const qs = params.toString();
+      const response = await fetch(`/api/revenues/get${qs ? `?${qs}` : ''}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -83,7 +91,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return [];
   }, [user?.id]);
 
-  const refreshData = useCallback(async () => {
+  const refreshData = useCallback(async (options?: { startDate?: Date; endDate?: Date }) => {
     if (!user?.id) {
       console.log('🚫 refreshData: user.id não disponível');
       return;
@@ -92,9 +100,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     console.log('🔄 Iniciando refreshData para user:', user.id);
     setIsLoading(true);
     try {
+      let startDate = options?.startDate;
+      let endDate = options?.endDate;
+
+      if (!startDate && !endDate) {
+        const now = new Date();
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      }
+
       const [expensesData, revenuesData] = await Promise.all([
-        fetchExpenses(),
-        fetchRevenues()
+        fetchExpenses({ startDate, endDate }),
+        fetchRevenues({ startDate, endDate })
       ]);
       
       console.log('📊 Dados carregados - Despesas:', expensesData.length, 'Receitas:', revenuesData.length);

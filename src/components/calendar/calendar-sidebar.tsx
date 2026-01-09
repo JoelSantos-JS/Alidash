@@ -55,8 +55,6 @@ type CalendarSidebarProps = {
 // Função para converter eventos do hook para formato local
 const convertToLocalEvent = (event: CalendarEvent): LocalCalendarEvent => ({
   ...event,
-  startTime: new Date(event.start_time),
-  endTime: new Date(event.end_time),
   priority: 'medium', // valor padrão
   type: 'meeting', // valor padrão
   attendees: event.attendees || []
@@ -71,8 +69,6 @@ const sampleEvents: LocalCalendarEvent[] = [
     description: 'Discussão sobre metas do próximo trimestre',
     start_time: new Date(2025, 8, 7, 9, 0).toISOString(),
     end_time: new Date(2025, 8, 7, 10, 30).toISOString(),
-    startTime: new Date(2025, 8, 7, 9, 0),
-    endTime: new Date(2025, 8, 7, 10, 30),
     location: 'Sala de Reuniões A',
     attendees: [],
     type: 'meeting',
@@ -90,8 +86,6 @@ const sampleEvents: LocalCalendarEvent[] = [
     description: '',
     start_time: new Date(2025, 8, 7, 14, 0).toISOString(),
     end_time: new Date(2025, 8, 7, 15, 0).toISOString(),
-    startTime: new Date(2025, 8, 7, 14, 0),
-    endTime: new Date(2025, 8, 7, 15, 0),
     location: '',
     attendees: [],
     type: 'meeting',
@@ -139,22 +133,22 @@ export function CalendarSidebar({
     switch (viewFilter) {
       case "today":
         filtered = filtered.filter(event => 
-          event.startTime >= today && event.startTime < tomorrow
+          new Date(event.start_time) >= today && new Date(event.start_time) < tomorrow
         )
         break
       case "week":
         filtered = filtered.filter(event => 
-          event.startTime >= today && event.startTime < weekFromNow
+          new Date(event.start_time) >= today && new Date(event.start_time) < weekFromNow
         )
         break
       case "month":
         filtered = filtered.filter(event => 
-          event.startTime >= today && event.startTime < monthFromNow
+          new Date(event.start_time) >= today && new Date(event.start_time) < monthFromNow
         )
         break
     }
 
-    return filtered.sort((a, b) => a.startTime.getTime() - b.startTime.getTime())
+    return filtered.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
   }, [events, viewFilter, typeFilter])
 
   // Estatísticas dos eventos
@@ -162,11 +156,11 @@ export function CalendarSidebar({
     const totalEvents = events.length
     const todayEvents = events.filter(event => {
       const today = new Date()
-      const eventDate = new Date(event.startTime)
+      const eventDate = new Date(event.start_time)
       return eventDate.toDateString() === today.toDateString()
     }).length
     
-    const upcomingEvents = events.filter(event => event.startTime > new Date()).length
+    const upcomingEvents = events.filter(event => new Date(event.start_time) > new Date()).length
     const meetingsCount = events.filter(event => event.type === 'meeting').length
     const tasksCount = events.filter(event => event.type === 'task').length
     const remindersCount = events.filter(event => event.type === 'reminder').length
@@ -181,7 +175,7 @@ export function CalendarSidebar({
     }
   }, [events])
 
-  const getEventTypeIcon = (type: CalendarEvent['type']) => {
+  const getEventTypeIcon = (type: LocalCalendarEvent['type']) => {
     switch (type) {
       case 'meeting': return Users
       case 'task': return CalendarCheck
@@ -191,7 +185,7 @@ export function CalendarSidebar({
     }
   }
 
-  const getEventTypeColor = (type: CalendarEvent['type']) => {
+  const getEventTypeColor = (type: LocalCalendarEvent['type']) => {
     switch (type) {
       case 'meeting': return 'text-blue-600'
       case 'task': return 'text-green-600'
@@ -201,7 +195,7 @@ export function CalendarSidebar({
     }
   }
 
-  const getPriorityColor = (priority: CalendarEvent['priority']) => {
+  const getPriorityColor = (priority: LocalCalendarEvent['priority']) => {
     switch (priority) {
       case 'high': return 'border-l-red-500'
       case 'medium': return 'border-l-yellow-500'

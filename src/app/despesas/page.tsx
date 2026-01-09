@@ -114,7 +114,7 @@ const initialProducts: Product[] = [
 
 export default function DespesasPage() {
   const { user, loading: authLoading } = useAuth();
-  const { expenses, addExpense, updateExpense, deleteExpense, isLoading: dataLoading } = useData();
+  const { expenses, addExpense, updateExpense, deleteExpense, refreshData, isLoading: dataLoading } = useData();
   const router = useRouter();
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
@@ -155,6 +155,24 @@ export default function DespesasPage() {
 
     fetchProducts();
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const anchor = currentDate || new Date();
+    const startDate = (() => {
+      switch (periodFilter) {
+        case "day":
+          return new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 0, 0, 0, 0);
+        case "week":
+          return new Date(anchor.getTime() - 7 * 24 * 60 * 60 * 1000);
+        case "month":
+        default:
+          return new Date(anchor.getFullYear(), anchor.getMonth(), 1, 0, 0, 0, 0);
+      }
+    })();
+    const endDate = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 23, 59, 59, 999);
+    refreshData({ startDate, endDate });
+  }, [user?.id, periodFilter, currentDate, refreshData]);
 
 
 

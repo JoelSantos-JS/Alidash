@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useCallback, useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from 'next/navigation';
 import type { Product, Sale } from "@/types";
 import { useData } from "@/contexts/data-context";
@@ -51,8 +51,6 @@ import {
   ChevronRight
 } from "lucide-react";
 import { SummaryCard } from "@/components/dashboard/summary-card";
-import { CategoryChart } from "@/components/dashboard/category-chart";
-import { ProfitChart } from "@/components/dashboard/profit-chart";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -83,20 +81,40 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { FinancialHealthIndicator } from "@/components/dashboard/financial-health-indicator";
-import { CashFlowSection } from "@/components/dashboard/cash-flow-section";
-import { BudgetSection } from "@/components/dashboard/budget-section";
 import { StatusLegend } from "@/components/dashboard/status-legend";
-import { InventoryControlSection } from "@/components/dashboard/inventory-control-section";
 
 // Removido ThemeToggle do header empresarial
 import { ElectricVIcon } from "@/components/ui/electric-v-icon";
-import { BusinessDashboard } from "@/components/dashboard/business-dashboard";
-import { PersonalDashboardSection } from "@/components/dashboard/personal-dashboard-section";
 import { AccountTypeToggle, useAccountType, type AccountType } from "@/components/ui/account-type-toggle";
 import { isFeatureEnabled } from "@/config/features";
 import Link from "next/link";
 import { notifyProductCreated, notifyProductSold } from '@/lib/n8n-events';
 import { initialProducts } from '@/data/initial-products';
+
+const BusinessDashboard = dynamic(
+  () => import("@/components/dashboard/business-dashboard").then((m) => m.BusinessDashboard),
+  { ssr: false, loading: () => <Skeleton className="h-[600px] w-full" /> }
+);
+
+const PersonalDashboardSection = dynamic(
+  () => import("@/components/dashboard/personal-dashboard-section").then((m) => m.PersonalDashboardSection),
+  { ssr: false, loading: () => <Skeleton className="h-[600px] w-full" /> }
+);
+
+const CashFlowSection = dynamic(
+  () => import("@/components/dashboard/cash-flow-section").then((m) => m.CashFlowSection),
+  { ssr: false, loading: () => <Skeleton className="h-[260px] w-full" /> }
+);
+
+const BudgetSection = dynamic(
+  () => import("@/components/dashboard/budget-section").then((m) => m.BudgetSection),
+  { ssr: false, loading: () => <Skeleton className="h-[260px] w-full" /> }
+);
+
+const InventoryControlSection = dynamic(
+  () => import("@/components/dashboard/inventory-control-section").then((m) => m.InventoryControlSection),
+  { ssr: false, loading: () => <Skeleton className="h-[260px] w-full" /> }
+);
 
 interface ExtendedSale extends Sale {
   productName?: string;
@@ -115,6 +133,7 @@ const cleanUndefinedValues = (obj: any): any => {
 
 
 export default function Home() {
+  const isDev = process.env.NODE_ENV === 'development';
   const { user, loading: authLoading, signOut } = useAuth();
   const { expenses, revenues, refreshData, isLoading: dataLoading } = useData();
   
@@ -140,8 +159,7 @@ export default function Home() {
     }
   }, [setAccountType]);
   
-  // Debug logs para verificar estado da autenticação (apenas em desenvolvimento)
-  if (process.env.NODE_ENV === 'development') {
+  if (isDev) {
     console.log('🔍 Estado da autenticação:', {
       user: !!user,
       userId: user?.id,
@@ -177,11 +195,11 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
   // Controle de data para Dashboard Empresarial
   const [businessSelectedDate, setBusinessSelectedDate] = useState<Date | null>(null);
   const [isBusinessCalendarOpen, setIsBusinessCalendarOpen] = useState(false);
+  const businessAnchorDateRef = useRef<Date>(new Date());
 
   const [monthlyBudget, setMonthlyBudget] = useState(600);
   const [budgetLoading, setBudgetLoading] = useState(false);
   const [sales, setSales] = useState<any[]>([]);
-  const [transactions, setTransactions] = useState<any[]>([]);
   const { toast } = useToast();
   const router = useRouter();
   const voxWhatsappUrl = process.env.NEXT_PUBLIC_VOX_WHATSAPP_URL || 'https://api.whatsapp.com/send/';
@@ -233,20 +251,20 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
   // Função para carregar orçamento do banco de dados
   const loadBudgetFromDatabase = async (supabaseUserId: string) => {
     try {
-      console.log('🔄 Carregando orçamento para usuário:', supabaseUserId);
+      if (isDev) console.log('🔄 Carregando orçamento para usuário:', supabaseUserId);
       const response = await fetch(`/api/budgets?user_id=${supabaseUserId}`);
       if (response.ok) {
         const data = await response.json();
-        console.log('📊 Dados do orçamento recebidos:', data);
+        if (isDev) console.log('📊 Dados do orçamento recebidos:', data);
         if (data.budget) {
-          console.log('📝 Atualizando estado monthlyBudget de', monthlyBudget, 'para', data.budget.monthly_budget);
+          if (isDev) console.log('📝 Atualizando estado monthlyBudget de', monthlyBudget, 'para', data.budget.monthly_budget);
           setMonthlyBudget(data.budget.monthly_budget);
-          console.log('✅ Orçamento carregado do banco:', data.budget.monthly_budget);
+          if (isDev) console.log('✅ Orçamento carregado do banco:', data.budget.monthly_budget);
         } else {
-          console.log('⚠️ Nenhum orçamento encontrado na resposta');
+          if (isDev) console.log('⚠️ Nenhum orçamento encontrado na resposta');
         }
       } else {
-        console.log('❌ Erro na resposta da API:', response.status, response.statusText);
+        if (isDev) console.log('❌ Erro na resposta da API:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('❌ Erro ao carregar orçamento:', error);
@@ -256,16 +274,16 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
   // Função para salvar orçamento no banco de dados
   const saveBudgetToDatabase = async (newBudget: number) => {
     if (!user?.id) {
-      console.log('❌ Usuário não autenticado');
+      if (isDev) console.log('❌ Usuário não autenticado');
       return;
     }
     
-    console.log('💾 Salvando orçamento:', newBudget, '(atual:', monthlyBudget + ')');
+    if (isDev) console.log('💾 Salvando orçamento:', newBudget, '(atual:', monthlyBudget + ')');
     setBudgetLoading(true);
     try {
       // O usuário já é do Supabase, então podemos usar o ID diretamente
       const supabaseUserId = user.id;
-      console.log('👤 Usuário Supabase ID:', supabaseUserId);
+      if (isDev) console.log('👤 Usuário Supabase ID:', supabaseUserId);
       
       const response = await fetch('/api/budgets', {
         method: 'PUT',
@@ -279,16 +297,16 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
       });
       
       const responseData = await response.json();
-      console.log('📡 Resposta da API:', responseData);
+      if (isDev) console.log('📡 Resposta da API:', responseData);
       
       if (response.ok) {
-        console.log('📝 Atualizando estado local de', monthlyBudget, 'para', newBudget);
+        if (isDev) console.log('📝 Atualizando estado local de', monthlyBudget, 'para', newBudget);
         setMonthlyBudget(newBudget);
         toast({
           title: "Orçamento atualizado",
           description: `Novo orçamento: ${newBudget.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`,
         });
-        console.log('✅ Orçamento salvo no banco:', newBudget);
+        if (isDev) console.log('✅ Orçamento salvo no banco:', newBudget);
       } else {
         throw new Error('Erro ao salvar orçamento: ' + responseData.error);
       }
@@ -313,14 +331,14 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
 
     const fetchData = async () => {
       try {
-        if (process.env.NODE_ENV === 'development') {
+        if (isDev) {
           console.log('🔄 Carregando dados do Supabase para usuário:', user.id);
         }
 
         // O usuário já é do Supabase, então podemos usar o ID diretamente
         const supabaseUserId = user.id;
         
-        if (process.env.NODE_ENV === 'development') {
+        if (isDev) {
           console.log('✅ Usuário Supabase ID:', supabaseUserId);
         }
 
@@ -330,24 +348,20 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
         // Fazer todas as chamadas de API em paralelo para melhor performance
         const [
           productsResult,
-          salesResult,
-          transactionsResult
+          salesResult
         ] = await Promise.allSettled([
           fetch(`/api/products/get?user_id=${supabaseUserId}`).then(res => res.ok ? res.json() : { products: [] }),
-          fetch(`/api/sales/get?user_id=${supabaseUserId}`).then(res => res.ok ? res.json() : { sales: [] }),
-          fetch(`/api/transactions/get?user_id=${supabaseUserId}`).then(res => res.ok ? res.json() : { transactions: [] })
+          fetch(`/api/sales/get?user_id=${supabaseUserId}`).then(res => res.ok ? res.json() : { sales: [] })
         ]);
 
         // Extrair dados dos resultados
         const supabaseProducts = productsResult.status === 'fulfilled' ? (productsResult.value.products || []) : [];
         const supabaseSales = salesResult.status === 'fulfilled' ? (salesResult.value.sales || []) : [];
-        const supabaseTransactions = transactionsResult.status === 'fulfilled' ? (transactionsResult.value.transactions || []) : [];
 
         // Log de erros se houver (apenas em desenvolvimento)
-        if (process.env.NODE_ENV === 'development') {
+        if (isDev) {
           if (productsResult.status === 'rejected') console.log('⚠️ Erro ao carregar produtos:', productsResult.reason);
           if (salesResult.status === 'rejected') console.log('⚠️ Erro ao carregar vendas:', salesResult.reason);
-          if (transactionsResult.status === 'rejected') console.log('⚠️ Erro ao carregar transações:', transactionsResult.reason);
         }
 
         // Usar apenas dados do Supabase (sem fallback para dados de exemplo)
@@ -355,16 +369,14 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
         
         setProducts(finalProducts);
         setSales(supabaseSales);
-        setTransactions(supabaseTransactions);
         
         // Remover chamada para refreshData() que causava loop infinito
         // Os dados de expenses e revenues já são carregados automaticamente pelo DataContext
         
-        if (process.env.NODE_ENV === 'development') {
+        if (isDev) {
           console.log('📊 Dashboard carregado:', {
             produtos: finalProducts.length,
             vendas: supabaseSales.length,
-            transacoes: supabaseTransactions.length
           });
         }
 
@@ -380,9 +392,36 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
 
   useEffect(() => {
     if (!user?.id) return;
+    if (isPersonal) return;
+
+    const anchor = businessSelectedDate ? new Date(businessSelectedDate) : new Date();
+    const startDate = (() => {
+      switch (periodFilter) {
+        case "day":
+          return new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 0, 0, 0, 0);
+        case "week":
+          return new Date(anchor.getTime() - 7 * 24 * 60 * 60 * 1000);
+        case "month":
+        default:
+          return new Date(anchor.getFullYear(), anchor.getMonth(), 1, 0, 0, 0, 0);
+      }
+    })();
+    const endDate = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 23, 59, 59, 999);
+    refreshData({ startDate, endDate });
+  }, [user?.id, isPersonal, businessSelectedDate, periodFilter, refreshData]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    if (isPersonal) return;
     if (salesSyncRunning.current) return;
     if (!products || products.length === 0) return;
     if (!revenues || revenues.length === 0) return;
+    const hasSaleRevenue = revenues.some((r: any) => {
+      const src = String(r?.source || '').toLowerCase();
+      const cat = String(r?.category || '').toLowerCase();
+      return src === 'sale' || cat.includes('venda');
+    });
+    if (!hasSaleRevenue) return;
 
     if (typeof window !== 'undefined') {
       try {
@@ -517,7 +556,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
         salesSyncRunning.current = false;
       });
     });
-  }, [user?.id, products, revenues, sales]);
+  }, [user?.id, isPersonal, products, revenues, sales]);
 
   // Remover useEffect problemático que causava loop infinito
   // Este useEffect estava causando chamadas infinitas de API devido aos event listeners
@@ -529,10 +568,23 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
   // Listener para eventos customizados de atualização de dados
   useEffect(() => {
     const handleDataUpdate = (event: CustomEvent) => {
-      console.log('🔄 Dados atualizados detectados:', event.detail);
+      if (isDev) console.log('🔄 Dados atualizados detectados:', event.detail);
       // Atualizar dados quando receitas ou despesas são adicionadas/modificadas
       if (user?.id && (event.detail.type === 'revenue' || event.detail.type === 'expense')) {
-        refreshData();
+        const anchor = (!isPersonal && businessSelectedDate) ? new Date(businessSelectedDate) : new Date();
+        const startDate = (() => {
+          switch (periodFilter) {
+            case "day":
+              return new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 0, 0, 0, 0);
+            case "week":
+              return new Date(anchor.getTime() - 7 * 24 * 60 * 60 * 1000);
+            case "month":
+            default:
+              return new Date(anchor.getFullYear(), anchor.getMonth(), 1, 0, 0, 0, 0);
+          }
+        })();
+        const endDate = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), 23, 59, 59, 999);
+        refreshData({ startDate, endDate });
       }
     };
 
@@ -545,7 +597,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
         window.removeEventListener('dataUpdated', handleDataUpdate as EventListener);
       }
     };
-  }, [user?.id]); // Remover refreshData das dependências para evitar loop
+  }, [user?.id, refreshData, isPersonal, businessSelectedDate, periodFilter, isDev]); // Remover refreshData das dependências para evitar loop
 
 
 
@@ -557,100 +609,93 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
   }, [searchTerm, products]);
 
   const summaryStats = useMemo(() => {
-    // Estatísticas de produtos
-    const totalInvested = products.reduce((acc, p) => acc + (p.totalCost * p.quantity), 0);
-    const totalActualProfit = products.reduce((acc, p) => acc + p.actualProfit, 0);
-    const projectedProfit = products.reduce((acc, p) => acc + (p.expectedProfit * (p.quantity - p.quantitySold)), 0);
-    const productsInStock = products.reduce((acc, p) => acc + (p.quantity - p.quantitySold), 0);
-    const productsSolds = products.reduce((acc, p) => acc + p.quantitySold, 0);
-    const lowStockCount = products.filter(p => (p.quantity - p.quantitySold) <= 2 && p.status !== 'sold').length;
+    let totalInvested = 0;
+    let totalActualProfit = 0;
+    let projectedProfit = 0;
+    let productsInStock = 0;
+    let productsSolds = 0;
+    let lowStockCount = 0;
 
-    // Calcular receitas e despesas do período
-    const now = new Date();
-    // Para o empresarial, usar a data selecionada como referência
-    const anchorDate = (!isPersonal && businessSelectedDate) ? new Date(businessSelectedDate) : now;
-    const getPeriodStart = () => {
-      switch (periodFilter) {
-        case "day":
-          return new Date(anchorDate.getFullYear(), anchorDate.getMonth(), anchorDate.getDate());
-        case "week":
-          return new Date(anchorDate.getTime() - 7 * 24 * 60 * 60 * 1000);
-        case "month":
-          return new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
-        default:
-          return new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
-      }
-    };
+    if (!isPersonal) {
+      for (const p of products) {
+        const qty = Number(p.quantity) || 0;
+        const qtySold = Number(p.quantitySold) || 0;
+        const available = qty - qtySold;
 
-    const periodStart = getPeriodStart();
-    
-    // Unificar cálculo de receita do período: receitas NÃO-venda + vendas de produtos
-    const periodNonSaleRevenue = revenues
-      .filter(r => {
-        const d = new Date(r.date);
-        const src = String((r as any).source || '').toLowerCase();
-        const cat = String((r as any).category || '').toLowerCase();
-        return d >= periodStart && src !== 'sale' && !cat.includes('venda');
-      })
-      .reduce((acc, revenue) => acc + (revenue.amount || 0), 0);
+        totalInvested += (Number(p.totalCost) || 0) * qty;
+        totalActualProfit += Number(p.actualProfit) || 0;
+        projectedProfit += (Number(p.expectedProfit) || 0) * Math.max(available, 0);
+        productsInStock += Math.max(available, 0);
+        productsSolds += Math.max(qtySold, 0);
 
-    const periodSales = sales.filter(s => new Date(s.date) >= periodStart);
-    const saleKeys = new Set<string>(
-      periodSales
-        .filter(s => s.productId)
-        .map(s => `${s.productId}|${new Date(s.date).toISOString().slice(0,10)}`)
-    );
-
-    const normalize = (s: string) => s
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .trim();
-    const productNames = (products || []).map(p => ({ id: p.id, name: normalize(String(p.name || '')) }));
-    const findProductByDescription = (desc?: string) => {
-      if (!desc) return null as any;
-      const withoutPrefix = desc.replace(/^\s*venda\s*:\s*/i, '');
-      const text = normalize(withoutPrefix);
-      const match = productNames.find(p => p.name && (text.includes(p.name) || p.name.includes(text)));
-      return match ? match : null;
-    };
-
-    const periodSalesFromSales = periodSales.reduce((acc, sale) => {
-      const unit = typeof sale.unitPrice === 'number' ? sale.unitPrice : 0;
-      const qty = typeof sale.quantity === 'number' ? sale.quantity : 0;
-      const total = typeof sale.totalAmount === 'number' ? sale.totalAmount : unit * qty;
-      return acc + (typeof total === 'number' ? total : 0);
-    }, 0);
-
-    const periodSalesFromRevenues = revenues
-      .filter(r => {
-        const d = new Date(r.date);
-        const src = String((r as any).source || '').toLowerCase();
-        const cat = String((r as any).category || '').toLowerCase();
-        const isSale = src === 'sale' || cat.includes('venda');
-        if (!isSale) return false;
-        if (d < periodStart) return false;
-        if (r.productId) {
-          const key = `${r.productId}|${d.toISOString().slice(0,10)}`;
-          if (saleKeys.has(key)) return false;
-        } else {
-          const match = findProductByDescription((r as any).description);
-          if (match) {
-            const key = `${match.id}|${d.toISOString().slice(0,10)}`;
-            if (saleKeys.has(key)) return false;
-          }
+        if (available <= 2 && p.status !== "sold") {
+          lowStockCount += 1;
         }
-        return true;
-      })
-      .reduce((acc, r) => acc + (r.amount || 0), 0);
+      }
+    }
 
-    const periodSalesRevenue = periodSalesFromSales + periodSalesFromRevenues;
+    const now = new Date();
+    const anchorDate = (!isPersonal && businessSelectedDate) ? businessSelectedDate : now;
+    let periodStart: Date;
+    switch (periodFilter) {
+      case "day":
+        periodStart = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), anchorDate.getDate());
+        break;
+      case "week":
+        periodStart = new Date(anchorDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case "month":
+      default:
+        periodStart = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
+        break;
+    }
+
+    const periodStartTime = periodStart.getTime();
+
+    let periodNonSaleRevenue = 0;
+    let periodSaleRevenueFromRevenues = 0;
+    for (const r of revenues as any[]) {
+      const t = new Date(r.date).getTime();
+      if (Number.isNaN(t) || t < periodStartTime) continue;
+
+      const src = String(r?.source || "").toLowerCase();
+      const cat = String(r?.category || "").toLowerCase();
+      const isSale = src === "sale" || cat.includes("venda");
+      const amount = Number(r?.amount) || 0;
+
+      if (isSale) {
+        periodSaleRevenueFromRevenues += amount;
+      } else {
+        periodNonSaleRevenue += amount;
+      }
+    }
+
+    let periodSalesFromSales = 0;
+    for (const s of sales as any[]) {
+      const t = new Date(s.date).getTime();
+      if (Number.isNaN(t) || t < periodStartTime) continue;
+
+      const unit = typeof s.unitPrice === "number" ? s.unitPrice : Number(s.unitPrice) || 0;
+      const qty = typeof s.quantity === "number" ? s.quantity : Number(s.quantity) || 0;
+      const total =
+        typeof s.totalAmount === "number"
+          ? s.totalAmount
+          : (typeof s.total === "number" ? s.total : unit * qty);
+
+      periodSalesFromSales += typeof total === "number" ? total : 0;
+    }
+
+    const periodSalesRevenue =
+      periodSalesFromSales > 0 ? periodSalesFromSales : periodSaleRevenueFromRevenues;
 
     const periodRevenue = periodNonSaleRevenue + periodSalesRevenue;
 
-    const periodExpenses = expenses
-      .filter(e => new Date(e.date) >= periodStart)
-      .reduce((acc, expense) => acc + (expense.amount || 0), 0);
+    let periodExpenses = 0;
+    for (const e of expenses as any[]) {
+      const t = new Date(e.date).getTime();
+      if (Number.isNaN(t) || t < periodStartTime) continue;
+      periodExpenses += Number(e?.amount) || 0;
+    }
 
     const periodBalance = periodRevenue - periodExpenses;
     const expenseRatio = periodRevenue > 0 ? (periodExpenses / periodRevenue) * 100 : 0;
@@ -685,15 +730,36 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
     };
   }, [products, revenues, expenses, sales, periodFilter, businessSelectedDate, isPersonal]);
 
-  const handleSearch = (query: string) => {
+  const handleSearch = useCallback((query: string) => {
     setSearchTerm(query);
-  };
+  }, []);
 
-  const handleOpenForm = (product: Product | null = null) => {
+  const handleOpenForm = useCallback((product: Product | null = null) => {
     setProductToEdit(product);
     setIsFormOpen(true);
     setSelectedProduct(null);
-  };
+  }, []);
+
+  const handleBusinessOpenForm = useCallback(() => handleOpenForm(), [handleOpenForm]);
+  const handleBusinessProductClick = useCallback((product: Product) => {
+    setSelectedProduct(product);
+    setShowEditMenu(true);
+  }, []);
+  const handleBusinessEditProduct = useCallback((product: Product) => {
+    setProductToEdit(product);
+    setIsFormOpen(true);
+  }, []);
+  const handleBusinessDeleteProduct = useCallback((product: Product) => {
+    setProductToDelete(product);
+  }, []);
+  const handleBusinessSellProduct = useCallback((product: Product) => {
+    setSelectedProduct(product);
+    setIsSaleFormOpen(true);
+  }, []);
+  const handleBusinessDateChange = useCallback((date: Date) => {
+    setBusinessSelectedDate(date);
+    businessAnchorDateRef.current = date;
+  }, []);
 
   const handleSaveProduct = async (productData: Product) => {
     const sanitizedProductData = cleanUndefinedValues(productData);
@@ -721,7 +787,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
           
           if (updateResponse.ok) {
             const result = await updateResponse.json();
-            console.log('✅ Produto atualizado:', result);
+            if (isDev) console.log('✅ Produto atualizado:', result);
             
             // Só atualizar estado local se a operação foi bem-sucedida
             if (result.success) {
@@ -758,7 +824,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
           
           if (createResponse.ok) {
             const result = await createResponse.json();
-            console.log('✅ Produto criado:', result);
+            if (isDev) console.log('✅ Produto criado:', result);
             
             // Só atualizar estado local se a operação foi bem-sucedida
             if (result.success) {
@@ -822,7 +888,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
         
         if (deleteResponse.ok) {
           const result = await deleteResponse.json();
-          console.log('✅ Produto deletado:', result);
+          if (isDev) console.log('✅ Produto deletado:', result);
           
           // Verificar se ambos os bancos funcionaram ou se não há erros críticos
           const hasErrors = result.errors && result.errors.length > 0;
@@ -909,9 +975,9 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
           body: JSON.stringify(updatedProduct)
         });
         
-        if (updateResponse.ok) {
-          const result = await updateResponse.json();
-          console.log('✅ Venda registrada:', result);
+      if (saleResponse.ok) {
+        const result = await saleResponse.json();
+        if (isDev) console.log('✅ Venda registrada:', result);
           
           // Só atualizar estado local se a operação foi bem-sucedida
           if (result.success) {
@@ -1717,7 +1783,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                   monthlyBudget={monthlyBudget}
                   estimatedExpenses={summaryStats.periodExpenses || 0}
                   totalItems={products.length}
-                  missingItems={products.filter(p => p.quantity - p.quantitySold <= 2 && p.status !== 'sold').length}
+                  missingItems={summaryStats.lowStockCount}
                   periodRevenue={summaryStats.periodRevenue}
                   onBudgetChange={saveBudgetToDatabase}
                   isLoading={budgetLoading}
@@ -1759,27 +1825,17 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
                 periodFilter={periodFilter}
                 revenues={revenues}
                 expenses={expenses}
-                transactions={transactions}
                 sales={sales}
-                currentDate={businessSelectedDate || new Date()}
-                onOpenForm={() => handleOpenForm()}
+                currentDate={businessSelectedDate ?? businessAnchorDateRef.current}
+                onOpenForm={handleBusinessOpenForm}
                 onSearch={handleSearch}
-                onProductClick={(product) => {
-                  setSelectedProduct(product);
-                  setShowEditMenu(true); // Sempre mostrar menu de edição primeiro
-                }}
-                onEditProduct={(product) => {
-                  setProductToEdit(product);
-                  setIsFormOpen(true);
-                }}
-                onDeleteProduct={(product) => setProductToDelete(product)}
-                onSellProduct={(product) => {
-                  setSelectedProduct(product);
-                  setIsSaleFormOpen(true);
-                }}
+                onProductClick={handleBusinessProductClick}
+                onEditProduct={handleBusinessEditProduct}
+                onDeleteProduct={handleBusinessDeleteProduct}
+                onSellProduct={handleBusinessSellProduct}
 
                 onLoadExampleData={handleLoadExampleData}
-                onDateChange={(date) => setBusinessSelectedDate(date)}
+                onDateChange={handleBusinessDateChange}
               />
             )}
           </main>

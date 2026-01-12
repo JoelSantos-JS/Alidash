@@ -1,57 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { createServiceClient } from '@/utils/supabase/server';
-
-// Configuração direta do Supabase para evitar problemas de inicialização
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('❌ Variáveis de ambiente do Supabase não encontradas');
-}
-
-const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
+import { createClient as createSupabaseClient, createServiceClient } from '@/utils/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🚀 API route GET iniciada');
-    
     const { searchParams } = new URL(request.url);
     const userIdParam = searchParams.get('user_id');
     const startDateParam = searchParams.get('start_date');
     const endDateParam = searchParams.get('end_date');
 
-    console.log('🔍 Buscando transações para usuário:', userIdParam);
+    const supabaseAuth = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
 
-    if (!userIdParam) {
-      console.log('❌ user_id não fornecido');
-      return NextResponse.json(
-        { error: 'user_id é obrigatório' },
-        { status: 400 }
-      );
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
-    const svc = createServiceClient()
-    let internalUserId = userIdParam
-    const { data: byId } = await svc
+    if (userIdParam && userIdParam !== user.id) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
+    }
+
+    const serviceSupabase = createServiceClient()
+    let internalUserId = user.id
+    const { data: byId } = await serviceSupabase
       .from('users')
       .select('id')
-      .eq('id', userIdParam)
+      .eq('id', user.id)
       .single()
     if (byId?.id) {
       internalUserId = byId.id
     } else {
-      const { data: byFirebase } = await svc
+      const { data: byFirebase } = await serviceSupabase
         .from('users')
         .select('id')
-        .eq('firebase_uid', userIdParam)
+        .eq('firebase_uid', user.id)
         .single()
       if (byFirebase?.id) internalUserId = byFirebase.id
     }
 
-    // Montar query com filtros opcionais de data
-    console.log('🔧 Executando query com filtros de data...');
-    let query = supabase
+    let query = serviceSupabase
       .from('transactions')
       .select('*')
       .eq('user_id', internalUserId);
@@ -75,14 +61,11 @@ export async function GET(request: NextRequest) {
     const { data: transactions, error } = await query;
 
     if (error) {
-      console.error('❌ Erro ao buscar transações:', error);
       return NextResponse.json(
-        { error: 'Erro ao buscar transações', details: error.message },
+        { error: 'Erro ao buscar transações' },
         { status: 500 }
       );
     }
-
-    console.log('✅ Query executada com sucesso, transações encontradas:', transactions?.length || 0);
 
     // Converter transações de forma mais simples
     const convertedTransactions = transactions?.map((transaction: any) => ({
@@ -102,30 +85,14 @@ export async function GET(request: NextRequest) {
       installmentInfo: transaction.installment_info
     })) || [];
 
-    console.log('✅ Transações convertidas:', convertedTransactions.length);
-
     return NextResponse.json({
       transactions: convertedTransactions,
       count: convertedTransactions.length
     });
 
   } catch (error) {
-    console.error('❌ Erro detalhado na API de transações:', {
-      message: error instanceof Error ? error.message : 'Erro desconhecido',
-      stack: error instanceof Error ? error.stack : undefined,
-      error: error,
-      timestamp: new Date().toISOString()
-    });
-    
-    // Retornar erro mais específico
-    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-    
     return NextResponse.json(
-      { 
-        error: 'Erro interno do servidor',
-        details: errorMessage,
-        timestamp: new Date().toISOString()
-      },
+      { error: 'Erro interno do servidor' },
       { status: 500 }
     );
   }

@@ -1,12 +1,7 @@
 "use server"
 
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { createClient as createSupabaseClient, createServiceClient } from "@/utils/supabase/server"
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,6 +20,14 @@ export async function GET(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: "user_id é obrigatório" }, { status: 400 })
     }
+
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
+    }
+
+    const serviceSupabase = createServiceClient()
 
     const months = Math.max(1, Math.min(24, Number(monthsParam) || 12))
 
@@ -54,7 +57,7 @@ export async function GET(request: NextRequest) {
       const assetIds = Array.from(
         new Set(filtered.map(r => r.asset_id).filter(Boolean) as string[])
       )
-      const { data: assets } = await supabase
+      const { data: assets } = await serviceSupabase
         .from("investment_assets")
         .select("id,class")
         .in("id", assetIds.length ? assetIds : ["00000000-0000-0000-0000-000000000000"])
@@ -106,25 +109,45 @@ export async function POST(request: NextRequest) {
       notes
     } = body || {}
 
-    if (!user_id) {
-      return NextResponse.json({ error: "user_id é obrigatório" }, { status: 400 })
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
     }
+
+    if (user_id && user_id !== user.id) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 403 })
+    }
+
+    const userId = user.id
+    const serviceSupabase = createServiceClient()
+
     const qty = Number(quantity)
     const unit = Number(unit_price)
     if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(unit) || unit <= 0) {
       return NextResponse.json({ error: "quantity e unit_price devem ser positivos" }, { status: 400 })
     }
     const dt = date ? new Date(date) : new Date()
+    const allowedClasses = new Set(["stock", "fii", "etf", "fixed_income", "crypto"])
 
     let usedAssetId = asset_id as string | undefined
     if (!usedAssetId) {
       if (!ticker || !asset_class) {
         return NextResponse.json({ error: "Informe ticker e asset_class quando asset_id não for fornecido" }, { status: 400 })
       }
-      const { data: existingAssets, error: findErr } = await supabase
+      if (!allowedClasses.has(String(asset_class))) {
+        return NextResponse.json({ error: "asset_class inválido" }, { status: 400 })
+      }
+
+      const safeTicker = String(ticker).trim().toUpperCase()
+      if (!/^[A-Z0-9._-]{1,16}$/.test(safeTicker)) {
+        return NextResponse.json({ error: "ticker inválido" }, { status: 400 })
+      }
+
+      const { data: existingAssets, error: findErr } = await serviceSupabase
         .from("investment_assets")
         .select("id,ticker")
-        .eq("ticker", String(ticker).toUpperCase())
+        .eq("ticker", safeTicker)
         .limit(1)
       if (findErr) {
         return NextResponse.json({ error: findErr.message }, { status: 500 })
@@ -132,12 +155,12 @@ export async function POST(request: NextRequest) {
       if (existingAssets && existingAssets.length > 0) {
         usedAssetId = existingAssets[0].id as string
       } else {
-        const { data: created, error: createErr } = await supabase
+        const { data: created, error: createErr } = await serviceSupabase
           .from("investment_assets")
           .insert({
-            ticker: String(ticker).toUpperCase(),
-            name: String(ticker).toUpperCase(),
-            class: asset_class
+            ticker: safeTicker,
+            name: safeTicker,
+            class: String(asset_class)
           })
           .select("id")
           .single()
@@ -154,7 +177,7 @@ export async function POST(request: NextRequest) {
     const cashFlow = -Math.abs(total)
 
     const insertPayload = {
-      user_id,
+      user_id: userId,
       asset_id: usedAssetId!,
       account_id: account_id || null,
       type: "buy",

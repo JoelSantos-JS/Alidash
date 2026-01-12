@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { createClient as createSupabaseClient, createServiceClient } from '@/utils/supabase/server'
 
 export async function PUT(request: NextRequest) {
   try {
@@ -37,12 +32,40 @@ export async function PUT(request: NextRequest) {
 
     console.log(`🔄 Alterando visibilidade do produto ${productId} para ${isPublic ? 'público' : 'privado'}`)
 
+    const supabaseAuth = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
+    const serviceSupabase = createServiceClient()
+    let internalUserId = user.id
+    const { data: byId } = await serviceSupabase
+      .from('users')
+      .select('id')
+      .eq('id', user.id)
+      .single()
+    if (byId?.id) {
+      internalUserId = byId.id
+    } else {
+      const { data: byFirebase } = await serviceSupabase
+        .from('users')
+        .select('id')
+        .eq('firebase_uid', user.id)
+        .single()
+      if (byFirebase?.id) internalUserId = byFirebase.id
+    }
+
+    if (userId && userId !== user.id && userId !== internalUserId) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
+    }
+
     // Verificar se o produto pertence ao usuário
-    const { data: product, error: productError } = await supabase
+    const { data: product, error: productError } = await serviceSupabase
       .from('products')
       .select('id, name, user_id')
       .eq('id', productId)
-      .eq('user_id', userId)
+      .eq('user_id', internalUserId)
       .single()
 
     if (productError || !product) {
@@ -54,11 +77,11 @@ export async function PUT(request: NextRequest) {
     }
 
     // Atualizar visibilidade do produto
-    const { data: updatedProduct, error: updateError } = await supabase
+    const { data: updatedProduct, error: updateError } = await serviceSupabase
       .from('products')
       .update({ is_public: isPublic })
       .eq('id', productId)
-      .eq('user_id', userId)
+      .eq('user_id', internalUserId)
       .select('id, name, is_public')
       .single()
 

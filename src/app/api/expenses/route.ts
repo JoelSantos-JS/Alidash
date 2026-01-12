@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { createClient as createSupabaseClient } from '@/utils/supabase/server';
 
 export async function GET(request: NextRequest) {
   const routeStart = Date.now();
@@ -12,50 +7,45 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userIdParam = searchParams.get('user_id');
 
-    if (!userIdParam) {
-      return NextResponse.json(
-        { error: 'user_id é obrigatório' },
-        { status: 400 }
-      );
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
-    console.log('🔍 Buscando despesas para user_id:', userIdParam);
+    if (userIdParam && userIdParam !== user.id) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
+    }
 
     // Buscar despesas do usuário usando o UUID do Supabase
     const dbStart = Date.now();
     const { data: expenses, error: expensesError } = await supabase
       .from('expenses')
       .select('*')
-      .eq('user_id', userIdParam)
+      .eq('user_id', user.id)
       .order('date', { ascending: false });
 
     // Buscar transações parceladas de despesa
     const { data: installmentTransactions, error: installmentError } = await supabase
       .from('transactions')
       .select('*')
-      .eq('user_id', userIdParam)
+      .eq('user_id', user.id)
       .eq('type', 'expense')
       .eq('is_installment', true)
       .order('date', { ascending: false });
     const dbDur = Date.now() - dbStart;
 
     if (expensesError) {
-      console.error('❌ Erro ao buscar despesas:', expensesError);
       return NextResponse.json({ 
-        error: 'Erro ao buscar despesas',
-        details: expensesError.message 
+        error: 'Erro ao buscar despesas'
       }, { status: 500 });
     }
 
-    console.log(`✅ ${expenses?.length || 0} despesas encontradas`);
     if (installmentError) {
-      console.error('❌ Erro ao buscar transações parceladas:', installmentError);
       return NextResponse.json({ 
-        error: 'Erro ao buscar transações parceladas',
-        details: installmentError.message 
+        error: 'Erro ao buscar transações parceladas'
       }, { status: 500 });
     }
-    console.log(`✅ ${installmentTransactions?.length || 0} transações parceladas encontradas`);
 
     // Combinar despesas regulares e transações parceladas
     const allExpenses = [
@@ -68,7 +58,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, expenses: allExpenses || [] }, { headers: { 'Server-Timing': serverTiming } });
 
   } catch (error) {
-    console.error('❌ Erro geral ao buscar despesas:', error);
     const total = Date.now() - routeStart;
     const serverTiming = `total;dur=${Math.round(total)}`;
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500, headers: { 'Server-Timing': serverTiming } });
@@ -80,19 +69,23 @@ export async function POST(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('user_id');
 
-    if (!userId) {
-      return NextResponse.json({ error: 'user_id é obrigatório' }, { status: 400 });
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
+    if (userId && userId !== user.id) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
     }
 
     const expenseData = await request.json();
 
-    console.log('💰 Criando despesa via API:', { userId, expenseData });
-
     // Converter date string para Date object se necessário
     const processedExpenseData = {
       ...expenseData,
-      user_id: userId,
-      date: typeof expenseData.date === 'string' ? new Date(expenseData.date) : expenseData.date
+      user_id: user.id,
+      date: typeof expenseData?.date === 'string' ? new Date(expenseData.date).toISOString() : expenseData?.date
     };
 
     // Criar despesa no Supabase
@@ -103,14 +96,11 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('❌ Erro ao criar despesa no Supabase:', error);
       return NextResponse.json({
         success: false,
         error: 'Erro ao criar despesa'
       }, { status: 500 });
     }
-
-    console.log('✅ Despesa criada com sucesso:', expense);
 
     return NextResponse.json({
       success: true,
@@ -118,11 +108,9 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ Erro ao criar despesa:', error);
-    
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Erro interno do servidor'
+      error: 'Erro interno do servidor'
     }, { status: 500 });
   }
 }

@@ -975,9 +975,9 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
           body: JSON.stringify(updatedProduct)
         });
         
-      if (saleResponse.ok) {
-        const result = await saleResponse.json();
-        if (isDev) console.log('✅ Venda registrada:', result);
+        if (updateResponse.ok) {
+          const result = await updateResponse.json();
+          if (isDev) console.log('✅ Venda registrada:', result);
           
           // Só atualizar estado local se a operação foi bem-sucedida
           if (result.success) {

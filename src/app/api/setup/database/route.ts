@@ -2,6 +2,13 @@ import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdminService } from '@/lib/supabase-service'
 
+function isInternalAuthorized(request: NextRequest) {
+  const expected = process.env.INTERNAL_API_KEY
+  if (!expected) return process.env.NODE_ENV !== 'production'
+  const provided = request.headers.get('x-internal-key')
+  return !!provided && provided === expected
+}
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -9,6 +16,10 @@ const supabase = createClient(
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isInternalAuthorized(request)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
     const userData = await request.json();
     
     // Extract user data from request
@@ -101,8 +112,12 @@ async function ensureBackupTableExists() {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    if (!isInternalAuthorized(request)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
     // Verificar se a tabela existe
     const { data, error } = await supabase
       .from('firebase_backup')

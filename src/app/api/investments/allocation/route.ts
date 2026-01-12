@@ -1,12 +1,7 @@
 "use server"
 
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { createClient as createSupabaseClient, createServiceClient } from "@/utils/supabase/server"
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,6 +11,12 @@ export async function GET(request: NextRequest) {
 
     if (!userId) {
       return NextResponse.json({ error: "user_id é obrigatório" }, { status: 400 })
+    }
+
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
     }
 
     let query = supabase
@@ -35,12 +36,13 @@ export async function GET(request: NextRequest) {
 
     const assetIds = Array.from(new Set((positions || []).map(p => p.asset_id).filter(Boolean)))
 
-    const { data: assets } = await supabase
+    const serviceSupabase = createServiceClient()
+    const { data: assets } = await serviceSupabase
       .from("investment_assets")
       .select("id,class")
       .in("id", assetIds.length ? assetIds : ["00000000-0000-0000-0000-000000000000"])
 
-    const { data: prices } = await supabase
+    const { data: prices } = await serviceSupabase
       .from("investment_prices")
       .select("asset_id,date,close")
       .in("asset_id", assetIds.length ? assetIds : ["00000000-0000-0000-0000-000000000000"])

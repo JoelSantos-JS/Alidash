@@ -159,6 +159,7 @@ export function BlackHoleBackground({
     };
 
     function compile(type: number, src: string) {
+      if (!gl) return null;
       const s = gl.createShader(type);
       if (!s) return null;
       gl.shaderSource(s, src);
@@ -208,6 +209,10 @@ export function BlackHoleBackground({
     // Uniforms
     const u_res = gl.getUniformLocation(prog, 'u_res');
     const u_time = gl.getUniformLocation(prog, 'u_time');
+    if (!u_res || !u_time) {
+      setIsLowPerformance(true);
+      return;
+    }
 
     function resize() {
       if (!canvas || !gl) return;

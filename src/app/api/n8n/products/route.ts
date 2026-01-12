@@ -20,6 +20,64 @@ interface N8NProductData {
   }
 }
 
+function normalizeProductInput(input: Partial<Product>): Partial<Product> {
+  const out: Partial<Product> = { ...input }
+  const purchaseDate: unknown = (input as any).purchaseDate
+  if (typeof purchaseDate === 'string') {
+    const d = new Date(purchaseDate)
+    out.purchaseDate = isNaN(d.getTime()) ? undefined : d
+  }
+  return out
+}
+
+function normalizeProductsInput(input: Product[]): Product[] {
+  return input.map(p => {
+    const normalized = normalizeProductInput(p) as Product
+    if (!normalized.sales) normalized.sales = []
+    normalized.sales = (normalized.sales || []).map(s => ({
+      ...s,
+      date: typeof (s as any).date === 'string' ? new Date((s as any).date) : s.date
+    }))
+    return normalized
+  })
+}
+
+function toApiProduct(row: any): Product {
+  const purchaseDate = row.purchase_date ? new Date(row.purchase_date) : new Date()
+  return {
+    id: String(row.id),
+    name: String(row.name || ''),
+    category: String(row.category || ''),
+    supplier: String(row.supplier || ''),
+    aliexpressLink: String(row.aliexpress_link || ''),
+    imageUrl: row.image_url ? String(row.image_url) : undefined,
+    images: Array.isArray(row.images) ? row.images : undefined,
+    description: String(row.description || ''),
+    notes: row.notes ? String(row.notes) : undefined,
+    trackingCode: row.tracking_code ? String(row.tracking_code) : undefined,
+    purchaseEmail: row.purchase_email ? String(row.purchase_email) : undefined,
+    isPublic: row.is_public ?? undefined,
+    purchasePrice: Number(row.purchase_price || 0),
+    shippingCost: Number(row.shipping_cost || 0),
+    importTaxes: Number(row.import_taxes || 0),
+    packagingCost: Number(row.packaging_cost || 0),
+    marketingCost: Number(row.marketing_cost || 0),
+    otherCosts: Number(row.other_costs || 0),
+    totalCost: Number(row.total_cost || 0),
+    sellingPrice: Number(row.selling_price || 0),
+    expectedProfit: Number(row.expected_profit || 0),
+    profitMargin: Number(row.profit_margin || 0),
+    sales: [],
+    quantity: Number(row.quantity || 0),
+    quantitySold: Number(row.quantity_sold || 0),
+    status: (row.status || 'purchased') as Product['status'],
+    purchaseDate: isNaN(purchaseDate.getTime()) ? new Date() : purchaseDate,
+    roi: Number(row.roi || 0),
+    actualProfit: Number(row.actual_profit || 0),
+    daysToSell: row.days_to_sell ?? undefined
+  }
+}
+
 /**
  * GET - Obter produtos para N8N
  */
@@ -49,44 +107,37 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ products: [], total: 0, lastSync: new Date().toISOString() })
     }
 
-    // Get products with filters
-    const filters: any = {}
-    if (lastSync) {
-      const lastSyncDate = new Date(lastSync)
-      filters.startDate = lastSyncDate
+    const admin = supabaseAdminService.getClient()
+    let query = admin
+      .from('products')
+      .select('*', { count: 'exact' })
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    if (status) query = query.eq('status', status)
+    if (category) query = query.eq('category', category)
+    if (lastSync) query = query.gte('updated_at', lastSync)
+
+    const { data, error, count } = await query
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    let products = await supabaseAdminService.getProducts(user.id)
-
-    // Apply additional filters
-    if (status) {
-      products = products.filter(p => p.status === status)
-    }
-    if (category) {
-      products = products.filter(p => p.category === category)
-    }
-
-    // Apply limit
-    const limitedProducts = products.slice(0, limit)
-
-    // Formatar dados para N8N
-    const n8nProducts = limitedProducts.map(product => ({
+    const apiProducts = (data || []).map(toApiProduct)
+    const n8nProducts = apiProducts.map(product => ({
       ...product,
-      purchaseDate: product.purchaseDate instanceof Date 
-        ? product.purchaseDate.toISOString() 
-        : (product.purchaseDate as any).toDate().toISOString(),
-      sales: product.sales.map(sale => ({
+      purchaseDate: product.purchaseDate.toISOString(),
+      sales: (product.sales || []).map(sale => ({
         ...sale,
-        date: sale.date instanceof Date 
-          ? sale.date.toISOString() 
-          : (sale.date as any).toDate().toISOString()
+        date: sale.date.toISOString()
       }))
     }))
 
     return NextResponse.json({
       products: n8nProducts,
-      total: products.length,
-      returned: limitedProducts.length,
+      total: count || n8nProducts.length,
+      returned: n8nProducts.length,
       lastSync: new Date().toISOString(),
       filters: { status, category, lastSync }
     })
@@ -121,90 +172,97 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'action e data são obrigatórios' }, { status: 400 })
     }
 
-    // Buscar dados atuais do usuário
-    const userDocRef = doc(db, 'user-data', userId)
-    const userDocSnap = await getDoc(userDocRef)
-    const userData = userDocSnap.exists() ? userDocSnap.data() : {}
-    let products: Product[] = userData.products || []
+    const user = await supabaseAdminService.getUserByFirebaseUid(userId)
+    if (!user) {
+      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
+    }
 
+    const adminUserId = user.id as string
     let result: any = { success: true }
 
     switch (requestData.action) {
       case 'create':
-        const newProduct = requestData.data as Product
-        // Converter datas string para Date objects
-        newProduct.purchaseDate = typeof newProduct.purchaseDate === 'string' 
-          ? new Date(newProduct.purchaseDate) 
-          : newProduct.purchaseDate
-        newProduct.sales = newProduct.sales?.map(sale => ({
-          ...sale,
-          date: typeof sale.date === 'string' ? new Date(sale.date) : sale.date
-        })) || []
-        
-        products.push(newProduct)
-        result.created = newProduct.id
+        const createInput = normalizeProductInput(requestData.data as Partial<Product>)
+        const toCreate = {
+          name: createInput.name || '',
+          category: createInput.category || '',
+          supplier: createInput.supplier || '',
+          aliexpressLink: createInput.aliexpressLink || '',
+          imageUrl: createInput.imageUrl,
+          images: createInput.images,
+          description: createInput.description || '',
+          notes: createInput.notes,
+          trackingCode: createInput.trackingCode,
+          purchaseEmail: createInput.purchaseEmail,
+          isPublic: createInput.isPublic,
+          purchasePrice: createInput.purchasePrice || 0,
+          shippingCost: createInput.shippingCost || 0,
+          importTaxes: createInput.importTaxes || 0,
+          packagingCost: createInput.packagingCost || 0,
+          marketingCost: createInput.marketingCost || 0,
+          otherCosts: createInput.otherCosts || 0,
+          totalCost: createInput.totalCost || 0,
+          sellingPrice: createInput.sellingPrice || 0,
+          expectedProfit: createInput.expectedProfit || 0,
+          profitMargin: createInput.profitMargin || 0,
+          sales: [],
+          quantity: createInput.quantity || 0,
+          quantitySold: createInput.quantitySold || 0,
+          status: (createInput.status || 'purchased') as Product['status'],
+          purchaseDate: createInput.purchaseDate instanceof Date ? createInput.purchaseDate : new Date(),
+          roi: createInput.roi || 0,
+          actualProfit: createInput.actualProfit || 0,
+          daysToSell: createInput.daysToSell
+        } as Omit<Product, 'id'>
+        const created = await supabaseAdminService.createProduct(adminUserId, toCreate)
+        result.created = created?.id || null
         break
 
       case 'update':
-        const updateProduct = requestData.data as Product
-        const updateIndex = products.findIndex(p => p.id === updateProduct.id)
-        
-        if (updateIndex === -1) {
-          return NextResponse.json({ error: 'Produto não encontrado' }, { status: 404 })
+        const updateInput = normalizeProductInput(requestData.data as Partial<Product>)
+        const productId = String((updateInput as any).id || '')
+        if (!productId) {
+          return NextResponse.json({ error: 'id do produto é obrigatório' }, { status: 400 })
         }
-        
-        // Converter datas
-        updateProduct.purchaseDate = typeof updateProduct.purchaseDate === 'string' 
-          ? new Date(updateProduct.purchaseDate) 
-          : updateProduct.purchaseDate
-        updateProduct.sales = updateProduct.sales?.map(sale => ({
-          ...sale,
-          date: typeof sale.date === 'string' ? new Date(sale.date) : sale.date
-        })) || []
-        
-        products[updateIndex] = updateProduct
-        result.updated = updateProduct.id
+        await supabaseAdminService.updateProduct(adminUserId, productId, updateInput)
+        result.updated = productId
         break
 
       case 'sync':
-        const syncProducts = requestData.data as Product[]
-        // Sincronização completa - substituir todos os produtos
-        products = syncProducts.map(product => ({
-          ...product,
-          purchaseDate: typeof product.purchaseDate === 'string' 
-            ? new Date(product.purchaseDate) 
-            : product.purchaseDate,
-          sales: product.sales?.map(sale => ({
-            ...sale,
-            date: typeof sale.date === 'string' ? new Date(sale.date) : sale.date
-          })) || []
-        }))
-        result.synced = products.length
+        {
+          const syncProducts = normalizeProductsInput(requestData.data as Product[])
+          let created = 0
+          let updated = 0
+          for (const p of syncProducts) {
+            const id = String((p as any).id || '')
+            if (id) {
+              await supabaseAdminService.updateProduct(adminUserId, id, p)
+              updated++
+            } else {
+              const createdRow = await supabaseAdminService.createProduct(adminUserId, p as any)
+              if (createdRow?.id) created++
+            }
+          }
+          result.synced = syncProducts.length
+          result.created = created
+          result.updated = updated
+        }
         break
 
       case 'delete':
-        const deleteId = (requestData.data as any).id
-        const deleteIndex = products.findIndex(p => p.id === deleteId)
-        
-        if (deleteIndex === -1) {
-          return NextResponse.json({ error: 'Produto não encontrado' }, { status: 404 })
+        {
+          const deleteId = String((requestData.data as any)?.id || '')
+          if (!deleteId) {
+            return NextResponse.json({ error: 'id do produto é obrigatório' }, { status: 400 })
+          }
+          await supabaseAdminService.deleteProduct(adminUserId, deleteId)
+          result.deleted = deleteId
         }
-        
-        products.splice(deleteIndex, 1)
-        result.deleted = deleteId
         break
 
       default:
         return NextResponse.json({ error: 'Ação inválida' }, { status: 400 })
     }
-
-    // Salvar dados atualizados
-    await setDoc(userDocRef, {
-      ...userData,
-      products,
-      lastUpdated: new Date(),
-      lastN8NSync: new Date()
-    }, { merge: true })
 
     // Log da operação
     console.log(`N8N ${requestData.action} operation for user ${userId}:`, result)
@@ -212,7 +270,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ...result,
       timestamp: new Date().toISOString(),
-      totalProducts: products.length
+      totalProducts: undefined
     })
 
   } catch (error) {
@@ -244,56 +302,38 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'products deve ser um array' }, { status: 400 })
     }
 
-    // Buscar dados atuais
-    const userDocRef = doc(db, 'user-data', userId)
-    const userDocSnap = await getDoc(userDocRef)
-    const userData = userDocSnap.exists() ? userDocSnap.data() : {}
-    let currentProducts: Product[] = userData.products || []
+    const user = await supabaseAdminService.getUserByFirebaseUid(userId)
+    if (!user) {
+      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
+    }
+    const adminUserId = user.id as string
 
     let created = 0
     let updated = 0
     let skipped = 0
 
     for (const product of products) {
-      // Converter datas
-      product.purchaseDate = typeof product.purchaseDate === 'string' 
-        ? new Date(product.purchaseDate) 
-        : product.purchaseDate
-      product.sales = product.sales?.map((sale: any) => ({
-        ...sale,
-        date: typeof sale.date === 'string' ? new Date(sale.date) : sale.date
-      })) || []
-
-      const existingIndex = currentProducts.findIndex(p => p.id === product.id)
-      
-      if (existingIndex >= 0) {
+      const p = normalizeProductInput(product as Partial<Product>)
+      const id = String((p as any).id || '')
+      if (id) {
         if (syncType === 'incremental') {
-          // Verificar se precisa atualizar (comparar timestamps ou versões)
-          currentProducts[existingIndex] = product
+          await supabaseAdminService.updateProduct(adminUserId, id, p)
           updated++
         } else {
           skipped++
         }
       } else {
-        currentProducts.push(product)
+        await supabaseAdminService.createProduct(adminUserId, p as any)
         created++
       }
     }
-
-    // Salvar dados
-    await setDoc(userDocRef, {
-      ...userData,
-      products: currentProducts,
-      lastUpdated: new Date(),
-      lastN8NSync: new Date()
-    }, { merge: true })
 
     return NextResponse.json({
       success: true,
       created,
       updated,
       skipped,
-      total: currentProducts.length,
+      total: created + updated + skipped,
       syncType,
       timestamp: new Date().toISOString()
     })

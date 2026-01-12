@@ -3,6 +3,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-service"
 
+function isInternalAuthorized(request: NextRequest) {
+  const expected = process.env.INTERNAL_API_KEY
+  if (!expected) return process.env.NODE_ENV !== 'production'
+  const provided = request.headers.get('x-internal-key')
+  return !!provided && provided === expected
+}
+
 async function fetchCryptoIdsBySymbol() {
   const res = await fetch("https://api.coingecko.com/api/v3/coins/list?include_platform=false", { cache: "no-store" })
   const list = await res.json().catch(() => [])
@@ -51,6 +58,10 @@ async function fetchBrapiQuotes(tickers: string[], token?: string) {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isInternalAuthorized(request)) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
+
     const admin = supabaseAdmin!
     const { data: assets, error: assetsErr } = await admin
       .from("investment_assets")

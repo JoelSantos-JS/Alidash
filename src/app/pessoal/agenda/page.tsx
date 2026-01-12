@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,14 +87,13 @@ export default function PersonalAgendaPage() {
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'list'>('list');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<PersonalEvent | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      loadEvents();
-    }
-  }, [user]);
+  const loadEvents = useCallback(async (userId: string) => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-  const loadEvents = async () => {
     try {
       setLoading(true);
       const now = new Date();
@@ -102,11 +101,11 @@ export default function PersonalAgendaPage() {
       const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       const endIso = endDate.toISOString();
       const url = new URL('/api/personal/reminders', window.location.origin);
-      url.searchParams.set('user_id', user!.id);
+      url.searchParams.set('user_id', userId);
       url.searchParams.set('start_date', startIso);
       url.searchParams.set('end_date', endIso);
       url.searchParams.set('limit', '200');
-      const res = await fetch(url.toString());
+      const res = await fetch(url.toString(), { signal: controller.signal });
       if (!res.ok) {
         setEvents([]);
       } else {
@@ -131,16 +130,28 @@ export default function PersonalAgendaPage() {
         setEvents(mapped);
       }
     } catch (error) {
-      console.error('Erro ao carregar agenda:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar a agenda pessoal.",
-        variant: "destructive"
-      });
+      if (!(error instanceof DOMException && error.name === "AbortError")) {
+        console.error('Erro ao carregar agenda:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar a agenda pessoal.",
+          variant: "destructive"
+        });
+      }
     } finally {
-      setLoading(false);
+      if (abortRef.current === controller) {
+        setLoading(false);
+      }
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    loadEvents(user.id);
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, [user?.id, loadEvents]);
 
   const handleCreateEvent = () => {
     setSelectedEvent(null);
@@ -779,9 +790,9 @@ export default function PersonalAgendaPage() {
         )}
       </div>
 
-      {/* Formulário de Evento Pessoal */}
+       {/* Formulário de Evento Pessoal */}
        <PersonalEventForm
-         event={selectedEvent}
+         event={selectedEvent || undefined}
          onSubmit={handleSubmitEvent}
          onCancel={handleCancelForm}
          isOpen={isFormOpen}

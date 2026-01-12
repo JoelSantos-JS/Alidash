@@ -23,7 +23,7 @@ export function withLazyLoading<T extends object>(
   importFunc: () => Promise<{ default: ComponentType<T> }>,
   fallback?: ReactNode
 ) {
-  const LazyComponent = lazy(importFunc)
+  const LazyComponent = lazy(importFunc) as unknown as ComponentType<T>
   
   return function LazyWrapper(props: T) {
     return (

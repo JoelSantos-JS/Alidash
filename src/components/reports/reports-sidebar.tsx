@@ -257,7 +257,7 @@ export function ReportsSidebar({
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={onExport}
+              onClick={() => onExport?.('pdf')}
               className="gap-2"
             >
               <Download className="h-4 w-4" />

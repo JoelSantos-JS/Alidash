@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, useCallback } from "react"
+import { useEffect, useMemo, useState, useCallback, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -35,9 +35,20 @@ export function RemindersSidebar({ className, onAdd }: RemindersSidebarProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [reminders, setReminders] = useState<ReminderEvent[]>([])
+  const abortRef = useRef<AbortController | null>(null)
+  const lastErrorAtRef = useRef(0)
 
   const refetch = useCallback(async () => {
-    if (!user?.id) return
+    if (!user?.id) {
+      setLoading(false)
+      setReminders([])
+      return
+    }
+
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
     setLoading(true)
     try {
       const now = new Date()
@@ -51,7 +62,7 @@ export function RemindersSidebar({ className, onAdd }: RemindersSidebarProps) {
       url.searchParams.set("end_date", endIso)
       url.searchParams.set("limit", "50")
 
-      const res = await fetch(url.toString())
+      const res = await fetch(url.toString(), { signal: controller.signal })
       if (!res.ok) {
         throw new Error("Falha ao buscar lembretes")
       }
@@ -59,13 +70,20 @@ export function RemindersSidebar({ className, onAdd }: RemindersSidebarProps) {
       const list = (data?.reminders || []) as ReminderEvent[]
       setReminders(list)
     } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar os lembretes.",
-        variant: "destructive",
-      })
+      if (controller.signal.aborted) return
+      const now = Date.now()
+      if (now - lastErrorAtRef.current > 8000) {
+        lastErrorAtRef.current = now
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os lembretes.",
+          variant: "destructive",
+        })
+      }
     } finally {
-      setLoading(false)
+      if (abortRef.current === controller) {
+        setLoading(false)
+      }
     }
   }, [user?.id, toast])
 
@@ -82,6 +100,12 @@ export function RemindersSidebar({ className, onAdd }: RemindersSidebarProps) {
       window.removeEventListener("reminders:changed", handler)
     }
   }, [refetch])
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort()
+    }
+  }, [])
 
   const stats = useMemo(() => {
     const now = new Date()

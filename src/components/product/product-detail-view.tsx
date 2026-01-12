@@ -40,7 +40,7 @@ const statusMap = {
     sold: { label: 'Esgotado', color: 'bg-gray-500' },
 }
 
-export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale, onClose }: ProductDetailViewProps) {
+export function ProductDetailView({ product, onEdit, onDelete, onRegisterSale }: ProductDetailViewProps) {
   // Calcular estoque disponível
   const availableStock = product.quantity - product.quantitySold;
   

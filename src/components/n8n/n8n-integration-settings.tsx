@@ -438,7 +438,7 @@ export function N8NIntegrationSettings() {
                           <div className="flex flex-wrap gap-1 mt-2">
                             {apiKey.permissions.map((permission) => (
                               <Badge key={permission} variant="outline" className="text-xs">
-                                {PERMISSION_LABELS[permission] || permission}
+                                {PERMISSION_LABELS[permission as keyof typeof PERMISSION_LABELS] || permission}
                               </Badge>
                             ))}
                           </div>

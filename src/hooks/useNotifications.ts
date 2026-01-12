@@ -23,6 +23,15 @@ export interface PushNotificationData {
   data?: any
 }
 
+export interface EmailNotificationData {
+  to?: string
+  subject: string
+  body: string
+  type: 'calendar_event' | 'product_alert' | 'transaction' | 'goal_reminder' | 'debt_reminder' | 'general' | 'welcome'
+  eventId?: string
+  data?: any
+}
+
 export function useNotifications() {
   const { user } = useAuth()
   const [permission, setPermission] = useState<NotificationPermission>('default')
@@ -214,6 +223,29 @@ export function useNotifications() {
     }
   }, [user?.id])
 
+  const sendEmail = useCallback(async (email: EmailNotificationData): Promise<boolean> => {
+    if (!user?.id) return false
+    try {
+      const response = await fetch('/api/notifications/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_id: user.id,
+          email: {
+            ...email,
+            to: email.to ?? ''
+          }
+        })
+      })
+      return response.ok
+    } catch (error) {
+      console.error('Erro ao enviar email:', error)
+      return false
+    }
+  }, [user?.id])
+
   const scheduleNotification = useCallback(async (
     data: PushNotificationData,
     scheduledTime: Date
@@ -267,6 +299,7 @@ export function useNotifications() {
     unsubscribeFromPush,
     savePreferences,
     sendNotification,
+    sendEmail,
     scheduleNotification,
     testNotification,
     
@@ -277,14 +310,15 @@ export function useNotifications() {
 }
 
 // Utility function para converter VAPID key
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - base64String.length % 4) % 4)
   const base64 = (base64String + padding)
     .replace(/-/g, '+')
     .replace(/_/g, '/')
 
   const rawData = window.atob(base64)
-  const outputArray = new Uint8Array(rawData.length)
+  const buffer = new ArrayBuffer(rawData.length)
+  const outputArray = new Uint8Array(buffer)
 
   for (let i = 0; i < rawData.length; ++i) {
     outputArray[i] = rawData.charCodeAt(i)

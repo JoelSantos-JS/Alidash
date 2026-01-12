@@ -1,7 +1,7 @@
 "use server"
 
 import { NextRequest, NextResponse } from "next/server"
-import { createClient as createServerClient, createServiceClient } from "@/utils/supabase/server"
+import { createClient as createServerClient } from "@/utils/supabase/server"
 import { z } from "zod"
 
 const PostSchema = z.object({
@@ -13,21 +13,18 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerClient()
     const { searchParams } = new URL(request.url)
-    const userIdParam = searchParams.get("user_id") || undefined
-    const { data: { user } } = await supabase.auth.getUser()
-    const effectiveUserId = user?.id || userIdParam
-
-    if (!effectiveUserId) {
+    const requestedUserId = searchParams.get("user_id") || undefined
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 })
     }
 
-    let client = supabase
-    // Se não houver sessão (user), usa service role apenas para leitura filtrada por user_id
-    if (!user) {
-      client = createServiceClient()
+    if (requestedUserId && requestedUserId !== user.id) {
+      return NextResponse.json({ error: "forbidden" }, { status: 403 })
     }
+    const effectiveUserId = user.id
 
-    const { data, error } = await client
+    const { data, error } = await supabase
       .from("investment_accounts")
       .select("id,broker,account_code")
       .eq("user_id", effectiveUserId)

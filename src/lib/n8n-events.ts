@@ -79,7 +79,7 @@ export async function sendN8NEvent(eventType: string, userId: string, data: Reco
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  ) as any
   try {
     // Buscar configurações de webhook do usuário
     const { data: webhookData, error } = await supabase
@@ -149,7 +149,7 @@ export async function sendN8NEvent(eventType: string, userId: string, data: Reco
 /**
  * Enviar webhook para uma URL específica
  */
-async function sendWebhook(supabase: ReturnType<typeof createClient>, webhook: WebhookConfig, event: N8NEvent) {
+async function sendWebhook(supabase: any, webhook: WebhookConfig, event: N8NEvent) {
   const maxRetries = webhook.retryConfig?.maxRetries || 3
   const retryDelay = webhook.retryConfig?.retryDelay || 1000
   

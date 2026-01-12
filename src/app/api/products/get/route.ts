@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdminService } from '@/lib/supabase-service'
-import { createClient } from '@supabase/supabase-js'
-import { createServiceClient } from '@/utils/supabase/server'
+import { createClient as createSupabaseClient, createServiceClient } from '@/utils/supabase/server'
 import type { Product, ProductImage, Sale } from '@/types'
 
 export async function GET(request: NextRequest) {
@@ -9,19 +8,22 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('user_id')
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'user_id é obrigatório' },
-        { status: 400 }
-      )
+    const supabaseAuth = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
+    if (userId && userId !== user.id) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
     }
 
     const serviceSupabase = createServiceClient()
-    let internalUserId = userId
+    let internalUserId = user.id
     const { data: byId } = await serviceSupabase
       .from('users')
       .select('id')
-      .eq('id', userId)
+      .eq('id', user.id)
       .single()
     if (byId?.id) {
       internalUserId = byId.id
@@ -29,15 +31,12 @@ export async function GET(request: NextRequest) {
       const { data: byFirebase } = await serviceSupabase
         .from('users')
         .select('id')
-        .eq('firebase_uid', userId)
+        .eq('firebase_uid', user.id)
         .single()
       if (byFirebase?.id) internalUserId = byFirebase.id
     }
 
-    console.log('🔍 Buscando produtos (Supabase) para usuário ID:', internalUserId)
-
     const products = await supabaseAdminService.getProducts(internalUserId)
-    console.log('📦 Produtos encontrados:', products.length)
 
     // Transformar dados do Supabase para o formato esperado
     const transformedProducts: Product[] = products.map((product: any) => ({
@@ -73,8 +72,7 @@ export async function GET(request: NextRequest) {
       images: [] as ProductImage[]
     }))
 
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-    const { data: sales } = await supabase
+    const { data: sales } = await serviceSupabase
       .from('sales')
       .select('id, product_id, quantity, buyer_name, date')
       .eq('user_id', internalUserId)
@@ -98,7 +96,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const { data: allImages } = await supabase
+    const { data: allImages } = await serviceSupabase
       .from('product_images')
       .select('id, product_id, url, type, alt, created_at, order')
       .eq('user_id', internalUserId)
@@ -158,10 +156,8 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('❌ Erro na API de produtos:', error)
     return NextResponse.json({ 
-      error: 'Erro interno do servidor',
-      details: error instanceof Error ? error.message : 'Erro desconhecido'
+      error: 'Erro interno do servidor'
     }, { status: 500 })
   }
 }

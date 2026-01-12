@@ -3,6 +3,12 @@ import { supabaseAdmin } from '@/lib/supabase-service'
 
 const ipLimits = new Map<string, { last: number; count: number }>()
 const emailLimits = new Map<string, { last: number; count: number }>()
+function isAdminAuthorized(request: NextRequest) {
+  const expected = process.env.ADMIN_SIGNUP_API_KEY
+  if (!expected) return process.env.NODE_ENV !== 'production'
+  const provided = request.headers.get('x-api-key')
+  return !!provided && provided === expected
+}
 function withinLimit(map: Map<string, { last: number; count: number }>, key: string, max: number, windowMs: number) {
   const now = Date.now()
   const cur = map.get(key)
@@ -17,12 +23,8 @@ function withinLimit(map: Map<string, { last: number; count: number }>, key: str
 
 export async function POST(request: NextRequest) {
   try {
-    const configuredKey = process.env.ADMIN_SIGNUP_API_KEY
-    if (configuredKey) {
-      const provided = request.headers.get('x-api-key') || ''
-      if (provided !== configuredKey) {
-        return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-      }
+    if (!isAdminAuthorized(request)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
     const body = await request.json()
     const email = String(body?.email || '').trim()
@@ -55,9 +57,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
+    const recoveryUrl =
+      (data as any)?.action_link ??
+      (data as any)?.properties?.action_link ??
+      null
+
     return NextResponse.json({
       success: true,
-      recoveryUrl: data?.action_link || null
+      recoveryUrl
     })
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || 'Erro interno do servidor' }, { status: 500 })

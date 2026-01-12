@@ -1,10 +1,16 @@
 "use server"
 
 import { NextResponse } from "next/server"
-import { supabaseAdmin } from "@/lib/supabase-service"
+import { createClient as createSupabaseClient, createServiceClient } from "@/utils/supabase/server"
 
 export async function GET() {
   try {
+    const supabase = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ success: false, error: "unauthorized" }, { status: 401 })
+    }
+
     const tables = [
       "investment_assets",
       "investment_accounts",
@@ -14,11 +20,12 @@ export async function GET() {
     ]
 
     const results: Record<string, boolean> = {}
+    const serviceSupabase = createServiceClient()
 
     for (const t of tables) {
-      const { error } = await supabaseAdmin!
+      const { error } = await serviceSupabase
         .from(t as any)
-        .select("count")
+        .select("id")
         .limit(1)
 
       results[t] = !error
@@ -35,4 +42,3 @@ export async function GET() {
     }, { status: 500 })
   }
 }
-

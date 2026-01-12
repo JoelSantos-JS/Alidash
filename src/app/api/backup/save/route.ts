@@ -1,36 +1,36 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient as createSupabaseClient, createServiceClient } from '@/utils/supabase/server'
 
-// Inicializar Supabase apenas se as variáveis de ambiente estiverem disponíveis
-let supabase: any = null
-
-if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  )
-}
-
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const supabaseAuth = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
     const backupData = await request.json()
     
     if (!backupData.userId) {
       return NextResponse.json({ error: 'userId é obrigatório' }, { status: 400 })
     }
 
-    // Verificar se o Supabase está configurado
-    if (!supabase) {
+    if (backupData.userId !== user.id) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
+    }
+
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ 
         success: false,
         message: 'Backup não configurado - Supabase não disponível',
         error: 'SUPABASE_NOT_CONFIGURED'
       }, { status: 503 })
     }
+    const supabase = createServiceClient()
 
     // Preparar dados para Supabase
     const dataToSave = {
-      user_id: backupData.userId,
+      user_id: user.id,
       products: backupData.products || [],
       dreams: backupData.dreams || [],
       bets: backupData.bets || [],
@@ -84,6 +84,12 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
+    const supabaseAuth = await createSupabaseClient()
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
     const url = new URL(request.url)
     const userId = url.searchParams.get('userId')
     
@@ -91,8 +97,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'userId é obrigatório' }, { status: 400 })
     }
 
-    // Verificar se o Supabase está configurado
-    if (!supabase) {
+    if (userId !== user.id) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
+    }
+
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ 
         exists: false,
         lastSync: null,
@@ -100,6 +109,7 @@ export async function GET(request: Request) {
         error: 'SUPABASE_NOT_CONFIGURED'
       })
     }
+    const supabase = createServiceClient()
 
     const { data, error } = await supabase
       .from('firebase_backup')

@@ -359,7 +359,7 @@ describe('Investments API', () => {
     expect(body.accounts[0].name).toBeDefined()
   })
 
-  it('GET /api/investments/accounts sem sessão usa user_id (service)', async () => {
+  it('GET /api/investments/accounts sem sessão retorna 401', async () => {
     jest.resetModules()
     jest.doMock('@/utils/supabase/server', () => {
       return mockSupabaseServerMock(null)
@@ -368,10 +368,8 @@ describe('Investments API', () => {
     mockAccounts.push({ id: 'acc_1', user_id: 'user_1', account_code: 'Conta Sem Sessao', broker: 'XP' } as any)
     const res: any = await GET({ url: 'http://localhost/api/investments/accounts?user_id=user_1' } as any)
     const body = await res.json()
-    expect(res.status).toBe(200)
-    expect(Array.isArray(body.accounts)).toBe(true)
-    expect(body.accounts.length).toBeGreaterThanOrEqual(1)
-    expect(body.accounts[0].name).toBe('Conta Sem Sessao')
+    expect(res.status).toBe(401)
+    expect(body.error).toBeDefined()
   })
 
   it('PATCH /api/investments/positions atualiza quantidade e preço médio', async () => {

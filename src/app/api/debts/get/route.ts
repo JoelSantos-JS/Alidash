@@ -1,49 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-// Configuração direta do Supabase para evitar problemas de inicialização
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('❌ Variáveis de ambiente do Supabase não encontradas');
-}
-
-const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
+import { createClient as createSupabaseClient } from '@/utils/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🚀 API route GET iniciada');
-    
     const { searchParams } = new URL(request.url);
-    const supabaseUserId = searchParams.get('user_id');
+    const requestedUserId = searchParams.get('user_id');
 
-    console.log('🔍 Buscando dívidas para Supabase User ID:', supabaseUserId);
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (!supabaseUserId) {
-      console.log('❌ user_id não fornecido');
-      return NextResponse.json(
-        { error: 'user_id é obrigatório' },
-        { status: 400 }
-      );
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
-    // Buscar dívidas do usuário diretamente
+    if (requestedUserId && requestedUserId !== user.id) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
+    }
+
+    const userId = user.id;
+
     const { data: debts, error: debtsError } = await supabase
       .from('debts')
       .select('*')
-      .eq('user_id', supabaseUserId)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (debtsError) {
-      console.error('❌ Erro ao buscar dívidas:', debtsError);
       return NextResponse.json(
-        { error: 'Erro ao buscar dívidas', details: debtsError.message },
+        { error: 'Erro ao buscar dívidas' },
         { status: 500 }
       );
     }
-
-    console.log('✅ Dívidas encontradas:', debts?.length || 0);
 
     // Fetch payments for all debts
     let allPayments = [];
@@ -56,7 +43,6 @@ export async function GET(request: NextRequest) {
         .order('date', { ascending: false });
 
       if (paymentsError) {
-        console.error('⚠️ Erro ao buscar pagamentos (não crítico):', paymentsError);
         allPayments = [];
       } else {
         allPayments = payments || [];
@@ -104,19 +90,8 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ Erro detalhado na API de dívidas:', {
-      message: error instanceof Error ? error.message : 'Erro desconhecido',
-      stack: error instanceof Error ? error.stack : undefined,
-      error: error,
-      timestamp: new Date().toISOString()
-    });
-    
     return NextResponse.json(
-      { 
-        error: 'Erro interno do servidor',
-        details: error instanceof Error ? error.message : 'Erro desconhecido',
-        timestamp: new Date().toISOString()
-      },
+      { error: 'Erro interno do servidor' },
       { status: 500 }
     );
   }

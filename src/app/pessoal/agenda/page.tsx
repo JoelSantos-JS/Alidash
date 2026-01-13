@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,33 +88,21 @@ export default function PersonalAgendaPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<PersonalEvent | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      loadEvents();
-    }
-  }, [user]);
+  const loadEventsInFlightKey = useRef<string | null>(null);
 
-  useEffect(() => {
-    const handler = () => {
-      if (user) {
-        loadEvents();
-      }
-    };
-    window.addEventListener("reminders:changed", handler);
-    return () => {
-      window.removeEventListener("reminders:changed", handler);
-    };
-  }, [user]);
+  const loadEvents = async (userId: string) => {
+    const now = new Date();
+    const startIso = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0).toISOString();
+    const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const endIso = endDate.toISOString();
+    const inFlightKey = `${userId}|${startIso}|${endIso}`;
+    if (loadEventsInFlightKey.current === inFlightKey) return;
+    loadEventsInFlightKey.current = inFlightKey;
 
-  const loadEvents = async () => {
     try {
       setLoading(true);
-      const now = new Date();
-      const startIso = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0).toISOString();
-      const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-      const endIso = endDate.toISOString();
       const params = new URLSearchParams({
-        user_id: user!.id,
+        user_id: userId,
         start_date: startIso,
         end_date: endIso,
         limit: "200",
@@ -123,38 +111,58 @@ export default function PersonalAgendaPage() {
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData?.error || "Falha ao buscar lembretes");
-      } else {
-        const data = await res.json();
-        const list = (data?.reminders || []) as any[];
-        const mapped: PersonalEvent[] = list.map(r => {
-          const dt = new Date(r.start_time);
-          const timeStr = r.is_all_day ? '' : dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-          return {
-            id: r.id,
-            title: r.title,
-            description: r.description || '',
-            date: dt.toISOString().split('T')[0],
-            time: timeStr,
-            type: 'reminder',
-            priority: r.priority || 'medium',
-            status: r.status === 'cancelled' ? 'completed' : 'pending',
-            notes: '',
-            created_at: r.created_at || new Date().toISOString()
-          };
-        });
-        setEvents(mapped);
       }
+      const data = await res.json();
+      const list = (data?.reminders || []) as any[];
+      const mapped: PersonalEvent[] = list.map(r => {
+        const dt = new Date(r.start_time);
+        const timeStr = r.is_all_day ? "" : dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+        return {
+          id: r.id,
+          title: r.title,
+          description: r.description || "",
+          date: dt.toISOString().split("T")[0],
+          time: timeStr,
+          type: "reminder",
+          priority: r.priority || "medium",
+          status: r.status === "cancelled" ? "completed" : "pending",
+          notes: "",
+          created_at: r.created_at || new Date().toISOString(),
+        };
+      });
+      setEvents(mapped);
     } catch (error) {
-      console.error('Erro ao carregar agenda:', error);
+      console.error("Erro ao carregar agenda:", error);
       toast({
         title: "Erro",
         description: "Não foi possível carregar a agenda pessoal.",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
+      loadEventsInFlightKey.current = null;
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (user?.id) {
+      loadEvents(user.id);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const userId = user?.id;
+    const handler = () => {
+      if (userId) {
+        loadEvents(userId);
+      }
+    };
+    window.addEventListener("reminders:changed", handler);
+    return () => {
+      window.removeEventListener("reminders:changed", handler);
+    };
+  }, [user?.id]);
 
   const handleCreateEvent = () => {
     setSelectedEvent(null);

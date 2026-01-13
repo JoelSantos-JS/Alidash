@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, useCallback } from "react"
+import { useEffect, useMemo, useState, useCallback, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -35,6 +35,7 @@ export function RemindersSidebar({ className, onAdd }: RemindersSidebarProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [reminders, setReminders] = useState<ReminderEvent[]>([])
+  const refetchInFlightKey = useRef<string | null>(null)
 
   const refetch = useCallback(async () => {
     if (!user?.id) {
@@ -42,7 +43,6 @@ export function RemindersSidebar({ className, onAdd }: RemindersSidebarProps) {
       setLoading(false)
       return
     }
-    setLoading(true)
     try {
       const now = new Date()
       const past = new Date(now)
@@ -50,6 +50,11 @@ export function RemindersSidebar({ className, onAdd }: RemindersSidebarProps) {
       const startIso = new Date(past.getFullYear(), past.getMonth(), past.getDate(), 0, 0, 0, 0).toISOString()
       const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
       const endIso = new Date(weekFromNow.getFullYear(), weekFromNow.getMonth(), weekFromNow.getDate(), 23, 59, 59, 999).toISOString()
+      const inFlightKey = `${user.id}|${startIso}|${endIso}`
+      if (refetchInFlightKey.current === inFlightKey) return
+      refetchInFlightKey.current = inFlightKey
+
+      setLoading(true)
 
       const params = new URLSearchParams({
         user_id: user.id,
@@ -72,6 +77,7 @@ export function RemindersSidebar({ className, onAdd }: RemindersSidebarProps) {
         variant: "destructive",
       })
     } finally {
+      refetchInFlightKey.current = null
       setLoading(false)
     }
   }, [user?.id, toast])
@@ -111,6 +117,15 @@ export function RemindersSidebar({ className, onAdd }: RemindersSidebarProps) {
     startOfToday.setHours(0, 0, 0, 0)
     return reminders
       .filter(r => r.status !== "cancelled" && new Date(r.start_time) >= startOfToday)
+      .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+      .slice(0, 6)
+  }, [reminders])
+
+  const overdueReminders = useMemo(() => {
+    const startOfToday = new Date()
+    startOfToday.setHours(0, 0, 0, 0)
+    return reminders
+      .filter(r => r.status !== "cancelled" && new Date(r.start_time) < startOfToday)
       .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
       .slice(0, 6)
   }, [reminders])
@@ -251,6 +266,66 @@ export function RemindersSidebar({ className, onAdd }: RemindersSidebarProps) {
                       ) : (
                         <Badge variant="secondary" className="text-[10px]">Feito</Badge>
                       )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Lembretes atrasados</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="h-10" />
+              ))}
+            </div>
+          ) : overdueReminders.length === 0 ? (
+            <div className="text-center py-6 space-y-2">
+              <AlertTriangle className="h-8 w-8 mx-auto text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">Sem lembretes atrasados</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {overdueReminders.map(r => {
+                const dt = new Date(r.start_time)
+                const dateStr = dt.toLocaleDateString("pt-BR")
+                const timeStr = r.is_all_day ? "Dia todo" : dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+                const variant = r.priority === "high" ? "destructive" : r.priority === "low" ? "secondary" : "outline"
+                return (
+                  <div key={r.id} className="flex items-center justify-between p-2 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-red-100 text-red-700">
+                        <AlertTriangle className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{r.title}</span>
+                          <Badge variant={variant} className="text-[10px]">{r.priority}</Badge>
+                          <Badge variant="destructive" className="text-[10px]">Atrasado</Badge>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {dateStr}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {timeStr}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => markDone(r)}>
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      </Button>
                     </div>
                   </div>
                 )

@@ -208,6 +208,7 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
   const whatsappDefaultText = encodeURIComponent("Olá")
   const whatsappLink = `${voxWhatsappUrl}?phone=${whatsappNumber}&text=${whatsappDefaultText}&type=phone_number&app_absent=0`
   const salesSyncRunning = useRef(false);
+  const salesSyncScheduled = useRef(false);
   const salesSyncAttemptedKeys = useRef<Set<string>>(new Set());
   const dataReady = !isLoading && !dataLoading;
   const [redirecting, setRedirecting] = useState(false);
@@ -423,139 +424,152 @@ const [personalViewMode, setPersonalViewMode] = useState<"all" | "day">("all");
     });
     if (!hasSaleRevenue) return;
 
-    if (typeof window !== 'undefined') {
-      try {
-        const persisted = JSON.parse(localStorage.getItem('salesSyncAttemptedKeys') || '[]');
-        if (Array.isArray(persisted)) {
-          for (const k of persisted) salesSyncAttemptedKeys.current.add(k);
-        }
-      } catch {}
-    }
+    if (salesSyncScheduled.current) return;
+    salesSyncScheduled.current = true;
 
-    const saleKeys = new Set<string>((sales || []).map((s: any) => {
-      const d = new Date(s.date);
-      const total = typeof s.totalAmount === 'number' && !isNaN(s.totalAmount)
-        ? s.totalAmount
-        : (Number(s.unitPrice) || 0) * (Number(s.quantity) || 0);
-      return `${s.productId || ''}|${d.toISOString().slice(0,10)}|${total || 0}`;
-    }));
+    setTimeout(() => {
+      if (!user?.id) return;
+      if (isPersonal) return;
+      if (salesSyncRunning.current) return;
 
-    const normalizedProducts = (products || []).map((p: any) => ({
-      id: p.id,
-      nameLower: String(p.name || '').toLowerCase(),
-      sellingPrice: typeof p.sellingPrice === 'number' ? Number(p.sellingPrice) : 0
-    }));
+      const currentProducts = products || [];
+      const currentRevenues = revenues || [];
+      const currentSales = sales || [];
 
-    const productById = new Map<string, any>((products || []).map((p: any) => [p.id, p]));
-    const normalizeAmount = (v: any) => Number(Number(v || 0).toFixed(2));
+      if (typeof window !== 'undefined') {
+        try {
+          const persisted = JSON.parse(localStorage.getItem('salesSyncAttemptedKeys') || '[]');
+          if (Array.isArray(persisted)) {
+            for (const k of persisted) salesSyncAttemptedKeys.current.add(k);
+          }
+        } catch {}
+      }
 
-    const directMatches = revenues.filter((r: any) => {
-      const src = String(r?.source || '').toLowerCase();
-      const cat = String(r?.category || '').toLowerCase();
-      const isSale = src === 'sale' || cat.includes('venda');
-      if (!isSale) return false;
-      if (!r.productId) return false;
-      const d = new Date(r.date);
-      const key = `${r.productId}|${d.toISOString().slice(0,10)}|${normalizeAmount(r.amount)}`;
-      return !saleKeys.has(key) && !salesSyncAttemptedKeys.current.has(key);
-    });
+      const saleKeys = new Set<string>(currentSales.map((s: any) => {
+        const d = new Date(s.date);
+        const total = typeof s.totalAmount === 'number' && !isNaN(s.totalAmount)
+          ? s.totalAmount
+          : (Number(s.unitPrice) || 0) * (Number(s.quantity) || 0);
+        return `${s.productId || ''}|${d.toISOString().slice(0,10)}|${total || 0}`;
+      }));
 
-    const inferredMatches = revenues
-      .filter((r: any) => {
+      const normalizedProducts = currentProducts.map((p: any) => ({
+        id: p.id,
+        nameLower: String(p.name || '').toLowerCase(),
+        sellingPrice: typeof p.sellingPrice === 'number' ? Number(p.sellingPrice) : 0
+      }));
+
+      const productById = new Map<string, any>(currentProducts.map((p: any) => [p.id, p]));
+      const normalizeAmount = (v: any) => Number(Number(v || 0).toFixed(2));
+
+      const directMatches = currentRevenues.filter((r: any) => {
         const src = String(r?.source || '').toLowerCase();
         const cat = String(r?.category || '').toLowerCase();
         const isSale = src === 'sale' || cat.includes('venda');
         if (!isSale) return false;
-        if (r.productId) return false;
-        const desc = String(r?.description || '').toLowerCase();
-        return desc.length > 0;
-      })
-      .map((r: any) => {
-        const desc = String(r?.description || '').toLowerCase();
-        const matched = normalizedProducts.find(p => desc.includes(p.nameLower));
-        if (!matched) return null as any;
+        if (!r.productId) return false;
         const d = new Date(r.date);
-        const total = normalizeAmount(r.amount);
-        const key = `${matched.id}|${d.toISOString().slice(0,10)}|${total}`;
-        if (saleKeys.has(key) || salesSyncAttemptedKeys.current.has(key)) return null as any;
-        return { ...r, productId: matched.id };
-      })
-      .filter(Boolean);
-
-    const toCreateCandidates = [...directMatches, ...inferredMatches];
-    const soldOutToUpdate = new Set<string>();
-    const toCreate = toCreateCandidates.filter((r: any) => {
-      const p = productById.get(r.productId);
-      if (!p) return false;
-      const available = Math.max(0, Number(p.quantity || 0) - Number(p.quantitySold || 0));
-      if (available <= 0) {
-        const k = `${r.productId}|${new Date(r.date).toISOString().slice(0,10)}|${normalizeAmount(r.amount)}`;
-        salesSyncAttemptedKeys.current.add(k);
-        if (p.status !== 'sold' && Number(p.quantity || 0) > 0 && Number(p.quantitySold || 0) >= Number(p.quantity || 0)) {
-          soldOutToUpdate.add(p.id);
-        }
-        return false;
-      }
-      return true;
-    });
-
-    if (toCreate.length === 0) return;
-
-    salesSyncRunning.current = true;
-
-    const persistAttempts = () => {
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('salesSyncAttemptedKeys', JSON.stringify([...salesSyncAttemptedKeys.current])); } catch {}
-      }
-    };
-
-    const updateSoldStatus = Promise.allSettled([...soldOutToUpdate].map(async (pid) => {
-      const p = productById.get(pid);
-      if (!p) return;
-      await fetch(`/api/products/update?user_id=${user.id}&product_id=${pid}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'sold' })
+        const key = `${r.productId}|${d.toISOString().slice(0,10)}|${normalizeAmount(r.amount)}`;
+        return !saleKeys.has(key) && !salesSyncAttemptedKeys.current.has(key);
       });
-    }));
 
-    updateSoldStatus.then(() => {
-      Promise.allSettled(toCreate.map(async (r: any) => {
-        const p = products.find((pp: any) => pp.id === r.productId);
-        const unit = p && typeof p.sellingPrice === 'number' ? Number(p.sellingPrice) : 0;
-        let qty = 1;
-        if (unit > 0 && typeof r.amount === 'number') {
-          qty = Math.max(1, Math.round(Number(r.amount) / unit));
-        }
-        const attemptKey = `${r.productId}|${new Date(r.date).toISOString().slice(0,10)}|${normalizeAmount(r.amount)}`;
-        salesSyncAttemptedKeys.current.add(attemptKey);
-        const body = {
-          quantity: qty,
-          date: new Date(r.date).toISOString()
-        };
-        const url = `/api/sales/create?user_id=${user.id}&product_id=${r.productId}`;
-        const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        return res.ok;
-      })).then(async () => {
-        persistAttempts();
-        const [salesRes, productsRes] = await Promise.all([
-          fetch(`/api/sales/get?user_id=${user.id}`),
-          fetch(`/api/products/get?user_id=${user.id}`)
-        ]);
+      const inferredMatches = currentRevenues
+        .filter((r: any) => {
+          const src = String(r?.source || '').toLowerCase();
+          const cat = String(r?.category || '').toLowerCase();
+          const isSale = src === 'sale' || cat.includes('venda');
+          if (!isSale) return false;
+          if (r.productId) return false;
+          const desc = String(r?.description || '').toLowerCase();
+          return desc.length > 0;
+        })
+        .map((r: any) => {
+          const desc = String(r?.description || '').toLowerCase();
+          const matched = normalizedProducts.find(p => desc.includes(p.nameLower));
+          if (!matched) return null as any;
+          const d = new Date(r.date);
+          const total = normalizeAmount(r.amount);
+          const key = `${matched.id}|${d.toISOString().slice(0,10)}|${total}`;
+          if (saleKeys.has(key) || salesSyncAttemptedKeys.current.has(key)) return null as any;
+          return { ...r, productId: matched.id };
+        })
+        .filter(Boolean);
 
-        if (salesRes.ok) {
-          const sdata = await salesRes.json();
-          setSales(sdata.sales || []);
+      const toCreateCandidates = [...directMatches, ...inferredMatches];
+      const soldOutToUpdate = new Set<string>();
+      const toCreate = toCreateCandidates.filter((r: any) => {
+        const p = productById.get(r.productId);
+        if (!p) return false;
+        const available = Math.max(0, Number(p.quantity || 0) - Number(p.quantitySold || 0));
+        if (available <= 0) {
+          const k = `${r.productId}|${new Date(r.date).toISOString().slice(0,10)}|${normalizeAmount(r.amount)}`;
+          salesSyncAttemptedKeys.current.add(k);
+          if (p.status !== 'sold' && Number(p.quantity || 0) > 0 && Number(p.quantitySold || 0) >= Number(p.quantity || 0)) {
+            soldOutToUpdate.add(p.id);
+          }
+          return false;
         }
-
-        if (productsRes.ok) {
-          const pdata = await productsRes.json();
-          setProducts(pdata.products || []);
-        }
-      }).finally(() => {
-        salesSyncRunning.current = false;
+        return true;
       });
-    });
+
+      if (toCreate.length === 0) return;
+
+      salesSyncRunning.current = true;
+
+      const persistAttempts = () => {
+        if (typeof window !== 'undefined') {
+          try { localStorage.setItem('salesSyncAttemptedKeys', JSON.stringify([...salesSyncAttemptedKeys.current])); } catch {}
+        }
+      };
+
+      const updateSoldStatus = Promise.allSettled([...soldOutToUpdate].map(async (pid) => {
+        const p = productById.get(pid);
+        if (!p) return;
+        await fetch(`/api/products/update?user_id=${user.id}&product_id=${pid}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'sold' })
+        });
+      }));
+
+      updateSoldStatus.then(() => {
+        Promise.allSettled(toCreate.map(async (r: any) => {
+          const p = currentProducts.find((pp: any) => pp.id === r.productId);
+          const unit = p && typeof p.sellingPrice === 'number' ? Number(p.sellingPrice) : 0;
+          let qty = 1;
+          if (unit > 0 && typeof r.amount === 'number') {
+            qty = Math.max(1, Math.round(Number(r.amount) / unit));
+          }
+          const attemptKey = `${r.productId}|${new Date(r.date).toISOString().slice(0,10)}|${normalizeAmount(r.amount)}`;
+          salesSyncAttemptedKeys.current.add(attemptKey);
+          const body = {
+            quantity: qty,
+            date: new Date(r.date).toISOString()
+          };
+          const url = `/api/sales/create?user_id=${user.id}&product_id=${r.productId}`;
+          const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          return res.ok;
+        })).then(async () => {
+          persistAttempts();
+          const [salesRes, productsRes] = await Promise.all([
+            fetch(`/api/sales/get?user_id=${user.id}`),
+            fetch(`/api/products/get?user_id=${user.id}`)
+          ]);
+
+          if (salesRes.ok) {
+            const sdata = await salesRes.json();
+            setSales(sdata.sales || []);
+          }
+
+          if (productsRes.ok) {
+            const pdata = await productsRes.json();
+            setProducts(pdata.products || []);
+          }
+        }).finally(() => {
+          salesSyncRunning.current = false;
+        });
+      });
+    }, 0);
   }, [user?.id, isPersonal, products, revenues, sales]);
 
   // Remover useEffect problemático que causava loop infinito

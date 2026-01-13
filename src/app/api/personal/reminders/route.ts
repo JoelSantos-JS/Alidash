@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query
     if (error) {
-      return NextResponse.json({ success: false, reminders: [] }, { status: 200 })
+      return NextResponse.json({ error: 'Erro ao buscar lembretes' }, { status: 500 })
     }
 
     const reminders = (data || []).map(r => {

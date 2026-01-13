@@ -14,7 +14,8 @@ const staticAssets = [
 const networkFirstUrls = [
   '/api/',
   '/auth/',
-  '/_next/static/chunks/pages/',
+  '/_next/static/chunks/',
+  '/_next/static/css/',
   '/_next/static/chunks/webpack'
 ];
 
@@ -76,7 +77,7 @@ self.addEventListener('fetch', (event) => {
 
   // Estratégia Cache First para recursos estáticos
   if (request.destination === 'image' || 
-      request.url.includes('/_next/static/') ||
+      request.url.includes('/_next/static/media/') ||
       staticAssets.some(asset => request.url.endsWith(asset))) {
     event.respondWith(cacheFirst(request));
     return;

@@ -133,7 +133,7 @@ describe('API de Lembretes Pessoais', () => {
   })
 
   it('GET retorna 400 quando falta user_id', async () => {
-    const { GET } = await import('@/app/api/personal/reminders/route')
+    const { GET } = await import('../../app/api/personal/reminders/route')
     const res: any = await GET({ url: 'http://x/api/personal/reminders' } as any)
     const body = await res.json()
     expect(res.status).toBe(400)
@@ -142,7 +142,7 @@ describe('API de Lembretes Pessoais', () => {
 
   it('GET retorna 401 quando não autenticado', async () => {
     mockAuthUser = null
-    const { GET } = await import('@/app/api/personal/reminders/route')
+    const { GET } = await import('../../app/api/personal/reminders/route')
     const res: any = await GET({ url: 'http://x/api/personal/reminders?user_id=u1' } as any)
     const body = await res.json()
     expect(res.status).toBe(401)
@@ -150,7 +150,7 @@ describe('API de Lembretes Pessoais', () => {
   })
 
   it('GET lista lembretes do usuário', async () => {
-    const { GET } = await import('@/app/api/personal/reminders/route')
+    const { GET } = await import('../../app/api/personal/reminders/route')
     const res: any = await GET({ url: 'http://x/api/personal/reminders?user_id=u1&start_date=2026-01-01T00:00:00.000Z&end_date=2026-01-31T23:59:59.999Z&limit=50' } as any)
     const body = await res.json()
     expect(res.status).toBe(200)
@@ -161,7 +161,7 @@ describe('API de Lembretes Pessoais', () => {
   })
 
   it('POST cria lembrete com sucesso', async () => {
-    const { POST } = await import('@/app/api/personal/reminders/route')
+    const { POST } = await import('../../app/api/personal/reminders/route')
     const payload = {
       user_id: 'u1',
       title: 'Novo lembrete',
@@ -180,14 +180,14 @@ describe('API de Lembretes Pessoais', () => {
   })
 
   it('POST retorna 400 quando faltam campos obrigatórios', async () => {
-    const { POST } = await import('@/app/api/personal/reminders/route')
+    const { POST } = await import('../../app/api/personal/reminders/route')
     const res: any = await POST({ url: 'http://x/api/personal/reminders', json: async () => ({ title: 'X' }) } as any)
     const body = await res.json()
     expect(res.status).toBe(400)
   })
 
   it('PUT atualiza lembrete com sucesso', async () => {
-    const { PUT } = await import('@/app/api/personal/reminders/route')
+    const { PUT } = await import('../../app/api/personal/reminders/route')
     const res: any = await PUT({ url: 'http://x/api/personal/reminders', json: async () => ({ id: 'rem_2', user_id: 'u1', status: 'cancelled' }) } as any)
     const body = await res.json()
     expect(res.status).toBe(200)
@@ -196,7 +196,7 @@ describe('API de Lembretes Pessoais', () => {
   })
 
   it('DELETE remove lembrete com sucesso', async () => {
-    const { DELETE } = await import('@/app/api/personal/reminders/route')
+    const { DELETE } = await import('../../app/api/personal/reminders/route')
     const res: any = await DELETE({ url: 'http://x/api/personal/reminders?id=rem_2&user_id=u1' } as any)
     const body = await res.json()
     expect(res.status).toBe(200)
@@ -204,7 +204,7 @@ describe('API de Lembretes Pessoais', () => {
   })
 
   it('GET aplica filtros de data e limit', async () => {
-    const { GET } = await import('@/app/api/personal/reminders/route')
+    const { GET } = await import('../../app/api/personal/reminders/route')
     const resAll: any = await GET({ url: 'http://x/api/personal/reminders?user_id=u1&limit=1' } as any)
     const bodyAll = await resAll.json()
     expect(resAll.status).toBe(200)
@@ -216,7 +216,7 @@ describe('API de Lembretes Pessoais', () => {
   })
 
   it('GET retorna prioridade padrão e parseia attendees/recurrence', async () => {
-    const { GET } = await import('@/app/api/personal/reminders/route')
+    const { GET } = await import('../../app/api/personal/reminders/route')
     const res: any = await GET({ url: 'http://x/api/personal/reminders?user_id=u1' } as any)
     const body = await res.json()
     const r2 = body.reminders.find((r: any) => r.id === 'rem_2')
@@ -229,16 +229,15 @@ describe('API de Lembretes Pessoais', () => {
 
   it('GET retorna lista vazia quando consulta falha', async () => {
     forceSelectError = true
-    const { GET } = await import('@/app/api/personal/reminders/route')
+    const { GET } = await import('../../app/api/personal/reminders/route')
     const res: any = await GET({ url: 'http://x/api/personal/reminders?user_id=u1' } as any)
     const body = await res.json()
-    expect(res.status).toBe(200)
-    expect(Array.isArray(body.reminders)).toBe(true)
-    expect(body.reminders.length).toBe(0)
+    expect(res.status).toBe(500)
+    expect(body.error).toBe('Erro ao buscar lembretes')
   })
 
   it('POST respeita is_all_day quando horário é fornecido', async () => {
-    const { POST } = await import('@/app/api/personal/reminders/route')
+    const { POST } = await import('../../app/api/personal/reminders/route')
     const payload = {
       user_id: 'u1',
       title: 'Com horário',
@@ -254,7 +253,7 @@ describe('API de Lembretes Pessoais', () => {
 
   it('POST retorna 401 quando usuário é diferente', async () => {
     mockAuthUser = { id: 'u2' }
-    const { POST } = await import('@/app/api/personal/reminders/route')
+    const { POST } = await import('../../app/api/personal/reminders/route')
     const res: any = await POST({ url: 'http://x/api/personal/reminders', json: async () => ({ user_id: 'u1', title: 'X', date: '2026-01-20' }) } as any)
     const body = await res.json()
     expect(res.status).toBe(401)
@@ -263,7 +262,7 @@ describe('API de Lembretes Pessoais', () => {
 
   it('POST retorna 500 em erro de inserção', async () => {
     forceInsertError = true
-    const { POST } = await import('@/app/api/personal/reminders/route')
+    const { POST } = await import('../../app/api/personal/reminders/route')
     const res: any = await POST({ url: 'http://x/api/personal/reminders', json: async () => ({ user_id: 'u1', title: 'X', date: '2026-01-20' }) } as any)
     const body = await res.json()
     expect(res.status).toBe(500)
@@ -271,7 +270,7 @@ describe('API de Lembretes Pessoais', () => {
   })
 
   it('POST retorna 500 ao receber data inválida', async () => {
-    const { POST } = await import('@/app/api/personal/reminders/route')
+    const { POST } = await import('../../app/api/personal/reminders/route')
     const res: any = await POST({ url: 'http://x/api/personal/reminders', json: async () => ({ user_id: 'u1', title: 'X', date: 'invalid-date' }) } as any)
     const body = await res.json()
     expect(res.status).toBe(500)
@@ -279,7 +278,7 @@ describe('API de Lembretes Pessoais', () => {
   })
 
   it('PUT retorna 400 quando falta id', async () => {
-    const { PUT } = await import('@/app/api/personal/reminders/route')
+    const { PUT } = await import('../../app/api/personal/reminders/route')
     const res: any = await PUT({ url: 'http://x/api/personal/reminders', json: async () => ({ user_id: 'u1' }) } as any)
     const body = await res.json()
     expect(res.status).toBe(400)
@@ -287,7 +286,7 @@ describe('API de Lembretes Pessoais', () => {
 
   it('PUT retorna 401 quando não autenticado', async () => {
     mockAuthUser = null
-    const { PUT } = await import('@/app/api/personal/reminders/route')
+    const { PUT } = await import('../../app/api/personal/reminders/route')
     const res: any = await PUT({ url: 'http://x/api/personal/reminders', json: async () => ({ id: 'rem_1', user_id: 'u1', status: 'cancelled' }) } as any)
     const body = await res.json()
     expect(res.status).toBe(401)
@@ -295,7 +294,7 @@ describe('API de Lembretes Pessoais', () => {
   })
 
   it('PUT atualiza data, horário e is_all_day', async () => {
-    const { PUT } = await import('@/app/api/personal/reminders/route')
+    const { PUT } = await import('../../app/api/personal/reminders/route')
     const res: any = await PUT({ url: 'http://x/api/personal/reminders', json: async () => ({ id: 'rem_1', user_id: 'u1', date: '2026-01-22', time: '14:00', is_all_day: false }) } as any)
     const body = await res.json()
     expect(res.status).toBe(200)
@@ -305,7 +304,7 @@ describe('API de Lembretes Pessoais', () => {
 
   it('PUT retorna 500 em erro de atualização', async () => {
     forceUpdateError = true
-    const { PUT } = await import('@/app/api/personal/reminders/route')
+    const { PUT } = await import('../../app/api/personal/reminders/route')
     const res: any = await PUT({ url: 'http://x/api/personal/reminders', json: async () => ({ id: 'rem_1', user_id: 'u1', status: 'cancelled' }) } as any)
     const body = await res.json()
     expect(res.status).toBe(500)
@@ -313,7 +312,7 @@ describe('API de Lembretes Pessoais', () => {
   })
 
   it('DELETE retorna 400 quando faltam parâmetros', async () => {
-    const { DELETE } = await import('@/app/api/personal/reminders/route')
+    const { DELETE } = await import('../../app/api/personal/reminders/route')
     const res: any = await DELETE({ url: 'http://x/api/personal/reminders?id=rem_2' } as any)
     const body = await res.json()
     expect(res.status).toBe(400)
@@ -321,7 +320,7 @@ describe('API de Lembretes Pessoais', () => {
 
   it('DELETE retorna 401 quando não autenticado', async () => {
     mockAuthUser = null
-    const { DELETE } = await import('@/app/api/personal/reminders/route')
+    const { DELETE } = await import('../../app/api/personal/reminders/route')
     const res: any = await DELETE({ url: 'http://x/api/personal/reminders?id=rem_2&user_id=u1' } as any)
     const body = await res.json()
     expect(res.status).toBe(401)
@@ -330,7 +329,7 @@ describe('API de Lembretes Pessoais', () => {
 
   it('DELETE retorna 500 em erro de exclusão', async () => {
     forceDeleteError = true
-    const { DELETE } = await import('@/app/api/personal/reminders/route')
+    const { DELETE } = await import('../../app/api/personal/reminders/route')
     const res: any = await DELETE({ url: 'http://x/api/personal/reminders?id=rem_2&user_id=u1' } as any)
     const body = await res.json()
     expect(res.status).toBe(500)

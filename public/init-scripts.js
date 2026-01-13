@@ -26,20 +26,29 @@
   }
 
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function() {
-      if (disableSw || isDevPort) {
-        // Em desenvolvimento, não registrar SW e limpar caches se já houver
-        clearServiceWorkerCache();
-        return;
-      }
-      navigator.serviceWorker.register('/sw.js')
-        .then(function(registration) {
-          console.log('SW registrado com sucesso:', registration.scope);
-        })
-        .catch(function(error) {
-          console.log('Falha ao registrar SW:', error);
-        });
-    });
+    const shouldDisable = disableSw || isDevPort;
+    if (shouldDisable) {
+      const hadController = !!navigator.serviceWorker.controller;
+      clearServiceWorkerCache().finally(() => {
+        try {
+          const key = 'voxcash_sw_cleared_reload';
+          if (hadController && !sessionStorage.getItem(key)) {
+            sessionStorage.setItem(key, '1');
+            window.location.reload();
+          }
+        } catch (_) {}
+      });
+    } else {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js')
+          .then(function(registration) {
+            console.log('SW registrado com sucesso:', registration.scope);
+          })
+          .catch(function(error) {
+            console.log('Falha ao registrar SW:', error);
+          });
+      });
+    }
   }
 })();
 

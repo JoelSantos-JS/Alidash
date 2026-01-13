@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import "@/styles/performance-optimized.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -69,6 +70,7 @@ export default function RootLayout({
         <link rel="mask-icon" href="/icon-192x192.svg" color="#2563eb" />
         
         {/* Scripts externos removidos temporariamente para depuração */}
+        <Script src="/init-scripts.js" strategy="beforeInteractive" />
 
       </head>
       <body className={`${inter.variable} font-body antialiased`}>

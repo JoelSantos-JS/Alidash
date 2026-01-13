@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,27 +87,42 @@ export default function PersonalAgendaPage() {
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'list'>('list');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<PersonalEvent | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
-  const loadEvents = useCallback(async (userId: string) => {
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
+  useEffect(() => {
+    if (user) {
+      loadEvents();
+    }
+  }, [user]);
 
+  useEffect(() => {
+    const handler = () => {
+      if (user) {
+        loadEvents();
+      }
+    };
+    window.addEventListener("reminders:changed", handler);
+    return () => {
+      window.removeEventListener("reminders:changed", handler);
+    };
+  }, [user]);
+
+  const loadEvents = async () => {
     try {
       setLoading(true);
       const now = new Date();
       const startIso = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0).toISOString();
       const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       const endIso = endDate.toISOString();
-      const url = new URL('/api/personal/reminders', window.location.origin);
-      url.searchParams.set('user_id', userId);
-      url.searchParams.set('start_date', startIso);
-      url.searchParams.set('end_date', endIso);
-      url.searchParams.set('limit', '200');
-      const res = await fetch(url.toString(), { signal: controller.signal });
+      const params = new URLSearchParams({
+        user_id: user!.id,
+        start_date: startIso,
+        end_date: endIso,
+        limit: "200",
+      });
+      const res = await fetch(`/api/personal/reminders?${params.toString()}`);
       if (!res.ok) {
-        setEvents([]);
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData?.error || "Falha ao buscar lembretes");
       } else {
         const data = await res.json();
         const list = (data?.reminders || []) as any[];
@@ -130,28 +145,16 @@ export default function PersonalAgendaPage() {
         setEvents(mapped);
       }
     } catch (error) {
-      if (!(error instanceof DOMException && error.name === "AbortError")) {
-        console.error('Erro ao carregar agenda:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar a agenda pessoal.",
-          variant: "destructive"
-        });
-      }
+      console.error('Erro ao carregar agenda:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar a agenda pessoal.",
+        variant: "destructive"
+      });
     } finally {
-      if (abortRef.current === controller) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
-  }, [toast]);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    loadEvents(user.id);
-    return () => {
-      abortRef.current?.abort();
-    };
-  }, [user?.id, loadEvents]);
+  };
 
   const handleCreateEvent = () => {
     setSelectedEvent(null);
@@ -169,11 +172,27 @@ export default function PersonalAgendaPage() {
     if (!confirm('Tem certeza que deseja excluir este evento?')) return;
     if (event.type === 'reminder' && user?.id) {
       try {
-        const url = new URL('/api/personal/reminders', window.location.origin);
-        url.searchParams.set('id', event.id);
-        url.searchParams.set('user_id', user.id);
-        await fetch(url.toString(), { method: 'DELETE' });
-      } catch {}
+        const params = new URLSearchParams({ id: event.id, user_id: user.id });
+        const res = await fetch(`/api/personal/reminders?${params.toString()}`, { method: "DELETE" });
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData?.error || "Falha ao excluir lembrete");
+        }
+      } catch (error: any) {
+        toast({
+          title: "Erro",
+          description: error?.message || "Não foi possível excluir o evento.",
+          variant: "destructive"
+        });
+        return;
+      }
+    } else {
+      toast({
+        title: "Erro",
+        description: "Este tipo de evento ainda não está conectado ao banco.",
+        variant: "destructive"
+      });
+      return;
     }
     setEvents(prev => prev.filter(e => e.id !== eventId));
     if (typeof window !== 'undefined') {
@@ -221,14 +240,16 @@ export default function PersonalAgendaPage() {
             };
             setEvents(prev => prev.map(event => event.id === selectedEvent.id ? updatedEvent : event));
           } else {
-            setEvents(prev => prev.map(event => 
-              event.id === selectedEvent.id ? { ...eventData, id: selectedEvent.id } : event
-            ));
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData?.error || "Falha ao atualizar lembrete");
           }
-        } catch {
-          setEvents(prev => prev.map(event => 
-            event.id === selectedEvent.id ? { ...eventData, id: selectedEvent.id } : event
-          ));
+        } catch (error: any) {
+          toast({
+            title: "Erro",
+            description: error?.message || "Não foi possível salvar as alterações.",
+            variant: "destructive"
+          });
+          return;
         }
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new Event('reminders:changed'));
@@ -237,14 +258,11 @@ export default function PersonalAgendaPage() {
         setSelectedEvent(null);
         return;
       }
-      setEvents(prev => prev.map(event => 
-        event.id === selectedEvent.id ? { ...eventData, id: selectedEvent.id } : event
-      ));
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('reminders:changed'));
-      }
-      setIsFormOpen(false);
-      setSelectedEvent(null);
+      toast({
+        title: "Erro",
+        description: "Este tipo de evento ainda não está conectado ao banco.",
+        variant: "destructive"
+      });
       return;
     }
     if (eventData.type === 'reminder' && user?.id) {
@@ -281,10 +299,16 @@ export default function PersonalAgendaPage() {
           };
           setEvents(prev => [...prev, newEvent]);
         } else {
-          setEvents(prev => [...prev, { ...eventData, created_at: new Date().toISOString() }]);
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData?.error || "Falha ao criar lembrete");
         }
-      } catch {
-        setEvents(prev => [...prev, { ...eventData, created_at: new Date().toISOString() }]);
+      } catch (error: any) {
+        toast({
+          title: "Erro",
+          description: error?.message || "Não foi possível criar o evento.",
+          variant: "destructive"
+        });
+        return;
       }
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('reminders:changed'));
@@ -293,12 +317,11 @@ export default function PersonalAgendaPage() {
       setSelectedEvent(null);
       return;
     }
-    setEvents(prev => [...prev, { ...eventData, created_at: new Date().toISOString() }]);
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('reminders:changed'));
-    }
-    setIsFormOpen(false);
-    setSelectedEvent(null);
+    toast({
+      title: "Erro",
+      description: "Este tipo de evento ainda não está conectado ao banco.",
+      variant: "destructive"
+    });
   };
 
   const handleCancelForm = () => {

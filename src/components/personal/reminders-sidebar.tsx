@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, useCallback, useRef } from "react"
+import { useEffect, useMemo, useState, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -35,34 +35,30 @@ export function RemindersSidebar({ className, onAdd }: RemindersSidebarProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [reminders, setReminders] = useState<ReminderEvent[]>([])
-  const abortRef = useRef<AbortController | null>(null)
-  const lastErrorAtRef = useRef(0)
 
   const refetch = useCallback(async () => {
     if (!user?.id) {
-      setLoading(false)
       setReminders([])
+      setLoading(false)
       return
     }
-
-    abortRef.current?.abort()
-    const controller = new AbortController()
-    abortRef.current = controller
-
     setLoading(true)
     try {
       const now = new Date()
-      const startIso = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).toISOString()
+      const past = new Date(now)
+      past.setDate(past.getDate() - 90)
+      const startIso = new Date(past.getFullYear(), past.getMonth(), past.getDate(), 0, 0, 0, 0).toISOString()
       const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
       const endIso = new Date(weekFromNow.getFullYear(), weekFromNow.getMonth(), weekFromNow.getDate(), 23, 59, 59, 999).toISOString()
 
-      const url = new URL(`/api/personal/reminders`, window.location.origin)
-      url.searchParams.set("user_id", user.id)
-      url.searchParams.set("start_date", startIso)
-      url.searchParams.set("end_date", endIso)
-      url.searchParams.set("limit", "50")
+      const params = new URLSearchParams({
+        user_id: user.id,
+        start_date: startIso,
+        end_date: endIso,
+        limit: "200",
+      })
 
-      const res = await fetch(url.toString(), { signal: controller.signal })
+      const res = await fetch(`/api/personal/reminders?${params.toString()}`)
       if (!res.ok) {
         throw new Error("Falha ao buscar lembretes")
       }
@@ -70,20 +66,13 @@ export function RemindersSidebar({ className, onAdd }: RemindersSidebarProps) {
       const list = (data?.reminders || []) as ReminderEvent[]
       setReminders(list)
     } catch (error) {
-      if (controller.signal.aborted) return
-      const now = Date.now()
-      if (now - lastErrorAtRef.current > 8000) {
-        lastErrorAtRef.current = now
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar os lembretes.",
-          variant: "destructive",
-        })
-      }
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os lembretes.",
+        variant: "destructive",
+      })
     } finally {
-      if (abortRef.current === controller) {
-        setLoading(false)
-      }
+      setLoading(false)
     }
   }, [user?.id, toast])
 
@@ -100,12 +89,6 @@ export function RemindersSidebar({ className, onAdd }: RemindersSidebarProps) {
       window.removeEventListener("reminders:changed", handler)
     }
   }, [refetch])
-
-  useEffect(() => {
-    return () => {
-      abortRef.current?.abort()
-    }
-  }, [])
 
   const stats = useMemo(() => {
     const now = new Date()
@@ -124,9 +107,10 @@ export function RemindersSidebar({ className, onAdd }: RemindersSidebarProps) {
   }, [reminders])
 
   const nextReminders = useMemo(() => {
-    const now = new Date()
+    const startOfToday = new Date()
+    startOfToday.setHours(0, 0, 0, 0)
     return reminders
-      .filter(r => r.status !== "cancelled" && new Date(r.start_time) >= new Date(now.setHours(0, 0, 0, 0)))
+      .filter(r => r.status !== "cancelled" && new Date(r.start_time) >= startOfToday)
       .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
       .slice(0, 6)
   }, [reminders])
@@ -142,6 +126,9 @@ export function RemindersSidebar({ className, onAdd }: RemindersSidebarProps) {
         throw new Error("Falha ao atualizar lembrete")
       }
       setReminders(prev => prev.map(r => (r.id === reminder.id ? { ...r, status: "cancelled" } : r)))
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("reminders:changed"))
+      }
       toast({ title: "Lembrete concluído", description: "O lembrete foi marcado como concluído." })
     } catch {
       toast({

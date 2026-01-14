@@ -50,6 +50,9 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
 
   const forceLogoutDueToTimeout = async () => {
     try {
+      try {
+        await fetch('/api/auth/logout', { method: 'POST' })
+      } catch {}
       await supabase.auth.signOut()
       toast.error('Sua sessão expirou após 1 hora. Faça login novamente.')
       router.push('/login')
@@ -437,6 +440,9 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     try {
       setLoading(true)
       
+      try {
+        await fetch('/api/auth/logout', { method: 'POST' })
+      } catch {}
       const { error } = await supabase.auth.signOut()
       
       if (error) {

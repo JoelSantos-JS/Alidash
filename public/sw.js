@@ -1,7 +1,7 @@
 // Service Worker para VoxCash - Versão otimizada
-const CACHE_NAME = 'voxcash-v2';
-const STATIC_CACHE = 'voxcash-static-v2';
-const DYNAMIC_CACHE = 'voxcash-dynamic-v2';
+const CACHE_NAME = 'voxcash-v3';
+const STATIC_CACHE = 'voxcash-static-v3';
+const DYNAMIC_CACHE = 'voxcash-dynamic-v3';
 
 // URLs para cache estático (recursos que raramente mudam)
 const staticAssets = [
@@ -13,7 +13,6 @@ const staticAssets = [
 // URLs que devem sempre buscar da rede primeiro
 const networkFirstUrls = [
   '/api/',
-  '/auth/',
   '/_next/static/chunks/',
   '/_next/static/css/',
   '/_next/static/chunks/webpack'
@@ -69,6 +68,28 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  if (request.method !== 'GET') {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  const pathname = url.pathname || '';
+  const hostname = url.hostname || '';
+  const hasSensitiveHeaders =
+    request.headers.has('authorization') ||
+    request.headers.has('apikey') ||
+    request.headers.has('x-client-info');
+  const isAuthRequest =
+    pathname.startsWith('/api/auth/') ||
+    pathname.startsWith('/auth/') ||
+    (hostname.endsWith('.supabase.co') && pathname.startsWith('/auth/')) ||
+    hasSensitiveHeaders;
+
+  if (isAuthRequest) {
+    event.respondWith(fetch(request, { cache: 'no-store' }));
+    return;
+  }
+
   // Estratégia Network First para APIs e recursos dinâmicos
   if (networkFirstUrls.some(pattern => request.url.includes(pattern))) {
     event.respondWith(networkFirst(request));
@@ -98,9 +119,11 @@ self.addEventListener('fetch', (event) => {
 async function networkFirst(request) {
   try {
     const networkResponse = await fetch(request);
-    if (networkResponse.ok) {
-      const cache = await caches.open(DYNAMIC_CACHE);
-      cache.put(request, networkResponse.clone());
+    if (networkResponse.ok && request.method === 'GET') {
+      try {
+        const cache = await caches.open(DYNAMIC_CACHE);
+        await cache.put(request, networkResponse.clone());
+      } catch {}
     }
     return networkResponse;
   } catch (error) {

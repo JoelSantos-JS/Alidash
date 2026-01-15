@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { parseDateInput } from "@/lib/date-utils";
 
 const initialProducts: Product[] = [
   {
@@ -205,7 +206,7 @@ function TransacoesPageContent() {
               
               return {
                 id: transaction.id,
-                date: new Date(transaction.date),
+                date: parseDateInput(transaction.date),
                 description: transaction.description,
                 amount: parseFloat(transaction.amount),
                 type: transaction.type,
@@ -328,7 +329,7 @@ function TransacoesPageContent() {
         const transactionsResult = await transactionsResponse.json();
         const periodTransactions = transactionsResult.transactions.map((t: any) => ({
           ...t,
-          date: new Date(t.date),
+          date: parseDateInput(t.date),
           amount: parseFloat(t.amount),
           installmentInfo: t.installmentInfo ? 
             (typeof t.installmentInfo === 'string' ? JSON.parse(t.installmentInfo) : t.installmentInfo) : 
@@ -353,7 +354,7 @@ function TransacoesPageContent() {
               const prevResult = await prevResp.json();
               const prevTransactions = (prevResult.transactions || []).map((t: any) => ({
                 ...t,
-                date: new Date(t.date),
+                date: parseDateInput(t.date),
                 amount: parseFloat(t.amount)
               }));
               const totalIncome = prevTransactions.filter((t: any) => (t.type === 'income' || t.type === 'revenue')).reduce((acc: number, t: any) => acc + t.amount, 0);

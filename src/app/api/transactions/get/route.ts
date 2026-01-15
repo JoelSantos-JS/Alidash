@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createSupabaseClient, createServiceClient } from '@/utils/supabase/server';
+import { normalizeDateForLocalDay } from '@/lib/date-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
     // Converter transações de forma mais simples
     const convertedTransactions = transactions?.map((transaction: any) => ({
       id: transaction.id,
-      date: new Date(transaction.date),
+      date: normalizeDateForLocalDay(transaction.date),
       description: transaction.description,
       amount: parseFloat(transaction.amount) || 0,
       type: transaction.type,

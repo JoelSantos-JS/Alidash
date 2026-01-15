@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdminService } from '@/lib/supabase-service';
 import { createClient as createSupabaseClient } from '@/utils/supabase/server';
+import { parseDateInput } from '@/lib/date-utils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
 
     // Preparar dados da transação para o SupabaseService
     const transactionData = {
-      date: transaction.date instanceof Date ? transaction.date : new Date(transaction.date),
+      date: parseDateInput(transaction.date),
       description: transaction.description,
       amount: transaction.amount,
       type: transaction.type,

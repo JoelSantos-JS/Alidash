@@ -68,3 +68,23 @@ export const getRelativeDate = (date: Date | string) => {
   
   return formatDate(targetDate);
 };
+
+export const parseDateInput = (value: Date | string) => {
+  if (value instanceof Date) return value
+  const str = String(value || '')
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str)
+  if (m) {
+    const year = Number(m[1])
+    const month = Number(m[2])
+    const day = Number(m[3])
+    return new Date(year, month - 1, day, 12, 0, 0, 0)
+  }
+  return new Date(str)
+}
+
+export const normalizeDateForLocalDay = (value: Date | string) => {
+  const d = value instanceof Date ? value : new Date(String(value || ''))
+  if (isNaN(d.getTime())) return d
+  const ymd = d.toISOString().slice(0, 10)
+  return parseDateInput(ymd)
+}

@@ -112,7 +112,8 @@ export function TransactionsSection({ products, periodFilter, currentDate = new 
 
     // Função para gerar chave única para uma transação
     const generateTransactionKey = (transaction: any, source: string): string => {
-      const date = new Date(transaction.date).toISOString().split('T')[0]; // YYYY-MM-DD
+      const dateObj = transaction?.date instanceof Date ? transaction.date : new Date(transaction?.date);
+      const date = format(dateObj, 'yyyy-MM-dd');
       const amount = transaction.amount?.toString() || '0';
       const description = transaction.description?.toLowerCase().trim() || '';
       

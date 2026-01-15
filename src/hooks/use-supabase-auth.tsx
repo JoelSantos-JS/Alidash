@@ -26,6 +26,8 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   const [isHydrated, setIsHydrated] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
+  const routerRef = useRef(router)
+  const pathnameRef = useRef(pathname)
   const hasShownLoginToastRef = useRef(false)
   // Evitar rodar getSession múltiplas vezes em dev/StrictMode
   const hasInitializedSessionRef = useRef(false)
@@ -48,6 +50,14 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     }
   }
 
+  useEffect(() => {
+    routerRef.current = router
+  }, [router])
+
+  useEffect(() => {
+    pathnameRef.current = pathname
+  }, [pathname])
+
   const forceLogoutDueToTimeout = async () => {
     try {
       try {
@@ -55,7 +65,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       } catch {}
       await supabase.auth.signOut()
       toast.error('Sua sessão expirou após 1 hora. Faça login novamente.')
-      router.push('/login')
+      routerRef.current.push('/login')
     } catch {}
   }
 
@@ -160,10 +170,10 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
             await ensureUserInDatabase(session.user)
             await supabaseService.updateUserLastLogin(session.user.id)
             // Redireciona apenas quando vindo de páginas de auth
-            const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname
+            const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathnameRef.current
             const isAuthPage = currentPath === '/login' || currentPath === '/cadastro'
             if (isAuthPage) {
-              router.push('/')
+              routerRef.current.push('/')
             }
             // Evita mostrar o toast repetidas vezes ao navegar pelo app
             if (!hasShownLoginToastRef.current) {
@@ -191,7 +201,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
             }
           } catch {}
           hasShownLoginToastRef.current = false
-          router.push('/login')
+          routerRef.current.push('/login')
         }
         
         // Garantir que loading seja sempre false após mudanças de estado
@@ -213,7 +223,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       authSubscriptionRef.current = null
       hasInitializedSessionRef.current = false
     }
-  }, [router])
+  }, [])
 
   const ensureUserInDatabase = async (authUser: User) => {
     try {
@@ -383,10 +393,10 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
             password
           })
           if (!sessionData?.session) {
-            router.push('/login')
+            routerRef.current.push('/login')
           }
         } catch {
-          router.push('/login')
+          routerRef.current.push('/login')
         }
       } else if (data.session) {
         toast.success('Cadastro realizado com sucesso!')
@@ -457,7 +467,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       } catch {}
       setUser(null)
       setSession(null)
-      router.push('/login')
+      routerRef.current.push('/login')
       toast.success('Logout realizado com sucesso!')
       
     } catch (error) {
@@ -470,7 +480,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       } catch {}
       setUser(null)
       setSession(null)
-      router.push('/login')
+      routerRef.current.push('/login')
       toast.error('Erro ao fazer logout')
     } finally {
       setLoading(false)

@@ -510,41 +510,39 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       const baseUrl = typeof window !== 'undefined'
         ? (process.env.NEXT_PUBLIC_APP_URL || window.location.origin)
         : (process.env.NEXT_PUBLIC_APP_URL || '')
+      const redirectTo = baseUrl ? `${baseUrl}/reset-password` : undefined
 
-      const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
-        redirectTo: baseUrl ? `${baseUrl}/reset-password` : undefined
-      })
+      try {
+        const resp = await fetch('/api/auth/admin-reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: trimmed, redirectTo })
+        })
+        if (resp.ok) {
+          lastResetAttemptRef.current = { email: trimmed, at: now }
+          toast.success('Se existir uma conta com este email, enviaremos o link de recuperação')
+          return
+        }
+        if (resp.status === 429) {
+          lastResetAttemptRef.current = { email: trimmed, at: now }
+          toast.error('Muitas solicitações. Tente novamente em alguns minutos')
+          return
+        }
+      } catch {}
 
+      const { error } = await supabase.auth.resetPasswordForEmail(trimmed, { redirectTo })
       if (error) {
         const msg = String(error.message || '').toLowerCase()
-        lastResetAttemptRef.current = { email: trimmed, at: now }
         if (msg.includes('rate limit') || msg.includes('too many') || msg.includes('exceeded')) {
-          try {
-            const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-            const adminKey = process.env.NEXT_PUBLIC_ADMIN_SIGNUP_KEY
-            if (adminKey) headers['x-api-key'] = adminKey
-            const resp = await fetch('/api/auth/admin-reset', {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({ email: trimmed, redirectTo: baseUrl ? `${baseUrl}/reset-password` : undefined })
-            })
-            if (resp.ok) {
-              const json = await resp.json().catch(() => ({}))
-              const url = json?.recoveryUrl
-              if (url) {
-                toast.success('Abrindo página de redefinição de senha')
-                window.location.href = url
-                return
-              }
-            }
-          } catch {}
+          lastResetAttemptRef.current = { email: trimmed, at: now }
           toast.error('Muitas solicitações. Verifique seu email e tente novamente em alguns minutos')
           return
         }
         throw error
       }
 
-      toast.success('Email de recuperação enviado! Verifique sua caixa de entrada')
+      lastResetAttemptRef.current = { email: trimmed, at: now }
+      toast.success('Se existir uma conta com este email, enviaremos o link de recuperação')
       
     } catch (error) {
       console.error('Erro ao enviar email de recuperação:', error)

@@ -512,6 +512,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
         : (process.env.NEXT_PUBLIC_APP_URL || '')
       const redirectTo = baseUrl ? `${baseUrl}/reset-password` : undefined
 
+      let serverErrorCode: string | null = null
       try {
         const resp = await fetch('/api/auth/admin-reset', {
           method: 'POST',
@@ -527,6 +528,22 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
           lastResetAttemptRef.current = { email: trimmed, at: now }
           toast.error('Muitas solicitações. Tente novamente em alguns minutos')
           return
+        }
+        const json = await resp.json().catch(() => ({} as any))
+        serverErrorCode = String(json?.error || '').trim() || null
+        if (serverErrorCode) {
+          if (serverErrorCode === 'email_domain_not_verified') {
+            toast.error('Erro no envio: domínio do remetente não verificado')
+            return
+          }
+          if (serverErrorCode === 'email_api_key_invalid' || serverErrorCode === 'email_not_configured') {
+            toast.error('Serviço de email não configurado corretamente')
+            return
+          }
+          if (serverErrorCode === 'password_reset_unavailable') {
+            toast.error('Serviço de recuperação indisponível. Tente novamente mais tarde')
+            return
+          }
         }
       } catch {}
 

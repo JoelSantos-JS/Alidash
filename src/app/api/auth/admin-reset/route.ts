@@ -31,6 +31,10 @@ async function sendPasswordRecoveryEmail(to: string, recoveryUrl: string) {
     process.env.NODE_ENV !== 'production'
       ? (process.env.EMAIL_FROM_DEV || 'VoxCash <onboarding@resend.dev>')
       : (process.env.EMAIL_FROM || 'VoxCash <no-reply@voxcash.app>')
+  const fallbackFromAddress =
+    process.env.NODE_ENV !== 'production'
+      ? (process.env.EMAIL_FROM_DEV || 'VoxCash <onboarding@resend.dev>')
+      : (process.env.EMAIL_FROM_FALLBACK || 'VoxCash <onboarding@resend.dev>')
   const subject = 'Redefinir sua senha - VoxCash'
   const html = `
     <div style="background: #f6f7fb; padding: 28px 16px; font-family: Arial, sans-serif; line-height: 1.5;">
@@ -52,38 +56,54 @@ async function sendPasswordRecoveryEmail(to: string, recoveryUrl: string) {
     </div>
   `
 
-  const resendResponse = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      from: fromAddress,
-      to,
-      subject,
-      html
+  const sendOnce = async (from: string) => {
+    const resendResponse = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        from,
+        to,
+        subject,
+        html
+      })
     })
-  })
 
-  const resendText = await resendResponse.text().catch(() => '')
-  const resendData = (() => {
-    try {
-      return resendText ? JSON.parse(resendText) : {}
-    } catch {
-      return {}
+    const resendText = await resendResponse.text().catch(() => '')
+    const resendData = (() => {
+      try {
+        return resendText ? JSON.parse(resendText) : {}
+      } catch {
+        return {}
+      }
+    })()
+
+    if (!resendResponse.ok) {
+      const msg =
+        resendData?.error?.message ||
+        resendData?.message ||
+        resendText ||
+        ''
+      throw new Error(`Resend failed: ${resendResponse.status} ${msg}`.trim())
     }
-  })()
-  if (!resendResponse.ok) {
-    const msg =
-      resendData?.error?.message ||
-      resendData?.message ||
-      resendText ||
-      ''
-    throw new Error(`Resend failed: ${resendResponse.status} ${msg}`.trim())
+
+    return resendData
   }
 
-  return resendData
+  try {
+    return await sendOnce(fromAddress)
+  } catch (err: any) {
+    const msg = String(err?.message || '')
+    const isDomainNotVerified =
+      msg.includes('Resend failed: 403') &&
+      msg.toLowerCase().includes('domain is not verified')
+    if (isDomainNotVerified && fallbackFromAddress && fallbackFromAddress !== fromAddress) {
+      return await sendOnce(fallbackFromAddress)
+    }
+    throw err
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -122,7 +142,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: error.message }, { status: 400 })
       }
       console.error('Erro ao gerar link de recuperação:', error)
-      return NextResponse.json({ success: true }, { status: 200 })
+      if (process.env.NODE_ENV !== 'production') {
+        return NextResponse.json({ success: true }, { status: 200 })
+      }
+      return NextResponse.json({ error: 'password_reset_unavailable' }, { status: 500 })
     }
 
     const recoveryUrl =
@@ -143,8 +166,26 @@ export async function POST(request: NextRequest) {
     }
 
     if (process.env.RESEND_API_KEY) {
-      await sendPasswordRecoveryEmail(email, recoveryUrl)
-      return NextResponse.json({ success: true }, { status: 200 })
+      try {
+        await sendPasswordRecoveryEmail(email, recoveryUrl)
+        return NextResponse.json({ success: true }, { status: 200 })
+      } catch (err: any) {
+        if (isAdmin) {
+          return NextResponse.json({ error: err?.message || 'Falha ao enviar email' }, { status: 500 })
+        }
+
+        const msg = String(err?.message || '')
+        if (msg.includes('RESEND_API_KEY não configurado')) {
+          return NextResponse.json({ error: 'email_not_configured' }, { status: 500 })
+        }
+        if (msg.includes('Resend failed: 403') && msg.toLowerCase().includes('domain is not verified')) {
+          return NextResponse.json({ error: 'email_domain_not_verified' }, { status: 502 })
+        }
+        if (msg.includes('Resend failed: 401') || msg.toLowerCase().includes('api key')) {
+          return NextResponse.json({ error: 'email_api_key_invalid' }, { status: 502 })
+        }
+        return NextResponse.json({ error: 'email_send_failed' }, { status: 502 })
+      }
     }
 
     if (process.env.NODE_ENV !== 'production') {

@@ -110,17 +110,16 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
         // If user exists, ensure they exist in our database
         if (session?.user) {
           try {
-            const existingLoginAt = typeof window !== 'undefined' ? window.localStorage.getItem(SESSION_LOGIN_AT_KEY) : null
+            const existingLoginAt =
+              typeof window !== 'undefined' ? window.localStorage.getItem(SESSION_LOGIN_AT_KEY) : null
             const parsedLoginAt = existingLoginAt ? parseInt(existingLoginAt, 10) : NaN
-            if (!existingLoginAt || Number.isNaN(parsedLoginAt)) {
-              const now = Date.now()
-              if (typeof window !== 'undefined') {
-                window.localStorage.setItem(SESSION_LOGIN_AT_KEY, String(now))
-              }
-              scheduleSessionExpiration(now)
-            } else {
-              scheduleSessionExpiration(parsedLoginAt)
+            const now = Date.now()
+            const shouldResetLoginAt =
+              !existingLoginAt || Number.isNaN(parsedLoginAt) || now - parsedLoginAt > SESSION_TIMEOUT_MS
+            if (typeof window !== 'undefined') {
+              window.localStorage.setItem(SESSION_LOGIN_AT_KEY, String(shouldResetLoginAt ? now : parsedLoginAt))
             }
+            scheduleSessionExpiration(shouldResetLoginAt ? now : parsedLoginAt)
           } catch {}
           console.log('👤 Usuário encontrado na sessão, verificando no banco...')
           try {
@@ -158,7 +157,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
         setSession(session)
         setUser(session?.user ?? null)
 
-        if (event === 'SIGNED_IN' && session?.user) {
+        if ((event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') && session?.user) {
           try {
             try {
               const now = Date.now()

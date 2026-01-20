@@ -12,6 +12,38 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [validRecovery, setValidRecovery] = useState(false)
 
+  const updatePasswordViaFetch = async (accessToken: string, newPassword: string) => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Supabase não configurado')
+    }
+
+    const ac = typeof AbortController !== 'undefined' ? new AbortController() : null
+    const t = ac ? window.setTimeout(() => ac.abort(), 12_000) : null
+    try {
+      const res = await fetch(`${supabaseUrl.replace(/\/+$/, '')}/auth/v1/user`, {
+        method: 'PUT',
+        headers: {
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password: newPassword }),
+        signal: ac?.signal,
+      })
+
+      const json = await res.json().catch(() => ({} as any))
+      if (!res.ok) {
+        const msg = String(json?.msg || json?.message || json?.error_description || json?.error || '')
+        throw new Error(msg || `Falha ao redefinir senha (${res.status})`)
+      }
+      return json
+    } finally {
+      if (t) window.clearTimeout(t)
+    }
+  }
+
   useEffect(() => {
     let cancelled = false
 
@@ -83,9 +115,10 @@ export default function ResetPasswordPage() {
         toast.error('Sessão de recuperação ausente. Abra o link do email novamente.')
         return
       }
-      const { error } = await supabase.auth.updateUser({ password })
-      if (error) {
-        const msg = String(error.message || '')
+      try {
+        await updatePasswordViaFetch(session.access_token, password)
+      } catch (err: any) {
+        const msg = String(err?.message || '')
         const lower = msg.toLowerCase()
         if (lower.includes('auth session missing') || (lower.includes('session') && lower.includes('missing'))) {
           toast.error('Sessão inválida ou expirada. Solicite um novo link.')
@@ -93,13 +126,24 @@ export default function ResetPasswordPage() {
           toast.error('Link inválido ou expirado. Solicite um novo link.')
         } else if (lower.includes('password') && lower.includes('different')) {
           toast.error('A nova senha precisa ser diferente da anterior')
+        } else if (lower.includes('abort') || lower.includes('timeout')) {
+          toast.error('Tempo esgotado ao salvar. Tente novamente.')
         } else {
           toast.error(msg || 'Erro ao redefinir senha')
         }
         return
       }
       toast.success('Senha alterada com sucesso!')
-      router.push('/login')
+      try {
+        await Promise.race([
+          supabase.auth.signOut({ scope: 'local' } as any),
+          new Promise((resolve) => window.setTimeout(() => resolve(null), 1000))
+        ])
+      } catch {}
+      router.replace('/login')
+      try {
+        window.setTimeout(() => window.location.replace('/login'), 50)
+      } catch {}
     } finally {
       setLoading(false)
     }

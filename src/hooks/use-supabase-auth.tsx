@@ -61,7 +61,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   const forceLogoutDueToTimeout = async () => {
     try {
       const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathnameRef.current
-      if (currentPath === '/reset-password') {
+      if (currentPath === '/reset-password' || currentPath.startsWith('/reset-password/')) {
         clearSessionTimer()
         try {
           if (typeof window !== 'undefined') {
@@ -211,7 +211,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
           } catch {}
           hasShownLoginToastRef.current = false
           const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathnameRef.current
-          if (currentPath !== '/reset-password') {
+          if (currentPath !== '/reset-password' && !currentPath.startsWith('/reset-password/')) {
             routerRef.current.push('/login')
           }
         }

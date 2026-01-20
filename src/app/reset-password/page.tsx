@@ -20,9 +20,18 @@ export default function ResetPasswordPage() {
     }
 
     const ac = typeof AbortController !== 'undefined' ? new AbortController() : null
-    const t = ac ? window.setTimeout(() => ac.abort(), 12_000) : null
+    const timeoutMs = 12_000
+    const abortTimer = window.setTimeout(() => {
+      try {
+        ac?.abort()
+      } catch {}
+    }, timeoutMs)
     try {
-      const res = await fetch(`${supabaseUrl.replace(/\/+$/, '')}/auth/v1/user`, {
+      let timeoutTimer: number | null = null
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutTimer = window.setTimeout(() => reject(new Error('timeout')), timeoutMs)
+      })
+      const fetchPromise = fetch(`${supabaseUrl.replace(/\/+$/, '')}/auth/v1/user`, {
         method: 'PUT',
         headers: {
           apikey: supabaseAnonKey,
@@ -33,6 +42,9 @@ export default function ResetPasswordPage() {
         signal: ac?.signal,
       })
 
+      const res = await Promise.race([fetchPromise, timeoutPromise])
+      if (timeoutTimer) window.clearTimeout(timeoutTimer)
+
       const json = await res.json().catch(() => ({} as any))
       if (!res.ok) {
         const msg = String(json?.msg || json?.message || json?.error_description || json?.error || '')
@@ -40,7 +52,7 @@ export default function ResetPasswordPage() {
       }
       return json
     } finally {
-      if (t) window.clearTimeout(t)
+      window.clearTimeout(abortTimer)
     }
   }
 

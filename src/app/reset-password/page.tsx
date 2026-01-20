@@ -13,12 +13,55 @@ export default function ResetPasswordPage() {
   const [validRecovery, setValidRecovery] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
+
+    const init = async () => {
+      try {
+        const url = new URL(window.location.href)
+        const code = url.searchParams.get('code')
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code)
+          if (error) {
+            toast.error('Link inválido ou expirado')
+            return
+          }
+          url.searchParams.delete('code')
+          window.history.replaceState({}, '', url.toString())
+        } else {
+          const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+          const accessToken = hashParams.get('access_token')
+          const refreshToken = hashParams.get('refresh_token')
+          if (accessToken && refreshToken) {
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            })
+            if (error) {
+              toast.error('Link inválido ou expirado')
+              return
+            }
+            window.history.replaceState({}, '', window.location.pathname + window.location.search)
+          }
+        }
+
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!cancelled && session) {
+          setValidRecovery(true)
+        }
+      } catch {
+        toast.error('Erro ao validar link de recuperação')
+      }
+    }
+
+    init()
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
         setValidRecovery(true)
       }
     })
     return () => {
+      cancelled = true
       subscription.unsubscribe()
     }
   }, [])
@@ -35,9 +78,24 @@ export default function ResetPasswordPage() {
     }
     try {
       setLoading(true)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        toast.error('Sessão de recuperação ausente. Abra o link do email novamente.')
+        return
+      }
       const { error } = await supabase.auth.updateUser({ password })
       if (error) {
-        toast.error('Erro ao redefinir senha')
+        const msg = String(error.message || '')
+        const lower = msg.toLowerCase()
+        if (lower.includes('auth session missing') || (lower.includes('session') && lower.includes('missing'))) {
+          toast.error('Sessão inválida ou expirada. Solicite um novo link.')
+        } else if (lower.includes('expired') || lower.includes('invalid')) {
+          toast.error('Link inválido ou expirado. Solicite um novo link.')
+        } else if (lower.includes('password') && lower.includes('different')) {
+          toast.error('A nova senha precisa ser diferente da anterior')
+        } else {
+          toast.error(msg || 'Erro ao redefinir senha')
+        }
         return
       }
       toast.success('Senha alterada com sucesso!')
@@ -64,6 +122,7 @@ export default function ResetPasswordPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
+              disabled={!validRecovery || loading}
               required
               minLength={6}
             />
@@ -77,13 +136,14 @@ export default function ResetPasswordPage() {
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               autoComplete="new-password"
+              disabled={!validRecovery || loading}
               required
               minLength={6}
             />
           </div>
           <button
             type="submit"
-            disabled={loading}
+            disabled={!validRecovery || loading}
             className="w-full bg-primary text-primary-foreground rounded-md px-3 py-2"
           >
             {loading ? 'Salvando...' : 'Atualizar Senha'}
@@ -93,4 +153,3 @@ export default function ResetPasswordPage() {
     </div>
   )
 }
-

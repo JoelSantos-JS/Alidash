@@ -60,6 +60,16 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
 
   const forceLogoutDueToTimeout = async () => {
     try {
+      const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathnameRef.current
+      if (currentPath === '/reset-password') {
+        clearSessionTimer()
+        try {
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(SESSION_LOGIN_AT_KEY, String(Date.now()))
+          }
+        } catch {}
+        return
+      }
       try {
         await fetch('/api/auth/logout', { method: 'POST' })
       } catch {}
@@ -200,7 +210,10 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
             }
           } catch {}
           hasShownLoginToastRef.current = false
-          routerRef.current.push('/login')
+          const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathnameRef.current
+          if (currentPath !== '/reset-password') {
+            routerRef.current.push('/login')
+          }
         }
         
         // Garantir que loading seja sempre false após mudanças de estado
@@ -448,38 +461,78 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   const signOut = async () => {
     try {
       setLoading(true)
-      
-      try {
-        await fetch('/api/auth/logout', { method: 'POST' })
-      } catch {}
-      const { error } = await supabase.auth.signOut()
-      
-      if (error) {
-        throw error
+
+      const clearClientAuthArtifacts = () => {
+        try {
+          if (typeof window !== 'undefined') {
+            window.localStorage.removeItem(SESSION_LOGIN_AT_KEY)
+          }
+        } catch {}
+        try {
+          if (typeof document !== 'undefined') {
+            const entries = document.cookie.split(';').map(s => s.trim()).filter(Boolean)
+            entries.forEach((kv) => {
+              const name = kv.split('=')[0]?.trim()
+              if (!name) return
+              if (name.startsWith('sb-') || name.includes('supabase') || name.includes('auth-token')) {
+                document.cookie = `${name}=; Max-Age=0; path=/`
+              }
+            })
+          }
+        } catch {}
       }
 
-      clearSessionTimer()
       try {
-        if (typeof window !== 'undefined') {
-          window.localStorage.removeItem(SESSION_LOGIN_AT_KEY)
+        const ac = typeof AbortController !== 'undefined' ? new AbortController() : null
+        const t = ac ? window.setTimeout(() => ac.abort(), 1500) : null
+        await fetch('/api/auth/logout', { method: 'POST', signal: ac?.signal })
+        if (t) window.clearTimeout(t)
+      } catch {}
+
+      clearSessionTimer()
+      clearClientAuthArtifacts()
+      try {
+        const res = await Promise.race([
+          supabase.auth.signOut({ scope: 'local' } as any),
+          new Promise((resolve) => window.setTimeout(() => resolve({ error: null } as any), 1500))
+        ])
+        const err = (res as any)?.error
+        if (err) {
+          throw err
         }
       } catch {}
       setUser(null)
       setSession(null)
-      routerRef.current.push('/login')
+      routerRef.current.replace('/login')
+      try {
+        if (typeof window !== 'undefined') {
+          window.setTimeout(() => {
+            window.location.replace('/login')
+          }, 50)
+        }
+      } catch {}
       toast.success('Logout realizado com sucesso!')
       
     } catch (error) {
       console.error('Erro no logout:', error)
       try {
         clearSessionTimer()
-        if (typeof window !== 'undefined') {
-          window.localStorage.removeItem(SESSION_LOGIN_AT_KEY)
-        }
+        try {
+          if (typeof window !== 'undefined') {
+            window.localStorage.removeItem(SESSION_LOGIN_AT_KEY)
+          }
+        } catch {}
       } catch {}
       setUser(null)
       setSession(null)
-      routerRef.current.push('/login')
+      routerRef.current.replace('/login')
+      try {
+        if (typeof window !== 'undefined') {
+          window.setTimeout(() => {
+            window.location.replace('/login')
+          }, 50)
+        }
+      } catch {}
       toast.error('Erro ao fazer logout')
     } finally {
       setLoading(false)

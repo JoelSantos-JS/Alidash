@@ -98,6 +98,8 @@ export default function ResetPasswordPage() {
             toast.error('Link inválido ou expirado')
             return
           }
+          recoveryContextRef.current = true
+          if (!cancelled) setValidRecovery(true)
           url.searchParams.delete('code')
           if (isRecoveryType) url.searchParams.delete('type')
           window.history.replaceState({}, '', url.toString())
@@ -115,6 +117,8 @@ export default function ResetPasswordPage() {
               toast.error('Link inválido ou expirado')
               return
             }
+            recoveryContextRef.current = true
+            if (!cancelled) setValidRecovery(true)
             window.history.replaceState({}, '', window.location.pathname + window.location.search)
           }
         }

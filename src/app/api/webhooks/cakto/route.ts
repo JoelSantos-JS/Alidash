@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin, supabaseAdminService } from '@/lib/supabase-service'
 
+function toIsoDateOrNull(value: any): string | null {
+  if (!value) return null
+  const d = new Date(String(value))
+  if (Number.isNaN(d.getTime())) return null
+  return d.toISOString()
+}
+
+function pickIsoDate(payload: any, candidates: any[]): string | null {
+  for (const c of candidates) {
+    const iso = toIsoDateOrNull(c)
+    if (iso) return iso
+  }
+  return null
+}
+
 export async function POST(request: NextRequest) {
   try {
     const ct = request.headers.get('content-type') || ''
@@ -72,6 +87,32 @@ export async function POST(request: NextRequest) {
     const isBasic = planName.includes('básico') || planName.includes('basico') || amount === 19 || amount === 19.0 || amount === 19.99
     const targetAccountType = isBasic ? 'basic' : 'pro'
     const rawUserId = payload?.user_id ?? payload?.userId ?? payload?.customer?.id ?? data?.customer?.id ?? data?.customer?.uuid ?? data?.subscription?.id
+    const nowIso = new Date().toISOString()
+    const extractedStartedAt = pickIsoDate(payload, [
+      data?.subscription?.created_at,
+      data?.subscription?.createdAt,
+      data?.created_at,
+      data?.createdAt,
+      data?.purchase_date,
+      data?.purchaseDate,
+      payload?.created_at,
+      payload?.createdAt
+    ])
+    const extractedNextRenewalAt = pickIsoDate(payload, [
+      data?.subscription?.next_renewal_at,
+      data?.subscription?.nextRenewalAt,
+      data?.subscription?.next_billing_at,
+      data?.subscription?.nextBillingAt,
+      data?.subscription?.next_charge_at,
+      data?.subscription?.nextChargeAt,
+      data?.subscription?.current_period_end,
+      data?.subscription?.currentPeriodEnd,
+      data?.next_renewal_at,
+      data?.nextRenewalAt,
+      payload?.next_renewal_at,
+      payload?.nextRenewalAt
+    ])
+    const planPriceBrl = Number.isFinite(amount) && amount > 0 ? amount : (isBasic ? 19 : 27)
 
     let user: any = null
     if (email) {
@@ -97,17 +138,38 @@ export async function POST(request: NextRequest) {
           email_confirm: true
         })
       } catch {}
+      const startedAt = extractedStartedAt || nowIso
+      const base = new Date(startedAt)
+      const nextRenewalAt = extractedNextRenewalAt || new Date(base.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
       const created = await supabaseAdminService.createUser({
         id: authCreated?.data?.user?.id,
         email,
         name: data?.customer?.name ?? null,
         avatar_url: null,
-        account_type: targetAccountType
+        account_type: targetAccountType,
+        plan_status: 'active',
+        plan_started_at: startedAt,
+        plan_next_renewal_at: nextRenewalAt,
+        plan_price_brl: planPriceBrl
       })
       return NextResponse.json({ success: true, user: { id: created.id, account_type: created.account_type }, event, created: true, plan: targetAccountType })
     }
 
-    const updated = await supabaseAdminService.updateUserAccountType(user.id, targetAccountType)
+    const startedAt = user?.plan_started_at || extractedStartedAt || nowIso
+    const existingNext = toIsoDateOrNull(user?.plan_next_renewal_at)
+    const baseForRenewal = existingNext && new Date(existingNext).getTime() > Date.now() ? new Date(existingNext) : new Date(nowIso)
+    const nextRenewalAt = (() => {
+      const extracted = extractedNextRenewalAt ? new Date(extractedNextRenewalAt) : null
+      if (extracted && extracted.getTime() > Date.now()) return extracted.toISOString()
+      return new Date(baseForRenewal.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    })()
+
+    const updated = await supabaseAdminService.updateUserAccountType(user.id, targetAccountType, {
+      plan_status: 'active',
+      plan_started_at: startedAt,
+      plan_next_renewal_at: nextRenewalAt,
+      plan_price_brl: planPriceBrl
+    })
     return NextResponse.json({ success: true, user: { id: updated.id, account_type: updated.account_type }, event, plan: targetAccountType })
   } catch (error) {
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })

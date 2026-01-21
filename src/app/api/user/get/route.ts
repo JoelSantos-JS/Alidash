@@ -29,6 +29,82 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const isPaid = user.account_type === 'pro' || user.account_type === 'basic'
+    if (isPaid) {
+      const nowIso = new Date().toISOString()
+      const startedAt = user.plan_started_at || nowIso
+
+      const existingNext = user.plan_next_renewal_at ? new Date(String(user.plan_next_renewal_at)) : null
+      const hasParsableExistingNext = !!existingNext && !Number.isNaN(existingNext.getTime())
+      const graceMs = 2 * 24 * 60 * 60 * 1000
+      const isExpired = hasParsableExistingNext && (existingNext!.getTime() + graceMs) <= Date.now()
+
+      if (isExpired) {
+        const client = supabaseAdminService.getClient()
+        const { data: updated } = await client
+          .from('users')
+          .update({
+            account_type: 'personal',
+            plan_status: 'expired',
+            plan_price_brl: null
+          })
+          .eq('id', user.id)
+          .select('*')
+          .single()
+
+        if (updated) {
+          user = updated
+        } else {
+          user = {
+            ...user,
+            account_type: 'personal',
+            plan_status: 'expired',
+            plan_price_brl: null
+          }
+        }
+      }
+      if (!isExpired) {
+        const planStatus = user.plan_status || 'active'
+        const planPriceBrl = user.plan_price_brl || (user.account_type === 'basic' ? 19 : 27)
+
+        const shouldBackfillNextRenewal =
+          !user.plan_next_renewal_at || (user.plan_next_renewal_at && !hasParsableExistingNext)
+        const nextRenewalAt = shouldBackfillNextRenewal
+          ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          : existingNext!.toISOString()
+
+        const needsPlanBackfill =
+          !user.plan_next_renewal_at || !user.plan_started_at || !user.plan_status || !user.plan_price_brl
+
+        if (needsPlanBackfill) {
+          const client = supabaseAdminService.getClient()
+          const { data: updated } = await client
+            .from('users')
+            .update({
+              plan_started_at: startedAt,
+              plan_next_renewal_at: nextRenewalAt,
+              plan_status: planStatus,
+              plan_price_brl: planPriceBrl
+            })
+            .eq('id', user.id)
+            .select('*')
+            .single()
+
+          if (updated) {
+            user = updated
+          } else {
+            user = {
+              ...user,
+              plan_started_at: startedAt,
+              plan_next_renewal_at: nextRenewalAt,
+              plan_status: planStatus,
+              plan_price_brl: planPriceBrl
+            }
+          }
+        }
+      }
+    }
+
     // Retornar dados completos do usuário
     return NextResponse.json({
       success: true,

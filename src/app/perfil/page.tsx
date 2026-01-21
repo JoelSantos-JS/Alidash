@@ -267,9 +267,9 @@ export default function ProfilePage() {
             const diff = Math.ceil((new Date(nextRenewal).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
             return `${Math.max(0, diff)} dias`
         }
-        const updatedAt = userData?.updated_at
-        if (updatedAt) {
-            const end = new Date(new Date(updatedAt).getTime() + 30 * 24 * 60 * 60 * 1000)
+        const startedAt = userData?.plan_started_at
+        if (startedAt) {
+            const end = new Date(new Date(startedAt).getTime() + 30 * 24 * 60 * 60 * 1000)
             const diff = Math.ceil((end.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
             return `${Math.max(0, diff)} dias`
         }

@@ -84,6 +84,10 @@ export class SupabaseService {
     avatar_url?: string | null
     account_type?: string
     firebase_uid?: string
+    plan_next_renewal_at?: string | null
+    plan_started_at?: string | null
+    plan_status?: string | null
+    plan_price_brl?: number | null
   }) {
     let existing: any = null
     let existingError: any = null
@@ -107,16 +111,40 @@ export class SupabaseService {
     }
 
     if (!existingError && existing) {
+      const updateData: any = {}
+      let needsUpdate = false
+
       if (userData.account_type && existing.account_type !== userData.account_type) {
-        const { data: updated } = await this.client
-          .from('users')
-          .update({ account_type: userData.account_type, updated_at: new Date().toISOString() })
-          .eq('id', existing.id)
-          .select()
-          .single()
-        return updated || existing
+        updateData.account_type = userData.account_type
+        needsUpdate = true
       }
-      return existing
+      if (userData.plan_status !== undefined && existing.plan_status !== userData.plan_status) {
+        updateData.plan_status = userData.plan_status
+        needsUpdate = true
+      }
+      if (userData.plan_price_brl !== undefined && existing.plan_price_brl !== userData.plan_price_brl) {
+        updateData.plan_price_brl = userData.plan_price_brl
+        needsUpdate = true
+      }
+      if (userData.plan_next_renewal_at !== undefined && existing.plan_next_renewal_at !== userData.plan_next_renewal_at) {
+        updateData.plan_next_renewal_at = userData.plan_next_renewal_at
+        needsUpdate = true
+      }
+      if (userData.plan_started_at !== undefined && !existing.plan_started_at && userData.plan_started_at) {
+        updateData.plan_started_at = userData.plan_started_at
+        needsUpdate = true
+      }
+
+      if (!needsUpdate) return existing
+
+      updateData.updated_at = new Date().toISOString()
+      const { data: updated } = await this.client
+        .from('users')
+        .update(updateData)
+        .eq('id', existing.id)
+        .select()
+        .single()
+      return updated || existing
     }
 
     const insertData: any = {
@@ -125,6 +153,10 @@ export class SupabaseService {
       avatar_url: userData.avatar_url,
       account_type: userData.account_type || 'personal'
     }
+    if (userData.plan_next_renewal_at !== undefined) insertData.plan_next_renewal_at = userData.plan_next_renewal_at
+    if (userData.plan_started_at !== undefined) insertData.plan_started_at = userData.plan_started_at
+    if (userData.plan_status !== undefined) insertData.plan_status = userData.plan_status
+    if (userData.plan_price_brl !== undefined) insertData.plan_price_brl = userData.plan_price_brl
     if (userData.id) {
       insertData.id = userData.id
     }
@@ -146,14 +178,41 @@ export class SupabaseService {
           .select('*')
           .eq('email', userData.email)
           .single()
-        if (fetched && userData.account_type && fetched.account_type !== userData.account_type) {
-          const { data: updated } = await this.client
-            .from('users')
-            .update({ account_type: userData.account_type, updated_at: new Date().toISOString() })
-            .eq('id', fetched.id)
-            .select()
-            .single()
-          return updated || fetched
+        if (fetched) {
+          const updateData: any = {}
+          let needsUpdate = false
+
+          if (userData.account_type && fetched.account_type !== userData.account_type) {
+            updateData.account_type = userData.account_type
+            needsUpdate = true
+          }
+          if (userData.plan_status !== undefined && fetched.plan_status !== userData.plan_status) {
+            updateData.plan_status = userData.plan_status
+            needsUpdate = true
+          }
+          if (userData.plan_price_brl !== undefined && fetched.plan_price_brl !== userData.plan_price_brl) {
+            updateData.plan_price_brl = userData.plan_price_brl
+            needsUpdate = true
+          }
+          if (userData.plan_next_renewal_at !== undefined && fetched.plan_next_renewal_at !== userData.plan_next_renewal_at) {
+            updateData.plan_next_renewal_at = userData.plan_next_renewal_at
+            needsUpdate = true
+          }
+          if (userData.plan_started_at !== undefined && !fetched.plan_started_at && userData.plan_started_at) {
+            updateData.plan_started_at = userData.plan_started_at
+            needsUpdate = true
+          }
+
+          if (needsUpdate) {
+            updateData.updated_at = new Date().toISOString()
+            const { data: updated } = await this.client
+              .from('users')
+              .update(updateData)
+              .eq('id', fetched.id)
+              .select()
+              .single()
+            return updated || fetched
+          }
         }
         return fetched
       }
@@ -244,10 +303,25 @@ export class SupabaseService {
     return data
   }
 
-  async updateUserAccountType(userId: string, accountType: string) {
+  async updateUserAccountType(
+    userId: string,
+    accountType: string,
+    updates?: {
+      plan_next_renewal_at?: string | null
+      plan_started_at?: string | null
+      plan_status?: string | null
+      plan_price_brl?: number | null
+    }
+  ) {
+    const updateData: any = { account_type: accountType, updated_at: new Date().toISOString() }
+    if (updates?.plan_next_renewal_at !== undefined) updateData.plan_next_renewal_at = updates.plan_next_renewal_at
+    if (updates?.plan_started_at !== undefined) updateData.plan_started_at = updates.plan_started_at
+    if (updates?.plan_status !== undefined) updateData.plan_status = updates.plan_status
+    if (updates?.plan_price_brl !== undefined) updateData.plan_price_brl = updates.plan_price_brl
+
     const { data, error } = await this.client
       .from('users')
-      .update({ account_type: accountType, updated_at: new Date().toISOString() })
+      .update(updateData)
       .eq('id', userId)
       .select()
       .single()

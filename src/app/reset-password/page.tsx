@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase-service'
 import { toast } from 'sonner'
@@ -11,6 +11,7 @@ export default function ResetPasswordPage() {
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
   const [validRecovery, setValidRecovery] = useState(false)
+  const recoveryContextRef = useRef(false)
 
   const updatePasswordViaApiRoute = async (newPassword: string) => {
     const ac = typeof AbortController !== 'undefined' ? new AbortController() : null
@@ -87,19 +88,25 @@ export default function ResetPasswordPage() {
       try {
         const url = new URL(window.location.href)
         const code = url.searchParams.get('code')
+        const type = url.searchParams.get('type')
+        const isRecoveryType = type === 'recovery'
+        let fromUrl = false
         if (code) {
+          fromUrl = true
           const { error } = await supabase.auth.exchangeCodeForSession(code)
           if (error) {
             toast.error('Link inválido ou expirado')
             return
           }
           url.searchParams.delete('code')
+          if (isRecoveryType) url.searchParams.delete('type')
           window.history.replaceState({}, '', url.toString())
         } else {
           const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
           const accessToken = hashParams.get('access_token')
           const refreshToken = hashParams.get('refresh_token')
           if (accessToken && refreshToken) {
+            fromUrl = true
             const { error } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
@@ -113,7 +120,8 @@ export default function ResetPasswordPage() {
         }
 
         const { data: { session } } = await supabase.auth.getSession()
-        if (!cancelled && session) {
+        if (fromUrl) recoveryContextRef.current = true
+        if (!cancelled && session && recoveryContextRef.current) {
           setValidRecovery(true)
         }
       } catch {
@@ -124,7 +132,10 @@ export default function ResetPasswordPage() {
     init()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+      if (event === 'PASSWORD_RECOVERY') {
+        recoveryContextRef.current = true
+        setValidRecovery(true)
+      } else if (event === 'SIGNED_IN' && recoveryContextRef.current) {
         setValidRecovery(true)
       }
     })
@@ -201,11 +212,18 @@ export default function ResetPasswordPage() {
       }
       toast.success('Senha alterada com sucesso!')
       try {
+        try {
+          const ac = typeof AbortController !== 'undefined' ? new AbortController() : null
+          const t = ac ? window.setTimeout(() => ac.abort(), 1500) : null
+          await fetch('/api/auth/logout', { method: 'POST', signal: ac?.signal, cache: 'no-store' })
+          if (t) window.clearTimeout(t)
+        } catch {}
         await Promise.race([
           supabase.auth.signOut({ scope: 'local' } as any),
           new Promise((resolve) => window.setTimeout(() => resolve(null), 1000))
         ])
       } catch {}
+      setValidRecovery(false)
       router.replace('/login')
       try {
         window.setTimeout(() => window.location.replace('/login'), 50)

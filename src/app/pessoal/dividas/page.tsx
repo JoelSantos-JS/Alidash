@@ -1,12 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  LineChart,
+  Line
+} from "recharts";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import {
@@ -87,6 +102,19 @@ const DEBT_STATUS = {
   paused: { label: 'Pausada', color: 'bg-yellow-100 text-yellow-600', variant: 'outline' as const }
 };
 
+const CHART_COLORS = [
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+  "hsl(var(--chart-5))",
+  "#8884d8",
+  "#82ca9d",
+  "#ffc658",
+  "#ff8042",
+  "#0088FE"
+];
+
 export default function PersonalDebtsPage() {
   const { user } = useSupabaseAuth();
   const { toast } = useToast();
@@ -99,12 +127,22 @@ export default function PersonalDebtsPage() {
   const [selectedDebt, setSelectedDebt] = useState<PersonalDebt | null>(null);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     if (user) {
       loadDebts();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mql = window.matchMedia('(max-width: 640px)');
+    const onChange = () => setIsMobile(mql.matches);
+    onChange();
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
 
   const loadDebts = async () => {
     try {
@@ -176,6 +214,102 @@ export default function PersonalDebtsPage() {
     .filter(debt => debt.status === 'active')
     .reduce((sum, debt) => sum + debt.monthly_payment, 0);
   const overdueDebts = filteredDebts.filter(debt => debt.status === 'overdue').length;
+
+  const formatCurrency = (value: number) =>
+    value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  const payoffRate = useMemo(() => {
+    const total = totalPaid + totalDebt;
+    if (total <= 0) return 0;
+    return (totalPaid / total) * 100;
+  }, [totalPaid, totalDebt]);
+
+  const categoryChartData = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const d of filteredDebts) {
+      const key = d.category || 'other';
+      totals.set(key, (totals.get(key) ?? 0) + (Number.isFinite(d.remaining_amount) ? d.remaining_amount : 0));
+    }
+    return Array.from(totals.entries())
+      .map(([category, value]) => ({
+        category,
+        name: (DEBT_CATEGORIES[category as keyof typeof DEBT_CATEGORIES] || DEBT_CATEGORIES.other).label,
+        value
+      }))
+      .filter((x) => x.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }, [filteredDebts]);
+
+  const statusChartData = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const d of filteredDebts) {
+      const key = d.status || 'active';
+      totals.set(key, (totals.get(key) ?? 0) + (Number.isFinite(d.remaining_amount) ? d.remaining_amount : 0));
+    }
+    return Array.from(totals.entries())
+      .map(([status, value]) => ({
+        status,
+        name: (DEBT_STATUS[status as keyof typeof DEBT_STATUS] || DEBT_STATUS.active).label,
+        value
+      }))
+      .filter((x) => x.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }, [filteredDebts]);
+
+  const creditorChartData = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const d of filteredDebts) {
+      const key = (d.creditor || 'Sem credor').trim() || 'Sem credor';
+      totals.set(key, (totals.get(key) ?? 0) + (Number.isFinite(d.remaining_amount) ? d.remaining_amount : 0));
+    }
+    return Array.from(totals.entries())
+      .map(([name, value]) => ({ name, value }))
+      .filter((x) => x.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+  }, [filteredDebts]);
+
+  const upcomingDebts = useMemo(() => {
+    const now = new Date();
+    const in30Days = new Date(now);
+    in30Days.setDate(in30Days.getDate() + 30);
+    return filteredDebts
+      .filter((d) => d.status !== 'paid')
+      .map((d) => ({ debt: d, due: new Date(d.due_date) }))
+      .filter(({ due }) => Number.isFinite(due.getTime()))
+      .sort((a, b) => a.due.getTime() - b.due.getTime())
+      .filter(({ due }) => due <= in30Days)
+      .slice(0, 6);
+  }, [filteredDebts]);
+
+  const interestInsights = useMemo(() => {
+    const debtsWithInterest = filteredDebts.filter((d) => (d.interest_rate ?? 0) > 0 && d.status !== 'paid');
+    const weightedDen = debtsWithInterest.reduce((sum, d) => sum + d.remaining_amount, 0);
+    const weightedNum = debtsWithInterest.reduce((sum, d) => sum + (d.remaining_amount * (d.interest_rate ?? 0)), 0);
+    const weightedAvg = weightedDen > 0 ? weightedNum / weightedDen : 0;
+    return {
+      debtsWithInterestCount: debtsWithInterest.length,
+      weightedAverageRate: weightedAvg
+    };
+  }, [filteredDebts]);
+
+  const monthlyForecastData = useMemo(() => {
+    const base = new Date();
+    base.setDate(1);
+    base.setHours(0, 0, 0, 0);
+
+    const payingDebts = filteredDebts.filter((d) => d.status === 'active' || d.status === 'overdue');
+    const monthly = payingDebts.reduce((sum, d) => sum + (Number.isFinite(d.monthly_payment) ? d.monthly_payment : 0), 0);
+
+    const result: Array<{ month: string; value: number }> = [];
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(base);
+      d.setMonth(d.getMonth() + i);
+      const label = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+      result.push({ month: label.replace('.', ''), value: monthly });
+    }
+    return result;
+  }, [filteredDebts]);
 
   const getCategoryInfo = (category: string) => {
     return DEBT_CATEGORIES[category as keyof typeof DEBT_CATEGORIES] || DEBT_CATEGORIES.other;
@@ -588,14 +722,232 @@ export default function PersonalDebtsPage() {
           </TabsContent>
 
           <TabsContent value="relatorios" className="space-y-4 md:space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Relatórios e análises</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Em breve: gráficos de categorias, evolução de pagamentos e atrasos.</p>
-              </CardContent>
-            </Card>
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xs sm:text-sm font-medium">Saldo Devedor</CardTitle>
+                  <TrendingDown className="h-4 w-4 text-red-600" />
+                </CardHeader>
+                <CardContent className="p-3 sm:p-6">
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 break-words">
+                    {formatCurrency(totalDebt)}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Base: {filteredDebts.length} dívida(s)
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xs sm:text-sm font-medium">Total Pago</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                </CardHeader>
+                <CardContent className="p-3 sm:p-6">
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 break-words">
+                    {formatCurrency(totalPaid)}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Valor já quitado</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xs sm:text-sm font-medium">Parcelas Mensais</CardTitle>
+                  <Calendar className="h-4 w-4 text-blue-600" />
+                </CardHeader>
+                <CardContent className="p-3 sm:p-6">
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 break-words">
+                    {formatCurrency(monthlyPayments)}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Somente dívidas ativas</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xs sm:text-sm font-medium">Taxa de Quitação</CardTitle>
+                  <DollarSign className="h-4 w-4 text-foreground" />
+                </CardHeader>
+                <CardContent className="p-3 sm:p-6 space-y-2">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">
+                      {payoffRate.toFixed(1)}%
+                    </div>
+                    <Badge variant={overdueDebts > 0 ? "destructive" : "secondary"} className="text-xs">
+                      {overdueDebts > 0 ? `${overdueDebts} em atraso` : "Sem atraso"}
+                    </Badge>
+                  </div>
+                  <Progress value={payoffRate} />
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Por categoria</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {categoryChartData.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Sem dados para exibir.</p>
+                  ) : (
+                    <div className="w-full h-[280px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={categoryChartData} dataKey="value" nameKey="name" innerRadius={isMobile ? 45 : 55} outerRadius={isMobile ? 75 : 90}>
+                            {categoryChartData.map((entry, index) => (
+                              <Cell key={`${entry.category}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(v) => formatCurrency(Number(v))} />
+                          {!isMobile && <Legend />}
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Por status</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {statusChartData.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Sem dados para exibir.</p>
+                  ) : (
+                    <div className="w-full h-[280px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={statusChartData} dataKey="value" nameKey="name" innerRadius={isMobile ? 45 : 55} outerRadius={isMobile ? 75 : 90}>
+                            {statusChartData.map((entry, index) => (
+                              <Cell key={`${entry.status}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(v) => formatCurrency(Number(v))} />
+                          {!isMobile && <Legend />}
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Maiores credores</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {creditorChartData.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Sem dados para exibir.</p>
+                  ) : (
+                    <div className="w-full h-[320px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={creditorChartData} layout="vertical" margin={{ left: isMobile ? 0 : 12, right: 12 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis type="number" tickFormatter={(v) => formatCurrency(Number(v))} />
+                          <YAxis type="category" dataKey="name" width={isMobile ? 80 : 110} tick={{ fontSize: isMobile ? 10 : 12 }} />
+                          <Tooltip formatter={(v) => formatCurrency(Number(v))} />
+                          <Bar dataKey="value" radius={[6, 6, 6, 6]}>
+                            {creditorChartData.map((entry, index) => (
+                              <Cell key={`${entry.name}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Projeção de pagamentos (6 meses)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="w-full h-[320px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={monthlyForecastData} margin={{ left: 12, right: 12 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis tickFormatter={(v) => formatCurrency(Number(v))} />
+                        <Tooltip formatter={(v) => formatCurrency(Number(v))} />
+                        <Line type="monotone" dataKey="value" stroke="hsl(var(--chart-1))" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Base: soma das parcelas de dívidas ativas e em atraso.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Próximos vencimentos</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {upcomingDebts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nenhum vencimento nos próximos 30 dias.</p>
+                  ) : (
+                    upcomingDebts.map(({ debt, due }) => {
+                      const overdue = due < new Date() && debt.status !== 'paid';
+                      return (
+                        <div key={debt.id} className="flex items-center justify-between gap-3 border rounded-lg p-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium truncate">{debt.name}</span>
+                              {overdue && (
+                                <Badge variant="destructive" className="text-xs">
+                                  Atrasada
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {due.toLocaleDateString('pt-BR')}
+                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <div className="text-sm font-semibold text-foreground">
+                              {formatCurrency(debt.remaining_amount)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">{debt.creditor || 'Sem credor'}</div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Insights</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between border rounded-lg p-3">
+                    <div className="text-sm text-muted-foreground">Dívidas em atraso</div>
+                    <div className="font-semibold">{overdueDebts}</div>
+                  </div>
+                  <div className="flex items-center justify-between border rounded-lg p-3">
+                    <div className="text-sm text-muted-foreground">Juros médio ponderado</div>
+                    <div className="font-semibold">
+                      {interestInsights.debtsWithInterestCount > 0 ? `${interestInsights.weightedAverageRate.toFixed(2)}% a.m.` : '—'}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between border rounded-lg p-3">
+                    <div className="text-sm text-muted-foreground">Total original (estimado)</div>
+                    <div className="font-semibold">{formatCurrency(totalPaid + totalDebt)}</div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
 

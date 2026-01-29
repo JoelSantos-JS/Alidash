@@ -198,3 +198,150 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: err?.message || 'Erro interno do servidor' }, { status: 500 })
   }
 }
+
+type DeleteOutcome = { table: string; deleted: number; error?: string }
+
+function normalizeEmail(value: string) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function isMissingTableError(err: any) {
+  const msg = String(err?.message || '').toLowerCase()
+  return msg.includes('could not find the') && msg.includes('in the schema cache')
+}
+
+async function deleteByUserId(admin: any, table: string, userId: string): Promise<DeleteOutcome> {
+  try {
+    const res = await admin.from(table).delete({ count: 'exact' }).eq('user_id', userId)
+    if (res.error) {
+      if (isMissingTableError(res.error)) return { table, deleted: 0 }
+      return { table, deleted: 0, error: res.error.message }
+    }
+    return { table, deleted: Number(res.count || 0) }
+  } catch (err: any) {
+    if (isMissingTableError(err)) return { table, deleted: 0 }
+    return { table, deleted: 0, error: String(err?.message || err || '') || 'Erro ao deletar' }
+  }
+}
+
+async function deleteIn(admin: any, table: string, column: string, ids: Array<string | number>): Promise<DeleteOutcome> {
+  const safe = (ids || []).filter(v => v !== null && v !== undefined && String(v) !== '')
+  if (safe.length === 0) return { table, deleted: 0 }
+  const chunkSize = 250
+  let deleted = 0
+  for (let i = 0; i < safe.length; i += chunkSize) {
+    const chunk = safe.slice(i, i + chunkSize)
+    try {
+      const res = await admin.from(table).delete({ count: 'exact' }).in(column, chunk)
+      if (res.error) {
+        if (isMissingTableError(res.error)) return { table, deleted: 0 }
+        return { table, deleted, error: res.error.message }
+      }
+      deleted += Number(res.count || 0)
+    } catch (err: any) {
+      if (isMissingTableError(err)) return { table, deleted: 0 }
+      return { table, deleted, error: String(err?.message || err || '') || 'Erro ao deletar' }
+    }
+  }
+  return { table, deleted }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    if (!isAdminAuthorized(request)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    const body = await request.json().catch(() => ({} as any))
+    const email = normalizeEmail(body?.email)
+    if (!email) {
+      return NextResponse.json({ error: 'email é obrigatório' }, { status: 400 })
+    }
+
+    if (!supabaseAdmin || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ error: 'Admin client indisponível' }, { status: 500 })
+    }
+
+    const { data: userRow, error: userErr } = await supabaseAdmin
+      .from('users')
+      .select('id,email')
+      .eq('email', email)
+      .single()
+
+    if (userErr || !userRow?.id) {
+      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
+    }
+
+    const userId = String(userRow.id)
+    const admin = supabaseAdmin
+
+    const outcomes: DeleteOutcome[] = []
+
+    const { data: debts } = await admin.from('debts').select('id').eq('user_id', userId)
+    const debtIds = (debts || []).map((d: any) => String(d.id)).filter(Boolean)
+    outcomes.push(await deleteIn(admin, 'debt_payments', 'debt_id', debtIds))
+
+    const { data: goals } = await admin.from('goals').select('id').eq('user_id', userId)
+    const goalIds = (goals || []).map((g: any) => String(g.id)).filter(Boolean)
+    outcomes.push(await deleteIn(admin, 'goal_milestones', 'goal_id', goalIds))
+    outcomes.push(await deleteIn(admin, 'goal_reminders', 'goal_id', goalIds))
+
+    const { data: assets } = await admin.from('investment_assets').select('id').eq('user_id', userId)
+    const assetIds = (assets || []).map((a: any) => String(a.id)).filter(Boolean)
+    outcomes.push(await deleteIn(admin, 'investment_prices', 'asset_id', assetIds))
+
+    const directByUserId = [
+      'sales',
+      'product_images',
+      'revenues',
+      'expenses',
+      'transactions',
+      'debts',
+      'goals',
+      'products',
+      'categories',
+      'budgets',
+      'personal_incomes',
+      'personal_expenses',
+      'personal_goals',
+      'personal_categories',
+      'personal_budgets',
+      'personal_salary_settings',
+      'calendar_events',
+      'calendar_settings',
+      'calendar_sync_settings',
+      'calendar_sync_logs',
+      'notification_logs',
+      'notification_preferences',
+      'push_subscriptions',
+      'catalog_tokens',
+      'firebase_backup',
+      'user_webhooks',
+      'webhook_events',
+      'bets',
+      'dreams',
+      'investment_transactions',
+      'investment_positions',
+      'investment_assets',
+      'investment_accounts',
+    ]
+
+    for (const table of directByUserId) {
+      outcomes.push(await deleteByUserId(admin, table, userId))
+    }
+
+    const errors = outcomes.filter(o => o.error)
+    const deletedTotal = outcomes.reduce((acc, o) => acc + (Number(o.deleted) || 0), 0)
+
+    return NextResponse.json({
+      success: errors.length === 0,
+      email,
+      userId,
+      deletedTotal,
+      outcomes,
+      errors,
+    })
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message || 'Erro interno do servidor' }, { status: 500 })
+  }
+}
